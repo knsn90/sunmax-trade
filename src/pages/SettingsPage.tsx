@@ -11,11 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Card, CardContent, PageHeader, LoadingSpinner, FormRow, FormGroup } from '@/components/ui/shared';
-import { Upload, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Upload, Trash2, Eye, EyeOff, Download, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { THEME_PRESETS, applyTheme, getStoredTheme, type ThemePreset } from '@/lib/theme';
 import { getOpenAIKey, saveOpenAIKey } from '@/lib/openai';
+import { supabase } from '@/services/supabase';
 
-type SettingsTab = 'company' | 'users' | 'theme';
+type SettingsTab = 'company' | 'users' | 'theme' | 'backup';
 
 export function SettingsPage() {
   const { profile } = useAuth();
@@ -85,7 +86,7 @@ export function SettingsPage() {
 
       {/* Tab bar */}
       <div className="flex gap-0 border-b-2 border-border mb-5">
-        {([['company', 'Company'], ['users', 'Users'], ['theme', 'Theme']] as [SettingsTab, string][]).map(([key, label]) => (
+        {([['company', 'Company'], ['users', 'Users'], ['theme', 'Theme'], ['backup', 'Backup']] as [SettingsTab, string][]).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
@@ -102,6 +103,7 @@ export function SettingsPage() {
 
       {activeTab === 'theme' && <ThemeTab />}
       {activeTab === 'users' && <UsersTab currentUserId={profile?.id} />}
+      {activeTab === 'backup' && <BackupTab />}
       {activeTab === 'company' && <>
 
       {/* Logo */}
@@ -492,6 +494,183 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
           </table>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ─── Backup Tab ───────────────────────────────────────────────────────────────
+
+const BACKUP_TABLES = [
+  'customers', 'suppliers', 'service_providers', 'products',
+  'trade_files', 'proformas', 'invoices', 'packing_lists', 'packing_list_items',
+  'transactions', 'company_settings', 'bank_accounts',
+] as const;
+
+type BackupStatus = 'idle' | 'loading' | 'success' | 'error';
+
+function BackupTab() {
+  const [exportStatus, setExportStatus] = useState<BackupStatus>('idle');
+  const [restoreStatus, setRestoreStatus] = useState<BackupStatus>('idle');
+  const [restoreMsg, setRestoreMsg] = useState('');
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleExport() {
+    setExportStatus('loading');
+    try {
+      const tables: Record<string, unknown[]> = {};
+      for (const table of BACKUP_TABLES) {
+        const { data, error } = await supabase.from(table).select('*');
+        if (error) throw new Error(`Failed to fetch ${table}: ${error.message}`);
+        tables[table] = data ?? [];
+      }
+      const backup = {
+        version: 1,
+        exported_at: new Date().toISOString(),
+        tables,
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sunplus-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportStatus('success');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    } catch (err) {
+      console.error(err);
+      setExportStatus('error');
+      setTimeout(() => setExportStatus('idle'), 4000);
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingFile(file);
+    setConfirmRestore(true);
+    e.target.value = '';
+  }
+
+  async function handleRestore() {
+    if (!pendingFile) return;
+    setConfirmRestore(false);
+    setRestoreStatus('loading');
+    setRestoreMsg('');
+    try {
+      const text = await pendingFile.text();
+      const backup = JSON.parse(text);
+      if (!backup.version || !backup.tables) throw new Error('Invalid backup file format');
+
+      let totalRows = 0;
+      for (const table of BACKUP_TABLES) {
+        const rows = backup.tables[table];
+        if (!rows || rows.length === 0) continue;
+        const { error } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
+        if (error) throw new Error(`Failed to restore ${table}: ${error.message}`);
+        totalRows += rows.length;
+      }
+      setRestoreMsg(`${totalRows} records restored successfully from backup dated ${backup.exported_at?.slice(0, 10) ?? 'unknown'}.`);
+      setRestoreStatus('success');
+      setTimeout(() => { setRestoreStatus('idle'); setRestoreMsg(''); }, 6000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setRestoreMsg(msg);
+      setRestoreStatus('error');
+    } finally {
+      setPendingFile(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Export */}
+      <Card>
+        <CardContent>
+          <div className="text-[13px] font-bold mb-1">Export Backup</div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Downloads all your data as a JSON file. Store it somewhere safe.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleExport} disabled={exportStatus === 'loading'}>
+              <Download className="h-3.5 w-3.5" />
+              {exportStatus === 'loading' ? 'Exporting…' : 'Download Backup'}
+            </Button>
+            {exportStatus === 'success' && (
+              <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Backup downloaded
+              </span>
+            )}
+            {exportStatus === 'error' && (
+              <span className="flex items-center gap-1.5 text-xs text-red-500 font-medium">
+                <AlertTriangle className="h-3.5 w-3.5" /> Export failed
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-3">
+            Includes: customers, suppliers, products, trade files, invoices, proformas, packing lists, transactions, company settings.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Restore */}
+      <Card>
+        <CardContent>
+          <div className="text-[13px] font-bold mb-1">Restore from Backup</div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Upload a previously exported backup file. Existing records with matching IDs will be overwritten.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              disabled={restoreStatus === 'loading'}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              {restoreStatus === 'loading' ? 'Restoring…' : 'Select Backup File'}
+            </Button>
+            {restoreStatus === 'success' && (
+              <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                <CheckCircle2 className="h-3.5 w-3.5" /> {restoreMsg}
+              </span>
+            )}
+            {restoreStatus === 'error' && (
+              <span className="flex items-center gap-1.5 text-xs text-red-500 font-medium">
+                <AlertTriangle className="h-3.5 w-3.5" /> {restoreMsg}
+              </span>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFileSelect} />
+        </CardContent>
+      </Card>
+
+      {/* Confirm dialog */}
+      {confirmRestore && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/45">
+          <div className="bg-white rounded-t-2xl md:rounded-xl p-6 w-full md:max-w-sm shadow-xl">
+            <div className="flex items-start gap-3 mb-4">
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-bold mb-1">Restore Backup?</div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{pendingFile?.name}</span> will be applied.
+                  Existing records with the same ID will be overwritten. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => { setConfirmRestore(false); setPendingFile(null); }}>
+                Cancel
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleRestore}>
+                Yes, Restore
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
