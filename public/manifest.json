@@ -1,0 +1,19 @@
+{
+  "name": "SunPlus Trade Management",
+  "short_name": "SunPlus",
+  "description": "Trade file and document management",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#4f6ef7",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

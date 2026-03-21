@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-50:  231 100% 96%;
+    --brand-100: 231 100% 93%;
+    --brand-200: 231 97%  89%;
+    --brand-300: 231 95%  82%;
+    --brand-400: 234 90%  74%;
+    --brand-500: 231 89%  65%;
+    --brand-600: 231 89%  59%;
+    --brand-700: 231 65%  49%;
+    --brand-800: 227 70%  39%;
+    --brand-900: 227 61%  29%;
+  }
+
+  * {
+    border-color: hsl(220 13% 91%);
+  }
+
+  body {
+    background-color: hsl(220 30% 97%);
+    color: hsl(0 0% 7%);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 13px;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(220 13% 91%);
+    border-radius: 3px;
+  }
+}
