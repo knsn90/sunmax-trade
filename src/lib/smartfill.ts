@@ -98,7 +98,7 @@ export async function smartFillForm(text: string, mode: OcrMode): Promise<OcrRes
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-haiku-latest',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 1024,
       messages: [
         {
