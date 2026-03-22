@@ -2,92 +2,125 @@ import { getApiKey } from './openai';
 import { today } from './formatters';
 import type { OcrMode, OcrResult } from './openai';
 
-// ─── Turkish NLP Prompts ──────────────────────────────────────────────────────
+// ─── Form context definitions ─────────────────────────────────────────────────
 
-const PROMPTS: Record<OcrMode, string> = {
-  transaction: `Sen bir ticaret muhasebe asistanısın. Kullanıcının Türkçe açıklamasından işlem bilgilerini JSON formatında çıkar.
-
-Çıkarılacak alanlar:
-- date: tarih (YYYY-MM-DD, "bugün" → ${today()})
-- amount: tutar (sayı, "bin beş yüz" → 1500)
-- currency: para birimi (USD/EUR/TRY)
-- party_name: karşı taraf adı
-- description: açıklama
-- reference_no: referans/fatura numarası
-
-Kurallar:
-- Sayı kelimelerini rakama çevir (bin→1000, yüz→100, elli→50, yirmi→20 vb.)
-- Tarihleri YYYY-MM-DD formatına çevir
-- Sadece metinde geçen alanları dahil et
-- SADECE JSON döndür, başka açıklama ekleme`,
-
-  invoice: `Sen bir ticaret formu asistanısın. Kullanıcının Türkçe açıklamasından com-invoice bilgilerini JSON formatında çıkar.
-
-Çıkarılacak alanlar:
-- date: tarih (YYYY-MM-DD, "bugün" → ${today()})
-- quantity_admt: ADMT miktarı (sayı)
-- unit_price: birim fiyat (sayı)
-- currency: para birimi (USD/EUR/TRY, belirtilmezse USD)
-- freight: navlun ücreti (sayı)
-- payment_terms: ödeme koşulları
-- incoterms: incoterms (CFR/FOB/CIF/DAP/EXW vb.)
-- proforma_no: proforma numarası
-- cb_no: CB/konşimento numarası
-- insurance_no: sigorta numarası
-
-Kurallar:
-- Sayı kelimelerini rakama çevir (bin→1000, yüz→100 vb.)
-- Tarihleri YYYY-MM-DD formatına çevir
-- Sadece metinde geçen alanları dahil et
-- SADECE JSON döndür`,
-
-  proforma: `Sen bir ticaret formu asistanısın. Kullanıcının Türkçe açıklamasından proforma invoice bilgilerini JSON formatında çıkar.
-
-Çıkarılacak alanlar:
-- date: tarih (YYYY-MM-DD, "bugün" → ${today()})
-- quantity_admt: ADMT miktarı (sayı)
-- unit_price: birim fiyat (sayı)
-- currency: para birimi (USD/EUR/TRY, belirtilmezse USD)
-- freight: navlun ücreti (sayı)
-- payment_terms: ödeme koşulları (örn: "60 days", "30 gün vadeli")
-- port_of_loading: yükleme limanı
-- port_of_discharge: varış limanı
-- country_of_origin: menşei ülke
-- incoterms: incoterms (CFR/FOB/CIF/DAP/EXW vb.)
-
-Kurallar:
-- Sayı kelimelerini rakama çevir (yüz elli→150, beş yüz→500 vb.)
-- Tarihleri YYYY-MM-DD formatına çevir
-- "gelecek ay" veya "önümüzdeki ay" gibi ifadeleri tarih olarak yorumla
-- Sadece metinde geçen alanları dahil et
-- SADECE JSON döndür`,
-
-  packing_list: `Sen bir ticaret formu asistanısın. Kullanıcının Türkçe açıklamasından packing list bilgilerini JSON formatında çıkar.
-
-Çıkarılacak alanlar:
-- date: tarih (YYYY-MM-DD, "bugün" → ${today()})
-- items: araç/konteyner listesi (dizi):
-  Her öğe: { "vehicle_plate": "plaka", "reels": sayı, "admt": sayı, "gross_weight_kg": sayı }
-
-Örnek girdi: "34ABC123 plakalı araç, 5 rulo, 12.5 ADMT, 14000 kg"
-Örnek çıktı: {"items": [{"vehicle_plate": "34ABC123", "reels": 5, "admt": 12.5, "gross_weight_kg": 14000}]}
-
-Kurallar:
-- Plakalar boşluksuz yazılabilir, normalize etme
-- Sayı kelimelerini rakama çevir
-- Birden fazla araç varsa hepsini items dizisine ekle
-- SADECE JSON döndür`,
+const FORM_CONTEXTS: Record<OcrMode, { name: string; fields: Record<string, string> }> = {
+  transaction: {
+    name: 'Muhasebe İşlemi (Tahsilat / Ödeme / Fatura)',
+    fields: {
+      date:         'Tarih (YYYY-MM-DD) — "bugün", "yarın", "3 gün sonra" gibi ifadeler kabul edilir',
+      amount:       'Tutar (sayı) — "bin beş yüz" → 1500',
+      currency:     'Para birimi: USD, EUR veya TRY',
+      party_name:   'Karşı taraf adı (müşteri veya tedarikçi firma adı)',
+      description:  'İşlem açıklaması',
+      reference_no: 'Referans numarası veya fatura numarası',
+    },
+  },
+  invoice: {
+    name: 'Com-Invoice (Ticari Fatura)',
+    fields: {
+      date:         'Fatura tarihi (YYYY-MM-DD)',
+      quantity_admt:'Miktar ADMT (sayı)',
+      unit_price:   'Ton başına birim fiyat (sayı)',
+      currency:     'Para birimi: USD, EUR veya TRY (belirtilmezse USD)',
+      freight:      'Navlun ücreti (sayı)',
+      incoterms:    'Incoterms: CFR, FOB, CIF, DAP, EXW vb.',
+      payment_terms:'Ödeme koşulları — örn: "60 days", "30 gün vadeli", "peşin"',
+      proforma_no:  'Proforma numarası',
+      cb_no:        'CB / konşimento numarası',
+      insurance_no: 'Sigorta poliçe numarası',
+    },
+  },
+  proforma: {
+    name: 'Proforma Invoice',
+    fields: {
+      date:               'Proforma tarihi (YYYY-MM-DD)',
+      quantity_admt:      'Miktar ADMT (sayı)',
+      unit_price:         'Ton başına birim fiyat (sayı)',
+      currency:           'Para birimi: USD, EUR veya TRY (belirtilmezse USD)',
+      freight:            'Navlun ücreti (sayı)',
+      incoterms:          'Incoterms: CFR, FOB, CIF, DAP, EXW vb.',
+      payment_terms:      'Ödeme koşulları',
+      port_of_loading:    'Yükleme limanı (şehir/liman adı)',
+      port_of_discharge:  'Boşaltma/varış limanı',
+      country_of_origin:  'Menşei ülke',
+    },
+  },
+  packing_list: {
+    name: 'Packing List (Ambalaj Listesi)',
+    fields: {
+      date:  'Packing list tarihi (YYYY-MM-DD)',
+      items: `Araç/konteyner listesi — her satır için:
+        vehicle_plate: Araç plakası
+        reels:         Rulo sayısı
+        admt:          ADMT miktarı
+        gross_weight_kg: Brüt ağırlık (kg)`,
+    },
+  },
 };
+
+// ─── System prompt ────────────────────────────────────────────────────────────
+
+function buildSystemPrompt(mode: OcrMode, currentValues: Record<string, unknown> = {}): string {
+  const ctx = FORM_CONTEXTS[mode];
+  const fieldList = Object.entries(ctx.fields)
+    .map(([k, v]) => `  • ${k}: ${v}`)
+    .join('\n');
+
+  const currentStr = Object.keys(currentValues).length > 0
+    ? `\nMEVCUT FORM DURUMU (dolu alanlar):\n${JSON.stringify(currentValues, null, 2)}\n`
+    : '';
+
+  return `Sen SunPlus ticaret yönetim sisteminin akıllı form asistanısın.
+Kullanıcı şu an "${ctx.name}" formunu dolduruyor.
+Bugünün tarihi: ${today()}
+${currentStr}
+DOLDURULACAK ALANLAR:
+${fieldList}
+
+GÖREVIN:
+Kullanıcının Türkçe isteğini anlayarak uygun alanları JSON olarak döndür.
+
+KURALLAR:
+- Tamamen doğal Türkçe konuşmayı anlarsın
+- Sayı kelimelerini rakama çevir: "yüz elli" → 150, "bin" → 1000, "iki buçuk" → 2.5
+- Tarih ifadelerini çevir: "bugün" → ${today()}, "yarın" → ileri tarih, "önümüzdeki Pazartesi" vb.
+- Sadece kullanıcının bahsettiği alanları dahil et — diğerlerini atlat
+- Eğer kullanıcı mevcut bir alanı değiştirmek istiyorsa yeni değeri ver
+- incoterms büyük harf olmalı (cif → CIF, cfr → CFR)
+- currency büyük harf olmalı (usd → USD)
+- Anlaşılmayan veya eksik bilgileri dahil etme
+- SADECE geçerli bir JSON objesi döndür, başka hiçbir şey yazma
+- Yanıt şu formatta olacak: {"alan1": değer1, "alan2": değer2, ...}`;
+}
+
+// ─── Conversation message type ────────────────────────────────────────────────
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 // ─── API Call ─────────────────────────────────────────────────────────────────
 
-export async function smartFillForm(text: string, mode: OcrMode): Promise<OcrResult> {
+export async function smartFillForm(
+  text: string,
+  mode: OcrMode,
+  currentValues: Record<string, unknown> = {},
+  history: ChatMessage[] = [],
+): Promise<OcrResult> {
   const apiKey = getApiKey('anthropic');
   if (!apiKey) {
     throw new Error(
-      'Anthropic (Claude) API key bulunamadı. Lütfen Ayarlar → Şirket → API Anahtarları bölümünden ekleyin.',
+      'Anthropic (Claude) API key bulunamadı. Lütfen Ayarlar → API Anahtarları bölümünden ekleyin.',
     );
   }
+
+  // Build conversation: history + new user message
+  const messages: ChatMessage[] = [
+    ...history,
+    { role: 'user', content: text },
+  ];
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -100,12 +133,8 @@ export async function smartFillForm(text: string, mode: OcrMode): Promise<OcrRes
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: `${PROMPTS[mode]}\n\nKullanıcı girişi: "${text}"`,
-        },
-      ],
+      system: buildSystemPrompt(mode, currentValues),
+      messages,
     }),
   });
 
@@ -117,9 +146,9 @@ export async function smartFillForm(text: string, mode: OcrMode): Promise<OcrRes
   const data = await response.json() as { content: Array<{ text: string }> };
   const content = data.content[0]?.text ?? '';
 
-  // Extract JSON from response (Claude may wrap in backticks)
+  // Extract JSON from response
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI yanıtı işlenemedi. Lütfen tekrar deneyin.');
+  if (!jsonMatch) throw new Error('AI yanıtı işlenemedi. Lütfen daha açık bir şekilde tekrar deneyin.');
 
   return JSON.parse(jsonMatch[0]) as OcrResult;
 }
