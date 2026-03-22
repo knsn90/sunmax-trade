@@ -95,6 +95,7 @@ export async function smartFillForm(text: string, mode: OcrMode): Promise<OcrRes
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: 'claude-3-5-haiku-20241022',
