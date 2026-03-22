@@ -39,19 +39,30 @@ const BASE_CSS = `
     .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; }
   }
   /* DRAFT watermark */
+  .draft-watermark {
+    position: relative;
+  }
   .draft-watermark::before {
     content: 'DRAFT';
-    position: fixed;
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 130px;
+    font-size: 140px;
     font-weight: 900;
-    color: rgba(0,0,0,0.055);
-    letter-spacing: 16px;
+    color: rgba(0,0,0,0.07);
+    letter-spacing: 20px;
     pointer-events: none;
     z-index: 9999;
     white-space: nowrap;
+    user-select: none;
+  }
+  @media print {
+    .draft-watermark::before {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+    }
   }
 `;
 
