@@ -49,10 +49,10 @@ export function BottomNav() {
       {/* More Drawer — slides up above the bottom bar */}
       <div
         className={cn(
-          'fixed left-0 right-0 z-50 bg-white border-t border-border shadow-xl md:hidden transition-transform duration-300',
+          'fixed left-0 right-0 z-50 bg-white border-t border-border shadow-xl md:hidden transition-transform duration-300 rounded-t-2xl',
           drawerOpen ? 'translate-y-0' : 'translate-y-full',
-          'bottom-16 rounded-t-2xl',
         )}
+        style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">More</span>
