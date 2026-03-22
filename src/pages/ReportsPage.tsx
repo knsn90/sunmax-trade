@@ -8,7 +8,6 @@ import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEntities';
 import { useTransactions, useTransactionsByEntityEnhanced } from '@/hooks/useTransactions';
 import { fDate, fCurrency, fN, fUSD } from '@/lib/formatters';
-import { Card, PageHeader } from '@/components/ui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
@@ -29,10 +28,10 @@ function openPrint(html: string, title: string) {
 type RepTab = 'sales' | 'pnl' | 'cari' | 'analytics';
 
 const TAB_LABELS: [RepTab, string][] = [
-  ['sales',     '📋 Sales Report'],
-  ['pnl',       '📊 P&L Report'],
-  ['cari',      '📒 Account Statement'],
-  ['analytics', '📈 Analytics'],
+  ['sales',     'Sales Report'],
+  ['pnl',       'P&L Report'],
+  ['cari',      'Account Statement'],
+  ['analytics', 'Analytics'],
 ];
 
 // ─── Sales Report ──────────────────────────────────────────────────────────
@@ -83,7 +82,7 @@ function SalesReportTab() {
         <td style="padding:5px 6px">${f.insurance_tr ?? '—'}</td>
       </tr>`).join('');
     const html = `
-      <div style="font-size:20px;font-weight:300;color:#374151;margin-bottom:16px">📋 Sales Report</div>
+      <div style="font-size:20px;font-weight:300;color:#374151;margin-bottom:16px">Sales Report</div>
       <table style="width:100%;border-collapse:collapse;font-size:10px">
         <thead><tr style="background:#1e40af;color:#fff">
           ${['No','Customer','Product','ADMT','Incoterms','Transport','Loading Port','Discharge Port','Selling Price','Purchase Price','Status','PI No','Reg. No','Insurance'].map(h=>`<th style="padding:6px;text-align:left">${h}</th>`).join('')}
@@ -131,8 +130,8 @@ function SalesReportTab() {
   return (
     <div>
       {/* Filter panel */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-        <div className="text-sm font-bold text-blue-800 mb-3">📋 Sales Report — Filters</div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+        <div className="text-sm font-bold text-gray-800 mb-4">Filters</div>
         <div className="grid grid-cols-4 gap-3 mb-3">
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Customer</label>
@@ -174,34 +173,34 @@ function SalesReportTab() {
       {ran && results.length > 0 && (
         <>
           {/* Summary cards */}
-          <div className="flex gap-3 flex-wrap mb-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
-              <div className="text-xs text-blue-600 mb-0.5">Total Files</div>
-              <div className="text-lg font-bold text-blue-800">{results.length}</div>
+          <div className="flex gap-3 flex-wrap mb-5">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+              <div className="text-xs text-gray-400 mb-0.5">Total Files</div>
+              <div className="text-lg font-bold text-gray-900">{results.length}</div>
             </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
-              <div className="text-xs text-green-600 mb-0.5">Total ADMT</div>
-              <div className="text-lg font-bold text-green-800">{fN(totalAdmt, 3)}</div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+              <div className="text-xs text-gray-400 mb-0.5">Total ADMT</div>
+              <div className="text-lg font-bold text-gray-900">{fN(totalAdmt, 3)}</div>
             </div>
-            <div className="bg-brand-50 border border-brand-200 rounded-lg px-4 py-2.5">
-              <div className="text-xs text-brand-600 mb-0.5">Estimated Revenue</div>
-              <div className="text-lg font-bold text-brand-700">{fUSD(totalRevenue)}</div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+              <div className="text-xs text-gray-400 mb-0.5">Estimated Revenue</div>
+              <div className="text-lg font-bold text-gray-900">{fUSD(totalRevenue)}</div>
             </div>
           </div>
 
-          <Card>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
-                  <tr className="bg-blue-800 text-white">
+                  <tr className="bg-gray-50 border-b border-gray-100">
                     {['No','Customer','Product','ADMT','Incoterms','Transport','Loading Port','Discharge Port','Selling Price','Purchase Price','Status','PI No','Reg. No','Insurance No'].map((h) => (
-                      <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold whitespace-nowrap">{h}</th>
+                      <th key={h} className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((f) => (
-                    <tr key={f.id} className="border-b border-border hover:bg-gray-50/50">
+                    <tr key={f.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-2.5 py-1.5 text-xs font-bold">{f.file_no}</td>
                       <td className="px-2.5 py-1.5 text-xs">{f.customer?.name ?? '—'}</td>
                       <td className="px-2.5 py-1.5 text-xs">{f.product?.name ?? '—'}</td>
@@ -221,7 +220,7 @@ function SalesReportTab() {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </div>
         </>
       )}
 
@@ -290,8 +289,8 @@ function PnlReportTab() {
 
   return (
     <div>
-      <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
-        <div className="text-sm font-bold text-purple-800 mb-3">Select a file to open P&L Report</div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+        <div className="text-sm font-bold text-gray-800 mb-4">Select a file to open P&L Report</div>
         <div className="flex gap-3 items-center flex-wrap">
           <NativeSelect
             value={selectedFileId}
@@ -325,39 +324,37 @@ function PnlReportTab() {
               { label: 'Net Profit', value: fUSD(pnl.profit), color: col(pnl.profit) },
               { label: 'Margin', value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
             ].map((card) => (
-              <div key={card.label} className="bg-white border border-border rounded-xl p-4 text-center">
-                <div className="text-xs text-gray-500 uppercase mb-1">{card.label}</div>
-                <div className="text-xl font-bold" style={{ color: card.color }}>{card.value}</div>
+              <div key={card.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
+                <div className="text-xl font-black" style={{ color: card.color }}>{card.value}</div>
               </div>
             ))}
           </div>
 
           {/* P&L Detail */}
-          <Card>
-            <div className="p-4">
-              <div className="text-sm font-bold text-gray-700 mb-3">
-                P&L Detail — {selectedFile.file_no}
-              </div>
-              <table className="w-full text-xs">
-                <tbody>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-1.5 text-gray-500">Revenue ({fN(selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0, 3)} ADMT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'})</td>
-                    <td className="py-1.5 text-right font-semibold text-blue-700">{fUSD(pnl.revenue)}</td>
-                  </tr>
-                  {costRows.map((t) => (
-                    <tr key={t.id} className="border-b border-gray-100">
-                      <td className="py-1.5 text-gray-500 pl-3">— {t.description}</td>
-                      <td className="py-1.5 text-right text-gray-700">({fUSD(t.amount_usd ?? t.amount ?? 0)})</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-gray-700">
-                    <td className="py-2 font-bold text-sm">Net Profit</td>
-                    <td className="py-2 text-right font-bold text-sm" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+            <div className="text-sm font-bold text-gray-800 mb-4">
+              P&L Detail — {selectedFile.file_no}
             </div>
-          </Card>
+            <table className="w-full text-xs">
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1.5 text-gray-500">Revenue ({fN(selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0, 3)} ADMT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'})</td>
+                  <td className="py-1.5 text-right font-semibold text-blue-700">{fUSD(pnl.revenue)}</td>
+                </tr>
+                {costRows.map((t) => (
+                  <tr key={t.id} className="border-b border-gray-100">
+                    <td className="py-1.5 text-gray-500 pl-3">— {t.description}</td>
+                    <td className="py-1.5 text-right text-gray-700">({fUSD(t.amount_usd ?? t.amount ?? 0)})</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-gray-700">
+                  <td className="py-2 font-bold text-sm">Net Profit</td>
+                  <td className="py-2 text-right font-bold text-sm" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </>
       )}
 
@@ -425,7 +422,7 @@ function AccountStatementTab() {
         <td style="padding:4px 6px;text-align:right;font-weight:600;color:${t.balance>=0?'#10b981':'#dc2626'}">${fUSD(t.balance)}</td>
       </tr>`).join('');
     const html = `
-      <div style="font-size:18px;font-weight:300;color:#374151;margin-bottom:4px">📒 Account Statement — ${entityName}</div>
+      <div style="font-size:18px;font-weight:300;color:#374151;margin-bottom:4px">Account Statement — ${entityName}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
         <div style="background:#fee2e2;border-radius:6px;padding:10px"><div style="font-size:9px;color:#991b1b;text-transform:uppercase;margin-bottom:3px">Total Debit</div><div style="font-size:15px;font-weight:700;color:#991b1b">${fUSD(totalDebit)}</div></div>
         <div style="background:#d1fae5;border-radius:6px;padding:10px"><div style="font-size:9px;color:#065f46;text-transform:uppercase;margin-bottom:3px">Total Credit</div><div style="font-size:15px;font-weight:700;color:#065f46">${fUSD(totalCredit)}</div></div>
@@ -440,8 +437,8 @@ function AccountStatementTab() {
 
   return (
     <div>
-      <div className="bg-white border border-border rounded-xl p-4 mb-4">
-        <div className="text-sm font-bold mb-3">Account Statement — Filters</div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+        <div className="text-sm font-bold text-gray-800 mb-4">Filters</div>
         <div className="grid grid-cols-4 gap-3 items-end">
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Entity Type</label>
@@ -477,34 +474,34 @@ function AccountStatementTab() {
       {entityId && txns.length > 0 && (
         <>
           {/* Summary */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="bg-red-50 rounded-lg p-3">
-              <div className="text-xs text-red-700 uppercase mb-1">Total Debit</div>
-              <div className="text-lg font-bold text-red-700">{fUSD(totalDebit)}</div>
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Total Debit</div>
+              <div className="text-lg font-black text-red-600">{fUSD(totalDebit)}</div>
             </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <div className="text-xs text-green-700 uppercase mb-1">Total Credit</div>
-              <div className="text-lg font-bold text-green-700">{fUSD(totalCredit)}</div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Total Credit</div>
+              <div className="text-lg font-black text-green-600">{fUSD(totalCredit)}</div>
             </div>
-            <div className="bg-gray-50 border border-border rounded-lg p-3">
-              <div className="text-xs text-gray-600 uppercase mb-1">Net Balance</div>
-              <div className="text-lg font-bold" style={{ color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>{fUSD(netBalance)}</div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Net Balance</div>
+              <div className="text-lg font-black" style={{ color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>{fUSD(netBalance)}</div>
             </div>
           </div>
 
-          <Card>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 border-b-2 border-border">
+                  <tr className="bg-gray-50 border-b border-gray-100">
                     {['Date', 'Type', 'Reference', 'Description', 'Debit', 'Credit', 'Balance'].map((h) => (
-                      <th key={h} className="px-3 py-2 text-left text-2xs font-bold uppercase text-muted-foreground">{h}</th>
+                      <th key={h} className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {txnsWithBalance.map((t) => (
-                    <tr key={t.id} className="border-b border-border hover:bg-gray-50/50">
+                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-3 py-1.5 text-xs">{fDate(t.transaction_date)}</td>
                       <td className="px-3 py-1.5 text-xs capitalize">{t.transaction_type.replace('_', ' ')}</td>
                       <td className="px-3 py-1.5 text-xs">{t.reference_no || '—'}</td>
@@ -523,7 +520,7 @@ function AccountStatementTab() {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </div>
         </>
       )}
 
@@ -642,7 +639,7 @@ function AnalyticsTab() {
               key={key}
               onClick={() => setPeriod(key)}
               className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-                period === key ? 'bg-white shadow text-brand-600' : 'text-gray-500 hover:text-gray-700'
+                period === key ? 'bg-white shadow text-red-600' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {label}
@@ -661,22 +658,22 @@ function AnalyticsTab() {
           { label: 'Total Cost', value: fUSD(totalCost), color: 'text-red-600' },
           { label: 'Net Profit / Margin', value: `${fUSD(totalProfit)} / ${avgMargin.toFixed(1)}%`, color: totalProfit >= 0 ? 'text-green-700' : 'text-red-600' },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white border border-border rounded-xl p-3 shadow-sm">
-            <div className="text-[10px] text-muted-foreground uppercase font-semibold mb-1">{kpi.label}</div>
-            <div className={`text-sm font-bold ${kpi.color}`}>{kpi.value}</div>
+          <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{kpi.label}</div>
+            <div className={`text-sm font-black ${kpi.color}`}>{kpi.value}</div>
           </div>
         ))}
       </div>
 
       {noData ? (
-        <div className="text-center py-16 text-gray-400 text-sm bg-white border border-border rounded-xl">
+        <div className="text-center py-16 text-gray-400 text-sm bg-white border border-gray-100 rounded-2xl">
           No data found for the selected period.
         </div>
       ) : (
         <>
           {/* Monthly trend chart */}
-          <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
-            <div className="text-xs font-bold mb-4">📅 Monthly Revenue / Cost / Profit Trend</div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="text-sm font-bold text-gray-800 mb-4">Monthly Revenue / Cost / Profit Trend</div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={monthlyData} barCategoryGap="25%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -702,7 +699,7 @@ function AnalyticsTab() {
               {[['#60a5fa','Revenue'],['#f87171','Cost'],['#4ade80','Profit']].map(([c,l]) => (
                 <div key={l} className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: c }} />
-                  <span className="text-[10px] text-muted-foreground">{l}</span>
+                  <span className="text-[10px] text-gray-400">{l}</span>
                 </div>
               ))}
             </div>
@@ -710,8 +707,8 @@ function AnalyticsTab() {
 
           <div className="grid grid-cols-5 gap-4">
             {/* Customer revenue bar */}
-            <div className="bg-white border border-border rounded-xl p-4 shadow-sm col-span-3">
-              <div className="text-xs font-bold mb-4">👥 Revenue by Customer (Top 8)</div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 col-span-3">
+              <div className="text-sm font-bold text-gray-800 mb-4">Revenue by Customer (Top 8)</div>
               {customerData.length === 0 ? (
                 <div className="text-center py-8 text-gray-400 text-xs">No data</div>
               ) : (
@@ -738,8 +735,8 @@ function AnalyticsTab() {
             </div>
 
             {/* Status pie */}
-            <div className="bg-white border border-border rounded-xl p-4 shadow-sm col-span-2">
-              <div className="text-xs font-bold mb-4">📊 File Status Distribution</div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 col-span-2">
+              <div className="text-sm font-bold text-gray-800 mb-4">File Status Distribution</div>
               {statusData.length === 0 ? (
                 <div className="text-center py-8 text-gray-400 text-xs">No data</div>
               ) : (
@@ -758,16 +755,16 @@ function AnalyticsTab() {
           </div>
 
           {/* Customer detail table */}
-          <div className="bg-white border border-border rounded-xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
-              <div className="text-xs font-bold">👥 Customer Performance</div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <div className="text-sm font-bold text-gray-800">Customer Performance</div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-border">
+                  <tr className="bg-gray-50 border-b border-gray-100">
                     {['Customer','Files','Total ADMT','Revenue','Cost','Net Profit','Margin'].map(h => (
-                      <th key={h} className="px-3 py-2 text-left text-2xs font-bold uppercase text-muted-foreground">{h}</th>
+                      <th key={h} className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -775,7 +772,7 @@ function AnalyticsTab() {
                   {customerData.map((c, i) => {
                     const margin = c.revenue > 0 ? (c.profit / c.revenue * 100) : 0;
                     return (
-                      <tr key={i} className="border-b border-border hover:bg-gray-50/50">
+                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
                         <td className="px-3 py-2 text-xs font-semibold">{c.name}</td>
                         <td className="px-3 py-2 text-xs text-center">{c.files}</td>
                         <td className="px-3 py-2 text-xs text-right">{fN(c.admt, 3)}</td>
@@ -807,18 +804,22 @@ export function ReportsPage() {
 
   return (
     <>
-      <PageHeader title="Reports" />
+      {/* Page title — Donezo style */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-black text-gray-900">Reports</h1>
+        <p className="text-sm text-gray-400 mt-0.5">Sales, P&L, account statements and analytics</p>
+      </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-0 border-b-2 border-border mb-5">
+      {/* Tab bar — Donezo underline style */}
+      <div className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto">
         {TAB_LABELS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-5 py-2 text-xs font-semibold border-b-2 -mb-[2px] transition-colors ${
+            className={`px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${
               activeTab === key
-                ? 'border-brand-500 text-brand-600'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'border-red-600 text-red-600'
+                : 'border-transparent text-gray-400 hover:text-gray-700'
             }`}
           >
             {label}
