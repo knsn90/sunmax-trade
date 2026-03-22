@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
 import { Card, PageHeader, LoadingSpinner, EmptyState, StatCard } from '@/components/ui/shared';
+import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
+import { ApprovalActions } from '@/components/ui/ApprovalActions';
 
 type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash';
 
@@ -155,7 +157,7 @@ export function AccountingPage() {
             <table className="w-full">
               <thead>
                 <tr>
-                  {['Invoice No', 'File', 'Customer', 'Date', 'ADMT', 'Unit Price', 'Total', 'Actions'].map((h) => (
+                  {['Invoice No', 'File', 'Customer', 'Date', 'ADMT', 'Unit Price', 'Total', 'Status', 'Actions'].map((h) => (
                     <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">
                       {h}
                     </th>
@@ -176,18 +178,22 @@ export function AccountingPage() {
                       <td className="px-2.5 py-2 text-xs border-b border-border">{fCurrency(inv.unit_price)}</td>
                       <td className="px-2.5 py-2 text-right font-semibold text-xs border-b border-border text-green-700">{fCurrency(inv.total)}</td>
                       <td className="px-2.5 py-2 border-b border-border">
-                        <div className="flex gap-1">
-                          {writable && (
+                        <DocStatusBadge status={inv.doc_status ?? 'draft'} />
+                      </td>
+                      <td className="px-2.5 py-2 border-b border-border">
+                        <div className="flex gap-1 flex-wrap">
+                          <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                          {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
                             <Button variant="edit" size="xs" onClick={() => { setEditingSaleInv(inv); setSaleInvModalOpen(true); }}>
                               Edit
                             </Button>
                           )}
                           {settings && (
-                            <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank)}>
+                            <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>
                               🖨 Print
                             </Button>
                           )}
-                          {admin && (
+                          {admin && (inv.doc_status ?? 'draft') !== 'approved' && (
                             <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInvoice.mutate(inv.id); }}>
                               Del
                             </Button>
@@ -209,7 +215,7 @@ export function AccountingPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['Date', 'Type', 'File', 'Party', 'Description', 'Amount', 'Remaining', 'Status', 'Actions'].map((h) => (
+                {['Date', 'Type', 'File', 'Party', 'Description', 'Amount', 'Remaining', 'Pay Status', 'Doc Status', 'Actions'].map((h) => (
                   <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">
                     {h}
                   </th>
@@ -258,13 +264,17 @@ export function AccountingPage() {
                         </Badge>
                       </td>
                       <td className="px-2.5 py-2 border-b border-border">
-                        <div className="flex gap-1">
-                          {writable && (
+                        <DocStatusBadge status={t.doc_status ?? 'draft'} />
+                      </td>
+                      <td className="px-2.5 py-2 border-b border-border">
+                        <div className="flex gap-1 flex-wrap">
+                          <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
+                          {writable && (t.doc_status ?? 'draft') !== 'approved' && (
                             <Button variant="edit" size="xs" onClick={() => openEdit(t)}>
                               Edit
                             </Button>
                           )}
-                          {admin && (
+                          {admin && (t.doc_status ?? 'draft') !== 'approved' && (
                             <Button variant="destructive" size="xs" onClick={() => handleDelete(t.id)}>
                               Delete
                             </Button>

@@ -309,6 +309,9 @@ export interface Transaction extends Timestamps {
   paid_amount_usd: number;
   payment_status: PaymentStatus;
   notes: string;
+  doc_status: DocStatus;
+  approved_by: string | null;
+  approved_at: string | null;
   created_by: string | null;
   // Joined
   trade_file?: TradeFile;

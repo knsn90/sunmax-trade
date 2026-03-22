@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { DocStatus } from '@/types/database';
 
-type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists';
+type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists' | 'transactions';
 
 export const approvalService = {
   async setStatus(

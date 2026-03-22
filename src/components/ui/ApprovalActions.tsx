@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useSetDocStatus, useCanApprove } from '@/hooks/useApproval';
 import type { DocStatus } from '@/types/database';
 
-type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists';
+type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists' | 'transactions';
 
 interface Props {
   table: ApprovableTable;

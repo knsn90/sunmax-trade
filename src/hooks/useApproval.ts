@@ -4,12 +4,13 @@ import { approvalService } from '@/services/approvalService';
 import { useAuth } from '@/hooks/useAuth';
 import type { DocStatus } from '@/types/database';
 
-type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists';
+type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists' | 'transactions';
 
 const QUERY_KEY_MAP: Record<ApprovableTable, string[]> = {
   invoices: ['invoices', 'sale-invoices'],
   proformas: ['proformas'],
   packing_lists: ['packing-lists'],
+  transactions: ['transactions'],
 };
 
 export function useSetDocStatus(table: ApprovableTable) {
