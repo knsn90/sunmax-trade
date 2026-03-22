@@ -256,9 +256,9 @@ export function SettingsPage() {
       {/* API Keys */}
       <Card className="mt-4">
         <CardContent>
-          <div className="text-[13px] font-bold mb-1">API Keys</div>
+          <div className="text-[13px] font-bold mb-1">API Anahtarları</div>
           <p className="text-xs text-muted-foreground mb-3">
-            Stored in your browser only — never sent to our servers.
+            Yalnızca tarayıcınızda saklanır — sunucularımıza gönderilmez.
           </p>
           <ApiKeyList />
         </CardContent>
