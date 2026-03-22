@@ -5,7 +5,7 @@ import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { canWriteTransactions, isAdmin } from '@/lib/permissions';
 import { fDate, fCurrency, fUSD, fN } from '@/lib/formatters';
-import { printInvoice } from '@/lib/printDocument';
+import { printInvoice, printReceipt } from '@/lib/printDocument';
 import { TRANSACTION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/types/enums';
 import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
@@ -269,6 +269,15 @@ export function AccountingPage() {
                       <td className="px-2.5 py-2 border-b border-border">
                         <div className="flex gap-1 flex-wrap">
                           <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
+                          {(t.transaction_type === 'receipt' || t.transaction_type === 'payment') && (
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => printReceipt(t, settings!, (t.doc_status ?? 'draft') !== 'approved')}
+                            >
+                              🖨 {t.transaction_type === 'receipt' ? 'Receipt' : 'Voucher'}
+                            </Button>
+                          )}
                           {writable && (t.doc_status ?? 'draft') !== 'approved' && (
                             <Button variant="edit" size="xs" onClick={() => openEdit(t)}>
                               Edit
