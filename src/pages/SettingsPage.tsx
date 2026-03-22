@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { companySettingsSchema, type CompanySettingsFormData } from '@/types/forms';
@@ -304,6 +305,12 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
   const [visible, setVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Sync from cache when component mounts (in case keys loaded after render)
+  useEffect(() => {
+    const cached = getApiKeyFromCache(service.id as ApiService);
+    if (cached) setStored(cached);
+  }, [service.id]);
+
   function startEdit() {
     setValue(stored);
     setEditing(true);
@@ -315,6 +322,9 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
       await saveApiKeyToDb(service.id as ApiService, value.trim());
       setStored(value.trim());
       setEditing(false);
+      toast.success('API key kaydedildi');
+    } catch (err) {
+      toast.error('Kaydetme hatası: ' + (err instanceof Error ? err.message : 'Bilinmeyen hata'));
     } finally {
       setSaving(false);
     }
@@ -326,6 +336,9 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
       await deleteApiKeyFromDb(service.id as ApiService);
       setStored('');
       setEditing(false);
+      toast.success('API key silindi');
+    } catch (err) {
+      toast.error('Silme hatası: ' + (err instanceof Error ? err.message : 'Bilinmeyen hata'));
     } finally {
       setSaving(false);
     }
