@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ScanLine } from 'lucide-react';
 import { Button } from './button';
-import { ocrDocument, getOpenAIKey, type OcrResult, type OcrMode } from '@/lib/openai';
+import { ocrDocument, getApiKey, type OcrResult, type OcrMode } from '@/lib/openai';
 import { toast } from 'sonner';
 
 interface OcrButtonProps {
@@ -19,8 +19,8 @@ export function OcrButton({ onResult, mode, label = 'Read from Document' }: OcrB
     if (!file) return;
     e.target.value = '';
 
-    if (!getOpenAIKey()) {
-      toast.error('Gemini API key not configured. Add it in Settings → Company → API Keys.');
+    if (!getApiKey('anthropic')) {
+      toast.error('Claude API key not configured. Add it in Settings → API Keys.');
       return;
     }
 

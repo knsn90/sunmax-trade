@@ -156,7 +156,7 @@ function xlsxToText(file: File): Promise<string> {
   });
 }
 
-// ─── Main OCR Function ────────────────────────────────────────────────────────
+// ─── Main OCR Function (Claude Vision API) ────────────────────────────────────
 
 async function pdfToBase64Image(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
@@ -165,7 +165,7 @@ async function pdfToBase64Image(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const page = await pdf.getPage(1);
-  const scale = 2.0;
+  const scale = 2.5;
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;
@@ -173,13 +173,13 @@ async function pdfToBase64Image(file: File): Promise<string> {
   const ctx = canvas.getContext('2d')!;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.render({ canvasContext: ctx, viewport, canvas: canvas as any }).promise;
-  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+  return canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
 }
 
 export async function ocrDocument(file: File, mode: OcrMode): Promise<OcrResult> {
-  const apiKey = getOpenAIKey();
+  const apiKey = getApiKey('anthropic');
   if (!apiKey) {
-    throw new Error('OpenAI API key not set. Please add it in Settings → Company → API Keys.');
+    throw new Error('Claude API key not set. Please add it in Settings → API Keys.');
   }
 
   const prompt = PROMPTS[mode];
@@ -187,16 +187,14 @@ export async function ocrDocument(file: File, mode: OcrMode): Promise<OcrResult>
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let requestBody: any;
+  let messageContent: any;
 
   if (isExcel) {
+    // Excel/CSV → plain text
     const text = await xlsxToText(file);
-    requestBody = {
-      model: 'gpt-4o-mini',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: `${prompt}\n\nDocument content (CSV):\n${text}\n\nReturn ONLY the JSON object, no markdown fences.` }],
-    };
+    messageContent = `${prompt}\n\nDocument content (CSV/Excel):\n${text}\n\nReturn ONLY the JSON object, no markdown fences.`;
   } else {
+    // Image or PDF → base64 image
     let base64: string;
     let mimeType: string;
     if (isPdf) {
@@ -204,36 +202,44 @@ export async function ocrDocument(file: File, mode: OcrMode): Promise<OcrResult>
       mimeType = 'image/jpeg';
     } else {
       base64 = await fileToBase64(file);
-      mimeType = file.type;
+      mimeType = file.type || 'image/jpeg';
     }
-    requestBody = {
-      model: 'gpt-4o-mini',
-      max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `${prompt}\n\nReturn ONLY the JSON object, no markdown fences.` },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
-        ],
-      }],
-    };
+    messageContent = [
+      {
+        type: 'image',
+        source: { type: 'base64', media_type: mimeType, data: base64 },
+      },
+      {
+        type: 'text',
+        text: `${prompt}\n\nReturn ONLY the JSON object, no markdown fences.`,
+      },
+    ];
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(requestBody),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: messageContent }],
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `OpenAI API error ${response.status}`);
+    throw new Error(err?.error?.message ?? `Claude API error ${response.status}`);
   }
 
-  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const content = data.choices?.[0]?.message?.content ?? '{}';
+  const data = await response.json() as { content?: Array<{ type: string; text?: string }> };
+  const content = data.content?.find((c) => c.type === 'text')?.text ?? '{}';
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Could not parse response from OpenAI');
+  if (!jsonMatch) throw new Error('Could not parse response from Claude');
 
   return JSON.parse(jsonMatch[0]) as OcrResult;
 }
