@@ -5,7 +5,7 @@ import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { canWriteTransactions, isAdmin } from '@/lib/permissions';
 import { fDate, fCurrency, fUSD, fN } from '@/lib/formatters';
-import { printInvoice, printReceipt } from '@/lib/printDocument';
+import { printInvoice, printReceipt, printTransactionInvoice } from '@/lib/printDocument';
 import { TRANSACTION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/types/enums';
 import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
@@ -276,6 +276,15 @@ export function AccountingPage() {
                               onClick={() => printReceipt(t, settings!, (t.doc_status ?? 'draft') !== 'approved')}
                             >
                               🖨 {t.transaction_type === 'receipt' ? 'Receipt' : 'Voucher'}
+                            </Button>
+                          )}
+                          {(t.transaction_type === 'purchase_inv' || t.transaction_type === 'svc_inv' || t.transaction_type === 'sale_inv') && (
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => printTransactionInvoice(t, settings!, (t.doc_status ?? 'draft') !== 'approved')}
+                            >
+                              🖨 Print
                             </Button>
                           )}
                           {writable && (t.doc_status ?? 'draft') !== 'approved' && (

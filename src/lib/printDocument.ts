@@ -692,3 +692,125 @@ export function printReceipt(txn: Transaction, settings: CompanySettings, isDraf
 
   openPrintWindow(body, `${title} - ${docNo}`, isDraft);
 }
+
+// ─── Transaction Invoice (purchase_inv / svc_inv / sale_inv) ─────────────────
+
+export function printTransactionInvoice(txn: Transaction, settings: CompanySettings, isDraft = false) {
+  const TYPE_TITLES: Record<string, string> = {
+    purchase_inv: 'PURCHASE INVOICE',
+    svc_inv:      'SERVICE INVOICE',
+    sale_inv:     'SALE INVOICE',
+  };
+  const title = TYPE_TITLES[txn.transaction_type] ?? 'INVOICE';
+  const docNo = txn.reference_no || txn.id.slice(0, 8).toUpperCase();
+  const curr  = txn.currency ?? 'USD';
+  const party = txn.customer?.name || txn.supplier?.name || txn.service_provider?.name || txn.party_name || '—';
+  const partyLabel = txn.transaction_type === 'sale_inv' ? 'Bill To' : 'From';
+  const fileNo = txn.trade_file?.file_no ?? '';
+
+  const body = `
+    <!-- Header -->
+    <table style="width:100%;margin-bottom:20px">
+      <tr>
+        <td style="width:55%;vertical-align:top">
+          ${logoHTML(settings, 60, 160)}
+          <div style="margin-top:6px;font-size:10px;color:#555;line-height:1.7">
+            ${esc(settings.company_name || '')}<br>
+            ${esc(settings.address_line1 || '')}
+            ${settings.address_line2 ? '<br>' + esc(settings.address_line2) : ''}
+            ${settings.phone ? '<br>' + esc(settings.phone) : ''}
+            ${settings.email ? '<br>' + esc(settings.email) : ''}
+          </div>
+        </td>
+        <td style="width:45%;text-align:right;vertical-align:top">
+          <div style="font-size:22px;font-weight:900;color:#111;letter-spacing:1px">${title}</div>
+          <table style="margin-top:10px;margin-left:auto;font-size:10.5px;border-collapse:collapse">
+            <tr>
+              <td style="padding:3px 10px 3px 0;color:#666;text-align:right">Invoice No:</td>
+              <td style="padding:3px 0;font-weight:700">${esc(docNo)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 10px 3px 0;color:#666;text-align:right">Date:</td>
+              <td style="padding:3px 0;font-weight:700">${fDate(txn.transaction_date)}</td>
+            </tr>
+            ${fileNo ? `<tr>
+              <td style="padding:3px 10px 3px 0;color:#666;text-align:right">File No:</td>
+              <td style="padding:3px 0;font-weight:700">${esc(fileNo)}</td>
+            </tr>` : ''}
+            <tr>
+              <td style="padding:3px 10px 3px 0;color:#666;text-align:right">Currency:</td>
+              <td style="padding:3px 0;font-weight:700">${curr}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <div style="border-top:2px solid #111;margin-bottom:16px"></div>
+
+    <!-- Party -->
+    <div style="margin-bottom:16px;padding:10px 14px;border:1px solid #ddd;background:#f9f9f9;border-radius:4px">
+      <div style="font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${partyLabel}</div>
+      <div style="font-size:13px;font-weight:700">${esc(party)}</div>
+    </div>
+
+    <!-- Items Table -->
+    <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:16px">
+      <thead>
+        <tr style="background:#111;color:#fff">
+          <th style="padding:8px 10px;text-align:left">#</th>
+          <th style="padding:8px 10px;text-align:left">Description</th>
+          <th style="padding:8px 10px;text-align:right;width:140px">Amount (${curr})</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:9px 10px;border-bottom:1px solid #eee">1</td>
+          <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(txn.description || '—')}</td>
+          <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:700">${tF(txn.amount)}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr style="background:#f3f4f6">
+          <td colspan="2" style="padding:9px 10px;text-align:right;font-weight:700;border-top:2px solid #ddd">TOTAL</td>
+          <td style="padding:9px 10px;text-align:right;font-weight:900;font-size:13px;border-top:2px solid #ddd">
+            ${curr} ${tF(txn.amount)}
+          </td>
+        </tr>
+        ${txn.paid_amount > 0 ? `
+        <tr>
+          <td colspan="2" style="padding:6px 10px;text-align:right;color:#16a34a;font-weight:600">Paid</td>
+          <td style="padding:6px 10px;text-align:right;color:#16a34a;font-weight:700">- ${curr} ${tF(txn.paid_amount)}</td>
+        </tr>
+        <tr style="background:#fef9c3">
+          <td colspan="2" style="padding:8px 10px;text-align:right;font-weight:700">Balance Due</td>
+          <td style="padding:8px 10px;text-align:right;font-weight:900;font-size:13px;color:#dc2626">
+            ${curr} ${tF(txn.amount - txn.paid_amount)}
+          </td>
+        </tr>` : ''}
+      </tfoot>
+    </table>
+
+    ${txn.notes ? `
+    <div style="border:1px solid #ddd;padding:8px 12px;border-radius:4px;font-size:10px;color:#555;margin-bottom:16px">
+      <strong>Notes:</strong> ${esc(txn.notes)}
+    </div>` : ''}
+
+    <!-- Signatures -->
+    <table style="width:100%;margin-top:36px">
+      <tr>
+        <td style="width:45%;text-align:center;padding:0 10px">
+          <div style="border-top:1px solid #000;padding-top:6px;font-size:10px;color:#555">Prepared By</div>
+        </td>
+        <td style="width:10%"></td>
+        <td style="width:45%;text-align:center;padding:0 10px">
+          <div style="border-top:1px solid #000;padding-top:6px;font-size:10px;color:#555">Authorized Signature</div>
+        </td>
+      </tr>
+    </table>
+
+    ${footerHTML(settings)}
+  `;
+
+  openPrintWindow(body, `${title} - ${docNo}`, isDraft);
+}
