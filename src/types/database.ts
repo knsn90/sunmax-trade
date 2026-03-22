@@ -125,7 +125,9 @@ export interface TradeFile extends Timestamps {
   port_of_loading: string | null;
   port_of_discharge: string | null;
   incoterms: string | null;
-  currency: CurrencyCode;
+  currency: CurrencyCode;          // kept for backward compat (sale currency)
+  purchase_currency: CurrencyCode; // currency used to buy from supplier
+  sale_currency: CurrencyCode;     // currency used to sell to customer
   payment_terms: string | null;
   transport_mode: TransportMode | null;
   eta: string | null;

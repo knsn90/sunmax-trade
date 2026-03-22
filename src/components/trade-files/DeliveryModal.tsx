@@ -60,7 +60,8 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
     if (!file) return;
     await convertToDelivery.mutateAsync({ id: file.id, data });
 
-    // Auto-create/update Sale Invoice: ADMT × selling_price
+    // Auto-create/update Sale Invoice: ADMT × selling_price (use sale_currency)
+    const saleCurrency = (file.sale_currency ?? file.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY';
     if (file.customer_id && file.selling_price) {
       await upsertSaleInvoice.mutateAsync({
         tradeFileId: file.id,
@@ -68,7 +69,7 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
         productName: file.product?.name ?? '',
         data: {
           invoice_date: today(),
-          currency: (file.currency as 'USD' | 'EUR' | 'TRY') ?? 'USD',
+          currency: saleCurrency,
           incoterms: file.incoterms ?? '',
           proforma_no: file.proforma_ref ?? '',
           cb_no: '',
@@ -83,7 +84,8 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
       });
     }
 
-    // Auto-create/update Purchase Transaction: ADMT × purchase_price
+    // Auto-create/update Purchase Transaction: ADMT × purchase_price (use purchase_currency)
+    const purchaseCurrency = (file.purchase_currency ?? file.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY';
     if (file.supplier_id && file.purchase_price) {
       await invoiceService.upsertPurchaseTransaction(
         file.id,
@@ -92,7 +94,7 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
         data.delivered_admt,
         file.purchase_price,
         file.freight_cost ?? 0,
-        file.currency ?? 'USD',
+        purchaseCurrency,
         today(),
       );
     }

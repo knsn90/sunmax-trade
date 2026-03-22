@@ -10,7 +10,12 @@
       "Bash(curl -s https://api.anthropic.com/v1/models:*)",
       "Bash(git reset:*)",
       "Bash(git rm:*)",
-      "Bash(find ~/Downloads -name *.png -newer /Users/saber/Downloads/sunmax-trade/public/manifest.json)"
+      "Bash(find ~/Downloads -name *.png -newer /Users/saber/Downloads/sunmax-trade/public/manifest.json)",
+      "Bash(curl -s \"https://www.sunsirs.com/uk/prodetail-958.html\")",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://www.sunsirs.com/uk/prodetail-958.html\")",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\" \"https://www.sunsirs.com/uk/prodetail-958.html\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://www.sunsirs.com/uk/prodetail-958.html\")",
+      "Bash(curl -s -b \"HW_CHECK=a37d1c95cbaf8f7ad693bd9786eb3234\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://www.sunsirs.com/uk/prodetail-958.html\")"
     ]
   }
 }

@@ -18,9 +18,16 @@ interface ToSaleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   file: TradeFile | null;
-  /** If true, uses updateSaleDetails() instead of convertToSale() */
   editMode?: boolean;
 }
+
+const CURRENCY_OPTIONS = (
+  <>
+    <option value="USD">USD — US Dollar</option>
+    <option value="EUR">EUR — Euro</option>
+    <option value="TRY">TRY — Turkish Lira</option>
+  </>
+);
 
 export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSaleModalProps) {
   const { data: suppliers = [] } = useSuppliers();
@@ -29,6 +36,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   const updateSaleDetails = useUpdateSaleDetails();
 
   const mutation = editMode ? updateSaleDetails : convertToSale;
+
+  const defCurrency = (settings?.default_currency ?? 'USD') as SaleConversionFormData['purchase_currency'];
 
   const form = useForm<SaleConversionFormData>({
     resolver: zodResolver(saleConversionSchema),
@@ -40,7 +49,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
       port_of_loading: settings?.default_port_of_loading ?? 'MERSIN, TURKEY',
       port_of_discharge: '',
       incoterms: settings?.default_incoterms ?? 'CPT',
-      currency: settings?.default_currency ?? 'USD',
+      purchase_currency: defCurrency,
+      sale_currency: defCurrency,
       payment_terms: settings?.payment_terms ?? '',
       transport_mode: 'truck',
       eta: '',
@@ -52,7 +62,6 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
 
   const { register, handleSubmit, formState: { errors }, reset } = form;
 
-  // Pre-fill form when editing an existing sale
   useEffect(() => {
     if (open && editMode && file) {
       reset({
@@ -63,7 +72,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         port_of_loading: file.port_of_loading ?? settings?.default_port_of_loading ?? 'MERSIN, TURKEY',
         port_of_discharge: file.port_of_discharge ?? '',
         incoterms: file.incoterms ?? settings?.default_incoterms ?? 'CPT',
-        currency: (file.currency as SaleConversionFormData['currency']) ?? settings?.default_currency ?? 'USD',
+        purchase_currency: (file.purchase_currency ?? file.currency ?? 'USD') as SaleConversionFormData['purchase_currency'],
+        sale_currency: (file.sale_currency ?? file.currency ?? 'USD') as SaleConversionFormData['sale_currency'],
         payment_terms: file.payment_terms ?? settings?.payment_terms ?? '',
         transport_mode: (file.transport_mode as SaleConversionFormData['transport_mode']) ?? 'truck',
         eta: file.eta ?? '',
@@ -80,7 +90,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         port_of_loading: settings?.default_port_of_loading ?? 'MERSIN, TURKEY',
         port_of_discharge: '',
         incoterms: settings?.default_incoterms ?? 'CPT',
-        currency: settings?.default_currency ?? 'USD',
+        purchase_currency: defCurrency,
+        sale_currency: defCurrency,
         payment_terms: settings?.payment_terms ?? '',
         transport_mode: 'truck',
         eta: '',
@@ -89,7 +100,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         register_no: '',
       });
     }
-  }, [open, editMode, file, settings, reset]);
+  }, [open, editMode, file, settings, reset, defCurrency]);
 
   async function onSubmit(data: SaleConversionFormData) {
     if (!file) return;
@@ -128,15 +139,45 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
             </FormGroup>
           </FormRow>
 
-          <FormRow cols={3}>
-            <FormGroup label="Selling Price ($/MT) *" error={errors.selling_price?.message}>
-              <Input type="number" step="0.01" {...register('selling_price')} />
-            </FormGroup>
-            <FormGroup label="Purchase Price ($/MT) *" error={errors.purchase_price?.message}>
-              <Input type="number" step="0.01" {...register('purchase_price')} />
-            </FormGroup>
-            <FormGroup label="Freight ($)">
+          {/* Prices + Currencies side by side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            {/* Purchase side */}
+            <div className="border border-blue-100 bg-blue-50/40 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                📦 Purchase (from Supplier)
+              </p>
+              <FormGroup label="Purchase Price (per MT) *" error={errors.purchase_price?.message}>
+                <Input type="number" step="0.01" {...register('purchase_price')} />
+              </FormGroup>
+              <FormGroup label="Purchase Currency">
+                <NativeSelect {...register('purchase_currency')}>
+                  {CURRENCY_OPTIONS}
+                </NativeSelect>
+              </FormGroup>
+            </div>
+
+            {/* Sale side */}
+            <div className="border border-green-100 bg-green-50/40 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">
+                💰 Sale (to Customer)
+              </p>
+              <FormGroup label="Selling Price (per MT) *" error={errors.selling_price?.message}>
+                <Input type="number" step="0.01" {...register('selling_price')} />
+              </FormGroup>
+              <FormGroup label="Sale Currency">
+                <NativeSelect {...register('sale_currency')}>
+                  {CURRENCY_OPTIONS}
+                </NativeSelect>
+              </FormGroup>
+            </div>
+          </div>
+
+          <FormRow>
+            <FormGroup label="Freight Cost">
               <Input type="number" step="0.01" {...register('freight_cost')} />
+            </FormGroup>
+            <FormGroup label="Incoterms *" error={errors.incoterms?.message}>
+              <Input {...register('incoterms')} />
             </FormGroup>
           </FormRow>
 
@@ -150,34 +191,21 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
           </FormRow>
 
           <FormRow cols={3}>
-            <FormGroup label="Incoterms *" error={errors.incoterms?.message}>
-              <Input {...register('incoterms')} />
-            </FormGroup>
-            <FormGroup label="Currency">
-              <NativeSelect {...register('currency')}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="TRY">TRY</option>
-              </NativeSelect>
-            </FormGroup>
             <FormGroup label="ETA">
               <Input type="date" {...register('eta')} />
             </FormGroup>
-          </FormRow>
-
-          <FormRow cols={3}>
             <FormGroup label="Vessel Name">
               <Input placeholder="e.g. MV ATLAS" {...register('vessel_name')} />
             </FormGroup>
             <FormGroup label="Register No">
               <Input {...register('register_no')} />
             </FormGroup>
-            <FormGroup label="Proforma Ref">
-              <Input {...register('proforma_ref')} />
-            </FormGroup>
           </FormRow>
 
           <FormRow>
+            <FormGroup label="Proforma Ref">
+              <Input {...register('proforma_ref')} />
+            </FormGroup>
             <FormGroup label="Payment Terms">
               <Input {...register('payment_terms')} />
             </FormGroup>

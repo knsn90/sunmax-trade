@@ -100,7 +100,9 @@ export const tradeFileService = {
         port_of_loading: input.port_of_loading,
         port_of_discharge: input.port_of_discharge,
         incoterms: input.incoterms,
-        currency: input.currency,
+        currency: input.sale_currency,         // backward compat
+        purchase_currency: input.purchase_currency,
+        sale_currency: input.sale_currency,
         payment_terms: input.payment_terms,
         transport_mode: input.transport_mode,
         eta: input.eta || null,
@@ -188,7 +190,9 @@ export const tradeFileService = {
         port_of_loading: input.port_of_loading,
         port_of_discharge: input.port_of_discharge,
         incoterms: input.incoterms,
-        currency: input.currency,
+        currency: input.sale_currency,         // backward compat
+        purchase_currency: input.purchase_currency,
+        sale_currency: input.sale_currency,
         payment_terms: input.payment_terms,
         transport_mode: input.transport_mode,
         eta: input.eta || null,
