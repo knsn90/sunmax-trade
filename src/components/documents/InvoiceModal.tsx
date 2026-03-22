@@ -215,10 +215,10 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
               <Input type="number" step="0.001" {...register('quantity_admt')} />
             </FormGroup>
             <FormGroup label="Unit Price *" error={errors.unit_price?.message}>
-              <Input type="number" step="0.01" {...register('unit_price')} />
+              <Input type="number" step="0.001" {...register('unit_price')} />
             </FormGroup>
             <FormGroup label="Freight">
-              <Input type="number" step="0.01" {...register('freight')} />
+              <Input type="number" step="0.001" {...register('freight')} />
             </FormGroup>
           </FormRow>
 

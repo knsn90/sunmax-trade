@@ -288,19 +288,19 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
               <Input type="number" step="0.001" {...register('quantity_admt')} />
             </FormGroup>
             <FormGroup label="Unit Price *" error={errors.unit_price?.message}>
-              <Input type="number" step="0.01" {...register('unit_price')} />
+              <Input type="number" step="0.001" {...register('unit_price')} />
             </FormGroup>
             <FormGroup label="Freight (0=N/A)">
-              <Input type="number" step="0.01" {...register('freight')} />
+              <Input type="number" step="0.001" {...register('freight')} />
             </FormGroup>
           </FormRow>
 
           <FormRow>
             <FormGroup label="Discount">
-              <Input type="number" step="0.01" {...register('discount')} placeholder="N/A" />
+              <Input type="number" step="0.001" {...register('discount')} placeholder="N/A" />
             </FormGroup>
             <FormGroup label="Other Charges">
-              <Input type="number" step="0.01" {...register('other_charges')} placeholder="N/A" />
+              <Input type="number" step="0.001" {...register('other_charges')} placeholder="N/A" />
             </FormGroup>
           </FormRow>
 
