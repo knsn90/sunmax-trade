@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type AppTheme = 'paciolo' | 'donezo';
+export type AppTheme = 'donezo' | 'donezo';
 
 interface ThemeContextType {
   theme: AppTheme;
@@ -8,13 +8,13 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'paciolo',
+  theme: 'donezo',
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<AppTheme>(() => {
-    return (localStorage.getItem('sunplus-theme') as AppTheme) ?? 'paciolo';
+    return (localStorage.getItem('sunplus-theme') as AppTheme) ?? 'donezo';
   });
 
   const setTheme = (t: AppTheme) => {
