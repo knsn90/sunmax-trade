@@ -5,7 +5,6 @@ import { LogOut, RefreshCw } from 'lucide-react';
 import { fDate } from '@/lib/formatters';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { useExchangeRates } from '@/hooks/useExchangeRate';
-import { useHardwoodPrice } from '@/hooks/useHardwoodPrice';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 
@@ -27,15 +26,14 @@ const PAGE_TITLES: Record<string, string> = {
 
 function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
   const { data, isLoading, isError, refetch, isFetching } = useExchangeRates();
-  const { data: hw } = useHardwoodPrice();
 
   if (isLoading) return <span className={cn('text-[10px] animate-pulse', isDonezo ? 'text-gray-400' : 'text-white/60')}>Loading…</span>;
   if (isError || !data) return null;
 
-  const eur    = data.rates['EUR'];
+  const eur     = data.rates['EUR'];
   const tryRate = data.rates['TRY'];
 
-  const sep = <span className={isDonezo ? 'text-gray-200' : 'text-white/20'}>|</span>;
+  const sep = <span className={isDonezo ? 'text-gray-300' : 'text-white/20'}>|</span>;
   const lbl = (t: string) => <span className={cn('text-[10px] font-medium', isDonezo ? 'text-gray-400' : 'text-white/60')}>{t}</span>;
   const val = (children: React.ReactNode) => (
     <span className={cn('text-[10px] font-semibold', isDonezo ? 'text-gray-800' : 'text-white')}>{children}</span>
@@ -43,34 +41,14 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
 
   return (
     <div className={cn(
-      'hidden md:flex items-center gap-2 rounded-lg px-2.5 py-1.5 flex-wrap',
+      'hidden md:flex items-center gap-2 rounded-lg px-2.5 py-1.5',
       isDonezo ? 'bg-gray-100' : 'bg-white/15 backdrop-blur-sm',
     )}>
-      {/* EUR */}
       {lbl('EUR')}
       {val(<span className={isDonezo ? 'text-blue-600' : 'text-yellow-300'}>{eur ? (1 / eur).toFixed(4) : '—'}</span>)}
       {sep}
-
-      {/* TRY */}
       {lbl('TRY')}
       {val(<span className={isDonezo ? 'text-emerald-600' : 'text-green-300'}>{tryRate ? tryRate.toFixed(2) : '—'}</span>)}
-      {sep}
-
-      {/* China Hardwood (Wood Pulp) */}
-      {lbl('Hardwood')}
-      {hw
-        ? val(
-            <span
-              title={`¥${hw.priceRMB.toFixed(0)} RMB · ${hw.date}`}
-              className={isDonezo ? 'text-orange-600' : 'text-orange-300'}
-            >
-              ${hw.priceUSD.toFixed(0)}/t
-            </span>,
-          )
-        : val(<span className={isDonezo ? 'text-gray-400' : 'text-white/40'}>—</span>)
-      }
-
-      {/* Refresh */}
       <button
         onClick={() => refetch()}
         disabled={isFetching}
@@ -95,24 +73,28 @@ export function Topbar() {
   if (isDonezo) {
     return (
       <header
-        className="bg-white border-b border-gray-100 px-5 flex items-center justify-between gap-3 flex-shrink-0 shadow-sm"
+        className="bg-white border-b border-gray-100 px-5 flex items-center gap-3 flex-shrink-0 shadow-sm"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
       >
         {/* Mobile: page title */}
-        <h1 className="text-base font-bold text-gray-900 truncate md:hidden">{title}</h1>
+        <h1 className="text-base font-bold text-gray-900 truncate md:hidden flex-1">{title}</h1>
 
-        {/* Right side */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <ExchangeRateBar isDonezo={isDonezo} />
+        {/* Kur bilgisi — solda */}
+        <ExchangeRateBar isDonezo={isDonezo} />
 
-          <div className="hidden md:flex items-center gap-2">
-            <span className="text-[11px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
-          </div>
+        {/* Sağa iten boşluk */}
+        <div className="flex-1 hidden md:block" />
+
+        {/* Tarih + Bildirim + Kullanıcı — en sağda */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="hidden md:block text-[11px] text-gray-400">
+            {fDate(new Date().toISOString().slice(0, 10))}
+          </span>
 
           <NotificationBell />
 
           {profile && (
-            <div className="hidden md:flex items-center gap-2 pl-2 border-l border-gray-100">
+            <div className="hidden md:flex items-center gap-2 pl-3 border-l border-gray-100">
               <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-[10px] font-bold text-red-600">
                   {profile.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
@@ -136,10 +118,11 @@ export function Topbar() {
   // Paciolo theme
   return (
     <header
-      className="gradient-header px-4 sm:px-5 flex items-center justify-between gap-2 flex-shrink-0 shadow-lg"
+      className="gradient-header px-4 sm:px-5 flex items-center gap-2 flex-shrink-0 shadow-lg"
       style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
     >
-      <div className="flex items-center gap-3 min-w-0 flex-1">
+      {/* Logo + Sayfa başlığı — solda */}
+      <div className="flex items-center gap-3 min-w-0">
         <div className="hidden md:flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">S</span>
@@ -150,8 +133,13 @@ export function Topbar() {
         <h1 className="text-base font-bold text-white truncate min-w-0">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+      {/* Kur — ortada */}
+      <div className="flex-1 flex justify-center">
         <ExchangeRateBar isDonezo={false} />
+      </div>
+
+      {/* Tarih + Bildirim + Kullanıcı — en sağda */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <div className="hidden md:flex items-center gap-2">
           <span className="text-[11px] text-white/70">{fDate(new Date().toISOString().slice(0, 10))}</span>
           {profile && (
