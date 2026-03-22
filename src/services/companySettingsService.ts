@@ -10,7 +10,7 @@ let loaded = false;
 export async function loadCompanySettings(): Promise<void> {
   try {
     const { data } = await supabase
-      .from('company_settings')
+      .from('app_settings')
       .select('setting_key, value');
     if (data) {
       cache = Object.fromEntries(data.map((r) => [r.setting_key, r.value]));
@@ -33,7 +33,7 @@ export function getCachedSetting(key: string): string {
 // Async save to Supabase + update cache
 export async function saveSetting(key: string, value: string): Promise<void> {
   const { error } = await supabase
-    .from('company_settings')
+    .from('app_settings')
     .upsert({ setting_key: key, value, updated_at: new Date().toISOString() }, { onConflict: 'setting_key' });
   if (error) throw new Error(error.message);
   cache[key] = value;
@@ -41,7 +41,7 @@ export async function saveSetting(key: string, value: string): Promise<void> {
 
 // Async delete from Supabase + update cache
 export async function deleteSetting(key: string): Promise<void> {
-  await supabase.from('company_settings').delete().eq('setting_key', key);
+  await supabase.from('app_settings').delete().eq('setting_key', key);
   delete cache[key];
 }
 
