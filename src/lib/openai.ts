@@ -37,15 +37,28 @@ export interface OcrResult {
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
 
-const GEMINI_KEY_STORAGE = 'sunmax_gemini_key';
+const API_KEYS_STORAGE = 'sunmax_api_keys';
 
-export function getOpenAIKey(): string {
-  return localStorage.getItem(GEMINI_KEY_STORAGE) ?? '';
+export type ApiService = 'openai' | 'gemini';
+
+export function getApiKey(service: ApiService): string {
+  try {
+    const keys = JSON.parse(localStorage.getItem(API_KEYS_STORAGE) ?? '{}');
+    return keys[service] ?? '';
+  } catch { return ''; }
 }
 
-export function saveOpenAIKey(key: string): void {
-  localStorage.setItem(GEMINI_KEY_STORAGE, key.trim());
+export function saveApiKey(service: ApiService, key: string): void {
+  try {
+    const keys = JSON.parse(localStorage.getItem(API_KEYS_STORAGE) ?? '{}');
+    keys[service] = key.trim();
+    localStorage.setItem(API_KEYS_STORAGE, JSON.stringify(keys));
+  } catch { /* ignore */ }
 }
+
+// Legacy compat
+export function getOpenAIKey(): string { return getApiKey('openai'); }
+export function saveOpenAIKey(key: string): void { saveApiKey('openai', key); }
 
 // ─── Prompts ─────────────────────────────────────────────────────────────────
 
@@ -117,20 +130,6 @@ export function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function fileToBase64Binary(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const ab = e.target?.result as ArrayBuffer;
-      const bytes = new Uint8Array(ab);
-      let binary = '';
-      bytes.forEach((b) => (binary += String.fromCharCode(b)));
-      resolve(btoa(binary));
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsArrayBuffer(file);
-  });
-}
 
 function xlsxToText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -157,74 +156,82 @@ function xlsxToText(file: File): Promise<string> {
 
 // ─── Main OCR Function ────────────────────────────────────────────────────────
 
-const GEMINI_MODEL = 'gemini-1.5-flash';
+async function pdfToBase64Image(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1);
+  const scale = 2.0;
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d')!;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.render({ canvasContext: ctx, viewport, canvas: canvas as any }).promise;
+  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+}
 
 export async function ocrDocument(file: File, mode: OcrMode): Promise<OcrResult> {
   const apiKey = getOpenAIKey();
   if (!apiKey) {
-    throw new Error('Gemini API key not set. Please add it in Settings → Company → API Keys.');
+    throw new Error('OpenAI API key not set. Please add it in Settings → Company → API Keys.');
   }
 
   const prompt = PROMPTS[mode];
   const isExcel = /\.(xlsx|xls|csv)$/i.test(file.name);
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-  const isWord = /\.(docx|doc)$/i.test(file.name);
-
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let parts: any[];
+  let requestBody: any;
 
   if (isExcel) {
-    // Excel → CSV text
     const text = await xlsxToText(file);
-    parts = [
-      { text: `${prompt}\n\nDocument content (CSV format):\n${text}\n\nReturn ONLY the JSON object, no markdown fences.` },
-    ];
-  } else if (isWord) {
-    // Word → send as binary inline_data
-    const base64 = await fileToBase64Binary(file);
-    parts = [
-      { text: `${prompt}\n\nReturn ONLY the JSON object, no markdown fences.` },
-      { inline_data: { mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', data: base64 } },
-    ];
-  } else if (isPdf) {
-    // PDF → Gemini reads natively, no conversion needed
-    const base64 = await fileToBase64Binary(file);
-    parts = [
-      { text: `${prompt}\n\nReturn ONLY the JSON object, no markdown fences.` },
-      { inline_data: { mime_type: 'application/pdf', data: base64 } },
-    ];
+    requestBody = {
+      model: 'gpt-4o-mini',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: `${prompt}\n\nDocument content (CSV):\n${text}\n\nReturn ONLY the JSON object, no markdown fences.` }],
+    };
   } else {
-    // Image
-    const base64 = await fileToBase64(file);
-    parts = [
-      { text: `${prompt}\n\nReturn ONLY the JSON object, no markdown fences.` },
-      { inline_data: { mime_type: file.type, data: base64 } },
-    ];
+    let base64: string;
+    let mimeType: string;
+    if (isPdf) {
+      base64 = await pdfToBase64Image(file);
+      mimeType = 'image/jpeg';
+    } else {
+      base64 = await fileToBase64(file);
+      mimeType = file.type;
+    }
+    requestBody = {
+      model: 'gpt-4o-mini',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: `${prompt}\n\nReturn ONLY the JSON object, no markdown fences.` },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
+        ],
+      }],
+    };
   }
 
-  const response = await fetch(endpoint, {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: { maxOutputTokens: 1024, temperature: 0.1 },
-    }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Gemini API error ${response.status}`);
+    throw new Error(err?.error?.message ?? `OpenAI API error ${response.status}`);
   }
 
-  const data = await response.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+  const content = data.choices?.[0]?.message?.content ?? '{}';
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Could not parse response from Gemini');
+  if (!jsonMatch) throw new Error('Could not parse response from OpenAI');
 
   return JSON.parse(jsonMatch[0]) as OcrResult;
 }

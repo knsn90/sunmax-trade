@@ -13,7 +13,7 @@ import { NativeSelect } from '@/components/ui/form-elements';
 import { Card, CardContent, PageHeader, LoadingSpinner, FormRow, FormGroup } from '@/components/ui/shared';
 import { Upload, Trash2, Eye, EyeOff, Download, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { THEME_PRESETS, applyTheme, getStoredTheme, type ThemePreset } from '@/lib/theme';
-import { getOpenAIKey, saveOpenAIKey } from '@/lib/openai';
+import { getApiKey, saveApiKey } from '@/lib/openai';
 import { supabase } from '@/services/supabase';
 
 type SettingsTab = 'company' | 'users' | 'theme' | 'backup';
@@ -260,13 +260,7 @@ export function SettingsPage() {
           <p className="text-xs text-muted-foreground mb-3">
             Stored in your browser only — never sent to our servers.
           </p>
-          <ApiKeyField
-            label="Gemini API Key"
-            loadKey={getOpenAIKey}
-            saveKey={saveOpenAIKey}
-            placeholder="AIza..."
-            hint="Required for OCR document reading (get free key at aistudio.google.com)"
-          />
+          <ApiKeyList />
         </CardContent>
       </Card>
       </>}
@@ -274,61 +268,109 @@ export function SettingsPage() {
   );
 }
 
-// ─── API Key Field ────────────────────────────────────────────────────────────
+// ─── API Key List ─────────────────────────────────────────────────────────────
 
-function ApiKeyField({
-  label, loadKey, saveKey, placeholder, hint,
-}: {
-  label: string;
-  loadKey: () => string;
-  saveKey: (key: string) => void;
-  placeholder?: string;
-  hint?: string;
-}) {
-  const storedKey = loadKey();
-  const [value, setValue] = useState(storedKey);
+const API_SERVICES = [
+  {
+    id: 'openai' as const,
+    name: 'OpenAI',
+    description: 'OCR — PDF, image, Excel document reading',
+    placeholder: 'sk-...',
+    link: 'platform.openai.com',
+  },
+] satisfies Array<{ id: 'openai'; name: string; description: string; placeholder: string; link: string }>;
+
+function ApiKeyList() {
+  return (
+    <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+      {API_SERVICES.map((svc) => (
+        <ApiKeyRow key={svc.id} service={svc} />
+      ))}
+    </div>
+  );
+}
+
+function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
+  const [stored, setStored] = useState(() => getApiKey(service.id));
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
   const [visible, setVisible] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const isSaved = value === storedKey && value.length > 0;
 
-  function handleSave() {
-    saveKey(value);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  function startEdit() {
+    setValue(stored);
+    setEditing(true);
   }
 
+  function handleSave() {
+    saveApiKey(service.id, value);
+    setStored(value.trim());
+    setEditing(false);
+  }
+
+  function handleDelete() {
+    saveApiKey(service.id, '');
+    setStored('');
+    setEditing(false);
+  }
+
+  const preview = stored
+    ? stored.slice(0, 6) + '•••••••••••••••' + stored.slice(-4)
+    : null;
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </label>
-        {isSaved && !saved && (
-          <span className="text-[10px] text-green-600 font-medium">✓ Key saved</span>
-        )}
-      </div>
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <Input
-            type={visible ? 'text' : 'password'}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={storedKey ? '••••••••••••••••' : placeholder}
-            className="pr-8"
-          />
-          <button
-            type="button"
-            onClick={() => setVisible((v) => !v)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
+    <div className="p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-semibold">{service.name}</span>
+            {stored ? (
+              <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5 font-medium">✓ Configured</span>
+            ) : (
+              <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5 font-medium">Not set</span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{service.description}</p>
+          {stored && !editing && (
+            <p className="text-[11px] font-mono text-muted-foreground mt-1">{preview}</p>
+          )}
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={handleSave} disabled={value === storedKey && storedKey.length > 0}>
-          {saved ? '✓ Saved' : 'Save'}
-        </Button>
+        <div className="flex gap-1.5 flex-shrink-0">
+          {!editing && (
+            <Button type="button" variant="outline" size="sm" onClick={startEdit}>
+              {stored ? 'Edit' : 'Add Key'}
+            </Button>
+          )}
+          {!editing && stored && (
+            <Button type="button" variant="ghost" size="sm" onClick={handleDelete} className="text-red-500 hover:text-red-600">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
-      {hint && <p className="text-[10px] text-muted-foreground mt-1">{hint}</p>}
+
+      {editing && (
+        <div className="mt-2 flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Input
+              type={visible ? 'text' : 'password'}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={service.placeholder}
+              className="pr-8 text-xs"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => setVisible((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+          <Button type="button" size="sm" onClick={handleSave} disabled={!value.trim()}>Save</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+        </div>
+      )}
     </div>
   );
 }
