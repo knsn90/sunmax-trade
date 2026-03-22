@@ -84,9 +84,9 @@ export function BottomNav() {
 
       {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border md:hidden"
-        style={{ height: '64px' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex h-full">
+        <div className="flex h-16">
           {mainTabs.map((tab) => {
             const Icon = tab.icon;
             return (

@@ -3,11 +3,13 @@
   "short_name": "SunPlus",
   "description": "Trade file and document management",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#4f6ef7",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
+  "lang": "tr",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/favicon.svg",

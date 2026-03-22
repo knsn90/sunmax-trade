@@ -316,7 +316,7 @@ export function TradeFileDetailPage() {
           {fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type)).length === 0 ? (
             <div className="text-xs text-muted-foreground text-center py-3">No expense transactions yet</div>
           ) : (
-            <table className="w-full text-xs">
+            <div className="overflow-x-auto"><table className="w-full text-xs min-w-[500px]">
               <thead>
                 <tr className="border-b text-muted-foreground">
                   <th className="text-left py-1 pr-2 font-medium">Date</th>
@@ -345,7 +345,7 @@ export function TradeFileDetailPage() {
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </CardContent>
       </Card>
