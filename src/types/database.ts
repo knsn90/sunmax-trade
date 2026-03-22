@@ -178,6 +178,8 @@ export interface PnlCostRow {
 
 // ─── Documents ──────────────────────────────────────────────────────────────
 
+export type DocStatus = 'draft' | 'approved' | 'rejected';
+
 export interface Proforma extends Timestamps {
   id: string;
   proforma_no: string;
@@ -210,6 +212,9 @@ export interface Proforma extends Timestamps {
   signatory: string | null;
   notes: string | null;
   pdf_url: string | null;
+  doc_status: DocStatus;
+  approved_by: string | null;
+  approved_at: string | null;
   created_by: string | null;
   // Joined
   trade_file?: TradeFile;
@@ -237,6 +242,9 @@ export interface Invoice extends Timestamps {
   payment_terms: string | null;
   pdf_url: string | null;
   invoice_type: 'commercial' | 'sale';
+  doc_status: DocStatus;
+  approved_by: string | null;
+  approved_at: string | null;
   created_by: string | null;
   // Joined
   trade_file?: TradeFile;
@@ -259,6 +267,9 @@ export interface PackingList extends Timestamps {
   total_admt: number;
   total_gross_kg: number;
   pdf_url: string | null;
+  doc_status: DocStatus;
+  approved_by: string | null;
+  approved_at: string | null;
   created_by: string | null;
   // Joined
   trade_file?: TradeFile;

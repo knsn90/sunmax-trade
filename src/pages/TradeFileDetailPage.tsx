@@ -22,6 +22,8 @@ import { printInvoice, printPackingList, printProforma } from '@/lib/printDocume
 import { Button } from '@/components/ui/button';
 import { Badge, NativeSelect } from '@/components/ui/form-elements';
 import { Card, CardContent, LoadingSpinner, PageHeader } from '@/components/ui/shared';
+import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
+import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { ArrowLeft, FileText, Package, Receipt, RotateCcw } from 'lucide-react';
 
 export function TradeFileDetailPage() {
@@ -225,11 +227,13 @@ export function TradeFileDetailPage() {
           {file.proformas.map((pi) => (
             <div key={pi.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
               <span className="font-bold text-xs flex-1">{pi.proforma_no}</span>
+              <DocStatusBadge status={pi.doc_status ?? 'draft'} />
               <span className="text-[11px] text-muted-foreground">{fDate(pi.proforma_date)}</span>
               <span className="font-bold text-brand-500 text-xs">{fCurrency(pi.total)}</span>
-              {writable && <Button variant="edit" size="xs" onClick={() => { setEditPI(pi); setProformaOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printProforma(pi, settings, defaultBank, file)}>🖨 Print</Button>}
-              {writable && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }}>Del</Button>}
+              <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
+              {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPI(pi); setProformaOpen(true); }}>Edit</Button>}
+              {settings && <Button variant="outline" size="xs" onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+              {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }}>Del</Button>}
             </div>
           ))}
         </div>
@@ -242,12 +246,14 @@ export function TradeFileDetailPage() {
           {file.invoices.filter(inv => inv.invoice_type === 'sale').map((inv) => (
             <div key={inv.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-1.5">
               <span className="font-bold text-xs flex-1">{inv.invoice_no}</span>
+              <DocStatusBadge status={inv.doc_status ?? 'draft'} />
               <span className="text-[11px] text-muted-foreground">{fDate(inv.invoice_date)}</span>
               <span className="text-[11px] text-muted-foreground">{fN(inv.quantity_admt, 3)} ADMT × {fCurrency(inv.unit_price)}</span>
               <span className="font-bold text-green-700 text-xs">{fCurrency(inv.total)}</span>
-              {writable && <Button variant="edit" size="xs" onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank)}>🖨 Print</Button>}
-              {writable && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+              <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}>Edit</Button>}
+              {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
             </div>
           ))}
         </div>
@@ -260,11 +266,13 @@ export function TradeFileDetailPage() {
           {file.invoices.filter(inv => inv.invoice_type === 'commercial').map((inv) => (
             <div key={inv.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
               <span className="font-bold text-xs flex-1">{inv.invoice_no}</span>
+              <DocStatusBadge status={inv.doc_status ?? 'draft'} />
               <span className="text-[11px] text-muted-foreground">{fDate(inv.invoice_date)}</span>
               <span className="font-bold text-brand-500 text-xs">{fCurrency(inv.total)}</span>
-              {writable && <Button variant="edit" size="xs" onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank)}>🖨 Print</Button>}
-              {writable && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete com-invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+              <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}>Edit</Button>}
+              {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete com-invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
             </div>
           ))}
         </div>
@@ -277,11 +285,13 @@ export function TradeFileDetailPage() {
           {file.packing_lists.map((pl) => (
             <div key={pl.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
               <span className="font-bold text-xs flex-1">{pl.packing_list_no}</span>
+              <DocStatusBadge status={pl.doc_status ?? 'draft'} />
               <span className="text-[11px] text-muted-foreground">{pl.packing_list_items?.length ?? 0} vehicles</span>
               <span className="text-xs">{fN(pl.total_admt, 3)} ADMT</span>
-              {writable && <Button variant="edit" size="xs" onClick={() => { setEditPL(pl); setPackingOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printPackingList(pl, settings)}>🖨 Print</Button>}
-              {writable && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete packing list?')) deletePL.mutate(pl.id); }}>Del</Button>}
+              <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
+              {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPL(pl); setPackingOpen(true); }}>Edit</Button>}
+              {settings && <Button variant="outline" size="xs" onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+              {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete packing list?')) deletePL.mutate(pl.id); }}>Del</Button>}
             </div>
           ))}
         </div>

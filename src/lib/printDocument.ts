@@ -30,6 +30,7 @@ const BASE_CSS = `
     margin: 0 auto;
     padding: 14mm 14mm 12mm 14mm;
     box-shadow: 0 4px 24px rgba(0,0,0,.4);
+    position: relative;
   }
   .np { text-align: center; margin-bottom: 14px; }
   @media print {
@@ -37,19 +38,37 @@ const BASE_CSS = `
     .np { display: none; }
     .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; }
   }
+  /* DRAFT watermark */
+  .draft-watermark::before {
+    content: 'DRAFT';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 130px;
+    font-weight: 900;
+    color: rgba(0,0,0,0.055);
+    letter-spacing: 16px;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+  }
 `;
+
+const DRAFT_WATERMARK_ATTR = 'draft-watermark';
 
 const PRINT_BAR = `<div class="np">
   <button onclick="window.print()" style="background:#333;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">🖨 Print / PDF</button>
   <button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #ccc;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer">✕ Close</button>
 </div>`;
 
-function openPrintWindow(html: string, title: string) {
+function openPrintWindow(html: string, title: string, isDraft = false) {
   const win = window.open('', '_blank', 'width=1010,height=860');
   if (!win) return;
+  const draftClass = isDraft ? ` ${DRAFT_WATERMARK_ATTR}` : '';
   win.document.write(
-    `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title>` +
-    `<style>${BASE_CSS}</style></head><body>${PRINT_BAR}<div class="page">${html}</div></body></html>`
+    `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}${isDraft ? ' [DRAFT]' : ''}</title>` +
+    `<style>${BASE_CSS}</style></head><body>${PRINT_BAR}<div class="page${draftClass}">${html}</div></body></html>`
   );
   win.document.close();
 }
@@ -73,7 +92,7 @@ function footerHTML(s: CompanySettings): string {
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 
-export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null) {
+export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false) {
   void bank; // bank details shown in comments if needed
   const curr = inv.currency || 'USD';
   const custName = esc(inv.customer?.name || '');
@@ -189,12 +208,12 @@ export function printInvoice(inv: Invoice, settings: CompanySettings, bank: Bank
     ${footerHTML(settings)}
   `;
 
-  openPrintWindow(body, `Invoice ${inv.invoice_no}`);
+  openPrintWindow(body, `Invoice ${inv.invoice_no}`, isDraft);
 }
 
 // ─── Packing List ─────────────────────────────────────────────────────────────
 
-export function printPackingList(pl: PackingList, settings: CompanySettings) {
+export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false) {
   const items = pl.packing_list_items ?? [];
   const isTruck = pl.transport_mode === 'truck';
   const isTrain = pl.transport_mode === 'train';
@@ -314,7 +333,7 @@ export function printPackingList(pl: PackingList, settings: CompanySettings) {
     ${footerHTML(settings)}
   `;
 
-  openPrintWindow(body, `Packing List ${pl.packing_list_no}`);
+  openPrintWindow(body, `Packing List ${pl.packing_list_no}`, isDraft);
 }
 
 // ─── Proforma ────────────────────────────────────────────────────────────────
@@ -324,6 +343,7 @@ export function printProforma(
   settings: CompanySettings,
   bank: BankAccount | null,
   file?: TradeFile | null,
+  isDraft = false,
 ) {
   const curr = pi.currency || 'USD';
   const piTfAny = (pi.trade_file as unknown as Record<string,unknown> | null);
@@ -566,5 +586,5 @@ export function printProforma(
     </div>
   `;
 
-  openPrintWindow(body, `Proforma Invoice ${pi.proforma_no}`);
+  openPrintWindow(body, `Proforma Invoice ${pi.proforma_no}`, isDraft);
 }
