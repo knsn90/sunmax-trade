@@ -48,25 +48,26 @@ function KpiCard({
   trend?: 'up' | 'down' | 'neutral';
   color?: 'blue' | 'green' | 'red' | 'orange' | 'purple';
 }) {
-  const colors = {
-    blue:   { bg: 'bg-blue-50',   icon: 'text-blue-500',   border: 'border-blue-100' },
-    green:  { bg: 'bg-green-50',  icon: 'text-green-500',  border: 'border-green-100' },
-    red:    { bg: 'bg-red-50',    icon: 'text-red-500',    border: 'border-red-100' },
-    orange: { bg: 'bg-orange-50', icon: 'text-orange-500', border: 'border-orange-100' },
-    purple: { bg: 'bg-purple-50', icon: 'text-purple-500', border: 'border-purple-100' },
+  const gradients = {
+    blue:   'card-gradient-blue',
+    green:  'card-gradient-green',
+    red:    'card-gradient-red',
+    orange: 'card-gradient-gold',
+    purple: 'card-gradient-purple',
   };
-  const c = colors[color];
   return (
-    <div className={`bg-white rounded-xl border ${c.border} p-4 flex items-start gap-3 shadow-sm`}>
-      <div className={`${c.bg} ${c.icon} rounded-lg p-2.5 flex-shrink-0`}>{icon}</div>
+    <div className={`${gradients[color]} rounded-2xl p-4 flex items-start gap-3 shadow-lg shadow-black/10`}>
+      <div className="bg-white/20 rounded-xl p-2.5 flex-shrink-0 text-white">
+        {icon}
+      </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5 truncate">{label}</div>
-        <div className="text-lg sm:text-xl font-bold text-foreground truncate">{value}</div>
+        <div className="text-[11px] text-white/70 font-semibold uppercase tracking-wide mb-0.5 truncate">{label}</div>
+        <div className="text-lg sm:text-xl font-bold text-white truncate">{value}</div>
         {sub && (
           <div className="flex items-center gap-1 mt-0.5">
-            {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-green-500" />}
-            {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
-            <span className="text-[11px] text-muted-foreground truncate">{sub}</span>
+            {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-white/80" />}
+            {trend === 'down' && <TrendingDown className="h-3 w-3 text-white/80" />}
+            <span className="text-[10px] text-white/60 truncate">{sub}</span>
           </div>
         )}
       </div>

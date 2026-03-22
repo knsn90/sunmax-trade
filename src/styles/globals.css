@@ -21,7 +21,7 @@
   }
 
   body {
-    background-color: hsl(220 30% 97%);
+    background-color: #eef2ff;
     color: hsl(0 0% 7%);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -42,5 +42,23 @@
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: hsl(220 13% 91%);
     border-radius: 3px;
+  }
+  .gradient-header {
+    background: linear-gradient(135deg, #1a1f6e 0%, #3b5bdb 100%);
+  }
+  .card-gradient-blue {
+    background: linear-gradient(135deg, #3b5bdb 0%, #4f6ef7 100%);
+  }
+  .card-gradient-gold {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  }
+  .card-gradient-green {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  }
+  .card-gradient-red {
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  }
+  .card-gradient-purple {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
   }
 }
