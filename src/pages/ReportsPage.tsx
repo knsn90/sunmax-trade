@@ -367,6 +367,34 @@ function PnlReportTab() {
 
 // ─── Account Statement ─────────────────────────────────────────────────────
 
+type StatementLang = 'en' | 'tr' | 'fa';
+
+const STMT_LABELS: Record<StatementLang, {
+  title: string; totalDebit: string; totalCredit: string; netBalance: string;
+  date: string; type: string; ref: string; desc: string; debit: string; credit: string; balance: string;
+  printBtn: string; dir: 'ltr' | 'rtl'; font?: string;
+}> = {
+  en: {
+    title: 'Account Statement', totalDebit: 'Total Debit', totalCredit: 'Total Credit',
+    netBalance: 'Net Balance', date: 'Date', type: 'Type', ref: 'Ref',
+    desc: 'Description', debit: 'Debit', credit: 'Credit', balance: 'Balance',
+    printBtn: 'Print / PDF', dir: 'ltr',
+  },
+  tr: {
+    title: 'Cari Hesap Ekstresi', totalDebit: 'Toplam Borç', totalCredit: 'Toplam Alacak',
+    netBalance: 'Net Bakiye', date: 'Tarih', type: 'Tür', ref: 'Ref',
+    desc: 'Açıklama', debit: 'Borç', credit: 'Alacak', balance: 'Bakiye',
+    printBtn: 'Yazdır / PDF', dir: 'ltr',
+  },
+  fa: {
+    title: 'صورتحساب جاری', totalDebit: 'مجموع بدهکاری', totalCredit: 'مجموع بستانکاری',
+    netBalance: 'موجودی خالص', date: 'تاریخ', type: 'نوع', ref: 'مرجع',
+    desc: 'توضیحات', debit: 'بدهکاری', credit: 'بستانکاری', balance: 'موجودی',
+    printBtn: 'چاپ / PDF', dir: 'rtl',
+    font: 'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap',
+  },
+};
+
 function AccountStatementTab() {
   const { data: customers = [] } = useCustomers();
   const { data: suppliers = [] } = useSuppliers();
@@ -376,6 +404,7 @@ function AccountStatementTab() {
   const [entityId, setEntityId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [lang] = useState<StatementLang>('en');
 
   const { data: rawTxns = [] } = useTransactionsByEntityEnhanced(entityType, entityId || undefined);
 
@@ -410,7 +439,12 @@ function AccountStatementTab() {
 
   const entityName = entityOptions.find((e) => e.id === entityId)?.name ?? '';
 
-  function printStatement() {
+  function printStatement(printLang: StatementLang = lang) {
+    const L = STMT_LABELS[printLang];
+    const isRtl = L.dir === 'rtl';
+    const fontFamily = isRtl ? 'Vazirmatn, Arial, sans-serif' : 'Arial, sans-serif';
+    const thAlign = isRtl ? 'right' : 'left';
+
     const rows = txnsWithBalance.map((t) => `
       <tr style="border-bottom:1px solid #e5e7eb">
         <td style="padding:4px 6px">${fDate(t.transaction_date)}</td>
@@ -421,18 +455,28 @@ function AccountStatementTab() {
         <td style="padding:4px 6px;text-align:right;color:#10b981">${!t.isDebit?fUSD(t.amt):'—'}</td>
         <td style="padding:4px 6px;text-align:right;font-weight:600;color:${t.balance>=0?'#10b981':'#dc2626'}">${fUSD(t.balance)}</td>
       </tr>`).join('');
+
+    const fontLink = L.font ? `<link rel="stylesheet" href="${L.font}">` : '';
+    const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:${fontFamily};font-size:11px;background:#888;padding:20px;color:#111;direction:${L.dir}}.page{background:#fff;width:210mm;margin:0 auto;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.4)}.np{text-align:center;margin-bottom:14px}@media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;width:100%;padding:10mm;margin:0}}`;
+    const printBar = `<div class="np"><button onclick="window.print()" style="background:#374151;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #ccc;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer">✕</button></div>`;
+
     const html = `
-      <div style="font-size:18px;font-weight:300;color:#374151;margin-bottom:4px">Account Statement — ${entityName}</div>
+      <div style="font-size:18px;font-weight:700;color:#111;margin-bottom:2px">${L.title}</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:16px">${entityName}${dateFrom||dateTo ? ` · ${dateFrom||''}${dateFrom&&dateTo?' – ':''}${dateTo||''}` : ''}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
-        <div style="background:#fee2e2;border-radius:6px;padding:10px"><div style="font-size:9px;color:#991b1b;text-transform:uppercase;margin-bottom:3px">Total Debit</div><div style="font-size:15px;font-weight:700;color:#991b1b">${fUSD(totalDebit)}</div></div>
-        <div style="background:#d1fae5;border-radius:6px;padding:10px"><div style="font-size:9px;color:#065f46;text-transform:uppercase;margin-bottom:3px">Total Credit</div><div style="font-size:15px;font-weight:700;color:#065f46">${fUSD(totalCredit)}</div></div>
-        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px"><div style="font-size:9px;color:#374151;text-transform:uppercase;margin-bottom:3px">Net Balance</div><div style="font-size:15px;font-weight:700;color:${netBalance>=0?'#10b981':'#dc2626'}">${fUSD(netBalance)}</div></div>
+        <div style="background:#fee2e2;border-radius:6px;padding:10px"><div style="font-size:9px;color:#991b1b;text-transform:uppercase;margin-bottom:3px">${L.totalDebit}</div><div style="font-size:15px;font-weight:700;color:#991b1b">${fUSD(totalDebit)}</div></div>
+        <div style="background:#d1fae5;border-radius:6px;padding:10px"><div style="font-size:9px;color:#065f46;text-transform:uppercase;margin-bottom:3px">${L.totalCredit}</div><div style="font-size:15px;font-weight:700;color:#065f46">${fUSD(totalCredit)}</div></div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px"><div style="font-size:9px;color:#374151;text-transform:uppercase;margin-bottom:3px">${L.netBalance}</div><div style="font-size:15px;font-weight:700;color:${netBalance>=0?'#10b981':'#dc2626'}">${fUSD(netBalance)}</div></div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:10px">
-        <thead><tr style="background:#374151;color:#fff">${['Date','Type','Ref','Description','Debit','Credit','Balance'].map(h=>`<th style="padding:6px;text-align:left">${h}</th>`).join('')}</tr></thead>
+        <thead><tr style="background:#374151;color:#fff">${[L.date,L.type,L.ref,L.desc,L.debit,L.credit,L.balance].map(h=>`<th style="padding:6px;text-align:${thAlign}">${h}</th>`).join('')}</tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
-    openPrint(html, `Account Statement — ${entityName}`);
+
+    const win = window.open('', '_blank', 'width=1010,height=860');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html dir="${L.dir}"><head><meta charset="UTF-8">${fontLink}<title>${L.title} — ${entityName}</title><style>${css}</style></head><body>${printBar}<div class="page">${html}</div></body></html>`);
+    win.document.close();
   }
 
   return (
@@ -465,8 +509,26 @@ function AccountStatementTab() {
           </div>
         </div>
         {entityId && txns.length > 0 && (
-          <div className="mt-3">
-            <Button size="sm" variant="outline" onClick={printStatement}>🖨 Print / PDF</Button>
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-500 font-medium">Print language:</span>
+            <button
+              onClick={() => printStatement('en')}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+            >
+              🖨 English
+            </button>
+            <button
+              onClick={() => printStatement('tr')}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+            >
+              🖨 Türkçe
+            </button>
+            <button
+              onClick={() => printStatement('fa')}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+            >
+              🖨 فارسی
+            </button>
           </div>
         )}
       </div>

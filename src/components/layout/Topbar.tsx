@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LogOut, RefreshCw, Search } from 'lucide-react';
+import { LogOut, RefreshCw } from 'lucide-react';
 import { fDate } from '@/lib/formatters';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { useExchangeRates } from '@/hooks/useExchangeRate';
@@ -98,13 +98,6 @@ export function Topbar() {
         className="bg-white border-b border-gray-100 px-5 flex items-center justify-between gap-3 flex-shrink-0 shadow-sm"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
       >
-        {/* Search bar */}
-        <div className="flex-1 max-w-sm hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-          <Search className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-          <span className="text-xs text-gray-400">Search…</span>
-          <span className="ml-auto text-[10px] text-gray-300 bg-gray-100 px-1.5 py-0.5 rounded font-mono">⌘F</span>
-        </div>
-
         {/* Mobile: page title */}
         <h1 className="text-base font-bold text-gray-900 truncate md:hidden">{title}</h1>
 
