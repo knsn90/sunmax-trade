@@ -66,12 +66,15 @@ export function SmartFill({ mode, onResult, formName }: SmartFillProps) {
 
   // Stop recognition on unmount / close
   const stopListening = useCallback(() => {
+    isListeningRef.current = false;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     setIsListening(false);
   }, []);
 
   useEffect(() => () => stopListening(), [stopListening]);
+
+  const isListeningRef = useRef(false);
 
   function startListening() {
     const SR = getSpeechRecognition();
@@ -80,23 +83,33 @@ export function SmartFill({ mode, onResult, formName }: SmartFillProps) {
     const recognition = new SR();
     recognition.lang = 'tr-TR';
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (e: ISpeechRecognitionEvent) => {
       const t = Array.from(e.results)
         .map((r) => r[0].transcript)
-        .join('');
+        .join(' ');
       setTranscript(t);
     };
 
-    recognition.onend = () => setIsListening(false);
+    // Auto-restart if stopped unexpectedly (mobile tarayıcılar için)
+    recognition.onend = () => {
+      if (isListeningRef.current) {
+        try { recognition.start(); } catch { /* ignore */ }
+      } else {
+        setIsListening(false);
+      }
+    };
+
     recognition.onerror = () => {
+      isListeningRef.current = false;
       setIsListening(false);
-      toast.error('Ses tanıma hatası. Mikrofon iznini kontrol edin.');
+      toast.error('Mikrofon erişim hatası. İzinleri kontrol edin.');
     };
 
     recognitionRef.current = recognition;
+    isListeningRef.current = true;
     recognition.start();
     setIsListening(true);
   }
