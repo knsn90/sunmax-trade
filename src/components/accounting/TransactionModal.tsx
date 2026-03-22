@@ -212,9 +212,9 @@ export function TransactionModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <DialogTitle>{isEdit ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-shrink-0">
               <SmartFill mode="transaction" onResult={handleOcrResult} formName="Transaction" />
               {!isEdit && <OcrButton mode="transaction" onResult={handleOcrResult} />}
             </div>

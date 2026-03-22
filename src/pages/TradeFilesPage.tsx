@@ -26,13 +26,13 @@ export function TradeFilesPage() {
   return (
     <>
       <PageHeader title="All Files">
-        <Input placeholder="Search files…" className="w-[200px]" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input placeholder="Search files…" className="w-full sm:w-[200px]" value={search} onChange={(e) => setSearch(e.target.value)} />
         {writable && <Button onClick={() => setNewFileOpen(true)}>+ New File</Button>}
       </PageHeader>
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr>
                 {['File No', 'Date', 'Customer', 'Product', 'Tonnage', 'Status', 'Actions'].map((h) => (

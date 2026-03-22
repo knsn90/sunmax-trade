@@ -98,10 +98,10 @@ export function TradeFileDetailPage() {
         </Badge>
         {/* #10: Status change dropdown */}
         {writable && (
-          <div className="flex items-center gap-1.5 ml-3">
-            <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5">
+            <RotateCcw className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             <NativeSelect
-              className="w-[140px]"
+              className="w-[130px] sm:w-[140px]"
               value={file.status}
               onChange={(e) => handleStatusChange(e.target.value)}
             >
@@ -154,7 +154,7 @@ export function TradeFileDetailPage() {
       )}
 
       {/* Info grid */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <Card>
           <CardContent>
             <div className="flex items-center justify-between mb-2">
@@ -206,7 +206,7 @@ export function TradeFileDetailPage() {
               <div className="text-2xs font-bold uppercase text-purple-700">Delivery</div>
               {writable && <Button variant="edit" size="xs" onClick={() => setDeliveryOpen(true)}>Edit</Button>}
             </div>
-            <div className="grid grid-cols-4 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div><span className="text-2xs text-muted-foreground block">ADMT</span><span className="font-bold">{fN(file.delivered_admt, 3)}</span></div>
               <div><span className="text-2xs text-muted-foreground block">Gross (KG)</span><span>{fN(file.gross_weight_kg)}</span></div>
               <div><span className="text-2xs text-muted-foreground block">Packages</span><span>{file.packages}</span></div>
@@ -225,15 +225,17 @@ export function TradeFileDetailPage() {
         <div className="mb-4">
           <div className="text-xs font-bold mb-2">Proformas</div>
           {file.proformas.map((pi) => (
-            <div key={pi.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1">{pi.proforma_no}</span>
+            <div key={pi.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
+              <span className="font-bold text-xs flex-1 min-w-0 truncate">{pi.proforma_no}</span>
               <DocStatusBadge status={pi.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground">{fDate(pi.proforma_date)}</span>
-              <span className="font-bold text-brand-500 text-xs">{fCurrency(pi.total)}</span>
-              <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
-              {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPI(pi); setProformaOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-              {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }}>Del</Button>}
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{fDate(pi.proforma_date)}</span>
+              <span className="font-bold text-brand-500 text-xs whitespace-nowrap">{fCurrency(pi.total)}</span>
+              <div className="flex flex-wrap gap-1 items-center">
+                <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
+                {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPI(pi); setProformaOpen(true); }}>Edit</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }}>Del</Button>}
+              </div>
             </div>
           ))}
         </div>
@@ -244,16 +246,18 @@ export function TradeFileDetailPage() {
         <div className="mb-4">
           <div className="text-xs font-bold mb-2 text-green-700">Sale Invoice</div>
           {file.invoices.filter(inv => inv.invoice_type === 'sale').map((inv) => (
-            <div key={inv.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1">{inv.invoice_no}</span>
+            <div key={inv.id} className="flex flex-wrap items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-1.5">
+              <span className="font-bold text-xs flex-1 min-w-0 truncate">{inv.invoice_no}</span>
               <DocStatusBadge status={inv.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground">{fDate(inv.invoice_date)}</span>
-              <span className="text-[11px] text-muted-foreground">{fN(inv.quantity_admt, 3)} ADMT × {fCurrency(inv.unit_price)}</span>
-              <span className="font-bold text-green-700 text-xs">{fCurrency(inv.total)}</span>
-              <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{fDate(inv.invoice_date)}</span>
+              <span className="text-[11px] text-muted-foreground hidden sm:inline whitespace-nowrap">{fN(inv.quantity_admt, 3)} ADMT × {fCurrency(inv.unit_price)}</span>
+              <span className="font-bold text-green-700 text-xs whitespace-nowrap">{fCurrency(inv.total)}</span>
+              <div className="flex flex-wrap gap-1 items-center">
+                <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}>Edit</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+              </div>
             </div>
           ))}
         </div>
@@ -264,15 +268,17 @@ export function TradeFileDetailPage() {
         <div className="mb-4">
           <div className="text-xs font-bold mb-2">Com-Invoices</div>
           {file.invoices.filter(inv => inv.invoice_type === 'commercial').map((inv) => (
-            <div key={inv.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1">{inv.invoice_no}</span>
+            <div key={inv.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
+              <span className="font-bold text-xs flex-1 min-w-0 truncate">{inv.invoice_no}</span>
               <DocStatusBadge status={inv.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground">{fDate(inv.invoice_date)}</span>
-              <span className="font-bold text-brand-500 text-xs">{fCurrency(inv.total)}</span>
-              <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-              {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete com-invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{fDate(inv.invoice_date)}</span>
+              <span className="font-bold text-brand-500 text-xs whitespace-nowrap">{fCurrency(inv.total)}</span>
+              <div className="flex flex-wrap gap-1 items-center">
+                <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}>Edit</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete com-invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+              </div>
             </div>
           ))}
         </div>
@@ -283,15 +289,17 @@ export function TradeFileDetailPage() {
         <div className="mb-4">
           <div className="text-xs font-bold mb-2">Packing Lists</div>
           {file.packing_lists.map((pl) => (
-            <div key={pl.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1">{pl.packing_list_no}</span>
+            <div key={pl.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
+              <span className="font-bold text-xs flex-1 min-w-0 truncate">{pl.packing_list_no}</span>
               <DocStatusBadge status={pl.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground">{pl.packing_list_items?.length ?? 0} vehicles</span>
-              <span className="text-xs">{fN(pl.total_admt, 3)} ADMT</span>
-              <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
-              {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPL(pl); setPackingOpen(true); }}>Edit</Button>}
-              {settings && <Button variant="outline" size="xs" onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-              {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete packing list?')) deletePL.mutate(pl.id); }}>Del</Button>}
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{pl.packing_list_items?.length ?? 0} vehicles</span>
+              <span className="text-xs whitespace-nowrap">{fN(pl.total_admt, 3)} ADMT</span>
+              <div className="flex flex-wrap gap-1 items-center">
+                <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
+                {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPL(pl); setPackingOpen(true); }}>Edit</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete packing list?')) deletePL.mutate(pl.id); }}>Del</Button>}
+              </div>
             </div>
           ))}
         </div>
@@ -300,10 +308,10 @@ export function TradeFileDetailPage() {
       {/* Expenses */}
       <Card className="mb-4">
         <CardContent>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div className="text-2xs font-bold uppercase text-muted-foreground">Expenses</div>
             {writable && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="xs" onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })}>
                   + Purchase Invoice
                 </Button>

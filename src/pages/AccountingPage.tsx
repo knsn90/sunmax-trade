@@ -92,11 +92,11 @@ export function AccountingPage() {
       </PageHeader>
 
       {/* Tabs */}
-      <div className="flex border-b-2 border-border mb-4">
+      <div className="flex overflow-x-auto border-b-2 border-border mb-4 scrollbar-none">
         {(Object.entries(TAB_LABELS) as [AccTab, string][]).map(([key, label]) => (
           <button
             key={key}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-[2px] transition-colors ${
+            className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-[2px] transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === key
                 ? 'text-brand-500 border-brand-500'
                 : 'text-muted-foreground border-transparent hover:text-foreground'
@@ -128,7 +128,7 @@ export function AccountingPage() {
       <Card className="p-2.5 mb-4">
         <div className="flex gap-2.5 flex-wrap items-center">
           <NativeSelect
-            className="w-[180px]"
+            className="w-full sm:w-[180px]"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
           >
@@ -138,7 +138,7 @@ export function AccountingPage() {
             ))}
           </NativeSelect>
           <NativeSelect
-            className="w-[150px]"
+            className="w-full sm:w-[150px]"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -154,7 +154,7 @@ export function AccountingPage() {
       {activeTab === 'sale' && (
         <Card>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[780px]">
               <thead>
                 <tr>
                   {['Invoice No', 'File', 'Customer', 'Date', 'ADMT', 'Unit Price', 'Total', 'Status', 'Actions'].map((h) => (
@@ -212,7 +212,7 @@ export function AccountingPage() {
       {/* Transaction table */}
       {activeTab !== 'sale' && <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[900px]">
             <thead>
               <tr>
                 {['Date', 'Type', 'File', 'Party', 'Description', 'Amount', 'Remaining', 'Pay Status', 'Doc Status', 'Actions'].map((h) => (

@@ -60,13 +60,13 @@ function KpiCard({
     <div className={`bg-white rounded-xl border ${c.border} p-4 flex items-start gap-3 shadow-sm`}>
       <div className={`${c.bg} ${c.icon} rounded-lg p-2.5 flex-shrink-0`}>{icon}</div>
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">{label}</div>
-        <div className="text-xl font-bold text-foreground">{value}</div>
+        <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5 truncate">{label}</div>
+        <div className="text-lg sm:text-xl font-bold text-foreground truncate">{value}</div>
         {sub && (
           <div className="flex items-center gap-1 mt-0.5">
             {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-green-500" />}
             {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
-            <span className="text-[11px] text-muted-foreground">{sub}</span>
+            <span className="text-[11px] text-muted-foreground truncate">{sub}</span>
           </div>
         )}
       </div>
@@ -229,7 +229,7 @@ export function DashboardPage() {
     <div className="space-y-5">
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Active Files"
           value={String(activeFiles)}

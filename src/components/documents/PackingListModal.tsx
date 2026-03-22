@@ -163,14 +163,14 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
               <DialogTitle>{isEdit ? 'Edit Packing List' : 'New Packing List'}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="truncate">
                 {file?.file_no ?? ''} — {file?.customer?.name ?? ''}
               </DialogDescription>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-shrink-0">
               <SmartFill mode="packing_list" onResult={handleOcrResult} formName="Packing List" />
               <OcrButton mode="packing_list" onResult={handleOcrResult} label="Read Packing List" />
             </div>
@@ -207,8 +207,8 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
           </FormRow>
 
           {/* Vehicle rows table */}
-          <div className="border border-border rounded-lg overflow-hidden mb-3">
-            <table className="w-full">
+          <div className="border border-border rounded-lg overflow-hidden mb-3 overflow-x-auto">
+            <table className="w-full min-w-[480px]">
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-left w-8">#</th>
@@ -274,7 +274,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
           </div>
 
           {/* Totals */}
-          <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 grid grid-cols-4 gap-3 text-xs">
+          <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>Vehicles: <strong>{rows.length}</strong></div>
             <div>Reels: <strong>{totalReels}</strong></div>
             <div>ADMT: <strong className="text-brand-600">{fN(totalAdmt, 3)}</strong></div>
@@ -294,7 +294,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
               className="hidden"
               onChange={handleImportFile}
             />
-            <div className="flex gap-2 flex-1">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-1">
               <Button type="button" variant="outline" size="sm" onClick={() => downloadPLTemplate()}>
                 ↓ Template
               </Button>

@@ -40,9 +40,9 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <h1 className="text-xl font-bold">{title}</h1>
-      {children && <div className="flex items-center gap-2">{children}</div>}
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <h1 className="text-xl font-bold truncate min-w-0">{title}</h1>
+      {children && <div className="flex flex-wrap items-center gap-2 flex-shrink-0">{children}</div>}
     </div>
   );
 }
@@ -113,9 +113,9 @@ export function FormRow({
   className?: string;
 }) {
   const gridCols = {
-    2: 'grid-cols-2',
-    3: 'grid-cols-3',
-    4: 'grid-cols-4',
+    2: 'grid-cols-1 sm:grid-cols-2',
+    3: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+    4: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4',
   };
 
   return (

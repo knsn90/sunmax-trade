@@ -183,14 +183,14 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
               <DialogTitle>{isEdit ? 'Edit Proforma' : 'New Proforma Invoice'}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="truncate">
                 {file?.file_no ?? ''} — {file?.customer?.name ?? ''}
               </DialogDescription>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-shrink-0">
               <SmartFill mode="proforma" onResult={handleOcrResult} formName="Proforma" />
               <OcrButton mode="proforma" onResult={handleOcrResult} />
             </div>
@@ -304,7 +304,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
             </FormGroup>
           </FormRow>
 
-          <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 flex gap-5 text-xs">
+          <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 flex flex-wrap gap-3 sm:gap-5 text-xs">
             <span>Subtotal: <strong className="text-brand-600">{fCurrency(subtotal, currency as 'USD')}</strong></span>
             <span>Freight: <strong>{fCurrency(freight, currency as 'USD')}</strong></span>
             <span>TOTAL: <strong className="text-brand-600">{fCurrency(total, currency as 'USD')}</strong></span>
@@ -326,7 +326,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
               className="hidden"
               onChange={handleImportFile}
             />
-            <div className="flex gap-2 flex-1">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-1">
               <Button type="button" variant="outline" size="sm" onClick={() => downloadProformaTemplate()}>
                 ↓ Template
               </Button>
