@@ -1,23 +1,28 @@
 import { useState } from 'react';
 import { useTransactions, useTransactionSummary, useDeleteTransaction } from '@/hooks/useTransactions';
+import { useSaleInvoices, useDeleteInvoice } from '@/hooks/useDocuments';
+import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { canWriteTransactions, isAdmin } from '@/lib/permissions';
-import { fDate, fCurrency, fUSD } from '@/lib/formatters';
+import { fDate, fCurrency, fUSD, fN } from '@/lib/formatters';
+import { printInvoice } from '@/lib/printDocument';
 import { TRANSACTION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/types/enums';
 import type { TransactionType, PaymentStatus } from '@/types/enums';
-import type { Transaction } from '@/types/database';
+import type { Transaction, Invoice } from '@/types/database';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
+import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
 import { Card, PageHeader, LoadingSpinner, EmptyState, StatCard } from '@/components/ui/shared';
 
-type AccTab = 'all' | 'buy' | 'svc' | 'cash';
+type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash';
 
 const TAB_LABELS: Record<AccTab, string> = {
   all: 'All',
   buy: 'Purchase Invoices',
   svc: 'Service Invoices',
+  sale: 'Sale Invoices',
   cash: 'Cash Flow',
 };
 
@@ -30,21 +35,31 @@ export function AccountingPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  const txnTab = activeTab === 'sale' ? 'all' : activeTab;
   const { data: txns = [], isLoading } = useTransactions({
-    tab: activeTab,
+    tab: txnTab,
     type: typeFilter as TransactionType | undefined || undefined,
     status: statusFilter as PaymentStatus | undefined || undefined,
   });
   const { data: summary } = useTransactionSummary();
+  const { data: settings } = useSettings();
+  const { data: bankAccounts } = useBankAccounts();
+  const defaultBank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
 
   const [txnModalOpen, setTxnModalOpen] = useState(false);
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
   const deleteTxn = useDeleteTransaction();
 
+  const { data: saleInvoices = [] } = useSaleInvoices();
+  const deleteInvoice = useDeleteInvoice();
+  const [editingSaleInv, setEditingSaleInv] = useState<Invoice | null>(null);
+  const [saleInvModalOpen, setSaleInvModalOpen] = useState(false);
+
   const tabDefaultType: Record<AccTab, string | undefined> = {
     all: undefined,
     buy: 'purchase_inv',
     svc: 'svc_inv',
+    sale: undefined,
     cash: 'receipt',
   };
 
@@ -133,8 +148,63 @@ export function AccountingPage() {
         </div>
       </Card>
 
+      {/* Sale Invoices Tab */}
+      {activeTab === 'sale' && (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  {['Invoice No', 'File', 'Customer', 'Date', 'ADMT', 'Unit Price', 'Total', 'Actions'].map((h) => (
+                    <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {saleInvoices.length === 0 ? (
+                  <tr><td colSpan={8}><EmptyState message="No sale invoices yet" /></td></tr>
+                ) : (
+                  saleInvoices.map((inv) => (
+                    <tr key={inv.id} className="hover:bg-gray-50/50">
+                      <td className="px-2.5 py-2 text-xs font-bold border-b border-border text-green-700">{inv.invoice_no}</td>
+                      <td className="px-2.5 py-2 text-xs border-b border-border">{inv.trade_file?.file_no ?? '—'}</td>
+                      <td className="px-2.5 py-2 text-xs border-b border-border">{inv.customer?.name ?? '—'}</td>
+                      <td className="px-2.5 py-2 text-[10px] text-muted-foreground border-b border-border">{fDate(inv.invoice_date)}</td>
+                      <td className="px-2.5 py-2 text-xs border-b border-border">{fN(inv.quantity_admt, 3)}</td>
+                      <td className="px-2.5 py-2 text-xs border-b border-border">{fCurrency(inv.unit_price)}</td>
+                      <td className="px-2.5 py-2 text-right font-semibold text-xs border-b border-border text-green-700">{fCurrency(inv.total)}</td>
+                      <td className="px-2.5 py-2 border-b border-border">
+                        <div className="flex gap-1">
+                          {writable && (
+                            <Button variant="edit" size="xs" onClick={() => { setEditingSaleInv(inv); setSaleInvModalOpen(true); }}>
+                              Edit
+                            </Button>
+                          )}
+                          {settings && (
+                            <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank)}>
+                              🖨 Print
+                            </Button>
+                          )}
+                          {admin && (
+                            <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInvoice.mutate(inv.id); }}>
+                              Del
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Transaction table */}
-      <Card>
+      {activeTab !== 'sale' && <Card>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -208,13 +278,20 @@ export function AccountingPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Card>}
 
       <TransactionModal
         open={txnModalOpen}
         onOpenChange={setTxnModalOpen}
         transaction={editingTxn}
         defaultType={tabDefaultType[activeTab]}
+      />
+      <InvoiceModal
+        open={saleInvModalOpen}
+        onOpenChange={setSaleInvModalOpen}
+        file={editingSaleInv?.trade_file ?? null}
+        invoice={editingSaleInv}
+        invoiceType="sale"
       />
     </>
   );

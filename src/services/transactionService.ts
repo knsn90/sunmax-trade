@@ -16,7 +16,7 @@ export interface TransactionFilters {
   type?: TransactionType;
   tradeFileId?: string;
   status?: PaymentStatus;
-  tab?: 'all' | 'buy' | 'svc' | 'cash';
+  tab?: 'all' | 'buy' | 'svc' | 'cash' | 'sale';
 }
 
 export const transactionService = {
@@ -40,6 +40,7 @@ export const transactionService = {
         buy: ['purchase_inv'],
         svc: ['svc_inv'],
         cash: ['receipt', 'payment'],
+        sale: ['sale_inv'],
       };
       const types = tabMap[filters.tab];
       if (types) {
@@ -133,6 +134,7 @@ export const transactionService = {
         purchase_inv: 'supplier',
         receipt: 'customer',
         payment: 'other',
+        sale_inv: 'customer',
       };
       partyType = typeToParty[input.transaction_type] as TransactionFormData['party_type'];
     }
@@ -247,27 +249,34 @@ export const transactionService = {
     totalRevenue: number;
     totalCost: number;
   }> {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('transaction_type, amount, paid_amount, amount_usd, paid_amount_usd, payment_status');
+    // Sale invoices live in the invoices table, not transactions
+    const [{ data: saleInvoices }, { data: txns }] = await Promise.all([
+      supabase.from('invoices').select('total').eq('invoice_type', 'sale'),
+      supabase.from('transactions').select('transaction_type, amount_usd, paid_amount_usd'),
+    ]);
 
-    if (error) throw new Error(error.message);
+    // Revenue = sum of all sale invoice totals
+    const totalRevenue = (saleInvoices ?? []).reduce((s, inv) => s + (inv.total ?? 0), 0);
 
-    let totalReceivable = 0;
-    let totalPayable = 0;
-    let totalRevenue = 0;
-    let totalCost = 0;
+    // Total receipts collected (cash received from customers)
+    const totalReceived = (txns ?? [])
+      .filter((t) => t.transaction_type === 'receipt')
+      .reduce((s, t) => s + (t.amount_usd ?? 0), 0);
 
-    for (const t of data ?? []) {
-      const remaining = (t.amount_usd ?? 0) - (t.paid_amount_usd ?? 0);
-      if (t.transaction_type === 'receipt') {
-        totalReceivable += remaining;
-        totalRevenue += t.amount_usd ?? 0;
-      } else {
-        totalPayable += remaining;
-        totalCost += t.amount_usd ?? 0;
-      }
-    }
+    // Receivable = what customers still owe us
+    const totalReceivable = Math.max(0, totalRevenue - totalReceived);
+
+    // Costs = purchase + service invoice totals
+    const costTxns = (txns ?? []).filter(
+      (t) => t.transaction_type === 'purchase_inv' || t.transaction_type === 'svc_inv',
+    );
+    const totalCost = costTxns.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
+
+    // Payable = what we still owe (unpaid portion)
+    const totalPayable = costTxns.reduce(
+      (s, t) => s + Math.max(0, (t.amount_usd ?? 0) - (t.paid_amount_usd ?? 0)),
+      0,
+    );
 
     return { totalReceivable, totalPayable, totalRevenue, totalCost };
   },

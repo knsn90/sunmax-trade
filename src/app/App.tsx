@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from '@/hooks/useAuth';
 import { router } from './router';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
+import { supabase } from '@/services/supabase';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +20,13 @@ const queryClient = new QueryClient({
 export function App() {
   useEffect(() => {
     applyTheme(getStoredTheme());
+
+    // If "Remember Me" was not checked, sign out on new browser session
+    const rememberMe = localStorage.getItem('sunmax_remember_me') === 'true';
+    const sessionActive = sessionStorage.getItem('authenticated') === 'true';
+    if (!rememberMe && !sessionActive) {
+      supabase.auth.signOut();
+    }
   }, []);
 
   return (

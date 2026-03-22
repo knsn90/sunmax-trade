@@ -9,12 +9,12 @@ import type { Invoice, PackingList, Proforma } from '@/types/database';
 import type { TradeFileStatus } from '@/types/enums';
 import { ToSaleModal } from '@/components/trade-files/ToSaleModal';
 import { DeliveryModal } from '@/components/trade-files/DeliveryModal';
+import { NewFileModal } from '@/components/trade-files/NewFileModal';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
-import { useDeleteInvoice } from '@/hooks/useDocuments';
-import { useDeletePackingList } from '@/hooks/useDocuments';
+import { useDeleteInvoice, useDeletePackingList } from '@/hooks/useDocuments';
 import { useDeleteProforma } from '@/hooks/useProformas';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -43,11 +43,14 @@ export function TradeFileDetailPage() {
   const [saleOpen, setSaleOpen] = useState(false);
   const [editSaleOpen, setEditSaleOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [editFileOpen, setEditFileOpen] = useState(false);
   const [txnModal, setTxnModal] = useState<{ open: boolean; type: 'purchase_inv' | 'svc_inv' }>({ open: false, type: 'purchase_inv' });
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [proformaOpen, setProformaOpen] = useState(false);
   const [packingOpen, setPackingOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
+  const [editSaleInvoice, setEditSaleInvoice] = useState<Invoice | null>(null);
+  const [saleInvoiceOpen, setSaleInvoiceOpen] = useState(false);
   const [editPL, setEditPL] = useState<PackingList | null>(null);
   const [editPI, setEditPI] = useState<Proforma | null>(null);
   // After delivery saved, auto-open packing list
@@ -120,9 +123,6 @@ export function TradeFileDetailPage() {
           {file.status === 'request' && (
             <Button onClick={() => setSaleOpen(true)}>→ Convert to Sale</Button>
           )}
-          {file.status !== 'request' && (
-            <Button variant="outline" onClick={() => setEditSaleOpen(true)}>✏️ Edit Sale</Button>
-          )}
           {file.status === 'sale' && (
             <Button variant="purple" onClick={openDeliveryWithPacking}>
               {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
@@ -130,8 +130,15 @@ export function TradeFileDetailPage() {
           )}
           {isSaleOrDel && (
             <>
-              <Button variant="secondary" onClick={() => { setEditInvoice(null); setInvoiceOpen(true); }}>
-                <Receipt className="h-3.5 w-3.5" /> Invoice
+              <Button variant="secondary" onClick={() => {
+                const existing = file.invoices?.find(inv => inv.invoice_type === 'sale') ?? null;
+                setEditSaleInvoice(existing);
+                setSaleInvoiceOpen(true);
+              }}>
+                <Receipt className="h-3.5 w-3.5" /> Sale Invoice
+              </Button>
+              <Button variant="outline" onClick={() => { setEditInvoice(null); setInvoiceOpen(true); }}>
+                <Receipt className="h-3.5 w-3.5" /> Com-Invoice
               </Button>
               <Button variant="outline" onClick={() => { setEditPL(null); setPackingOpen(true); }}>
                 <Package className="h-3.5 w-3.5" /> Packing List
@@ -148,7 +155,10 @@ export function TradeFileDetailPage() {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <Card>
           <CardContent>
-            <div className="text-2xs font-bold uppercase text-muted-foreground mb-2">File Info</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-2xs font-bold uppercase text-muted-foreground">File Info</div>
+              {writable && <Button variant="edit" size="xs" onClick={() => setEditFileOpen(true)}>Edit</Button>}
+            </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
               <dt className="text-muted-foreground">Status</dt>
               <dd><Badge variant={file.status as TradeFileStatus}>{TRADE_FILE_STATUS_LABELS[file.status]}</Badge></dd>
@@ -164,7 +174,10 @@ export function TradeFileDetailPage() {
         {file.selling_price ? (
           <Card className="border-brand-200 bg-brand-50/30">
             <CardContent>
-              <div className="text-2xs font-bold uppercase text-brand-700 mb-2">Sale Details</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-2xs font-bold uppercase text-brand-700">Sale Details</div>
+                {writable && <Button variant="edit" size="xs" onClick={() => setEditSaleOpen(true)}>Edit</Button>}
+              </div>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                 <dt className="text-muted-foreground">Sale Price</dt><dd className="font-bold text-brand-600">{fCurrency(file.selling_price)}/MT</dd>
                 <dt className="text-muted-foreground">Purchase</dt><dd>{fCurrency(file.purchase_price)}/MT</dd>
@@ -187,7 +200,10 @@ export function TradeFileDetailPage() {
       {file.delivered_admt && (
         <Card className="mb-4 bg-purple-50/30 border-purple-200">
           <CardContent>
-            <div className="text-2xs font-bold uppercase text-purple-700 mb-2">Delivery</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-2xs font-bold uppercase text-purple-700">Delivery</div>
+              {writable && <Button variant="edit" size="xs" onClick={() => setDeliveryOpen(true)}>Edit</Button>}
+            </div>
             <div className="grid grid-cols-4 gap-2 text-xs">
               <div><span className="text-2xs text-muted-foreground block">ADMT</span><span className="font-bold">{fN(file.delivered_admt, 3)}</span></div>
               <div><span className="text-2xs text-muted-foreground block">Gross (KG)</span><span>{fN(file.gross_weight_kg)}</span></div>
@@ -219,18 +235,36 @@ export function TradeFileDetailPage() {
         </div>
       )}
 
-      {/* Invoices */}
-      {file.invoices && file.invoices.length > 0 && (
+      {/* Sale Invoice - auto-generated on delivery */}
+      {file.invoices && file.invoices.some(inv => inv.invoice_type === 'sale') && (
         <div className="mb-4">
-          <div className="text-xs font-bold mb-2">Invoices</div>
-          {file.invoices.map((inv) => (
+          <div className="text-xs font-bold mb-2 text-green-700">Sale Invoice</div>
+          {file.invoices.filter(inv => inv.invoice_type === 'sale').map((inv) => (
+            <div key={inv.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-1.5">
+              <span className="font-bold text-xs flex-1">{inv.invoice_no}</span>
+              <span className="text-[11px] text-muted-foreground">{fDate(inv.invoice_date)}</span>
+              <span className="text-[11px] text-muted-foreground">{fN(inv.quantity_admt, 3)} ADMT × {fCurrency(inv.unit_price)}</span>
+              <span className="font-bold text-green-700 text-xs">{fCurrency(inv.total)}</span>
+              {writable && <Button variant="edit" size="xs" onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}>Edit</Button>}
+              {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank)}>🖨 Print</Button>}
+              {writable && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Com-Invoices */}
+      {file.invoices && file.invoices.some(inv => inv.invoice_type === 'commercial') && (
+        <div className="mb-4">
+          <div className="text-xs font-bold mb-2">Com-Invoices</div>
+          {file.invoices.filter(inv => inv.invoice_type === 'commercial').map((inv) => (
             <div key={inv.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
               <span className="font-bold text-xs flex-1">{inv.invoice_no}</span>
               <span className="text-[11px] text-muted-foreground">{fDate(inv.invoice_date)}</span>
               <span className="font-bold text-brand-500 text-xs">{fCurrency(inv.total)}</span>
               {writable && <Button variant="edit" size="xs" onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}>Edit</Button>}
               {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank)}>🖨 Print</Button>}
-              {writable && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
+              {writable && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete com-invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
             </div>
           ))}
         </div>
@@ -307,10 +341,12 @@ export function TradeFileDetailPage() {
       </Card>
 
       {/* Modals */}
+      <NewFileModal open={editFileOpen} onOpenChange={setEditFileOpen} editMode fileToEdit={file} />
       <ToSaleModal open={saleOpen} onOpenChange={setSaleOpen} file={file} />
       <ToSaleModal open={editSaleOpen} onOpenChange={setEditSaleOpen} file={file} editMode />
       <DeliveryModal open={deliveryOpen} onOpenChange={handleDeliveryClose} file={file} />
       <InvoiceModal open={invoiceOpen} onOpenChange={setInvoiceOpen} file={file} invoice={editInvoice} />
+      <InvoiceModal open={saleInvoiceOpen} onOpenChange={setSaleInvoiceOpen} file={file} invoice={editSaleInvoice} invoiceType="sale" />
       <ProformaModal open={proformaOpen} onOpenChange={setProformaOpen} file={file} proforma={editPI} />
       <PackingListModal open={packingOpen} onOpenChange={setPackingOpen} file={file} packingList={editPL} />
       <TransactionModal

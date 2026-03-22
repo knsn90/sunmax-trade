@@ -261,11 +261,11 @@ export function SettingsPage() {
             Stored in your browser only — never sent to our servers.
           </p>
           <ApiKeyField
-            label="OpenAI API Key"
+            label="Gemini API Key"
             loadKey={getOpenAIKey}
             saveKey={saveOpenAIKey}
-            placeholder="sk-..."
-            hint="Required for OCR document reading"
+            placeholder="AIza..."
+            hint="Required for OCR document reading (get free key at aistudio.google.com)"
           />
         </CardContent>
       </Card>
@@ -285,9 +285,11 @@ function ApiKeyField({
   placeholder?: string;
   hint?: string;
 }) {
-  const [value, setValue] = useState(loadKey());
+  const storedKey = loadKey();
+  const [value, setValue] = useState(storedKey);
   const [visible, setVisible] = useState(false);
   const [saved, setSaved] = useState(false);
+  const isSaved = value === storedKey && value.length > 0;
 
   function handleSave() {
     saveKey(value);
@@ -297,16 +299,21 @@ function ApiKeyField({
 
   return (
     <div>
-      <label className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1">
-        {label}
-      </label>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </label>
+        {isSaved && !saved && (
+          <span className="text-[10px] text-green-600 font-medium">✓ Key saved</span>
+        )}
+      </div>
       <div className="flex gap-2 items-center">
         <div className="relative flex-1">
           <Input
             type={visible ? 'text' : 'password'}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={placeholder}
+            placeholder={storedKey ? '••••••••••••••••' : placeholder}
             className="pr-8"
           />
           <button
@@ -317,7 +324,7 @@ function ApiKeyField({
             {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
           </button>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={handleSave}>
+        <Button type="button" variant="outline" size="sm" onClick={handleSave} disabled={value === storedKey && storedKey.length > 0}>
           {saved ? '✓ Saved' : 'Save'}
         </Button>
       </div>

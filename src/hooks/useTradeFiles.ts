@@ -110,6 +110,19 @@ export function useUpdateSaleDetails() {
   });
 }
 
+export function useUpdateFileInfo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: NewTradeFileFormData }) =>
+      tradeFileService.updateFileInfo(id, data),
+    onSuccess: (file) => {
+      qc.invalidateQueries({ queryKey: tradeFileKeys.all });
+      toast.success(`${file.file_no} updated`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 export function useChangeStatus() {
   const qc = useQueryClient();
   return useMutation({

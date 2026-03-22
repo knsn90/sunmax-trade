@@ -1,8 +1,12 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { deliverySchema, type DeliveryFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
 import { useConvertToDelivery } from '@/hooks/useTradeFiles';
+import { useUpsertSaleInvoice } from '@/hooks/useDocuments';
+import { today } from '@/lib/formatters';
+import { invoiceService } from '@/services/invoiceService';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -18,6 +22,7 @@ interface DeliveryModalProps {
 
 export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) {
   const convertToDelivery = useConvertToDelivery();
+  const upsertSaleInvoice = useUpsertSaleInvoice();
 
   const form = useForm<DeliveryFormData>({
     resolver: zodResolver(deliverySchema),
@@ -35,9 +40,63 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
 
   const { register, handleSubmit, formState: { errors }, reset } = form;
 
+  // Pre-fill existing delivery data when editing; sync septi_ref ↔ register_no
+  useEffect(() => {
+    if (open && file) {
+      reset({
+        delivered_admt: file.delivered_admt ?? file.tonnage_mt ?? 0,
+        gross_weight_kg: file.gross_weight_kg ?? 0,
+        packages: file.packages ?? 0,
+        arrival_date: file.arrival_date ?? '',
+        bl_number: file.bl_number ?? '',
+        septi_ref: file.septi_ref ?? file.register_no ?? '',
+        insurance_tr: file.insurance_tr ?? '',
+        insurance_ir: file.insurance_ir ?? '',
+      });
+    }
+  }, [open, file, reset]);
+
   async function onSubmit(data: DeliveryFormData) {
     if (!file) return;
     await convertToDelivery.mutateAsync({ id: file.id, data });
+
+    // Auto-create/update Sale Invoice: ADMT × selling_price
+    if (file.customer_id && file.selling_price) {
+      await upsertSaleInvoice.mutateAsync({
+        tradeFileId: file.id,
+        customerId: file.customer_id,
+        productName: file.product?.name ?? '',
+        data: {
+          invoice_date: today(),
+          currency: (file.currency as 'USD' | 'EUR' | 'TRY') ?? 'USD',
+          incoterms: file.incoterms ?? '',
+          proforma_no: file.proforma_ref ?? '',
+          cb_no: '',
+          insurance_no: '',
+          quantity_admt: data.delivered_admt,
+          unit_price: file.selling_price,
+          freight: file.freight_cost ?? 0,
+          gross_weight_kg: data.gross_weight_kg ?? undefined,
+          packing_info: '',
+          payment_terms: file.payment_terms ?? '',
+        },
+      });
+    }
+
+    // Auto-create/update Purchase Transaction: ADMT × purchase_price
+    if (file.supplier_id && file.purchase_price) {
+      await invoiceService.upsertPurchaseTransaction(
+        file.id,
+        file.supplier_id,
+        file.file_no,
+        data.delivered_admt,
+        file.purchase_price,
+        file.freight_cost ?? 0,
+        file.currency ?? 'USD',
+        today(),
+      );
+    }
+
     reset();
     onOpenChange(false);
   }

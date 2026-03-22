@@ -204,6 +204,25 @@ export const tradeFileService = {
     return data as TradeFile;
   },
 
+  async updateFileInfo(id: string, input: NewTradeFileFormData): Promise<TradeFile> {
+    const { data, error } = await supabase
+      .from('trade_files')
+      .update({
+        file_date: input.file_date,
+        customer_id: input.customer_id,
+        product_id: input.product_id,
+        tonnage_mt: input.tonnage_mt,
+        customer_ref: input.customer_ref,
+        notes: input.notes,
+      })
+      .eq('id', id)
+      .select(FILE_SELECT)
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as TradeFile;
+  },
+
   async changeStatus(id: string, newStatus: TradeFileStatus): Promise<TradeFile> {
     const { data, error } = await supabase
       .from('trade_files')

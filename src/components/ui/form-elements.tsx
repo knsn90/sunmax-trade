@@ -81,6 +81,7 @@ const badgeVariants = cva(
         purchase_inv: 'bg-amber-100 text-amber-800',
         receipt: 'bg-emerald-100 text-emerald-800',
         payment: 'bg-red-100 text-red-800',
+        sale_inv: 'bg-green-100 text-green-800',
       },
     },
     defaultVariants: {

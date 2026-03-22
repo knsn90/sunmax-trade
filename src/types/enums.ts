@@ -4,7 +4,7 @@
 export const TRADE_FILE_STATUSES = ['request', 'sale', 'delivery', 'completed', 'cancelled'] as const;
 export type TradeFileStatus = (typeof TRADE_FILE_STATUSES)[number];
 
-export const TRANSACTION_TYPES = ['svc_inv', 'purchase_inv', 'receipt', 'payment'] as const;
+export const TRANSACTION_TYPES = ['svc_inv', 'purchase_inv', 'receipt', 'payment', 'sale_inv'] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
 export const PAYMENT_STATUSES = ['open', 'partial', 'paid'] as const;
@@ -42,6 +42,7 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   purchase_inv: 'Purchase Invoice',
   receipt: 'Receipt',
   payment: 'Payment',
+  sale_inv: 'Sale Invoice',
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {

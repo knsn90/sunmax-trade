@@ -25,9 +25,10 @@ interface InvoiceModalProps {
   onOpenChange: (open: boolean) => void;
   file: TradeFile | null;
   invoice?: Invoice | null;  // If editing
+  invoiceType?: 'commercial' | 'sale';
 }
 
-export function InvoiceModal({ open, onOpenChange, file, invoice }: InvoiceModalProps) {
+export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 'commercial' }: InvoiceModalProps) {
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
   const createInvoice = useCreateInvoice();
@@ -143,18 +144,25 @@ export function InvoiceModal({ open, onOpenChange, file, invoice }: InvoiceModal
     printInvoice(invoice, settings, defaultBank);
   }
 
+  // Effective type: editing takes precedence over prop
+  const effectiveType = invoice?.invoice_type ?? invoiceType;
+
   async function onSubmit(data: InvoiceFormData) {
     if (isEdit && invoice) {
-      await updateInvoice.mutateAsync({ id: invoice.id, data });
+      await updateInvoice.mutateAsync({ id: invoice.id, data, existingInvoice: invoice });
     } else if (file) {
-      const prefix = settings?.file_prefix ?? 'ESN';
-      const invNo = formatInvoiceNo(prefix, Date.now() % 10000); // Simplified — production uses DB sequence
+      const isSale = effectiveType === 'sale';
+      const prefix = isSale ? 'SINV' : (settings?.file_prefix ?? 'ESN');
+      const invNo = isSale
+        ? `SINV-${new Date().getFullYear()}-${String(Date.now() % 100000).padStart(5, '0')}`
+        : formatInvoiceNo(prefix, Date.now() % 10000);
       await createInvoice.mutateAsync({
         tradeFileId: file.id,
         customerId: file.customer_id,
         productName: file.product?.name ?? '',
         invoiceNo: invNo,
         data,
+        invoiceType: effectiveType,
       });
     }
     onOpenChange(false);
@@ -168,7 +176,11 @@ export function InvoiceModal({ open, onOpenChange, file, invoice }: InvoiceModal
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle>{isEdit ? 'Edit Invoice' : 'New Invoice'}</DialogTitle>
+              <DialogTitle>
+                {invoice?.invoice_type === 'sale'
+                  ? (isEdit ? 'Edit Sale Invoice' : 'New Sale Invoice')
+                  : (isEdit ? 'Edit Com-Invoice' : 'New Com-Invoice')}
+              </DialogTitle>
               <DialogDescription>
                 {file?.file_no ?? ''} — {file?.customer?.name ?? invoice?.customer?.name ?? ''}
               </DialogDescription>

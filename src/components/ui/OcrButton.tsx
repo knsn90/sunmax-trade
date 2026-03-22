@@ -20,7 +20,7 @@ export function OcrButton({ onResult, mode, label = 'Read from Document' }: OcrB
     e.target.value = '';
 
     if (!getOpenAIKey()) {
-      toast.error('OpenAI API key not configured. Add it in Settings → Company → API Keys.');
+      toast.error('Gemini API key not configured. Add it in Settings → Company → API Keys.');
       return;
     }
 
@@ -51,7 +51,7 @@ export function OcrButton({ onResult, mode, label = 'Read from Document' }: OcrB
       <input
         ref={fileRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.pdf,.xlsx,.xls,.csv"
+        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.pdf,.xlsx,.xls,.csv,.docx,.doc"
         className="hidden"
         onChange={handleFile}
       />

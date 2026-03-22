@@ -69,7 +69,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         eta: file.eta ?? '',
         vessel_name: file.vessel_name ?? '',
         proforma_ref: file.proforma_ref ?? '',
-        register_no: file.register_no ?? '',
+        register_no: file.register_no ?? file.septi_ref ?? '',
       });
     } else if (open && !editMode) {
       reset({

@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { newTradeFileSchema, type NewTradeFileFormData } from '@/types/forms';
 import { useCustomers, useCreateCustomer, useProducts, useCreateProduct } from '@/hooks/useEntities';
-import { useCreateTradeFile } from '@/hooks/useTradeFiles';
+import { useCreateTradeFile, useUpdateFileInfo } from '@/hooks/useTradeFiles';
 import { useSettings } from '@/hooks/useSettings';
 import { generateFileNo } from '@/lib/generators';
 import { today } from '@/lib/formatters';
+import type { TradeFile } from '@/types/database';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,13 +15,19 @@ import { Textarea, NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { Plus } from 'lucide-react';
 
-interface Props { open: boolean; onOpenChange: (v: boolean) => void; }
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  editMode?: boolean;
+  fileToEdit?: TradeFile | null;
+}
 
-export function NewFileModal({ open, onOpenChange }: Props) {
+export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit }: Props) {
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
   const { data: settings } = useSettings();
   const createFile = useCreateTradeFile();
+  const updateFileInfo = useUpdateFileInfo();
   const createCust = useCreateCustomer();
   const createProd = useCreateProduct();
   const [showNewCust, setShowNewCust] = useState(false);
@@ -32,6 +39,21 @@ export function NewFileModal({ open, onOpenChange }: Props) {
     resolver: zodResolver(newTradeFileSchema),
     defaultValues: { customer_id: '', product_id: '', file_date: today(), tonnage_mt: 0, customer_ref: '', notes: '' },
   });
+
+  useEffect(() => {
+    if (open && editMode && fileToEdit) {
+      reset({
+        customer_id: fileToEdit.customer_id ?? '',
+        product_id: fileToEdit.product_id ?? '',
+        file_date: fileToEdit.file_date ?? today(),
+        tonnage_mt: fileToEdit.tonnage_mt ?? 0,
+        customer_ref: fileToEdit.customer_ref ?? '',
+        notes: fileToEdit.notes ?? '',
+      });
+    } else if (open && !editMode) {
+      reset({ customer_id: '', product_id: '', file_date: today(), tonnage_mt: 0, customer_ref: '', notes: '' });
+    }
+  }, [open, editMode, fileToEdit, reset]);
 
   async function addCust() {
     if (!newCustName.trim()) return;
@@ -45,16 +67,21 @@ export function NewFileModal({ open, onOpenChange }: Props) {
   }
 
   async function onSubmit(data: NewTradeFileFormData) {
-    const cust = customers.find((c) => c.id === data.customer_id);
-    const fileNo = generateFileNo(cust?.name ?? 'FILE', settings?.file_prefix ?? 'ESN', 0);
-    await createFile.mutateAsync({ ...data, file_no: fileNo });
-    reset(); setShowNewCust(false); setShowNewProd(false); onOpenChange(false);
+    if (editMode && fileToEdit) {
+      await updateFileInfo.mutateAsync({ id: fileToEdit.id, data });
+      onOpenChange(false);
+    } else {
+      const cust = customers.find((c) => c.id === data.customer_id);
+      const fileNo = generateFileNo(cust?.name ?? 'FILE', settings?.file_prefix ?? 'ESN', 0);
+      await createFile.mutateAsync({ ...data, file_no: fileNo });
+      reset(); setShowNewCust(false); setShowNewProd(false); onOpenChange(false);
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>New File</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editMode ? 'Edit File Info' : 'New File'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <FormRow>
             <FormGroup label="Customer *" error={errors.customer_id?.message}>
@@ -98,7 +125,11 @@ export function NewFileModal({ open, onOpenChange }: Props) {
           </FormRow>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={createFile.isPending}>{createFile.isPending ? 'Creating…' : 'Create File'}</Button>
+            <Button type="submit" disabled={createFile.isPending || updateFileInfo.isPending}>
+              {editMode
+                ? (updateFileInfo.isPending ? 'Saving…' : 'Save Changes')
+                : (createFile.isPending ? 'Creating…' : 'Create File')}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -25,24 +25,33 @@ export function useInvoicesByTradeFile(tradeFileId: string | undefined) {
 export function useCreateInvoice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: {
+    mutationFn: async (params: {
       tradeFileId: string;
       customerId: string;
       productName: string;
       invoiceNo: string;
       data: InvoiceFormData;
-    }) =>
-      invoiceService.create(
+      invoiceType?: 'commercial' | 'sale';
+    }) => {
+      const inv = await invoiceService.create(
         params.tradeFileId,
         params.customerId,
         params.productName,
         params.invoiceNo,
         params.data,
-      ),
+        params.invoiceType ?? 'commercial',
+      );
+      // If sale invoice, sync transaction
+      if (params.invoiceType === 'sale') {
+        await invoiceService.syncSaleInvoiceTransaction(inv, params.customerId, params.tradeFileId);
+      }
+      return inv;
+    },
     onSuccess: (inv) => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
-      toast.success(`Invoice ${inv.invoice_no} created`);
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success(`${inv.invoice_type === 'sale' ? 'Sale Invoice' : 'Invoice'} ${inv.invoice_no} created`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -51,11 +60,18 @@ export function useCreateInvoice() {
 export function useUpdateInvoice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: InvoiceFormData }) =>
-      invoiceService.update(id, data),
+    mutationFn: async ({ id, data, existingInvoice }: { id: string; data: InvoiceFormData; existingInvoice?: import('@/types/database').Invoice }) => {
+      const updated = await invoiceService.update(id, data);
+      // If it's a sale invoice, sync the accounting transaction
+      if (existingInvoice?.invoice_type === 'sale' && existingInvoice.trade_file_id && existingInvoice.customer_id) {
+        await invoiceService.syncSaleInvoiceTransaction(updated, existingInvoice.customer_id, existingInvoice.trade_file_id);
+      }
+      return updated;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Invoice updated');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -70,6 +86,30 @@ export function useDeleteInvoice() {
       qc.invalidateQueries({ queryKey: ['invoices'] });
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success('Invoice deleted');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useSaleInvoices() {
+  return useQuery({
+    queryKey: ['invoices', 'sale'],
+    queryFn: () => invoiceService.listSaleInvoices(),
+  });
+}
+
+export function useUpsertSaleInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      tradeFileId: string;
+      customerId: string;
+      productName: string;
+      data: import('@/types/forms').InvoiceFormData;
+    }) => invoiceService.upsertSaleInvoice(params.tradeFileId, params.customerId, params.productName, params.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: tradeFileKeys.all });
     },
     onError: (err: Error) => toast.error(err.message),
   });

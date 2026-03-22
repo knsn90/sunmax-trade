@@ -24,7 +24,10 @@
       "Bash(sed -i '' \"s/''+ Kullanıcı Ekle''/''+ Add User''/g\" src/pages/SettingsPage.tsx)",
       "Bash(grep -rn \"Tümü\\\\|Toplam\\\\|Borç\\\\|Alacak\\\\|Gelir\\\\|Gider\\\\|Ödendi\\\\|Kısmi\\\\|Açık\\\\b\\\\|Sil\\\\b\\\\|Tipler\\\\|Muhasebe\\\\|Raporlar\\\\|Teslimat\\\\|Tamamlandı\\\\|İptal\\\\|gün\\\\b\\\\|Veri yok\\\\|bulunam\\\\|seçin\\\\|Satın Alma\\\\|Hizmet Fatura\\\\|Nakit Akışı\\\\|yükleniyor\" --include=*.tsx --include=*.ts /Users/saber/Downloads/sunmax-trade/src/)",
       "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")",
-      "Bash(node -e \"const p = require\\(''/Users/saber/Downloads/sunmax-trade/node_modules/pdfjs-dist/package.json''\\); console.log\\(p.version\\)\")"
+      "Bash(node -e \"const p = require\\(''/Users/saber/Downloads/sunmax-trade/node_modules/pdfjs-dist/package.json''\\); console.log\\(p.version\\)\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

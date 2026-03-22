@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { Invoice } from '@/types/database';
 import type { InvoiceFormData } from '@/types/forms';
+import { today } from '@/lib/formatters';
 
 const INVOICE_SELECT = `
   *,
@@ -47,6 +48,7 @@ export const invoiceService = {
     productName: string,
     invoiceNo: string,
     input: InvoiceFormData,
+    invoiceType: 'commercial' | 'sale' = 'commercial',
   ): Promise<Invoice> {
     const subtotal = input.quantity_admt * input.unit_price;
     const total = subtotal + (input.freight ?? 0);
@@ -72,12 +74,175 @@ export const invoiceService = {
         gross_weight_kg: input.gross_weight_kg ?? null,
         packing_info: input.packing_info || null,
         payment_terms: input.payment_terms || null,
+        invoice_type: invoiceType,
       })
       .select(INVOICE_SELECT)
       .single();
 
     if (error) throw new Error(error.message);
     return data as Invoice;
+  },
+
+  async upsertSaleInvoice(
+    tradeFileId: string,
+    customerId: string,
+    productName: string,
+    input: InvoiceFormData,
+  ): Promise<Invoice> {
+    const subtotal = input.quantity_admt * input.unit_price;
+    const total = subtotal + (input.freight ?? 0);
+
+    // Check if a sale invoice already exists for this trade file
+    const { data: existing } = await supabase
+      .from('invoices')
+      .select('id, invoice_no')
+      .eq('trade_file_id', tradeFileId)
+      .eq('invoice_type', 'sale')
+      .maybeSingle();
+
+    let invoice: Invoice;
+
+    if (existing?.id) {
+      // Update existing sale invoice
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({
+          invoice_date: input.invoice_date,
+          currency: input.currency,
+          incoterms: input.incoterms || null,
+          quantity_admt: input.quantity_admt,
+          unit_price: input.unit_price,
+          freight: input.freight,
+          subtotal,
+          total,
+          payment_terms: input.payment_terms || null,
+          gross_weight_kg: input.gross_weight_kg ?? null,
+        })
+        .eq('id', existing.id)
+        .select(INVOICE_SELECT)
+        .single();
+      if (error) throw new Error(error.message);
+      invoice = data as Invoice;
+    } else {
+      // Create new sale invoice
+      const invNo = `SINV-${new Date().getFullYear()}-${String(Date.now() % 100000).padStart(5, '0')}`;
+      invoice = await this.create(tradeFileId, customerId, productName, invNo, input, 'sale');
+    }
+
+    // Sync transaction: customer receivable
+    await this.syncSaleInvoiceTransaction(invoice, customerId, tradeFileId);
+    return invoice;
+  },
+
+  async syncSaleInvoiceTransaction(invoice: Invoice, customerId: string, tradeFileId: string): Promise<void> {
+    // Use the already-calculated total from the invoice record directly
+    const total = invoice.total;
+
+    // Find existing sale_inv transaction for this trade file
+    const { data: existingTxn } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('trade_file_id', tradeFileId)
+      .eq('transaction_type', 'sale_inv')
+      .maybeSingle();
+
+    if (existingTxn?.id) {
+      await supabase
+        .from('transactions')
+        .update({
+          transaction_date: invoice.invoice_date ?? today(),
+          description: `Sale Invoice ${invoice.invoice_no}`,
+          reference_no: invoice.invoice_no,
+          currency: invoice.currency,
+          amount: total,
+          amount_usd: total,
+        })
+        .eq('id', existingTxn.id);
+    } else {
+      await supabase
+        .from('transactions')
+        .insert({
+          transaction_date: invoice.invoice_date ?? today(),
+          transaction_type: 'sale_inv',
+          trade_file_id: tradeFileId,
+          party_type: 'customer',
+          customer_id: customerId,
+          description: `Sale Invoice ${invoice.invoice_no}`,
+          reference_no: invoice.invoice_no,
+          currency: invoice.currency,
+          amount: total,
+          exchange_rate: 1,
+          amount_usd: total,
+          paid_amount: 0,
+          paid_amount_usd: 0,
+          payment_status: 'open',
+        });
+    }
+  },
+
+  async upsertPurchaseTransaction(
+    tradeFileId: string,
+    supplierId: string,
+    fileNo: string,
+    deliveredAdmt: number,
+    purchasePrice: number,
+    freightCost: number,
+    currency: string,
+    invoiceDate: string,
+  ): Promise<void> {
+    const subtotal = deliveredAdmt * purchasePrice;
+    const total = subtotal + (freightCost ?? 0);
+
+    // Find existing purchase_inv transaction for this trade file (auto-generated)
+    const { data: existingTxn } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('trade_file_id', tradeFileId)
+      .eq('transaction_type', 'purchase_inv')
+      .eq('supplier_id', supplierId)
+      .maybeSingle();
+
+    if (existingTxn?.id) {
+      await supabase
+        .from('transactions')
+        .update({
+          transaction_date: invoiceDate,
+          description: `Purchase Invoice - ${fileNo}`,
+          currency,
+          amount: total,
+          amount_usd: total,
+        })
+        .eq('id', existingTxn.id);
+    } else {
+      await supabase
+        .from('transactions')
+        .insert({
+          transaction_date: invoiceDate,
+          transaction_type: 'purchase_inv',
+          trade_file_id: tradeFileId,
+          party_type: 'supplier',
+          supplier_id: supplierId,
+          description: `Purchase Invoice - ${fileNo}`,
+          reference_no: fileNo,
+          currency,
+          amount: total,
+          exchange_rate: 1,
+          amount_usd: total,
+          paid_amount: 0,
+          paid_amount_usd: 0,
+          payment_status: 'open',
+        });
+    }
+  },
+
+  async listSaleInvoices(): Promise<Invoice[]> {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select(INVOICE_SELECT)
+      .eq('invoice_type', 'sale')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as Invoice[];
   },
 
   async update(id: string, input: InvoiceFormData): Promise<Invoice> {

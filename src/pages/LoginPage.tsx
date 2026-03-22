@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,19 +8,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormGroup } from '@/components/ui/shared';
 
+const REMEMBER_EMAIL_KEY = 'sunmax_remember_email';
+const REMEMBER_FLAG_KEY = 'sunmax_remember_me';
+
 export function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem(REMEMBER_FLAG_KEY) === 'true');
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
+  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
+    if (savedEmail) setValue('email', savedEmail);
+  }, [setValue]);
 
   async function onSubmit(data: LoginFormData) {
     setError('');
     try {
       await signIn(data.email, data.password);
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_EMAIL_KEY, data.email);
+        localStorage.setItem(REMEMBER_FLAG_KEY, 'true');
+        sessionStorage.setItem('authenticated', 'true');
+      } else {
+        localStorage.removeItem(REMEMBER_EMAIL_KEY);
+        localStorage.removeItem(REMEMBER_FLAG_KEY);
+        sessionStorage.setItem('authenticated', 'true');
+      }
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -54,6 +72,19 @@ export function LoginPage() {
                 {...register('password')}
               />
             </FormGroup>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-border accent-brand-500 cursor-pointer"
+              />
+              <label htmlFor="remember-me" className="text-xs text-muted-foreground cursor-pointer select-none">
+                Remember me
+              </label>
+            </div>
 
             {error && (
               <div className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">

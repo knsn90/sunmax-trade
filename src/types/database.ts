@@ -236,6 +236,7 @@ export interface Invoice extends Timestamps {
   packing_info: string | null;
   payment_terms: string | null;
   pdf_url: string | null;
+  invoice_type: 'commercial' | 'sale';
   created_by: string | null;
   // Joined
   trade_file?: TradeFile;
