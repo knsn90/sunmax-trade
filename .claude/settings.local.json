@@ -2,32 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "mcp__Claude_Preview__preview_start",
-      "Read(//private/tmp/**)",
-      "Bash(python3 -c \":*)",
-      "Bash(pip3 install:*)",
-      "Bash(curl -s -X POST \"https://gramxnhbkbnjbmkdomjf.supabase.co/rest/v1/rpc/exec_sql\" -H \"apikey: sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP\" -H \"Authorization: Bearer sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP\" -H \"Content-Type: application/json\" -d '{\"\"query\"\":\"\"ALTER TABLE trade_files ADD COLUMN IF NOT EXISTS vessel_name TEXT DEFAULT \\\\\"\"\\\\\"\"; ALTER TABLE trade_files ADD COLUMN IF NOT EXISTS register_no TEXT DEFAULT \\\\\"\"\\\\\"\";\"\"}')",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(grep -rn \"Tümü\\\\|Toplam\\\\|Borç\\\\|Alacak\\\\|Gelir\\\\|Gider\\\\|Yeni İşlem\\\\|Nakit Akışı\\\\|Hizmet Fatura\\\\|Satın Alma\\\\|Dosya\\\\b\\\\|Taraf\\\\|Ödenen\\\\|Ödendi\\\\|Kısmi\\\\|Açık\\\\b\\\\|Sil\\\\b\\\\|Tipler\\\\|Durumlar\\\\|Muhasebe\\\\|Raporlar\\\\|Teslimat\\\\|Tamamlandı\\\\|İptal\\\\|Gemi\\\\|gün\\\\|bugün\\\\|yok\\\\b\\\\|seçin\\\\|bulunam\" --include=*.tsx --include=*.ts /Users/saber/Downloads/sunmax-trade/src/)",
-      "Bash(grep -rn \"Tümü\\\\|Toplam\\\\|Borç\\\\|Alacak\\\\|Gelir\\\\|Gider\\\\|Ödendi\\\\|Kısmi\\\\|Açık\\\\b\\\\|Tipler\\\\|Durumlar\\\\|Muhasebe\\\\|Raporlar\\\\|Teslimat\\\\|Tamamlandı\\\\|İptal\\\\|gün\\\\b\\\\|yok\\\\b\\\\|seçin\\\\|bulunam\\\\|Satın\\\\|Hizmet\\\\|Nakit\" --include=*.tsx --include=*.ts /Users/saber/Downloads/sunmax-trade/src/pages/PipelinePage.tsx /Users/saber/Downloads/sunmax-trade/src/pages/SettingsPage.tsx)",
-      "Bash(sed -i '' \"s/Ödenen tutar, toplam tutarı aşamaz/Paid amount cannot exceed the total amount/g\" /Users/saber/Downloads/sunmax-trade/src/types/forms.ts)",
-      "Bash(sed -i '' \"s/Bildirim yok 🎉/No notifications 🎉/g\" /Users/saber/Downloads/sunmax-trade/src/components/layout/NotificationBell.tsx)",
-      "Bash(sed -i '' \"s/Bildirimler/Notifications/g\" /Users/saber/Downloads/sunmax-trade/src/components/layout/NotificationBell.tsx)",
-      "Bash(sed -i '' 's/aria-label=\"\"Bildirimler\"\"/aria-label=\"\"Notifications\"\"/g' /Users/saber/Downloads/sunmax-trade/src/components/layout/NotificationBell.tsx)",
-      "Bash(sed -i '' \"s/Vessel Name \\(Gemi\\)/Vessel Name/g\" /Users/saber/Downloads/sunmax-trade/src/components/trade-files/ToSaleModal.tsx)",
-      "Bash(sed -i '' \"s/Bekleyen uyarı yok 🎉/No pending alerts 🎉/g\" /Users/saber/Downloads/sunmax-trade/src/pages/DashboardPage.tsx)",
-      "Bash(sed -i '' \"s/Giderler \\(Expenses\\)/Expenses/g\" src/pages/TradeFileDetailPage.tsx)",
-      "Bash(sed -i '' \"s/+ Satın Alma Faturası/+ Purchase Invoice/g\" src/pages/TradeFileDetailPage.tsx)",
-      "Bash(sed -i '' \"s/+ Hizmet Faturası/+ Service Invoice/g\" src/pages/TradeFileDetailPage.tsx)",
-      "Bash(sed -i '' \"s/''✕ İptal''/''✕ Cancel''/g\" src/pages/SettingsPage.tsx)",
-      "Bash(sed -i '' \"s/''+ Kullanıcı Ekle''/''+ Add User''/g\" src/pages/SettingsPage.tsx)",
-      "Bash(grep -rn \"Tümü\\\\|Toplam\\\\|Borç\\\\|Alacak\\\\|Gelir\\\\|Gider\\\\|Ödendi\\\\|Kısmi\\\\|Açık\\\\b\\\\|Sil\\\\b\\\\|Tipler\\\\|Muhasebe\\\\|Raporlar\\\\|Teslimat\\\\|Tamamlandı\\\\|İptal\\\\|gün\\\\b\\\\|Veri yok\\\\|bulunam\\\\|seçin\\\\|Satın Alma\\\\|Hizmet Fatura\\\\|Nakit Akışı\\\\|yükleniyor\" --include=*.tsx --include=*.ts /Users/saber/Downloads/sunmax-trade/src/)",
-      "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")",
-      "Bash(node -e \"const p = require\\(''/Users/saber/Downloads/sunmax-trade/node_modules/pdfjs-dist/package.json''\\); console.log\\(p.version\\)\")",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl -s https://api.anthropic.com/v1/models:*)",
+      "Bash(git reset:*)"
     ]
   }
 }
