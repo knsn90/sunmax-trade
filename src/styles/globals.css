@@ -27,6 +27,15 @@
     -moz-osx-font-smoothing: grayscale;
     font-size: 13px;
   }
+
+  /* ── Donezo theme overrides ── */
+  [data-theme="donezo"] body {
+    background-color: #f5f7fa;
+  }
+
+  [data-theme="donezo"] * {
+    border-color: #e8eaed;
+  }
 }
 
 @layer utilities {

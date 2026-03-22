@@ -14,6 +14,7 @@ import { NativeSelect } from '@/components/ui/form-elements';
 import { Card, CardContent, PageHeader, LoadingSpinner, FormRow, FormGroup } from '@/components/ui/shared';
 import { Upload, Trash2, Eye, EyeOff, Download, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { THEME_PRESETS, applyTheme, getStoredTheme, type ThemePreset } from '@/lib/theme';
+import { useTheme, type AppTheme } from '@/contexts/ThemeContext';
 import { getApiKeyFromCache, saveApiKeyToDb, deleteApiKeyFromDb, type ApiService } from '@/services/companySettingsService';
 import { supabase } from '@/services/supabase';
 
@@ -410,46 +411,99 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
 
 function ThemeTab() {
   const [active, setActive] = useState<ThemePreset>(getStoredTheme());
+  const { theme, setTheme } = useTheme();
 
   function handleSelect(preset: ThemePreset) {
     setActive(preset);
     applyTheme(preset);
   }
 
+  const appThemes: { id: AppTheme; name: string; desc: string; preview: string }[] = [
+    {
+      id: 'paciolo',
+      name: 'Paciolo',
+      desc: 'Blue gradient, colorful cards',
+      preview: 'linear-gradient(135deg, #1a1f6e 0%, #3b5bdb 100%)',
+    },
+    {
+      id: 'donezo',
+      name: 'Donezo',
+      desc: 'Clean white, red accent',
+      preview: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)',
+    },
+  ];
+
   return (
-    <Card>
-      <CardContent>
-        <div className="text-[13px] font-bold mb-1">Brand Color</div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Choose the primary color used throughout the application.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {(Object.entries(THEME_PRESETS) as [ThemePreset, typeof THEME_PRESETS[ThemePreset]][]).map(([key, preset]) => (
-            <button
-              key={key}
-              onClick={() => handleSelect(key)}
-              title={preset.name}
-              className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all ${
-                active === key
-                  ? 'border-brand-500 bg-brand-50'
-                  : 'border-transparent hover:border-gray-200'
-              }`}
-            >
-              <span
-                className="w-8 h-8 rounded-full shadow-sm block"
-                style={{ backgroundColor: preset.color500 }}
-              />
-              <span className="text-[10px] font-medium text-muted-foreground">{preset.name}</span>
-            </button>
-          ))}
-        </div>
-        {active && (
-          <p className="mt-4 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{THEME_PRESETS[active].name}</span> theme applied. Changes are saved in your browser.
+    <div className="space-y-4">
+      {/* App Layout Theme */}
+      <Card>
+        <CardContent>
+          <div className="text-[13px] font-bold mb-1">Appearance</div>
+          <p className="text-xs text-muted-foreground mb-4">Choose your preferred interface theme</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {appThemes.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTheme(t.id)}
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                  theme === t.id
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl flex-shrink-0 shadow-md" style={{ background: t.preview }} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-gray-900">{t.name}</div>
+                  <div className="text-xs text-gray-400 truncate">{t.desc}</div>
+                </div>
+                {theme === t.id && (
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Brand Color */}
+      <Card>
+        <CardContent>
+          <div className="text-[13px] font-bold mb-1">Brand Color</div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Choose the primary color used throughout the application.
           </p>
-        )}
-      </CardContent>
-    </Card>
+          <div className="flex flex-wrap gap-3">
+            {(Object.entries(THEME_PRESETS) as [ThemePreset, typeof THEME_PRESETS[ThemePreset]][]).map(([key, preset]) => (
+              <button
+                key={key}
+                onClick={() => handleSelect(key)}
+                title={preset.name}
+                className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all ${
+                  active === key
+                    ? 'border-brand-500 bg-brand-50'
+                    : 'border-transparent hover:border-gray-200'
+                }`}
+              >
+                <span
+                  className="w-8 h-8 rounded-full shadow-sm block"
+                  style={{ backgroundColor: preset.color500 }}
+                />
+                <span className="text-[10px] font-medium text-muted-foreground">{preset.name}</span>
+              </button>
+            ))}
+          </div>
+          {active && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">{THEME_PRESETS[active].name}</span> theme applied. Changes are saved in your browser.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

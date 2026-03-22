@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   Home, BarChart3, FileText, LayoutDashboard, MoreHorizontal,
   Receipt, Package, LineChart, Users, Truck, Clock, Box, Settings, X,
@@ -30,12 +31,24 @@ export function BottomNav() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDonezo = theme === 'donezo';
 
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
 
   const isMoreActive = moreItems.some(item =>
     location.pathname === item.to || location.pathname.startsWith(item.to + '/')
   );
+
+  const activeColor = isDonezo ? 'text-red-600' : 'text-blue-600';
+  const activeBg = isDonezo ? 'bg-red-50' : 'bg-blue-50';
+  const fabGradient = isDonezo
+    ? 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)'
+    : 'linear-gradient(135deg, #3b5bdb 0%, #4f6ef7 100%)';
+  const fabShadow = isDonezo ? 'shadow-red-300/50' : 'shadow-blue-300/50';
+  const drawerActiveClass = isDonezo
+    ? 'bg-red-600 text-white shadow-md shadow-red-200'
+    : 'bg-blue-600 text-white shadow-md shadow-blue-200';
 
   return (
     <>
@@ -77,7 +90,7 @@ export function BottomNav() {
                 className={cn(
                   'flex flex-col items-center gap-2 p-3 rounded-2xl transition-all',
                   isActive
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                    ? drawerActiveClass
                     : 'text-gray-500 bg-gray-50 hover:bg-gray-100 active:scale-95',
                 )}
               >
@@ -102,8 +115,8 @@ export function BottomNav() {
                 <div key="fab" className="flex-1 flex justify-center items-center">
                   <button
                     onClick={() => navigate('/files')}
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-300/50 active:scale-95 transition-transform"
-                    style={{ background: 'linear-gradient(135deg, #3b5bdb 0%, #4f6ef7 100%)' }}
+                    className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform', fabShadow)}
+                    style={{ background: fabGradient }}
                   >
                     <FileText className="h-5 w-5 text-white" />
                   </button>
@@ -119,7 +132,7 @@ export function BottomNav() {
                 className={({ isActive }) =>
                   cn(
                     'flex-1 flex flex-col items-center justify-center gap-1 transition-colors py-1',
-                    isActive ? 'text-blue-600' : 'text-gray-400',
+                    isActive ? activeColor : 'text-gray-400',
                   )
                 }
               >
@@ -127,7 +140,7 @@ export function BottomNav() {
                   <>
                     <div className={cn(
                       'p-1.5 rounded-xl transition-all',
-                      isActive ? 'bg-blue-50' : '',
+                      isActive ? activeBg : '',
                     )}>
                       <Icon className={cn('h-5 w-5', isActive && 'stroke-[2.5]')} />
                     </div>
@@ -143,12 +156,12 @@ export function BottomNav() {
             onClick={() => setDrawerOpen(!drawerOpen)}
             className={cn(
               'flex-1 flex flex-col items-center justify-center gap-1 transition-colors py-1',
-              isMoreActive || drawerOpen ? 'text-blue-600' : 'text-gray-400',
+              isMoreActive || drawerOpen ? activeColor : 'text-gray-400',
             )}
           >
             <div className={cn(
               'p-1.5 rounded-xl transition-all',
-              (isMoreActive || drawerOpen) ? 'bg-blue-50' : '',
+              (isMoreActive || drawerOpen) ? activeBg : '',
             )}>
               <MoreHorizontal className={cn('h-5 w-5', (isMoreActive || drawerOpen) && 'stroke-[2.5]')} />
             </div>

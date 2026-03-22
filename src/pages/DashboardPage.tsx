@@ -7,6 +7,7 @@ import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useTransactionSummary } from '@/hooks/useTransactions';
 import { fUSD } from '@/lib/formatters';
 import { LoadingSpinner } from '@/components/ui/shared';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   TrendingUp, TrendingDown, FileText, Clock, AlertTriangle, CheckCircle2,
   ArrowRight, Package, DollarSign, BarChart2, Inbox,
@@ -39,7 +40,7 @@ function formatMonthLabel(key: string): string {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function KpiCard({
-  label, value, sub, icon, trend, color = 'blue',
+  label, value, sub, icon, trend, color = 'blue', featured = false,
 }: {
   label: string;
   value: string;
@@ -47,7 +48,11 @@ function KpiCard({
   icon: React.ReactNode;
   trend?: 'up' | 'down' | 'neutral';
   color?: 'blue' | 'green' | 'red' | 'orange' | 'purple';
+  featured?: boolean;
 }) {
+  const { theme } = useTheme();
+  const isDonezo = theme === 'donezo';
+
   const gradients = {
     blue:   'card-gradient-blue',
     green:  'card-gradient-green',
@@ -55,11 +60,70 @@ function KpiCard({
     orange: 'card-gradient-gold',
     purple: 'card-gradient-purple',
   };
+
+  // Donezo featured card (first card - dark red like Donezo's dark green)
+  if (isDonezo && featured) {
+    return (
+      <div className="rounded-2xl p-5 flex flex-col gap-3 shadow-md relative overflow-hidden" style={{ background: '#7f1d1d' }}>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8" />
+        <div className="flex items-start justify-between">
+          <div className="text-[11px] text-white/70 font-semibold uppercase tracking-wide">{label}</div>
+          <button className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M17 7H7M17 7v10" />
+            </svg>
+          </button>
+        </div>
+        <div className="text-3xl font-black text-white">{value}</div>
+        {sub && (
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 bg-white/15 rounded-full px-2 py-0.5">
+              {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-300" />}
+              {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-300" />}
+              <span className="text-[10px] text-white/80 font-medium">{sub}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Donezo regular card (white)
+  if (isDonezo) {
+    const donezoIconColors: Record<string, string> = {
+      blue:   'bg-blue-50 text-blue-600',
+      green:  'bg-green-50 text-green-600',
+      red:    'bg-red-50 text-red-600',
+      orange: 'bg-amber-50 text-amber-600',
+      purple: 'bg-purple-50 text-purple-600',
+    };
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start gap-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className={`${donezoIconColors[color]} rounded-xl p-2.5 flex-shrink-0`}>{icon}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide mb-1 truncate">{label}</div>
+          <div className="text-2xl font-black text-gray-900 truncate">{value}</div>
+          {sub && (
+            <div className="flex items-center gap-1 mt-1">
+              {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-green-500" />}
+              {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
+              <span className="text-[10px] text-gray-400 truncate">{sub}</span>
+            </div>
+          )}
+        </div>
+        <button className="w-7 h-7 border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 mt-1">
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M17 7H7M17 7v10" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  // Paciolo gradient card
   return (
     <div className={`${gradients[color]} rounded-2xl p-4 flex items-start gap-3 shadow-lg shadow-black/10`}>
-      <div className="bg-white/20 rounded-xl p-2.5 flex-shrink-0 text-white">
-        {icon}
-      </div>
+      <div className="bg-white/20 rounded-xl p-2.5 flex-shrink-0 text-white">{icon}</div>
       <div className="min-w-0 flex-1">
         <div className="text-[11px] text-white/70 font-semibold uppercase tracking-wide mb-0.5 truncate">{label}</div>
         <div className="text-lg sm:text-xl font-bold text-white truncate">{value}</div>
@@ -238,6 +302,7 @@ export function DashboardPage() {
           icon={<FileText className="h-4 w-4" />}
           color="blue"
           trend="neutral"
+          featured={true}
         />
         <KpiCard
           label="Receivable"
