@@ -13,7 +13,7 @@ interface RatesResponse {
  */
 async function fetchRates(): Promise<RatesResponse> {
   // frankfurter.app — completely free, no API key, reliable
-  const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR,TRY,GBP,CHF');
+  const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR,TRY,GBP,CHF,CNY');
   if (!res.ok) throw new Error('Exchange rate fetch failed');
   const json = await res.json();
   return {

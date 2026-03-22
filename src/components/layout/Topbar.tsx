@@ -5,6 +5,7 @@ import { LogOut, RefreshCw, Search } from 'lucide-react';
 import { fDate } from '@/lib/formatters';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { useExchangeRates } from '@/hooks/useExchangeRate';
+import { useHardwoodPrice } from '@/hooks/useHardwoodPrice';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 
@@ -26,24 +27,56 @@ const PAGE_TITLES: Record<string, string> = {
 
 function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
   const { data, isLoading, isError, refetch, isFetching } = useExchangeRates();
+  const { data: hw } = useHardwoodPrice();
+
   if (isLoading) return <span className={cn('text-[10px] animate-pulse', isDonezo ? 'text-gray-400' : 'text-white/60')}>Loading…</span>;
   if (isError || !data) return null;
-  const eur = data.rates['EUR'];
+
+  const eur    = data.rates['EUR'];
   const tryRate = data.rates['TRY'];
+
+  const sep = <span className={isDonezo ? 'text-gray-200' : 'text-white/20'}>|</span>;
+  const lbl = (t: string) => <span className={cn('text-[10px] font-medium', isDonezo ? 'text-gray-400' : 'text-white/60')}>{t}</span>;
+  const val = (children: React.ReactNode) => (
+    <span className={cn('text-[10px] font-semibold', isDonezo ? 'text-gray-800' : 'text-white')}>{children}</span>
+  );
+
   return (
     <div className={cn(
-      'hidden md:flex items-center gap-2 rounded-lg px-2.5 py-1',
-      isDonezo ? 'bg-gray-100 text-gray-600' : 'bg-white/15 backdrop-blur-sm',
+      'hidden md:flex items-center gap-2 rounded-lg px-2.5 py-1.5 flex-wrap',
+      isDonezo ? 'bg-gray-100' : 'bg-white/15 backdrop-blur-sm',
     )}>
-      <span className={cn('text-[10px] font-medium', isDonezo ? 'text-gray-400' : 'text-white/70')}>Rate</span>
-      <span className={cn('text-[10px] font-semibold', isDonezo ? 'text-gray-700' : 'text-white')}>
-        EUR <span className={isDonezo ? 'text-blue-600' : 'text-yellow-300'}>{eur ? (1/eur).toFixed(4) : '—'}</span>
-      </span>
-      <span className={isDonezo ? 'text-gray-200' : 'text-white/30'}>|</span>
-      <span className={cn('text-[10px] font-semibold', isDonezo ? 'text-gray-700' : 'text-white')}>
-        TRY <span className={isDonezo ? 'text-green-600' : 'text-green-300'}>{tryRate ? tryRate.toFixed(2) : '—'}</span>
-      </span>
-      <button onClick={() => refetch()} disabled={isFetching} className={cn('disabled:opacity-40 transition-colors ml-0.5', isDonezo ? 'text-gray-400 hover:text-gray-600' : 'text-white/50 hover:text-white')}>
+      {/* EUR */}
+      {lbl('EUR')}
+      {val(<span className={isDonezo ? 'text-blue-600' : 'text-yellow-300'}>{eur ? (1 / eur).toFixed(4) : '—'}</span>)}
+      {sep}
+
+      {/* TRY */}
+      {lbl('TRY')}
+      {val(<span className={isDonezo ? 'text-emerald-600' : 'text-green-300'}>{tryRate ? tryRate.toFixed(2) : '—'}</span>)}
+      {sep}
+
+      {/* China Hardwood (Wood Pulp) */}
+      {lbl('Hardwood')}
+      {hw
+        ? val(
+            <span
+              title={`¥${hw.priceRMB.toFixed(0)} RMB · ${hw.date}`}
+              className={isDonezo ? 'text-orange-600' : 'text-orange-300'}
+            >
+              ${hw.priceUSD.toFixed(0)}/t
+            </span>,
+          )
+        : val(<span className={isDonezo ? 'text-gray-400' : 'text-white/40'}>—</span>)
+      }
+
+      {/* Refresh */}
+      <button
+        onClick={() => refetch()}
+        disabled={isFetching}
+        className={cn('disabled:opacity-40 transition-colors ml-0.5', isDonezo ? 'text-gray-400 hover:text-gray-600' : 'text-white/50 hover:text-white')}
+        title="Refresh rates"
+      >
         <RefreshCw className={`h-2.5 w-2.5 ${isFetching ? 'animate-spin' : ''}`} />
       </button>
     </div>
