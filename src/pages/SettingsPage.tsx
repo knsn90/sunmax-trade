@@ -13,7 +13,7 @@ import { NativeSelect } from '@/components/ui/form-elements';
 import { Card, CardContent, PageHeader, LoadingSpinner, FormRow, FormGroup } from '@/components/ui/shared';
 import { Upload, Trash2, Eye, EyeOff, Download, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { THEME_PRESETS, applyTheme, getStoredTheme, type ThemePreset } from '@/lib/theme';
-import { getApiKey, saveApiKey } from '@/lib/openai';
+import { getApiKeyFromCache, saveApiKeyToDb, deleteApiKeyFromDb, type ApiService } from '@/services/companySettingsService';
 import { supabase } from '@/services/supabase';
 
 type SettingsTab = 'company' | 'users' | 'theme' | 'backup';
@@ -298,26 +298,37 @@ function ApiKeyList() {
 }
 
 function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
-  const [stored, setStored] = useState(() => getApiKey(service.id));
+  const [stored, setStored] = useState(() => getApiKeyFromCache(service.id as ApiService));
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [visible, setVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function startEdit() {
     setValue(stored);
     setEditing(true);
   }
 
-  function handleSave() {
-    saveApiKey(service.id, value);
-    setStored(value.trim());
-    setEditing(false);
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await saveApiKeyToDb(service.id as ApiService, value.trim());
+      setStored(value.trim());
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete() {
-    saveApiKey(service.id, '');
-    setStored('');
-    setEditing(false);
+  async function handleDelete() {
+    setSaving(true);
+    try {
+      await deleteApiKeyFromDb(service.id as ApiService);
+      setStored('');
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const preview = stored
@@ -344,11 +355,11 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
         <div className="flex gap-1.5 flex-shrink-0">
           {!editing && (
             <Button type="button" variant="outline" size="sm" onClick={startEdit}>
-              {stored ? 'Edit' : 'Add Key'}
+              {stored ? 'Düzenle' : 'Key Ekle'}
             </Button>
           )}
           {!editing && stored && (
-            <Button type="button" variant="ghost" size="sm" onClick={handleDelete} className="text-red-500 hover:text-red-600">
+            <Button type="button" variant="ghost" size="sm" onClick={handleDelete} disabled={saving} className="text-red-500 hover:text-red-600">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -374,8 +385,8 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
               {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             </button>
           </div>
-          <Button type="button" size="sm" onClick={handleSave} disabled={!value.trim()}>Save</Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+          <Button type="button" size="sm" onClick={handleSave} disabled={!value.trim() || saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>İptal</Button>
         </div>
       )}
     </div>

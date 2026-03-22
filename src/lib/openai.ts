@@ -1,4 +1,9 @@
 import * as XLSX from 'xlsx';
+import {
+  getApiKeyFromCache,
+  saveApiKeyToDb,
+  deleteApiKeyFromDb,
+} from '@/services/companySettingsService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,30 +40,27 @@ export interface OcrResult {
   }>;
 }
 
-// ─── Storage ─────────────────────────────────────────────────────────────────
-
-const API_KEYS_STORAGE = 'sunmax_api_keys';
+// ─── Storage (Supabase-backed, in-memory cache) ───────────────────────────────
 
 export type ApiService = 'openai' | 'gemini' | 'anthropic';
 
+// These are now thin wrappers around the companySettingsService cache.
+// Keys are loaded from Supabase at app startup via loadCompanySettings().
 export function getApiKey(service: ApiService): string {
-  try {
-    const keys = JSON.parse(localStorage.getItem(API_KEYS_STORAGE) ?? '{}');
-    return keys[service] ?? '';
-  } catch { return ''; }
+  return getApiKeyFromCache(service);
 }
 
-export function saveApiKey(service: ApiService, key: string): void {
-  try {
-    const keys = JSON.parse(localStorage.getItem(API_KEYS_STORAGE) ?? '{}');
-    keys[service] = key.trim();
-    localStorage.setItem(API_KEYS_STORAGE, JSON.stringify(keys));
-  } catch { /* ignore */ }
+export async function saveApiKey(service: ApiService, key: string): Promise<void> {
+  await saveApiKeyToDb(service, key);
+}
+
+export async function deleteApiKey(service: ApiService): Promise<void> {
+  await deleteApiKeyFromDb(service);
 }
 
 // Legacy compat
 export function getOpenAIKey(): string { return getApiKey('openai'); }
-export function saveOpenAIKey(key: string): void { saveApiKey('openai', key); }
+export async function saveOpenAIKey(key: string): Promise<void> { await saveApiKey('openai', key); }
 
 // ─── Prompts ─────────────────────────────────────────────────────────────────
 

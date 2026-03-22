@@ -6,6 +6,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { router } from './router';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
 import { supabase } from '@/services/supabase';
+import { loadCompanySettings } from '@/services/companySettingsService';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +28,20 @@ export function App() {
     if (!rememberMe && !sessionActive) {
       supabase.auth.signOut();
     }
+
+    // Load company settings (API keys, etc.) from Supabase into memory cache
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        loadCompanySettings();
+      }
+    });
+
+    // Also reload when user logs in
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        loadCompanySettings();
+      }
+    });
   }, []);
 
   return (
