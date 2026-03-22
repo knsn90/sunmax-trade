@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { OcrButton } from '@/components/ui/OcrButton';
+import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
 
 interface InvoiceModalProps {
@@ -185,7 +186,10 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
                 {file?.file_no ?? ''} — {file?.customer?.name ?? invoice?.customer?.name ?? ''}
               </DialogDescription>
             </div>
-            <OcrButton mode="invoice" onResult={handleOcrResult} />
+            <div className="flex gap-1.5">
+              <SmartFill mode="invoice" onResult={handleOcrResult} formName="Invoice" />
+              <OcrButton mode="invoice" onResult={handleOcrResult} />
+            </div>
           </div>
         </DialogHeader>
 

@@ -39,7 +39,7 @@ export interface OcrResult {
 
 const API_KEYS_STORAGE = 'sunmax_api_keys';
 
-export type ApiService = 'openai' | 'gemini';
+export type ApiService = 'openai' | 'gemini' | 'anthropic';
 
 export function getApiKey(service: ApiService): string {
   try {

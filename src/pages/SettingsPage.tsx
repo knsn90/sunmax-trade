@@ -272,13 +272,20 @@ export function SettingsPage() {
 
 const API_SERVICES = [
   {
+    id: 'anthropic' as const,
+    name: 'Anthropic (Claude)',
+    description: 'Akıllı Form Doldurma — Sesli & yazılı Türkçe komutlarla form doldurma',
+    placeholder: 'sk-ant-...',
+    link: 'console.anthropic.com',
+  },
+  {
     id: 'openai' as const,
     name: 'OpenAI',
-    description: 'OCR — PDF, image, Excel document reading',
+    description: 'OCR — PDF, resim, Excel belge okuma',
     placeholder: 'sk-...',
     link: 'platform.openai.com',
   },
-] satisfies Array<{ id: 'openai'; name: string; description: string; placeholder: string; link: string }>;
+] satisfies Array<{ id: 'openai' | 'anthropic'; name: string; description: string; placeholder: string; link: string }>;
 
 function ApiKeyList() {
   return (

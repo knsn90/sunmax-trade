@@ -16,6 +16,7 @@ import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
 import { OcrButton } from '@/components/ui/OcrButton';
+import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
 
 interface TransactionModalProps {
@@ -213,7 +214,10 @@ export function TransactionModal({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>{isEdit ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
-            {!isEdit && <OcrButton mode="transaction" onResult={handleOcrResult} />}
+            <div className="flex gap-1.5">
+              <SmartFill mode="transaction" onResult={handleOcrResult} formName="Transaction" />
+              {!isEdit && <OcrButton mode="transaction" onResult={handleOcrResult} />}
+            </div>
           </div>
         </DialogHeader>
 

@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { OcrButton } from '@/components/ui/OcrButton';
+import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
 
 interface ProformaModalProps {
@@ -189,7 +190,10 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
                 {file?.file_no ?? ''} — {file?.customer?.name ?? ''}
               </DialogDescription>
             </div>
-            <OcrButton mode="proforma" onResult={handleOcrResult} />
+            <div className="flex gap-1.5">
+              <SmartFill mode="proforma" onResult={handleOcrResult} formName="Proforma" />
+              <OcrButton mode="proforma" onResult={handleOcrResult} />
+            </div>
           </div>
         </DialogHeader>
 

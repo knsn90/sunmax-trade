@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { OcrButton } from '@/components/ui/OcrButton';
+import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
 
 interface PackingListModalProps {
@@ -169,7 +170,10 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
                 {file?.file_no ?? ''} — {file?.customer?.name ?? ''}
               </DialogDescription>
             </div>
-            <OcrButton mode="packing_list" onResult={handleOcrResult} label="Read Packing List" />
+            <div className="flex gap-1.5">
+              <SmartFill mode="packing_list" onResult={handleOcrResult} formName="Packing List" />
+              <OcrButton mode="packing_list" onResult={handleOcrResult} label="Read Packing List" />
+            </div>
           </div>
         </DialogHeader>
 
