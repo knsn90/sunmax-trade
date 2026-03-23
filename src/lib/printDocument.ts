@@ -412,7 +412,7 @@ export function printProforma(
           ${logoHTML(settings, 65, 170)}
         </td>
         <td style="text-align:right;vertical-align:top">
-          <div style="font-size:26px;font-weight:300;color:#888">Commercial Invoice</div>
+          <div style="font-size:26px;font-weight:300;color:#888">Proforma Invoice</div>
         </td>
       </tr>
     </table>
@@ -445,14 +445,7 @@ export function printProforma(
         </td>
       </tr>
 
-      <!-- Row 2: Buyer ref -->
-      <tr>
-        <td colspan="2" style="border:1px solid #888;padding:2px 6px;font-size:9px;color:#555">
-          Buyer's reference / Buyer Commercial ID No.: <span style="color:#000;font-size:10px">${esc(pi.buyer_commercial_id || '')}</span>
-        </td>
-      </tr>
-
-      <!-- Row 3: Shipper | Consignee -->
+      <!-- Row 2: Shipper | Consignee -->
       <tr>
         ${th('Shipper (name, address):')}
         ${th('Consignee (name, address):')}
@@ -468,6 +461,13 @@ export function printProforma(
           ${custAddr ? custAddr + '<br>' : ''}
           ${custCountry ? custCountry + '<br>' : ''}
           ${custPhone ? 'Tel: ' + custPhone : ''}
+        </td>
+      </tr>
+
+      <!-- Row 3: Buyer ref — below Consignee -->
+      <tr>
+        <td colspan="2" style="border:1px solid #888;padding:2px 6px;font-size:9px;color:#555">
+          Buyer's reference / Buyer Commercial ID No.: <span style="color:#000;font-size:10px">${esc(pi.buyer_commercial_id || '')}</span>
         </td>
       </tr>
 
@@ -585,7 +585,7 @@ export function printProforma(
               <td style="padding:3px 8px;border-bottom:1px solid #ccc;font-size:9.5px;color:#555">Other Charges:</td>
               <td style="padding:3px 8px;border-bottom:1px solid #ccc;text-align:right">${(pi.other_charges ?? 0) > 0 ? tF(pi.other_charges) : 'N/A'}</td>
             </tr>
-            <tr><td colspan="2" style="padding:2px 8px;border-bottom:1px solid #ccc;font-size:9px;color:#555">Total Amount:</td></tr>
+            <tr><td colspan="2" style="padding:2px 8px;font-size:9px;color:#555">Total Amount:</td></tr>
             <tr><td colspan="2" style="padding:5px 8px;text-align:center;font-weight:700;font-size:13px;background:#e8e8e8">${curr}&nbsp;${tF(pi.total)}</td></tr>
           </table>
         </td>
@@ -601,17 +601,26 @@ export function printProforma(
           <div>NAME OF SIGNATORY: <strong>${esc(pi.signatory || settings.signatory || '')}</strong></div>
           <div style="margin-top:3px">PLACE AND DATE OF ISSUE:</div>
           <div style="font-size:10px;margin-top:2px">TURKEY &nbsp; ${fDate(pi.proforma_date)}</div>
-          <div style="margin-top:3px">SEAL AND SIGNATURE:</div>
-          ${settings.logo_url ? `<img src="${settings.logo_url}" style="max-height:45px;max-width:120px;object-fit:contain;display:block;margin-top:4px">` : ''}
+          <div style="margin-top:6px;font-size:9px;color:#555">SEAL AND SIGNATURE:</div>
+          ${(!isDraft && signatureUrl && stampUrl) ? `
+          <div style="display:flex;justify-content:center;margin-top:4px">
+            <div style="position:relative;width:200px;height:115px">
+              <img src="${stampUrl}"
+                style="position:absolute;bottom:0;left:50%;transform:translateX(-50%) rotate(-6deg);
+                       width:190px;object-fit:contain;opacity:0.90;">
+              <img src="${signatureUrl}"
+                style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);
+                       width:200px;object-fit:contain;z-index:2;">
+            </div>
+          </div>` : '<div style="height:80px"></div>'}
         </td>
       </tr>
 
     </table>
 
     <!-- ── Footer ── -->
-    <div style="text-align:center;margin-top:16px;border-top:1px solid #aaa;padding-top:8px">
-      ${(!isDraft && signatureUrl && stampUrl) ? sigStampBlock(signatureUrl, stampUrl) : ''}
-      <div style="font-size:10px;color:#333;margin-top:6px">
+    <div style="text-align:center;margin-top:12px;border-top:1px solid #aaa;padding-top:6px">
+      <div style="font-size:10px;color:#333">
         ${esc(settings.address_line1 || '')}${settings.address_line2 ? ' ' + esc(settings.address_line2) : ''}
       </div>
       <div style="font-size:10px;color:#333;margin-top:2px">

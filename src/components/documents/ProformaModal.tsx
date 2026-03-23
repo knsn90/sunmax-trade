@@ -37,11 +37,16 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   const importRef = useRef<HTMLInputElement>(null);
 
   const defaultNotes = [
-    '1- Quality as per attached specification.',
-    '2- Packing: standard export packing.',
-    '3- The weights mentioned are approximate and may vary by +/-10%.',
-    '4- The goods should not be discharged in any Israeli port.',
-    '5- Payment: as per terms above.',
+    '1- Total Quantity:',
+    '2- HS Code:',
+    '3- The weights mentioned are approximate and will be confirmed at the time of loading. The approximate weights may vary by ±10%',
+    '4- The following documents will be provided: Invoice/Packing/Origin/Certificate of Analysis',
+    '5- Shipment 07-10 days from date of receipt of payment provided there is no delay due to Covid-19 situation and government orders and no inspection reqired from your side',
+    '6- If payment is delayed, demurrage, warehouse charges, and other related expenses shall be the responsibility of the buyer.',
+    '7- The given dates are provided by the manufacturing factory. In case of force majeure, strikes, natural disasters, wars, or any changes, the buyer will be notified.',
+    '8- In case of delays in the arrival of the products due to the shipping company, the buyer will be informed beforehand.',
+    '9- The criterion of quality confirmation is at the source before loading.',
+    '10- Full payment must be made two days prior to loading',
   ].join('\n');
 
   const form = useForm<ProformaFormData>({
