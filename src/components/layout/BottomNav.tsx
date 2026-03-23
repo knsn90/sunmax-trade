@@ -4,8 +4,9 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   Home, BarChart3, FileText, LayoutDashboard, MoreHorizontal,
-  Receipt, Package, LineChart, Users, Truck, Clock, Box, Settings, X,
+  Receipt, Package, LineChart, Users, Truck, Clock, Box, Settings, X, Activity,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const mainTabs = [
   { to: '/dashboard', label: 'Dashboard', icon: Home },
@@ -27,16 +28,23 @@ const moreItems = [
   { to: '/settings',          label: 'Settings',      icon: Settings },
 ];
 
+const adminItems = [
+  { to: '/activity', label: 'Logs', icon: Activity },
+];
+
 export function BottomNav() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { profile } = useAuth();
   const isDonezo = theme === 'donezo';
+  const isAdmin = profile?.role === 'admin';
+  const drawerItems = isAdmin ? [...moreItems, ...adminItems] : moreItems;
 
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
 
-  const isMoreActive = moreItems.some(item =>
+  const isMoreActive = drawerItems.some(item =>
     location.pathname === item.to || location.pathname.startsWith(item.to + '/')
   );
 
@@ -79,7 +87,7 @@ export function BottomNav() {
           </button>
         </div>
         <div className="grid grid-cols-3 gap-2 p-4 pb-5">
-          {moreItems.map((item) => {
+          {drawerItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.to ||
               location.pathname.startsWith(item.to + '/');

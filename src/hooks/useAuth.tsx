@@ -87,17 +87,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchProfile]);
 
+  async function logEvent(userId: string, event: 'login' | 'logout') {
+    try {
+      await supabase.from('user_logins').insert({ user_id: userId, event });
+    } catch { /* silent */ }
+  }
+
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    if (data.user) logEvent(data.user.id, 'login');
   }, []);
 
   const signOut = useCallback(async () => {
+    if (user) logEvent(user.id, 'logout');
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
     setSession(null);
-  }, []);
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ user, profile, session, isLoading, signIn, signOut }}>

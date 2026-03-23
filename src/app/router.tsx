@@ -10,6 +10,7 @@ import { AccountingPage } from '@/pages/AccountingPage';
 import { CustomersPage } from '@/pages/CustomersPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { ActivityPage } from '@/pages/ActivityPage';
 import {
   SuppliersPage,
   ServiceProvidersPage,
@@ -48,6 +49,14 @@ export const router = createBrowserRouter([
       { path: 'service-providers', element: <ServiceProvidersPage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      {
+        path: 'activity',
+        element: (
+          <AuthGuard requiredRoles={['admin']}>
+            <ActivityPage />
+          </AuthGuard>
+        ),
+      },
       {
         path: 'settings',
         element: (
