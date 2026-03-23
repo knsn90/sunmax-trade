@@ -58,6 +58,7 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
 
   async function onSubmit(data: DeliveryFormData) {
     if (!file) return;
+    try {
     await convertToDelivery.mutateAsync({ id: file.id, data });
 
     // Auto-create/update Sale Invoice: ADMT × selling_price (use sale_currency)
@@ -99,8 +100,11 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
       );
     }
 
-    reset();
-    onOpenChange(false);
+      reset();
+      onOpenChange(false);
+    } catch {
+      // Error already shown via toast — prevent UI freeze
+    }
   }
 
   if (!file) return null;

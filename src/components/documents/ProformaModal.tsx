@@ -167,14 +167,18 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   }
 
   async function onSubmit(data: ProformaFormData) {
-    if (isEdit && proforma) {
-      await updatePI.mutateAsync({ id: proforma.id, data });
-    } else if (file) {
-      const prefix = settings?.file_prefix ?? 'ESN';
-      const piNo = formatProformaNo(prefix, Date.now() % 10000);
-      await createPI.mutateAsync({ tradeFileId: file.id, proformaNo: piNo, data });
+    try {
+      if (isEdit && proforma) {
+        await updatePI.mutateAsync({ id: proforma.id, data });
+      } else if (file) {
+        const prefix = settings?.file_prefix ?? 'ESN';
+        const piNo = formatProformaNo(prefix, Date.now() % 10000);
+        await createPI.mutateAsync({ tradeFileId: file.id, proformaNo: piNo, data });
+      }
+      onOpenChange(false);
+    } catch {
+      // Error already shown via toast — prevent UI freeze
     }
-    onOpenChange(false);
   }
 
   if (!file && !proforma) return null;

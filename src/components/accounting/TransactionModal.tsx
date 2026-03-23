@@ -181,12 +181,16 @@ export function TransactionModal({
     };
     data.party_type = typeToParty[data.transaction_type];
 
-    if (isEdit && transaction) {
-      await updateTxn.mutateAsync({ id: transaction.id, data });
-    } else {
-      await createTxn.mutateAsync(data);
+    try {
+      if (isEdit && transaction) {
+        await updateTxn.mutateAsync({ id: transaction.id, data });
+      } else {
+        await createTxn.mutateAsync(data);
+      }
+      onOpenChange(false);
+    } catch {
+      // Error already shown via toast — prevent UI freeze
     }
-    onOpenChange(false);
   }
 
   function handleOcrResult(result: OcrResult) {

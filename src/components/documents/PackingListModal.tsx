@@ -146,15 +146,19 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   }
 
   async function onSubmit(data: PackingListFormData) {
-    data.items = rows;
-    if (isEdit && packingList) {
-      await updatePL.mutateAsync({ id: packingList.id, data });
-    } else if (file) {
-      const prefix = settings?.file_prefix ?? 'ESN';
-      const plNo = formatPLNo(prefix, Date.now() % 10000);
-      await createPL.mutateAsync({ tradeFileId: file.id, customerId: file.customer_id, plNo, data });
+    try {
+      data.items = rows;
+      if (isEdit && packingList) {
+        await updatePL.mutateAsync({ id: packingList.id, data });
+      } else if (file) {
+        const prefix = settings?.file_prefix ?? 'ESN';
+        const plNo = formatPLNo(prefix, Date.now() % 10000);
+        await createPL.mutateAsync({ tradeFileId: file.id, customerId: file.customer_id, plNo, data });
+      }
+      onOpenChange(false);
+    } catch {
+      // Error already shown via toast — prevent UI freeze
     }
-    onOpenChange(false);
   }
 
   if (!file && !packingList) return null;
