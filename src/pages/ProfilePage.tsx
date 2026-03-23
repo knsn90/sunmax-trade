@@ -34,42 +34,61 @@ function Card({ icon, title, children }: { icon: React.ReactNode; title: string;
 }
 
 export function ProfilePage() {
-  const { profile, user } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
 
   // ── Personal info ──────────────────────────────────────────────────────────
-  const [fullName, setFullName]   = useState(profile?.full_name ?? '');
-  const [infoMsg, setInfoMsg]     = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [fullName, setFullName]       = useState(profile?.full_name ?? '');
+  const [infoMsg, setInfoMsg]         = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
 
   async function saveProfile() {
     if (!profile) return;
     setInfoLoading(true);
     setInfoMsg(null);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: fullName })
-      .eq('id', profile.id);
-    setInfoLoading(false);
-    setInfoMsg(error ? { type: 'error', msg: error.message } : { type: 'success', msg: 'Profil güncellendi.' });
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName.trim() })
+        .eq('id', profile.id);
+      if (error) throw error;
+      await refreshProfile();
+      setInfoMsg({ type: 'success', msg: 'İsim güncellendi.' });
+    } catch (err: unknown) {
+      setInfoMsg({ type: 'error', msg: err instanceof Error ? err.message : 'Bir hata oluştu.' });
+    } finally {
+      setInfoLoading(false);
+    }
   }
 
   // ── Change password ────────────────────────────────────────────────────────
-  const [newPass, setNewPass]       = useState('');
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass]         = useState('');
   const [confirmPass, setConfirmPass] = useState('');
-  const [passMsg, setPassMsg]       = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [passMsg, setPassMsg]         = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [passLoading, setPassLoading] = useState(false);
 
   async function changePassword() {
-    if (newPass.length < 6) { setPassMsg({ type: 'error', msg: 'Şifre en az 6 karakter olmalı.' }); return; }
-    if (newPass !== confirmPass) { setPassMsg({ type: 'error', msg: 'Şifreler eşleşmiyor.' }); return; }
+    if (!currentPass) { setPassMsg({ type: 'error', msg: 'Mevcut şifrenizi girin.' }); return; }
+    if (newPass.length < 6) { setPassMsg({ type: 'error', msg: 'Yeni şifre en az 6 karakter olmalı.' }); return; }
+    if (newPass !== confirmPass) { setPassMsg({ type: 'error', msg: 'Yeni şifreler eşleşmiyor.' }); return; }
     setPassLoading(true);
     setPassMsg(null);
-    const { error } = await supabase.auth.updateUser({ password: newPass });
-    setPassLoading(false);
-    if (error) { setPassMsg({ type: 'error', msg: error.message }); return; }
-    setPassMsg({ type: 'success', msg: 'Giriş şifresi değiştirildi.' });
-    setNewPass('');
-    setConfirmPass('');
+    try {
+      // Re-authenticate to ensure fresh session before password update
+      const { error: reAuthErr } = await supabase.auth.signInWithPassword({
+        email: user?.email ?? '',
+        password: currentPass,
+      });
+      if (reAuthErr) throw new Error('Mevcut şifre yanlış.');
+      const { error } = await supabase.auth.updateUser({ password: newPass });
+      if (error) throw error;
+      setPassMsg({ type: 'success', msg: 'Şifre başarıyla değiştirildi.' });
+      setCurrentPass(''); setNewPass(''); setConfirmPass('');
+    } catch (err: unknown) {
+      setPassMsg({ type: 'error', msg: err instanceof Error ? err.message : 'Bir hata oluştu.' });
+    } finally {
+      setPassLoading(false);
+    }
   }
 
   // ── Approve password ───────────────────────────────────────────────────────
@@ -129,6 +148,10 @@ export function ProfilePage() {
       <Card icon={<Lock className="h-4 w-4" />} title="Giriş Şifresi Değiştir">
         <div className="space-y-3">
           <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Mevcut Şifre</label>
+            <Input type="password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} placeholder="Mevcut şifrenizi girin" />
+          </div>
+          <div>
             <label className="text-xs font-medium text-gray-600 mb-1 block">Yeni Şifre</label>
             <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="En az 6 karakter" />
           </div>
@@ -137,7 +160,7 @@ export function ProfilePage() {
             <Input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Şifreyi tekrar girin" />
           </div>
           {passMsg && <Alert {...passMsg} />}
-          <Button onClick={changePassword} disabled={passLoading || !newPass} className="w-full bg-red-600 hover:bg-red-700 text-white">
+          <Button onClick={changePassword} disabled={passLoading || !newPass || !currentPass} className="w-full bg-red-600 hover:bg-red-700 text-white">
             {passLoading ? 'Değiştiriliyor…' : 'Şifreyi Değiştir'}
           </Button>
         </div>

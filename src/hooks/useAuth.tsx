@@ -10,6 +10,7 @@ interface AuthState {
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -93,6 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch { /* silent */ }
   }
 
+  const refreshProfile = useCallback(async () => {
+    if (user) await fetchProfile(user.id);
+  }, [user, fetchProfile]);
+
   const signIn = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -108,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, session, isLoading, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
