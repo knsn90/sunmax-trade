@@ -20,6 +20,7 @@ export interface Profile extends Timestamps {
   is_active: boolean;
   permissions: string[] | null;
   deleted_at: string | null;
+  avatar_url: string | null;
 }
 
 // ─── Company Settings ───────────────────────────────────────────────────────

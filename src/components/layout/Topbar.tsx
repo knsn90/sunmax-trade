@@ -99,10 +99,11 @@ export function Topbar() {
               onClick={() => navigate('/profile')}
               className="hidden md:flex items-center gap-2 pl-3 border-l border-gray-100 hover:opacity-75 transition-opacity cursor-pointer"
             >
-              <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-[10px] font-bold text-red-600">
-                  {profile.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
-                </span>
+              <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                  : <span className="text-[10px] font-bold text-red-600">{profile.full_name?.charAt(0)?.toUpperCase() ?? 'U'}</span>
+                }
               </div>
               <div className="flex flex-col">
                 <span className="text-[11px] font-semibold text-gray-800 leading-none">{profile.full_name}</span>
