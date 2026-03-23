@@ -70,6 +70,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         incoterms: proforma.incoterms ?? '',
         payment_terms: proforma.payment_terms ?? '',
         transport_mode: proforma.transport_mode ?? 'truck',
+        shipment_method: proforma.shipment_method ?? '',
         currency: proforma.currency,
         place_of_payment: proforma.place_of_payment ?? '',
         delivery_time: proforma.delivery_time ?? '',
@@ -102,6 +103,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         incoterms: file.incoterms ?? settings?.default_incoterms ?? 'CPT',
         payment_terms: file.payment_terms ?? settings?.payment_terms ?? '',
         transport_mode: file.transport_mode ?? 'truck',
+        shipment_method: '',
         currency: file.currency ?? settings?.default_currency ?? 'USD',
         place_of_payment: 'ISTANBUL - TURKEY',
         delivery_time: '',
@@ -258,15 +260,25 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
             <FormGroup label="Payment Terms">
               <Input {...register('payment_terms')} />
             </FormGroup>
-            <FormGroup label="Transport Mode">
+            <FormGroup label="Transport Mode and Means">
               <NativeSelect {...register('transport_mode')}>
                 <option value="truck">By Truck</option>
-                <option value="train">By Train</option>
+                <option value="railway">By Railway</option>
                 <option value="sea">By Sea</option>
               </NativeSelect>
             </FormGroup>
             <FormGroup label="Place of Payment">
               <Input {...register('place_of_payment')} />
+            </FormGroup>
+          </FormRow>
+
+          <FormRow cols={3}>
+            <FormGroup label="Shipment Method">
+              <NativeSelect {...register('shipment_method')}>
+                <option value="">— Select —</option>
+                <option value="bulk">Bulk</option>
+                <option value="container">Container</option>
+              </NativeSelect>
             </FormGroup>
           </FormRow>
 

@@ -235,8 +235,8 @@ export function printInvoice(inv: Invoice, settings: CompanySettings, bank: Bank
 export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false) {
   const items = pl.packing_list_items ?? [];
   const isTruck = pl.transport_mode === 'truck';
-  const isTrain = pl.transport_mode === 'train';
-  const colLabel = isTruck ? 'TIR NO' : isTrain ? 'WAGON NO' : 'CONTAINER NO';
+  const isRailway = pl.transport_mode === 'railway';
+  const colLabel = isTruck ? 'TIR NO' : isRailway ? 'WAGON NO' : 'CONTAINER NO';
 
   const totReels = items.reduce((s, r) => s + (r.reels ?? 0), 0);
   const totAdmt  = items.reduce((s, r) => s + (r.admt ?? 0), 0);
@@ -490,7 +490,7 @@ export function printProforma(
       <tr>
         <td colspan="7" style="${vS}">${partialText}</td>
         <td colspan="4" style="${lS}">Shipment Method:</td>
-        <td colspan="3" style="${vS}">${esc(pi.transport_mode || '')}</td>
+        <td colspan="3" style="${vS}">${esc(pi.shipment_method === 'bulk' ? 'Bulk' : pi.shipment_method === 'container' ? 'Container' : '')}</td>
       </tr>
       <tr>
         <td colspan="7" style="${vS}">&nbsp;</td>
@@ -506,7 +506,7 @@ export function printProforma(
         <td colspan="3" style="${vS}">${esc(pi.place_of_payment || '')}</td>
       </tr>
       <tr>
-        <td colspan="4" style="${vS}" rowspan="2">${esc(pi.transport_mode || '')}</td>
+        <td colspan="4" style="${vS}" rowspan="2">${esc(pi.transport_mode === 'truck' ? 'By Truck' : pi.transport_mode === 'railway' ? 'By Railway' : pi.transport_mode === 'sea' ? 'By Sea' : '')}</td>
         <td colspan="3" style="${vS}" rowspan="2">${esc(pi.port_of_loading || '')}</td>
         <td colspan="4" style="${lS}">Vessel Details Confirmation time:</td>
         <td colspan="3" style="${vS}">${esc(pi.vessel_details_confirmation || '—')}</td>

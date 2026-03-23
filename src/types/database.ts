@@ -196,6 +196,7 @@ export interface Proforma extends Timestamps {
   incoterms: string | null;
   payment_terms: string | null;
   transport_mode: TransportMode | null;
+  shipment_method: 'bulk' | 'container' | null;
   currency: CurrencyCode;
   place_of_payment: string | null;
   delivery_time: string | null;

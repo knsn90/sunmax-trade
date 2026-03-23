@@ -67,7 +67,7 @@ export const saleConversionSchema = z.object({
   purchase_currency: z.enum(['USD', 'EUR', 'TRY']).default('USD'),
   sale_currency: z.enum(['USD', 'EUR', 'TRY']).default('USD'),
   payment_terms: z.string().default(''),
-  transport_mode: z.enum(['truck', 'train', 'sea']).default('truck'),
+  transport_mode: z.enum(['truck', 'railway', 'sea']).default('truck'),
   eta: z.string().optional(),
   vessel_name: z.string().default(''),
   proforma_ref: z.string().default(''),
@@ -114,7 +114,7 @@ export const packingListItemSchema = z.object({
 
 export const packingListSchema = z.object({
   pl_date: z.string().min(1, 'Date required'),
-  transport_mode: z.enum(['truck', 'train', 'sea']).default('truck'),
+  transport_mode: z.enum(['truck', 'railway', 'sea']).default('truck'),
   invoice_no: z.string().default(''),
   cb_no: z.string().default(''),
   insurance_no: z.string().default(''),
@@ -134,7 +134,8 @@ export const proformaSchema = z.object({
   final_delivery: z.string().default(''),
   incoterms: z.string().default(''),
   payment_terms: z.string().default(''),
-  transport_mode: z.enum(['truck', 'train', 'sea']).default('truck'),
+  transport_mode: z.enum(['truck', 'railway', 'sea']).default('truck'),
+  shipment_method: z.enum(['bulk', 'container', '']).default('').optional(),
   currency: z.enum(['USD', 'EUR', 'TRY']).default('USD'),
   place_of_payment: z.string().default(''),
   delivery_time: z.string().default(''),

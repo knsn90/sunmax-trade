@@ -13,8 +13,11 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export const CURRENCY_CODES = ['USD', 'EUR', 'TRY'] as const;
 export type CurrencyCode = (typeof CURRENCY_CODES)[number];
 
-export const TRANSPORT_MODES = ['truck', 'train', 'sea'] as const;
+export const TRANSPORT_MODES = ['truck', 'railway', 'sea'] as const;
 export type TransportMode = (typeof TRANSPORT_MODES)[number];
+
+export const SHIPMENT_METHODS = ['bulk', 'container'] as const;
+export type ShipmentMethod = (typeof SHIPMENT_METHODS)[number];
 
 export const USER_ROLES = ['admin', 'manager', 'viewer', 'accountant'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
@@ -63,8 +66,13 @@ export const SERVICE_PROVIDER_TYPE_LABELS: Record<ServiceProviderType, string> =
 
 export const TRANSPORT_MODE_LABELS: Record<TransportMode, string> = {
   truck: 'By Truck',
-  train: 'By Train',
+  railway: 'By Railway',
   sea: 'By Sea',
+};
+
+export const SHIPMENT_METHOD_LABELS: Record<ShipmentMethod, string> = {
+  bulk: 'Bulk',
+  container: 'Container',
 };
 
 export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {

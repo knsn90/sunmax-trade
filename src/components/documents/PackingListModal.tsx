@@ -189,7 +189,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
             <FormGroup label="Transport Mode">
               <NativeSelect {...register('transport_mode')}>
                 <option value="truck">By Truck</option>
-                <option value="train">By Railway</option>
+                <option value="railway">By Railway</option>
                 <option value="sea">By Sea</option>
               </NativeSelect>
             </FormGroup>
