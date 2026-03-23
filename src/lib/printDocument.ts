@@ -90,27 +90,34 @@ function logoHTML(s: CompanySettings, maxH = 65, maxW = 170): string {
     : `<div style="font-size:18px;font-weight:900;color:#000">${esc(s.company_name || '')}</div>`;
 }
 
+function sigStampBlock(signatureUrl: string, stampUrl: string): string {
+  return `
+    <div style="display:flex;justify-content:center;margin-top:14px">
+      <div style="position:relative;width:260px;height:130px">
+        <!-- Kaşe: eğimli, altta -->
+        <img src="${stampUrl}"
+          style="position:absolute;bottom:0;left:50%;transform:translateX(-50%) rotate(-6deg);
+                 width:210px;object-fit:contain;opacity:0.90;">
+        <!-- İmza: üstte, büyük -->
+        <img src="${signatureUrl}"
+          style="position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+                 width:230px;object-fit:contain;z-index:2;">
+      </div>
+    </div>`;
+}
+
 function footerHTML(s: CompanySettings, signatureUrl?: string, stampUrl?: string): string {
   const email = s.email || '';
   const hasSig = !!signatureUrl && !!stampUrl;
-  const sigBlock = hasSig ? `
-    <div style="margin-top:16px;display:flex;justify-content:center">
-      <div style="position:relative;width:220px;height:110px">
-        <!-- Kaşe altta -->
-        <img src="${stampUrl}"
-          style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);max-width:200px;max-height:80px;object-fit:contain;opacity:0.92">
-        <!-- İmza üstte -->
-        <img src="${signatureUrl}"
-          style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);max-width:180px;max-height:75px;object-fit:contain;z-index:2">
-      </div>
-    </div>` : '';
   return `
     <div style="text-align:center;margin-top:18px">
-      ${s.logo_url ? `<img src="${s.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : ''}
-      <div style="font-size:10px;color:#333;margin-bottom:2px">If you have any questions or concerns, please contact</div>
+      ${hasSig
+        ? sigStampBlock(signatureUrl!, stampUrl!)
+        : (s.logo_url ? `<img src="${s.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : '')
+      }
+      <div style="font-size:10px;color:#333;margin-bottom:2px;margin-top:${hasSig ? '8px' : '0'}">If you have any questions or concerns, please contact</div>
       <div style="font-size:10px;color:#1155cc;margin-bottom:4px">${esc(email)}</div>
       <div style="font-size:11px;font-style:italic;font-weight:700">Thank You For Your Business!</div>
-      ${sigBlock}
     </div>`;
 }
 
@@ -603,19 +610,13 @@ export function printProforma(
 
     <!-- ── Footer ── -->
     <div style="text-align:center;margin-top:16px;border-top:1px solid #aaa;padding-top:8px">
-      <div style="font-size:10px;color:#333">
+      ${(!isDraft && signatureUrl && stampUrl) ? sigStampBlock(signatureUrl, stampUrl) : ''}
+      <div style="font-size:10px;color:#333;margin-top:6px">
         ${esc(settings.address_line1 || '')}${settings.address_line2 ? ' ' + esc(settings.address_line2) : ''}
       </div>
       <div style="font-size:10px;color:#333;margin-top:2px">
         ${settings.phone ? 'WWW.PLUSKIMYA.COM &nbsp; ' : ''}${settings.email ? esc(settings.email).toUpperCase() : ''}
       </div>
-      ${(!isDraft && signatureUrl && stampUrl) ? `
-      <div style="margin-top:16px;display:flex;justify-content:center">
-        <div style="position:relative;width:220px;height:110px">
-          <img src="${stampUrl}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);max-width:200px;max-height:80px;object-fit:contain;opacity:0.92">
-          <img src="${signatureUrl}" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);max-width:180px;max-height:75px;object-fit:contain;z-index:2">
-        </div>
-      </div>` : ''}
     </div>
   `;
 
