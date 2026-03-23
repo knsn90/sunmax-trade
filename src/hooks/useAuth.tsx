@@ -51,36 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    async function init() {
-      try {
-        const timeout = new Promise<{ data: { session: null }; error: null }>((resolve) =>
-          setTimeout(() => resolve({ data: { session: null }, error: null }), 8000)
-        );
-        const { data: { session: s } } = await Promise.race([
-          supabase.auth.getSession(),
-          timeout,
-        ]);
-
-        if (!mounted) return;
-
-        setSession(s);
-        setUser(s?.user ?? null);
-
-        if (s?.user) {
-          await fetchProfile(s.user.id);
-        }
-      } catch (err) {
-        console.error('Auth init error:', err);
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    init();
-
-    // Listen for auth changes
+    // onAuthStateChange fires immediately with INITIAL_SESSION on page load,
+    // reading the persisted localStorage token — no separate getSession() needed.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, s) => {
         if (!mounted) return;
@@ -93,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
         }
+
+        setIsLoading(false);
       },
     );
 
