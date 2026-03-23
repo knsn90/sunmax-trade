@@ -37,6 +37,7 @@ const BASE_CSS = `
     body { background: #fff; padding: 0; }
     .np { display: none; }
     .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   }
   /* DRAFT watermark */
   .draft-watermark {
@@ -399,7 +400,7 @@ export function printProforma(
     <!-- ── Header ── -->
     <table style="width:100%;margin-bottom:0;border-collapse:collapse">
       <tr>
-        <td style="width:32%;vertical-align:middle;padding-bottom:6px">${logoHTML(settings, 62, 180)}</td>
+        <td style="width:32%;vertical-align:top;padding-top:0;padding-bottom:6px">${logoHTML(settings, 48, 150)}</td>
         <td colspan="2" style="text-align:right;vertical-align:middle;padding-bottom:6px">
           <div style="font-size:22px;font-weight:900;color:#888;letter-spacing:3px;text-transform:uppercase;white-space:nowrap">PROFORMA INVOICE</div>
         </td>
