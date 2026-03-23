@@ -233,7 +233,7 @@ export function TradeFileDetailPage() {
               <div className="flex flex-wrap gap-1 items-center">
                 <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPI(pi); setProformaOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved', '/signature.png', '/stamp.png')}>🖨 Print</Button>}
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }}>Del</Button>}
               </div>
             </div>
@@ -255,7 +255,7 @@ export function TradeFileDetailPage() {
               <div className="flex flex-wrap gap-1 items-center">
                 <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved', '/signature.png', '/stamp.png')}>🖨 Print</Button>}
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
               </div>
             </div>
@@ -276,7 +276,7 @@ export function TradeFileDetailPage() {
               <div className="flex flex-wrap gap-1 items-center">
                 <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved', '/signature.png', '/stamp.png')}>🖨 Print</Button>}
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete com-invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
               </div>
             </div>
@@ -297,7 +297,7 @@ export function TradeFileDetailPage() {
               <div className="flex flex-wrap gap-1 items-center">
                 <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPL(pl); setPackingOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
+                {settings && <Button variant="outline" size="xs" onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved', '/signature.png', '/stamp.png')}>🖨 Print</Button>}
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete packing list?')) deletePL.mutate(pl.id); }}>Del</Button>}
               </div>
             </div>

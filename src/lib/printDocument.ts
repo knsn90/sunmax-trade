@@ -90,20 +90,33 @@ function logoHTML(s: CompanySettings, maxH = 65, maxW = 170): string {
     : `<div style="font-size:18px;font-weight:900;color:#000">${esc(s.company_name || '')}</div>`;
 }
 
-function footerHTML(s: CompanySettings): string {
+function footerHTML(s: CompanySettings, signatureUrl?: string, stampUrl?: string): string {
   const email = s.email || '';
+  const hasSig = !!signatureUrl && !!stampUrl;
+  const sigBlock = hasSig ? `
+    <div style="margin-top:16px;display:flex;justify-content:center">
+      <div style="position:relative;width:220px;height:110px">
+        <!-- Kaşe altta -->
+        <img src="${stampUrl}"
+          style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);max-width:200px;max-height:80px;object-fit:contain;opacity:0.92">
+        <!-- İmza üstte -->
+        <img src="${signatureUrl}"
+          style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);max-width:180px;max-height:75px;object-fit:contain;z-index:2">
+      </div>
+    </div>` : '';
   return `
     <div style="text-align:center;margin-top:18px">
       ${s.logo_url ? `<img src="${s.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : ''}
       <div style="font-size:10px;color:#333;margin-bottom:2px">If you have any questions or concerns, please contact</div>
       <div style="font-size:10px;color:#1155cc;margin-bottom:4px">${esc(email)}</div>
       <div style="font-size:11px;font-style:italic;font-weight:700">Thank You For Your Business!</div>
+      ${sigBlock}
     </div>`;
 }
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 
-export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false) {
+export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false, signatureUrl?: string, stampUrl?: string) {
   void bank; // bank details shown in comments if needed
   const curr = inv.currency || 'USD';
   const custName = esc(inv.customer?.name || '');
@@ -216,7 +229,7 @@ export function printInvoice(inv: Invoice, settings: CompanySettings, bank: Bank
 
     <hr style="border:none;border-top:1px solid #aaa;margin:10px 0">
 
-    ${footerHTML(settings)}
+    ${footerHTML(settings, isDraft ? undefined : signatureUrl, isDraft ? undefined : stampUrl)}
   `;
 
   openPrintWindow(body, `Invoice ${inv.invoice_no}`, isDraft);
@@ -224,7 +237,7 @@ export function printInvoice(inv: Invoice, settings: CompanySettings, bank: Bank
 
 // ─── Packing List ─────────────────────────────────────────────────────────────
 
-export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false) {
+export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false, signatureUrl?: string, stampUrl?: string) {
   const items = pl.packing_list_items ?? [];
   const isTruck = pl.transport_mode === 'truck';
   const isTrain = pl.transport_mode === 'train';
@@ -341,7 +354,7 @@ export function printPackingList(pl: PackingList, settings: CompanySettings, isD
 
     <hr style="border:none;border-top:1px solid #aaa;margin:10px 0">
 
-    ${footerHTML(settings)}
+    ${footerHTML(settings, isDraft ? undefined : signatureUrl, isDraft ? undefined : stampUrl)}
   `;
 
   openPrintWindow(body, `Packing List ${pl.packing_list_no}`, isDraft);
@@ -355,6 +368,8 @@ export function printProforma(
   bank: BankAccount | null,
   file?: TradeFile | null,
   isDraft = false,
+  signatureUrl?: string,
+  stampUrl?: string,
 ) {
   const curr = pi.currency || 'USD';
   const piTfAny = (pi.trade_file as unknown as Record<string,unknown> | null);
@@ -594,6 +609,13 @@ export function printProforma(
       <div style="font-size:10px;color:#333;margin-top:2px">
         ${settings.phone ? 'WWW.PLUSKIMYA.COM &nbsp; ' : ''}${settings.email ? esc(settings.email).toUpperCase() : ''}
       </div>
+      ${(!isDraft && signatureUrl && stampUrl) ? `
+      <div style="margin-top:16px;display:flex;justify-content:center">
+        <div style="position:relative;width:220px;height:110px">
+          <img src="${stampUrl}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);max-width:200px;max-height:80px;object-fit:contain;opacity:0.92">
+          <img src="${signatureUrl}" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);max-width:180px;max-height:75px;object-fit:contain;z-index:2">
+        </div>
+      </div>` : ''}
     </div>
   `;
 

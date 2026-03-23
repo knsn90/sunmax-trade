@@ -1,9 +1,14 @@
+import { useState } from 'react';
 import { Check, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSetDocStatus, useCanApprove } from '@/hooks/useApproval';
+import { ApproveWithPasswordDialog } from '@/components/ui/ApproveWithPasswordDialog';
 import type { DocStatus } from '@/types/database';
 
 type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists' | 'transactions';
+
+/** Tables that require password before approving */
+const PASSWORD_PROTECTED: ApprovableTable[] = ['invoices', 'proformas', 'packing_lists'];
 
 interface Props {
   table: ApprovableTable;
@@ -14,31 +19,55 @@ interface Props {
 export function ApprovalActions({ table, id, currentStatus }: Props) {
   const canApprove = useCanApprove();
   const setStatus = useSetDocStatus(table);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   if (!canApprove) return null;
 
+  const needsPassword = PASSWORD_PROTECTED.includes(table);
+
+  function handleApproveClick() {
+    if (needsPassword) {
+      setShowPasswordDialog(true);
+    } else {
+      setStatus.mutate({ id, status: 'approved' });
+    }
+  }
+
+  function handlePasswordConfirm() {
+    setShowPasswordDialog(false);
+    setStatus.mutate({ id, status: 'approved' });
+  }
+
   if (currentStatus === 'draft') {
     return (
-      <div className="flex gap-1">
-        <Button
-          variant="outline"
-          size="xs"
-          className="text-green-700 border-green-300 hover:bg-green-50"
-          onClick={() => setStatus.mutate({ id, status: 'approved' })}
-          disabled={setStatus.isPending}
-        >
-          <Check className="h-3 w-3 mr-0.5" /> Approve
-        </Button>
-        <Button
-          variant="outline"
-          size="xs"
-          className="text-red-600 border-red-300 hover:bg-red-50"
-          onClick={() => setStatus.mutate({ id, status: 'rejected' })}
-          disabled={setStatus.isPending}
-        >
-          <X className="h-3 w-3 mr-0.5" /> Reject
-        </Button>
-      </div>
+      <>
+        <ApproveWithPasswordDialog
+          open={showPasswordDialog}
+          onClose={() => setShowPasswordDialog(false)}
+          onConfirm={handlePasswordConfirm}
+          isPending={setStatus.isPending}
+        />
+        <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="xs"
+            className="text-green-700 border-green-300 hover:bg-green-50"
+            onClick={handleApproveClick}
+            disabled={setStatus.isPending}
+          >
+            <Check className="h-3 w-3 mr-0.5" /> Approve
+          </Button>
+          <Button
+            variant="outline"
+            size="xs"
+            className="text-red-600 border-red-300 hover:bg-red-50"
+            onClick={() => setStatus.mutate({ id, status: 'rejected' })}
+            disabled={setStatus.isPending}
+          >
+            <X className="h-3 w-3 mr-0.5" /> Reject
+          </Button>
+        </div>
+      </>
     );
   }
 
