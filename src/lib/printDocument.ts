@@ -380,7 +380,10 @@ export function printProforma(
       `${bank.correspondent_bank ? esc(bank.correspondent_bank) : ''}`
     : '';
 
-  const notes = (pi.notes || '').split('\n').filter((l: string) => l.trim());
+  const admt = fN3(pi.quantity_admt).replace(/\.000$/, '');
+  const notes = (pi.notes || '').split('\n').filter((l: string) => l.trim()).map((l: string) =>
+    l.match(/^1-\s*Total Quantity\s*:/i) ? l.replace(/:.*/, `: ${admt} ADMT`) : l
+  );
   const notesHTML = notes.map((l: string) => `<div style="margin-bottom:2px">${esc(l)}</div>`).join('');
 
   /* reusable style strings */
@@ -428,7 +431,7 @@ export function printProforma(
       <!-- ═══ S1: ISSUER (C:I) | PI Number / Date / Validity (J:P) ═══ -->
       <tr>
         <td colspan="7" rowspan="4" style="${W};${B};padding:4px 6px;vertical-align:top">
-          <div style="font-size:9px;font-weight:600;color:#333;margin-bottom:3px">ISSUER (name, address):</div>
+          <div style="font-size:9px;font-weight:600;color:#333;margin-bottom:3px">Issuer (name, address):</div>
           <div style="font-weight:700;font-size:10.5px">${esc(settings.company_name || '')}</div>
           <div style="font-size:10px">${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}</div>
           <div style="font-size:9.5px">${settings.phone ? 'Website: ' + esc(settings.phone) + (settings.email ? ' &nbsp; Mail: ' + esc(settings.email) : '') : (settings.email ? 'Mail: ' + esc(settings.email) : '')}</div>
@@ -546,8 +549,8 @@ export function printProforma(
       <tr>
         <td colspan="1" style="${vS};text-align:center">1</td>
         <td colspan="4" style="${vS};text-align:center;font-weight:700">${esc(pi.description || '')}</td>
-        <td colspan="2" style="${vS};text-align:center">${pi.net_weight_kg ? fN3(pi.net_weight_kg) : ''}</td>
-        <td colspan="2" style="${vS};text-align:center">${pi.gross_weight_kg ? fN3(pi.gross_weight_kg) : ''}</td>
+        <td colspan="2" style="${vS};text-align:center">${pi.net_weight_kg ? fN(pi.net_weight_kg, 0) : ''}</td>
+        <td colspan="2" style="${vS};text-align:center">${pi.gross_weight_kg ? fN(pi.gross_weight_kg, 0) : ''}</td>
         <td colspan="2" style="${vS};text-align:center">${fN3(pi.quantity_admt)}</td>
         <td colspan="1" style="${vS};text-align:center">${tF(pi.unit_price)}</td>
         <td colspan="2" style="${vS};text-align:center">${tF(pi.subtotal)}</td>
