@@ -405,8 +405,6 @@ export function printProforma(
         </td>
       </tr>
     </table>
-    <div style="border-top:1.5px solid #000;margin-bottom:0"></div>
-
     <!-- ══ MAIN DOCUMENT TABLE (14 logical cols → C:P) ══ -->
     <table style="width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed">
       <colgroup>
