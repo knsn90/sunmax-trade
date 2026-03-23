@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
 import {
   BarChart3, FileText, Package, Receipt, LineChart, Users, Truck,
-  Clock, Box, Settings, LayoutDashboard, Home,
+  Clock, Box, Settings, LayoutDashboard, Home, Activity,
 } from 'lucide-react';
 
 interface NavItem {
@@ -12,54 +13,59 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-const sections: { label?: string; items: NavItem[] }[] = [
-  {
-    items: [
-      { to: '/dashboard', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
-    ],
-  },
-  {
-    label: 'TRADE',
-    items: [
-      { to: '/pipeline', label: 'Pipeline', icon: <BarChart3 className="h-4 w-4" /> },
-      { to: '/files', label: 'All Files', icon: <FileText className="h-4 w-4" /> },
-    ],
-  },
-  {
-    label: 'DOCUMENTS',
-    items: [
-      { to: '/invoices', label: 'Invoices', icon: <Receipt className="h-4 w-4" /> },
-      { to: '/proformas', label: 'Proformas', icon: <FileText className="h-4 w-4" /> },
-      { to: '/packing-lists', label: 'Packing Lists', icon: <Package className="h-4 w-4" /> },
-    ],
-  },
-  {
-    label: 'FINANCE',
-    items: [
-      { to: '/accounting', label: 'Accounting', icon: <LayoutDashboard className="h-4 w-4" /> },
-      { to: '/reports', label: 'Reports', icon: <LineChart className="h-4 w-4" /> },
-    ],
-  },
-  {
-    label: 'CONTACTS',
-    items: [
-      { to: '/customers', label: 'Customers', icon: <Users className="h-4 w-4" /> },
-      { to: '/suppliers', label: 'Suppliers', icon: <Truck className="h-4 w-4" /> },
-      { to: '/service-providers', label: 'Services', icon: <Clock className="h-4 w-4" /> },
-      { to: '/products', label: 'Products', icon: <Box className="h-4 w-4" /> },
-    ],
-  },
-  {
-    label: 'GENERAL',
-    items: [
-      { to: '/settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
-    ],
-  },
-];
-
 export function Sidebar() {
   const { theme } = useTheme();
+  const { profile } = useAuth();
   const isDonezo = theme === 'donezo';
+  const isAdmin = profile?.role === 'admin';
+
+  const sections: { label?: string; items: NavItem[] }[] = [
+    {
+      items: [
+        { to: '/dashboard', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
+      ],
+    },
+    {
+      label: 'TRADE',
+      items: [
+        { to: '/pipeline', label: 'Pipeline', icon: <BarChart3 className="h-4 w-4" /> },
+        { to: '/files', label: 'All Files', icon: <FileText className="h-4 w-4" /> },
+      ],
+    },
+    {
+      label: 'DOCUMENTS',
+      items: [
+        { to: '/invoices', label: 'Invoices', icon: <Receipt className="h-4 w-4" /> },
+        { to: '/proformas', label: 'Proformas', icon: <FileText className="h-4 w-4" /> },
+        { to: '/packing-lists', label: 'Packing Lists', icon: <Package className="h-4 w-4" /> },
+      ],
+    },
+    {
+      label: 'FINANCE',
+      items: [
+        { to: '/accounting', label: 'Accounting', icon: <LayoutDashboard className="h-4 w-4" /> },
+        { to: '/reports', label: 'Reports', icon: <LineChart className="h-4 w-4" /> },
+      ],
+    },
+    {
+      label: 'CONTACTS',
+      items: [
+        { to: '/customers', label: 'Customers', icon: <Users className="h-4 w-4" /> },
+        { to: '/suppliers', label: 'Suppliers', icon: <Truck className="h-4 w-4" /> },
+        { to: '/service-providers', label: 'Services', icon: <Clock className="h-4 w-4" /> },
+        { to: '/products', label: 'Products', icon: <Box className="h-4 w-4" /> },
+      ],
+    },
+    {
+      label: 'GENERAL',
+      items: [
+        ...(isAdmin ? [
+          { to: '/activity', label: 'Activity Log', icon: <Activity className="h-4 w-4" /> },
+        ] : []),
+        { to: '/settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
+      ],
+    },
+  ];
 
   return (
     <aside
