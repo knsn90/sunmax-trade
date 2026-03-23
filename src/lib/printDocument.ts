@@ -395,236 +395,249 @@ export function printProforma(
     : '';
 
   const notes = (pi.notes || '').split('\n').filter((l: string) => l.trim());
-  const notesHTML = notes.map((l: string, i: number) => `<div style="margin-bottom:3px">${i + 1 > 0 ? i + 1 : ''}- ${esc(l)}</div>`).join('');
+  const notesHTML = notes.map((l: string) => `<div style="margin-bottom:3px">${esc(l)}</div>`).join('');
 
-  const th = (content: string, extra = '') =>
-    `<td style="border:1px solid #888;padding:3px 6px;font-size:9px;color:#555;vertical-align:top${extra ? ';' + extra : ''}">${content}</td>`;
+  /* label cell (gray bg) */
+  const lbl = (txt: string, extra = '') =>
+    `<td style="background:#e8e8e8;border:1px solid #888;padding:3px 7px;font-size:9px;font-weight:600;color:#333;vertical-align:top${extra ? ';' + extra : ''}">${txt}</td>`;
+
+  /* value cell (white) */
+  const val = (txt: string, extra = '') =>
+    `<td style="background:#fff;border:1px solid #888;padding:4px 7px;font-size:10.5px;vertical-align:top${extra ? ';' + extra : ''}">${txt}</td>`;
 
   const partialText = pi.partial_shipment === 'not'
-    ? '(x) not allowed &nbsp; ( ) allowed'
-    : '( ) not allowed &nbsp; (x) allowed';
+    ? '(x) not allowed &nbsp;&nbsp; ( ) allowed'
+    : '( ) not allowed &nbsp;&nbsp; (x) allowed';
 
   const body = `
     <!-- ── Header ── -->
-    <table style="width:100%;margin-bottom:8px">
+    <table style="width:100%;margin-bottom:6px">
       <tr>
-        <td style="width:40%;vertical-align:top">
-          ${logoHTML(settings, 65, 170)}
+        <td style="width:42%;vertical-align:middle">
+          ${logoHTML(settings, 65, 180)}
         </td>
-        <td style="text-align:right;vertical-align:top">
-          <div style="font-size:26px;font-weight:300;color:#888">Proforma Invoice</div>
+        <td style="text-align:right;vertical-align:middle">
+          <div style="font-size:28px;font-weight:300;color:#888;letter-spacing:1px">Proforma Invoice</div>
         </td>
       </tr>
     </table>
+    <hr style="border:none;border-top:1.5px solid #000;margin:0 0 0 0">
 
-    <!-- ── Main grid table ── -->
+    <!-- ── Main grid ── -->
     <table style="width:100%;border-collapse:collapse;font-size:10.5px">
 
-      <!-- Row 1: ISSUER | Proforma Invoice Number -->
+      <!-- ROW A labels: ISSUER | PI Number -->
       <tr>
-        ${th('ISSUER (name, address):', 'width:52%')}
-        ${th('Proforma Invoice Number: <strong style="color:#c0392b;font-size:11px">' + esc(pi.proforma_no) + '</strong>')}
+        ${lbl('ISSUER (name, address):', 'width:52%')}
+        ${lbl('Proforma Invoice Number: <span style="color:#c0392b;font-size:11px;font-weight:700">&nbsp;' + esc(pi.proforma_no) + '</span>')}
       </tr>
+      <!-- ROW A values -->
       <tr>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10.5px;vertical-align:top">
-          <strong>${esc(settings.company_name || '')}</strong><br>
-          ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}<br>
-          ${settings.email ? 'Website: www.pluskimya.com &nbsp; Mail: ' + esc(settings.email) : ''}
-        </td>
-        <td style="border:1px solid #888;padding:0;vertical-align:top">
+        ${val('<strong>' + esc(settings.company_name || '') + '</strong><br>' +
+              esc(settings.address_line1 || '') + (settings.address_line2 ? ', ' + esc(settings.address_line2) : '') + '<br>' +
+              (settings.email ? 'Website: www.pluskimya.com &nbsp; Mail: ' + esc(settings.email) : ''))}
+        <td style="background:#fff;border:1px solid #888;padding:0;vertical-align:top">
           <table style="width:100%;border-collapse:collapse">
             <tr>
-              ${th('Proforma Invoice Date', 'width:50%;border-right:1px solid #bbb;border-bottom:1px solid #bbb')}
-              ${th('Validity date/days of PI', 'border-bottom:1px solid #bbb')}
+              ${lbl('Proforma Invoice Date', 'width:50%;border-right:1px solid #bbb')}
+              ${lbl('Validity date / days of PI', '')}
             </tr>
             <tr>
-              <td style="padding:3px 6px;font-weight:700;border-right:1px solid #bbb;font-size:10.5px">${fDate(pi.proforma_date)}</td>
-              <td style="padding:3px 6px;font-weight:700;font-size:10.5px">${pi.validity_date ? fDate(pi.validity_date) : '—'}</td>
+              <td style="padding:4px 7px;font-weight:700;border-right:1px solid #bbb;font-size:10.5px">${fDate(pi.proforma_date)}</td>
+              <td style="padding:4px 7px;font-weight:700;font-size:10.5px">${pi.validity_date ? fDate(pi.validity_date) : '—'}</td>
             </tr>
           </table>
         </td>
       </tr>
 
-      <!-- Row 2: Shipper | Consignee -->
+      <!-- ROW B labels: Shipper | Consignee -->
       <tr>
-        ${th('Shipper (name, address):')}
-        ${th('Consignee (name, address):')}
+        ${lbl('Shipper (name, address):')}
+        ${lbl('Consignee (name, address):')}
       </tr>
+      <!-- ROW B values -->
       <tr>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10.5px;vertical-align:top">
-          <strong>${esc(settings.company_name || '')}</strong><br>
-          ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}<br>
-          ${settings.email ? 'Website: www.pluskimya.com &nbsp; Mail: ' + esc(settings.email) : ''}
-        </td>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10.5px;vertical-align:top">
-          <strong>${custName}</strong><br>
-          ${custAddr ? custAddr + '<br>' : ''}
-          ${custCountry ? custCountry + '<br>' : ''}
-          ${custPhone ? 'Tel: ' + custPhone : ''}
-        </td>
+        ${val('<strong>' + esc(settings.company_name || '') + '</strong><br>' +
+              esc(settings.address_line1 || '') + (settings.address_line2 ? ', ' + esc(settings.address_line2) : '') + '<br>' +
+              (settings.email ? 'Website: www.pluskimya.com &nbsp; Mail: ' + esc(settings.email) : ''))}
+        ${val('<strong>' + custName + '</strong><br>' +
+              (custAddr ? custAddr + '<br>' : '') +
+              (custCountry ? custCountry + '<br>' : '') +
+              (custPhone ? 'Tel: ' + custPhone : ''))}
       </tr>
 
-      <!-- Row 3: Buyer ref — below Consignee -->
+      <!-- ROW C: Bankers | Buyer reference -->
       <tr>
-        <td colspan="2" style="border:1px solid #888;padding:2px 6px;font-size:9px;color:#555">
-          Buyer's reference / Buyer Commercial ID No.: <span style="color:#000;font-size:10px">${esc(pi.buyer_commercial_id || '')}</span>
-        </td>
+        ${lbl('Bankers details:')}
+        ${lbl("Buyer's reference / Buyer Commercial ID No.:")}
+      </tr>
+      <tr>
+        ${val(bankBlock || '&nbsp;', 'font-size:9.5px')}
+        ${val(esc(pi.buyer_commercial_id || '&nbsp;'))}
       </tr>
 
-      <!-- Row 4: Bankers | Country of beneficiary -->
+      <!-- ROW D labels: Partial shipment | Country of beneficiary -->
       <tr>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10px;vertical-align:top">
-          <span style="font-size:9px;color:#555">Bankers details:</span><br>
-          ${bankBlock}
-        </td>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10px;vertical-align:top">
-          <div><span style="font-size:9px;color:#555">Country of beneficiary:</span> TURKEY</div>
-          <div style="margin-top:3px"><span style="font-size:9px;color:#555">Country of origin:</span> ${esc(pi.country_of_origin || '')} &nbsp;&nbsp; <span style="font-size:9px;color:#555">Country of destination:</span> ${custCountry}</div>
-        </td>
+        ${lbl('Partial shipment:')}
+        ${lbl('Country of beneficiary:')}
+      </tr>
+      <!-- ROW D values -->
+      <tr>
+        ${val(partialText)}
+        ${val('TURKEY')}
       </tr>
 
-      <!-- Row 5: Partial shipment | Terms -->
+      <!-- ROW E: Country of origin/dest | Terms of delivery/payment -->
       <tr>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10px;vertical-align:top">
-          <span style="font-size:9px;color:#555">Partial shipment:</span><br>${partialText}
-        </td>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10px;vertical-align:top">
-          <span style="font-size:9px;color:#555">Terms of delivery:</span> <strong>${esc(pi.incoterms || '')}</strong><br>
-          <span style="font-size:9px;color:#555">Terms of payment:</span> ${esc(pi.payment_terms || '')}
-        </td>
-      </tr>
-
-      <!-- Row 6: Transport | Place of payment -->
-      <tr>
-        <td style="border:1px solid #888;padding:0;vertical-align:top">
+        <td style="background:#fff;border:1px solid #888;padding:0;vertical-align:top">
           <table style="width:100%;border-collapse:collapse">
             <tr>
-              <td style="padding:2px 5px;border-right:1px solid #bbb;font-size:9px;color:#555;width:50%">Transport mode and means:</td>
-              <td style="padding:2px 5px;font-size:9px;color:#555">Port / Airport of loading:</td>
+              ${lbl('Country of origin:', 'width:50%;border-right:1px solid #bbb')}
+              ${lbl('Country of destination:', '')}
             </tr>
             <tr>
-              <td style="padding:2px 5px;border-right:1px solid #bbb;font-size:10.5px">${esc(pi.transport_mode || '')}</td>
-              <td style="padding:2px 5px;font-size:10.5px">${esc(pi.port_of_loading || '')}</td>
+              <td style="padding:4px 7px;font-size:10.5px;border-right:1px solid #bbb">${esc(pi.country_of_origin || '')}</td>
+              <td style="padding:4px 7px;font-size:10.5px">${custCountry}</td>
             </tr>
           </table>
         </td>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10px;vertical-align:top">
+        <td style="background:#fff;border:1px solid #888;padding:0;vertical-align:top">
+          <table style="width:100%;border-collapse:collapse">
+            <tr>
+              ${lbl('Terms of delivery:', 'width:40%;border-right:1px solid #bbb')}
+              ${lbl('Terms of payment:', '')}
+            </tr>
+            <tr>
+              <td style="padding:4px 7px;font-size:10.5px;font-weight:700;border-right:1px solid #bbb">${esc(pi.incoterms || '')}</td>
+              <td style="padding:4px 7px;font-size:10.5px">${esc(pi.payment_terms || '')}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- ROW F: Transport + Ports | Place of payment + Currency + Insurance -->
+      <tr>
+        <td style="background:#fff;border:1px solid #888;padding:0;vertical-align:top">
+          <table style="width:100%;border-collapse:collapse">
+            <tr>
+              ${lbl('Transport mode and means:', 'border-right:1px solid #bbb;width:34%')}
+              ${lbl('Port / Airport of loading:', 'border-right:1px solid #bbb;width:33%')}
+              ${lbl('Port / Airport of discharge:', '')}
+            </tr>
+            <tr>
+              <td style="padding:3px 6px;font-size:10px;border-right:1px solid #bbb">${esc(pi.transport_mode || '')}</td>
+              <td style="padding:3px 6px;font-size:10px;border-right:1px solid #bbb">${esc(pi.port_of_loading || '')}</td>
+              <td style="padding:3px 6px;font-size:10px">${esc(pi.port_of_discharge || '')}</td>
+            </tr>
+          </table>
+        </td>
+        <td style="background:#fff;border:1px solid #888;padding:4px 7px;font-size:10px;vertical-align:top">
           <span style="font-size:9px;color:#555">Place of payment:</span> ${esc(pi.place_of_payment || '')}<br>
-          <span style="font-size:9px;color:#555">Time of Delivery :</span> -
-        </td>
-      </tr>
-
-      <!-- Row 7: Port of discharge | Transaction currency -->
-      <tr>
-        <td style="border:1px solid #888;padding:0;vertical-align:top">
-          <table style="width:100%;border-collapse:collapse">
-            <tr>
-              <td style="padding:2px 5px;border-right:1px solid #bbb;font-size:9px;color:#555;width:50%">Port / Airport of discharge:</td>
-              <td style="padding:2px 5px;font-size:9px;color:#555">Final place delivery:</td>
-            </tr>
-            <tr>
-              <td style="padding:2px 5px;border-right:1px solid #bbb;font-size:10.5px">${esc(pi.port_of_discharge || '')}</td>
-              <td style="padding:2px 5px;font-size:10.5px">${esc(pi.final_delivery || pi.port_of_discharge || '')}</td>
-            </tr>
-          </table>
-        </td>
-        <td style="border:1px solid #888;padding:3px 6px;font-size:10px;vertical-align:top">
+          <span style="font-size:9px;color:#555">Time of Delivery:</span> —<br>
           <span style="font-size:9px;color:#555">Transaction currency:</span> <strong>${curr}</strong><br>
           <span style="font-size:9px;color:#555">Insurance:</span> ${esc(pi.insurance || 'INSURANCE TO BE ARRANGED BY BUYER')}
         </td>
       </tr>
 
-      <!-- Row 8: Item table header -->
+      <!-- ROW G: Item table (full width) -->
       <tr>
         <td colspan="2" style="padding:0;border:1px solid #888">
-          <table style="width:100%;border-collapse:collapse;font-size:10.5px">
+          <table style="width:100%;border-collapse:collapse;font-size:10px">
             <thead>
-              <tr style="background:#d4d4d4">
-                <th style="padding:5px 6px;border-right:1px solid #888;text-align:center;width:5%">Item</th>
-                <th style="padding:5px 6px;border-right:1px solid #888;text-align:center;width:22%">Item description</th>
-                <th style="padding:5px 6px;border-right:1px solid #888;text-align:center;width:12%">Total net<br>wt (KG)</th>
-                <th style="padding:5px 6px;border-right:1px solid #888;text-align:center;width:12%">Total Gross<br>wt (KG)</th>
-                <th style="padding:5px 6px;border-right:1px solid #888;text-align:center;width:10%">Quantity<br>ADMT</th>
-                <th style="padding:5px 6px;border-right:1px solid #888;text-align:center;width:12%">Unit price<br>${curr}</th>
-                <th style="padding:5px 6px;text-align:center;width:12%">Amount<br>${curr}</th>
+              <tr style="background:#e8e8e8">
+                <th style="padding:5px 5px;border-right:1px solid #888;text-align:center;width:5%;font-size:9px">Item</th>
+                <th style="padding:5px 5px;border-right:1px solid #888;text-align:center;width:24%;font-size:9px">Item description</th>
+                <th style="padding:5px 5px;border-right:1px solid #888;text-align:center;width:11%;font-size:9px">Total net<br>wt (KG)</th>
+                <th style="padding:5px 5px;border-right:1px solid #888;text-align:center;width:11%;font-size:9px">Total Gross<br>wt (KG)</th>
+                <th style="padding:5px 5px;border-right:1px solid #888;text-align:center;width:10%;font-size:9px">Quantity<br>ADMT</th>
+                <th style="padding:5px 5px;border-right:1px solid #888;text-align:center;width:12%;font-size:9px">Unit price<br>${curr}</th>
+                <th style="padding:5px 5px;text-align:center;width:12%;font-size:9px">Amount<br>${curr}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="padding:6px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">1</td>
-                <td style="padding:6px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center;font-weight:700">${esc(pi.description || '')}</td>
-                <td style="padding:6px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">${pi.net_weight_kg ? fN3(pi.net_weight_kg) : ''}</td>
-                <td style="padding:6px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">${pi.gross_weight_kg ? fN3(pi.gross_weight_kg) : ''}</td>
-                <td style="padding:6px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center;font-weight:700">${fN3(pi.quantity_admt)}</td>
-                <td style="padding:6px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">${tF(pi.unit_price)}</td>
-                <td style="padding:6px;border-top:1px solid #ccc;text-align:center;font-weight:700">${tF(pi.subtotal)}</td>
+                <td style="padding:7px 5px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">1</td>
+                <td style="padding:7px 5px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center;font-weight:700">${esc(pi.description || '')}</td>
+                <td style="padding:7px 5px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">${pi.net_weight_kg ? fN3(pi.net_weight_kg) : ''}</td>
+                <td style="padding:7px 5px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">${pi.gross_weight_kg ? fN3(pi.gross_weight_kg) : ''}</td>
+                <td style="padding:7px 5px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center;font-weight:700">${fN3(pi.quantity_admt)}</td>
+                <td style="padding:7px 5px;border-right:1px solid #ccc;border-top:1px solid #ccc;text-align:center">${tF(pi.unit_price)}</td>
+                <td style="padding:7px 5px;border-top:1px solid #ccc;text-align:center;font-weight:700">${tF(pi.subtotal)}</td>
               </tr>
             </tbody>
           </table>
         </td>
       </tr>
 
-      <!-- Row 9: Notes | Totals -->
+      <!-- ROW H: Notes | Totals -->
       <tr style="vertical-align:top">
-        <td style="border:1px solid #888;padding:5px 7px;font-size:9.5px;line-height:1.7;vertical-align:top">
-          <strong>Note:</strong><br>${notesHTML}
+        <td style="border:1px solid #888;padding:5px 7px;font-size:9.5px;line-height:1.75;vertical-align:top;background:#fff">
+          ${notesHTML}
         </td>
-        <td style="border:1px solid #888;padding:0;vertical-align:top">
-          <table style="width:100%;border-collapse:collapse;font-size:10.5px">
-            <tr><td colspan="2" style="padding:3px 8px;border-bottom:1px solid #ccc;font-size:9px;color:#555">Total amoumt:</td></tr>
-            <tr><td colspan="2" style="padding:4px 8px;border-bottom:1px solid #ccc;text-align:center;font-weight:700;font-size:13px">${curr}&nbsp;${tF(pi.subtotal)}</td></tr>
+        <td style="border:1px solid #888;padding:0;vertical-align:top;background:#fff">
+          <table style="width:100%;border-collapse:collapse;font-size:10px">
             <tr>
-              <td style="padding:3px 8px;border-bottom:1px solid #ccc;font-size:9.5px;color:#555">Discount:</td>
+              <td colspan="2" style="padding:3px 8px;background:#e8e8e8;border-bottom:1px solid #ccc;font-size:9px;font-weight:600;color:#333">Total amount:</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:5px 8px;border-bottom:1px solid #ccc;text-align:center;font-weight:700;font-size:13px">${curr}&nbsp;${tF(pi.subtotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 8px;background:#e8e8e8;border-bottom:1px solid #ccc;font-size:9px;font-weight:600;color:#333">Discount:</td>
               <td style="padding:3px 8px;border-bottom:1px solid #ccc;text-align:right">${(pi.discount ?? 0) > 0 ? '-' + tF(pi.discount) : 'N/A'}</td>
             </tr>
             <tr>
-              <td style="padding:3px 8px;border-bottom:1px solid #ccc;font-size:9.5px;color:#555">Freght Charges:</td>
+              <td style="padding:3px 8px;background:#e8e8e8;border-bottom:1px solid #ccc;font-size:9px;font-weight:600;color:#333">Freight Charges:</td>
               <td style="padding:3px 8px;border-bottom:1px solid #ccc;text-align:right">${(pi.freight ?? 0) > 0 ? tF(pi.freight) : 'N/A'}</td>
             </tr>
             <tr>
-              <td style="padding:3px 8px;border-bottom:1px solid #ccc;font-size:9.5px;color:#555">Other Charges:</td>
+              <td style="padding:3px 8px;background:#e8e8e8;border-bottom:1px solid #ccc;font-size:9px;font-weight:600;color:#333">Other Charges:</td>
               <td style="padding:3px 8px;border-bottom:1px solid #ccc;text-align:right">${(pi.other_charges ?? 0) > 0 ? tF(pi.other_charges) : 'N/A'}</td>
             </tr>
-            <tr><td colspan="2" style="padding:2px 8px;font-size:9px;color:#555">Total Amount:</td></tr>
-            <tr><td colspan="2" style="padding:5px 8px;text-align:center;font-weight:700;font-size:13px;background:#e8e8e8">${curr}&nbsp;${tF(pi.total)}</td></tr>
+            <tr>
+              <td colspan="2" style="padding:3px 8px;background:#e8e8e8;font-size:9px;font-weight:600;color:#333">Total Amount:</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:6px 8px;text-align:center;font-weight:700;font-size:14px;background:#e8e8e8">${curr}&nbsp;${tF(pi.total)}</td>
+            </tr>
           </table>
         </td>
       </tr>
 
-      <!-- Row 10: Certification | Signatory -->
+      <!-- ROW I: Certification | Seal & Signature -->
       <tr style="vertical-align:top">
-        <td style="border:1px solid #888;padding:6px 8px;font-size:9.5px;font-style:italic;line-height:1.6;vertical-align:top">
+        <td style="border:1px solid #888;padding:6px 8px;font-size:9.5px;font-style:italic;line-height:1.65;vertical-align:top;background:#fff">
           It is hereby certified that this invoice shows the actual price of the goods described,
-          that no other invoice has been or will be issued, and that all praticulars are true and correct.
+          that no other invoice has been or will be issued, and that all particulars are true and correct.
         </td>
-        <td style="border:1px solid #888;padding:5px 8px;font-size:10.5px;vertical-align:top">
-          <div>NAME OF SIGNATORY: <strong>${esc(pi.signatory || settings.signatory || '')}</strong></div>
-          <div style="margin-top:3px">PLACE AND DATE OF ISSUE:</div>
-          <div style="font-size:10px;margin-top:2px">TURKEY &nbsp; ${fDate(pi.proforma_date)}</div>
-          <div style="margin-top:6px;font-size:9px;color:#555">SEAL AND SIGNATURE:</div>
+        <td style="border:1px solid #888;padding:6px 8px;font-size:10px;vertical-align:top;background:#fff">
+          <div><span style="font-size:9px;color:#555">NAME OF SIGNATORY:</span> <strong>${esc(pi.signatory || settings.signatory || '')}</strong></div>
+          <div style="margin-top:4px"><span style="font-size:9px;color:#555">PLACE AND DATE OF ISSUE:</span></div>
+          <div style="font-size:10px;margin-top:2px">TURKEY &nbsp;&nbsp; ${fDate(pi.proforma_date)}</div>
+          <div style="margin-top:6px;font-size:9px;font-weight:600;color:#333">SEAL AND SIGNATURE:</div>
           ${(!isDraft && signatureUrl && stampUrl) ? `
-          <div style="display:flex;justify-content:center;margin-top:4px">
-            <div style="position:relative;width:200px;height:115px">
+          <div style="display:flex;justify-content:center;margin-top:2px">
+            <div style="position:relative;width:220px;height:120px">
               <img src="${stampUrl}"
                 style="position:absolute;bottom:0;left:50%;transform:translateX(-50%) rotate(-6deg);
-                       width:190px;object-fit:contain;opacity:0.90;">
+                       width:200px;object-fit:contain;opacity:0.92;">
               <img src="${signatureUrl}"
-                style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);
-                       width:200px;object-fit:contain;z-index:2;">
+                style="position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+                       width:210px;object-fit:contain;z-index:2;">
             </div>
-          </div>` : '<div style="height:80px"></div>'}
+          </div>` : '<div style="height:90px"></div>'}
         </td>
       </tr>
 
     </table>
 
-    <!-- ── Footer ── -->
-    <div style="text-align:center;margin-top:12px;border-top:1px solid #aaa;padding-top:6px">
-      <div style="font-size:10px;color:#333">
-        ${esc(settings.address_line1 || '')}${settings.address_line2 ? ' ' + esc(settings.address_line2) : ''}
+    <!-- ── Footer (red) ── -->
+    <div style="margin-top:10px;border-top:2px solid #c0392b;padding-top:6px;text-align:center">
+      <div style="font-size:10px;color:#c0392b">
+        ${esc(settings.address_line1 || '')}${settings.address_line2 ? ' &nbsp;|&nbsp; ' + esc(settings.address_line2) : ''}
       </div>
-      <div style="font-size:10px;color:#333;margin-top:2px">
-        ${settings.phone ? 'WWW.PLUSKIMYA.COM &nbsp; ' : ''}${settings.email ? esc(settings.email).toUpperCase() : ''}
+      <div style="font-size:10px;color:#c0392b;margin-top:2px">
+        WWW.PLUSKIMYA.COM &nbsp;&nbsp; ${settings.email ? esc(settings.email).toUpperCase() : ''}
       </div>
     </div>
   `;
