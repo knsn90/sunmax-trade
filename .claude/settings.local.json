@@ -15,7 +15,18 @@
       "Bash(curl -s -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://www.sunsirs.com/uk/prodetail-958.html\")",
       "Bash(curl -s -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\" \"https://www.sunsirs.com/uk/prodetail-958.html\")",
       "Bash(curl -s -A \"Mozilla/5.0\" \"https://www.sunsirs.com/uk/prodetail-958.html\")",
-      "Bash(curl -s -b \"HW_CHECK=a37d1c95cbaf8f7ad693bd9786eb3234\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://www.sunsirs.com/uk/prodetail-958.html\")"
+      "Bash(curl -s -b \"HW_CHECK=a37d1c95cbaf8f7ad693bd9786eb3234\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://www.sunsirs.com/uk/prodetail-958.html\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(xargs ls:*)",
+      "Bash(ls -lt ~/Downloads/*.png ~/Downloads/*.jpg ~/Downloads/*.jpeg)",
+      "Bash(find /Users/saber/Library/CloudStorage/Dropbox -iname *sunplus* -o -iname *kashe* -o -iname *stamp* -o -iname *mohr* -o -iname *kaşe*)",
+      "Bash(ls \"/Users/saber/Library/CloudStorage/Dropbox/Family Room/01-SELÜLOZ/01-Müşteriler/Zarrin-Paper & Board Trading/P07-2026-02 IP/\")",
+      "Bash(cp \"/Users/saber/Library/CloudStorage/Dropbox/Sign.png\" /Users/saber/Downloads/sunmax-trade/public/signature.png)",
+      "Bash(cp \"/Users/saber/Library/CloudStorage/Dropbox/SUNPLUS/01-Seluloz/Documents/Sunplus Documents/01-asli/mohr.png\" /Users/saber/Downloads/sunmax-trade/public/stamp.png)",
+      "Read(//Users/saber/**)",
+      "Bash(python3 -c \"import openpyxl; print\\(''openpyxl available''\\)\")",
+      "Bash(pip3 install:*)",
+      "Bash(python3 /tmp/extract_excel.py)"
     ]
   }
 }

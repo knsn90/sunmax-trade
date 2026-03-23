@@ -397,12 +397,13 @@ export function printProforma(
 
   const body = `
     <!-- ── Header ── -->
-    <table style="width:100%;margin-bottom:5px;border-collapse:collapse">
+    <table style="width:100%;margin-bottom:0;border-collapse:collapse">
       <tr>
-        <td style="width:42%;vertical-align:middle">${logoHTML(settings, 60, 170)}</td>
-        <td style="text-align:right;vertical-align:middle">
-          <span style="font-size:28px;font-weight:300;color:#888;letter-spacing:1px">Proforma Invoice</span>
+        <td style="width:32%;vertical-align:middle;padding-bottom:6px">${logoHTML(settings, 62, 180)}</td>
+        <td style="text-align:center;vertical-align:middle;padding-bottom:6px">
+          <div style="font-size:22px;font-weight:900;color:#000;letter-spacing:3px;text-transform:uppercase">PROFORMA INVOICE</div>
         </td>
+        <td style="width:32%;vertical-align:middle"></td>
       </tr>
     </table>
     <div style="border-top:1.5px solid #000;margin-bottom:0"></div>
@@ -450,7 +451,7 @@ export function printProforma(
       <!-- website/email + buyer ref label + buyer ref value -->
       <tr>
         <td colspan="7" style="${vS};font-size:9.5px">
-          ${settings.email ? 'Website: www.pluskimya.com &nbsp; Mail: ' + esc(settings.email) : '&nbsp;'}
+          ${settings.phone ? 'Website: ' + esc(settings.phone) + (settings.email ? ' &nbsp; Mail: ' + esc(settings.email) : '') : (settings.email ? 'Mail: ' + esc(settings.email) : '&nbsp;')}
         </td>
         <td colspan="5" style="${lS}">Buyer's reference / Buyer Commercial ID No.:</td>
         <td colspan="2" style="${vS}">${esc(pi.buyer_commercial_id || '')}</td>
@@ -476,7 +477,7 @@ export function printProforma(
       </tr>
       <tr>
         <td colspan="7" style="${vS};font-size:9.5px">
-          ${settings.email ? 'Website: www.pluskimya.com &nbsp; Mail: ' + esc(settings.email) : '&nbsp;'}
+          ${settings.phone ? 'Website: ' + esc(settings.phone) + (settings.email ? ' &nbsp; Mail: ' + esc(settings.email) : '') : (settings.email ? 'Mail: ' + esc(settings.email) : '&nbsp;')}
         </td>
         <td colspan="7" style="${vS}">&nbsp;</td>
       </tr>
@@ -500,6 +501,11 @@ export function printProforma(
       </tr>
       <tr>
         <td colspan="7" style="${vS}">${partialText}</td>
+        <td colspan="4" style="${lS}">Shipment Method:</td>
+        <td colspan="3" style="${vS}">${esc(pi.transport_mode || '')}</td>
+      </tr>
+      <tr>
+        <td colspan="7" style="${vS}">&nbsp;</td>
         <td colspan="4" style="${lS}">Terms of payment:</td>
         <td colspan="3" style="${vS}">${esc(pi.payment_terms || '')}</td>
       </tr>
@@ -512,8 +518,12 @@ export function printProforma(
         <td colspan="3" style="${vS}">${esc(pi.place_of_payment || '')}</td>
       </tr>
       <tr>
-        <td colspan="4" style="${vS}">${esc(pi.transport_mode || '')}</td>
-        <td colspan="3" style="${vS}">${esc(pi.port_of_loading || '')}</td>
+        <td colspan="4" style="${vS}" rowspan="2">${esc(pi.transport_mode || '')}</td>
+        <td colspan="3" style="${vS}" rowspan="2">${esc(pi.port_of_loading || '')}</td>
+        <td colspan="4" style="${lS}">Vessel Details Confirmation time:</td>
+        <td colspan="3" style="${vS}">—</td>
+      </tr>
+      <tr>
         <td colspan="4" style="${lS}">Time of Delivery:</td>
         <td colspan="3" style="${vS}">—</td>
       </tr>
