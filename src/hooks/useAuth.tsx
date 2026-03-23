@@ -50,23 +50,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let initialDone = false;
 
-    // onAuthStateChange fires immediately with INITIAL_SESSION on page load,
-    // reading the persisted localStorage token — no separate getSession() needed.
+    // 1) getSession() reads localStorage synchronously — fast, no network needed.
+    //    This resolves the loading spinner immediately on refresh.
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (!mounted) return;
+      initialDone = true;
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) await fetchProfile(s.user.id);
+      setIsLoading(false);
+    }).catch(() => {
+      if (mounted) setIsLoading(false);
+    });
+
+    // 2) onAuthStateChange handles sign-in / sign-out / token refresh events.
+    //    Skip if initial load already handled to avoid duplicate profile fetch.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, s) => {
         if (!mounted) return;
-
+        if (!initialDone) return; // still loading from getSession()
         setSession(s);
         setUser(s?.user ?? null);
-
         if (s?.user) {
           await fetchProfile(s.user.id);
         } else {
           setProfile(null);
         }
-
-        setIsLoading(false);
       },
     );
 
