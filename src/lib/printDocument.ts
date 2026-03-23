@@ -90,32 +90,19 @@ function logoHTML(s: CompanySettings, maxH = 65, maxW = 170): string {
     : `<div style="font-size:18px;font-weight:900;color:#000">${esc(s.company_name || '')}</div>`;
 }
 
-function sigStampBlock(signatureUrl: string, stampUrl: string): string {
-  return `
-    <div style="display:flex;justify-content:center;margin-top:14px">
-      <div style="position:relative;width:260px;height:130px">
-        <!-- Kaşe: eğimli, altta -->
-        <img src="${stampUrl}"
-          style="position:absolute;bottom:0;left:50%;transform:translateX(-50%) rotate(-6deg);
-                 width:210px;object-fit:contain;opacity:0.90;">
-        <!-- İmza: üstte, büyük -->
-        <img src="${signatureUrl}"
-          style="position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
-                 width:230px;object-fit:contain;z-index:2;">
-      </div>
-    </div>`;
+/** Combined seal+signature block — single SVG/PNG */
+const SEAL_URL = '/seal-signature.svg';
+
+function sealBlock(): string {
+  return `<img src="${SEAL_URL}" style="display:block;max-width:230px;max-height:110px;object-fit:contain;margin:4px auto 0">`;
 }
 
-function footerHTML(s: CompanySettings, signatureUrl?: string, stampUrl?: string): string {
+function footerHTML(s: CompanySettings, showSeal = false): string {
   const email = s.email || '';
-  const hasSig = !!signatureUrl && !!stampUrl;
   return `
     <div style="text-align:center;margin-top:18px">
-      ${hasSig
-        ? sigStampBlock(signatureUrl!, stampUrl!)
-        : (s.logo_url ? `<img src="${s.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : '')
-      }
-      <div style="font-size:10px;color:#333;margin-bottom:2px;margin-top:${hasSig ? '8px' : '0'}">If you have any questions or concerns, please contact</div>
+      ${showSeal ? sealBlock() : (s.logo_url ? `<img src="${s.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : '')}
+      <div style="font-size:10px;color:#333;margin-bottom:2px;margin-top:${showSeal ? '8px' : '0'}">If you have any questions or concerns, please contact</div>
       <div style="font-size:10px;color:#1155cc;margin-bottom:4px">${esc(email)}</div>
       <div style="font-size:11px;font-style:italic;font-weight:700">Thank You For Your Business!</div>
     </div>`;
@@ -123,7 +110,7 @@ function footerHTML(s: CompanySettings, signatureUrl?: string, stampUrl?: string
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 
-export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false, signatureUrl?: string, stampUrl?: string) {
+export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false) {
   void bank; // bank details shown in comments if needed
   const curr = inv.currency || 'USD';
   const custName = esc(inv.customer?.name || '');
@@ -236,7 +223,7 @@ export function printInvoice(inv: Invoice, settings: CompanySettings, bank: Bank
 
     <hr style="border:none;border-top:1px solid #aaa;margin:10px 0">
 
-    ${footerHTML(settings, isDraft ? undefined : signatureUrl, isDraft ? undefined : stampUrl)}
+    ${footerHTML(settings, !isDraft)}
   `;
 
   openPrintWindow(body, `Invoice ${inv.invoice_no}`, isDraft);
@@ -244,7 +231,7 @@ export function printInvoice(inv: Invoice, settings: CompanySettings, bank: Bank
 
 // ─── Packing List ─────────────────────────────────────────────────────────────
 
-export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false, signatureUrl?: string, stampUrl?: string) {
+export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false) {
   const items = pl.packing_list_items ?? [];
   const isTruck = pl.transport_mode === 'truck';
   const isTrain = pl.transport_mode === 'train';
@@ -361,7 +348,7 @@ export function printPackingList(pl: PackingList, settings: CompanySettings, isD
 
     <hr style="border:none;border-top:1px solid #aaa;margin:10px 0">
 
-    ${footerHTML(settings, isDraft ? undefined : signatureUrl, isDraft ? undefined : stampUrl)}
+    ${footerHTML(settings, !isDraft)}
   `;
 
   openPrintWindow(body, `Packing List ${pl.packing_list_no}`, isDraft);
@@ -375,8 +362,6 @@ export function printProforma(
   bank: BankAccount | null,
   file?: TradeFile | null,
   isDraft = false,
-  signatureUrl?: string,
-  stampUrl?: string,
 ) {
   const curr = pi.currency || 'USD';
   const piTfAny = (pi.trade_file as unknown as Record<string,unknown> | null);
@@ -632,13 +617,7 @@ export function printProforma(
       </tr>
       <tr>
         <td colspan="5" rowspan="2" style="${W};${B};text-align:center;vertical-align:middle;height:90px">
-          ${(!isDraft && signatureUrl && stampUrl) ? `
-          <div style="position:relative;display:inline-block;width:200px;height:90px">
-            <img src="${stampUrl}"
-              style="position:absolute;bottom:0;left:50%;transform:translateX(-50%) rotate(-6deg);width:185px;object-fit:contain;opacity:0.92">
-            <img src="${signatureUrl}"
-              style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:200px;object-fit:contain;z-index:2">
-          </div>` : ''}
+          ${!isDraft ? sealBlock() : ''}
         </td>
       </tr>
       <tr></tr>

@@ -27,8 +27,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache app shell
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MiB
+        // Cache app shell (exclude legacy large stamp/signature files)
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}', 'icons/*.png', 'apple-touch-icon.png'],
+        globIgnores: ['stamp.png', 'signature.png'],
         // Network-first for API calls, cache-first for assets
         runtimeCaching: [
           {
