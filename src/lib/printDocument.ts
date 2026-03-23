@@ -428,59 +428,46 @@ export function printProforma(
       </colgroup>
 
       <!-- ═══ S1: ISSUER (C:I) | PI Number / Date / Validity (J:P) ═══ -->
-      <!-- label row -->
       <tr>
-        <td colspan="7" style="${lS}">ISSUER (name, address):</td>
+        <td colspan="7" rowspan="4" style="${W};${B};padding:4px 6px;vertical-align:top">
+          <div style="font-size:9px;font-weight:600;color:#333;margin-bottom:3px">ISSUER (name, address):</div>
+          <div style="font-weight:700;font-size:10.5px">${esc(settings.company_name || '')}</div>
+          <div style="font-size:10px">${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}</div>
+          <div style="font-size:9.5px">${settings.phone ? 'Website: ' + esc(settings.phone) + (settings.email ? ' &nbsp; Mail: ' + esc(settings.email) : '') : (settings.email ? 'Mail: ' + esc(settings.email) : '')}</div>
+        </td>
         <td colspan="4" style="${lS};text-align:right">Proforma Invoice Number:</td>
         <td colspan="3" style="${lS};color:#c0392b;font-size:10px;font-weight:700">${esc(pi.proforma_no)}</td>
       </tr>
-      <!-- company name -->
       <tr>
-        <td colspan="7" style="${vS};font-weight:700">${esc(settings.company_name || '')}</td>
         <td colspan="4" style="${lS};text-align:center">Proforma Invoice Date</td>
         <td colspan="3" style="${lS};text-align:center">Validity date / days of PI</td>
       </tr>
-      <!-- address + date values -->
       <tr>
-        <td colspan="7" style="${vS};font-size:10px">
-          ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}
-        </td>
         <td colspan="4" style="${vS};font-weight:700;text-align:center">${fDate(pi.proforma_date)}</td>
         <td colspan="3" style="${vS};font-weight:700;text-align:center">${pi.validity_date ? fDate(pi.validity_date) : '—'}</td>
       </tr>
-      <!-- website/email + buyer ref label + buyer ref value -->
       <tr>
-        <td colspan="7" style="${vS};font-size:9.5px">
-          ${settings.phone ? 'Website: ' + esc(settings.phone) + (settings.email ? ' &nbsp; Mail: ' + esc(settings.email) : '') : (settings.email ? 'Mail: ' + esc(settings.email) : '&nbsp;')}
-        </td>
         <td colspan="5" style="${lS}">Buyer's reference / Buyer Commercial ID No.:</td>
         <td colspan="2" style="${vS}">${esc(pi.buyer_commercial_id || '')}</td>
       </tr>
 
       <!-- ═══ S2: SHIPPER (C:I) | CONSIGNEE (J:P) ═══ -->
       <tr>
-        <td colspan="7" style="${lS}">Shipper (name, address):</td>
-        <td colspan="7" style="${lS}">Consignee (name, address):</td>
-      </tr>
-      <tr>
-        <td colspan="7" style="${vS};font-weight:700">${esc(settings.company_name || '')}</td>
-        <td colspan="7" style="${vS};font-weight:700">${custName}</td>
-      </tr>
-      <tr>
-        <td colspan="7" style="${vS};font-size:10px">
-          ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}
+        <td colspan="7" rowspan="3" style="${W};${B};padding:4px 6px;vertical-align:top">
+          <div style="font-size:9px;font-weight:600;color:#333;margin-bottom:3px">Shipper (name, address):</div>
+          <div style="font-weight:700;font-size:10.5px">${esc(settings.company_name || '')}</div>
+          <div style="font-size:10px">${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}</div>
+          <div style="font-size:9.5px">${settings.phone ? 'Website: ' + esc(settings.phone) + (settings.email ? ' &nbsp; Mail: ' + esc(settings.email) : '') : (settings.email ? 'Mail: ' + esc(settings.email) : '')}</div>
         </td>
-        <td colspan="7" style="${vS};font-size:10px">
-          ${custAddr ? custAddr + '<br>' : ''}${custCountry ? custCountry + '<br>' : ''}
-          ${custPhone ? 'Tel: ' + custPhone : '&nbsp;'}
+        <td colspan="7" rowspan="3" style="${W};${B};padding:4px 6px;vertical-align:top">
+          <div style="font-size:9px;font-weight:600;color:#333;margin-bottom:3px">Consignee (name, address):</div>
+          <div style="font-weight:700;font-size:10.5px">${custName}</div>
+          <div style="font-size:10px">${custAddr ? custAddr + '<br>' : ''}${custCountry || ''}</div>
+          <div style="font-size:10px">${custPhone ? 'Tel: ' + custPhone : ''}</div>
         </td>
       </tr>
-      <tr>
-        <td colspan="7" style="${vS};font-size:9.5px">
-          ${settings.phone ? 'Website: ' + esc(settings.phone) + (settings.email ? ' &nbsp; Mail: ' + esc(settings.email) : '') : (settings.email ? 'Mail: ' + esc(settings.email) : '&nbsp;')}
-        </td>
-        <td colspan="7" style="${vS}">&nbsp;</td>
-      </tr>
+      <tr></tr>
+      <tr></tr>
 
       <!-- ═══ S3: BANKERS (C:I) | COUNTRY OF BENEFICIARY (J:P) ═══ -->
       <tr>
