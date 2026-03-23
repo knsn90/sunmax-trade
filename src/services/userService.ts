@@ -18,33 +18,50 @@ export const userService = {
     fullName: string,
     role: UserRole,
   ): Promise<void> {
-    // Create auth user (triggers DB profile creation via Supabase trigger)
+    // Save current admin session before signUp replaces it
+    const { data: { session: adminSession } } = await supabase.auth.getSession();
+
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw new Error(error.message);
     const userId = data.user?.id;
     if (!userId) throw new Error('User creation failed');
 
-    // Update profile with name and role
-    const { error: profileError } = await supabase
+    // Restore admin session immediately (signUp creates a new session for the new user)
+    if (adminSession) {
+      await supabase.auth.setSession({
+        access_token: adminSession.access_token,
+        refresh_token: adminSession.refresh_token,
+      });
+    }
+
+    // Update profile with name and role via RPC (bypasses RLS)
+    const { error: roleError } = await supabase.rpc('admin_update_user_role', {
+      target_id: userId,
+      new_role: role,
+    });
+    if (roleError) throw new Error(roleError.message);
+
+    const { error: nameError } = await supabase
       .from('profiles')
-      .update({ full_name: fullName, role })
+      .update({ full_name: fullName })
       .eq('id', userId);
-    if (profileError) throw new Error(profileError.message);
+    if (nameError) throw new Error(nameError.message);
   },
 
   async updateRole(id: string, role: UserRole): Promise<void> {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role })
-      .eq('id', id);
+    // Use SECURITY DEFINER RPC to bypass any RLS issues
+    const { error } = await supabase.rpc('admin_update_user_role', {
+      target_id: id,
+      new_role: role,
+    });
     if (error) throw new Error(error.message);
   },
 
   async toggleActive(id: string, isActive: boolean): Promise<void> {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_active: isActive })
-      .eq('id', id);
+    const { error } = await supabase.rpc('admin_toggle_user_active', {
+      target_id: id,
+      new_active: isActive,
+    });
     if (error) throw new Error(error.message);
   },
 };
