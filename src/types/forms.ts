@@ -137,6 +137,8 @@ export const proformaSchema = z.object({
   transport_mode: z.enum(['truck', 'train', 'sea']).default('truck'),
   currency: z.enum(['USD', 'EUR', 'TRY']).default('USD'),
   place_of_payment: z.string().default(''),
+  delivery_time: z.string().default(''),
+  vessel_details_confirmation: z.string().default(''),
   description: z.string().default(''),
   hs_code: z.string().default('470321'),
   partial_shipment: z.enum(['allowed', 'not']).default('allowed'),

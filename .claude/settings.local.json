@@ -26,7 +26,9 @@
       "Read(//Users/saber/**)",
       "Bash(python3 -c \"import openpyxl; print\\(''openpyxl available''\\)\")",
       "Bash(pip3 install:*)",
-      "Bash(python3 /tmp/extract_excel.py)"
+      "Bash(python3 /tmp/extract_excel.py)",
+      "Bash(npx supabase:*)",
+      "Bash(grep -r \"SUPABASE_URL\\\\|supabase_url\\\\|supabaseUrl\" /Users/saber/Downloads/sunmax-trade/.env*)"
     ]
   }
 }

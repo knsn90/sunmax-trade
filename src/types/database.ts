@@ -198,6 +198,8 @@ export interface Proforma extends Timestamps {
   transport_mode: TransportMode | null;
   currency: CurrencyCode;
   place_of_payment: string | null;
+  delivery_time: string | null;
+  vessel_details_confirmation: string | null;
   description: string | null;
   hs_code: string | null;
   partial_shipment: 'allowed' | 'not';

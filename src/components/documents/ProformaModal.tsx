@@ -36,9 +36,10 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   const isEdit = !!proforma;
   const importRef = useRef<HTMLInputElement>(null);
 
+  const hsCode = proforma?.hs_code || file?.product?.hs_code || '';
   const defaultNotes = [
     '1- Total Quantity:',
-    '2- HS Code:',
+    `2- HS Code:${hsCode ? ' ' + hsCode : ''}`,
     '3- The weights mentioned are approximate and will be confirmed at the time of loading. The approximate weights may vary by ±10%',
     '4- The following documents will be provided: Invoice/Packing/Origin/Certificate of Analysis',
     '5- Shipment 07-10 days from date of receipt of payment provided there is no delay due to Covid-19 situation and government orders and no inspection reqired from your side',
@@ -71,6 +72,8 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         transport_mode: proforma.transport_mode ?? 'truck',
         currency: proforma.currency,
         place_of_payment: proforma.place_of_payment ?? '',
+        delivery_time: proforma.delivery_time ?? '',
+        vessel_details_confirmation: proforma.vessel_details_confirmation ?? '',
         description: proforma.description ?? '',
         hs_code: proforma.hs_code ?? '',
         partial_shipment: proforma.partial_shipment,
@@ -101,6 +104,8 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         transport_mode: file.transport_mode ?? 'truck',
         currency: file.currency ?? settings?.default_currency ?? 'USD',
         place_of_payment: 'ISTANBUL - TURKEY',
+        delivery_time: '',
+        vessel_details_confirmation: '',
         description: file.product?.name ?? '',
         hs_code: file.product?.hs_code ?? '470321',
         partial_shipment: 'allowed',
@@ -262,6 +267,15 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
             </FormGroup>
             <FormGroup label="Place of Payment">
               <Input {...register('place_of_payment')} />
+            </FormGroup>
+          </FormRow>
+
+          <FormRow>
+            <FormGroup label="Time of Delivery">
+              <Input {...register('delivery_time')} placeholder="e.g. Weeks 26-27" />
+            </FormGroup>
+            <FormGroup label="Vessel Details Confirmation Time">
+              <Input {...register('vessel_details_confirmation')} placeholder="e.g. 7 days before loading" />
             </FormGroup>
           </FormRow>
 

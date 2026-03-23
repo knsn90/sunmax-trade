@@ -521,11 +521,11 @@ export function printProforma(
         <td colspan="4" style="${vS}" rowspan="2">${esc(pi.transport_mode || '')}</td>
         <td colspan="3" style="${vS}" rowspan="2">${esc(pi.port_of_loading || '')}</td>
         <td colspan="4" style="${lS}">Vessel Details Confirmation time:</td>
-        <td colspan="3" style="${vS}">—</td>
+        <td colspan="3" style="${vS}">${esc(pi.vessel_details_confirmation || '—')}</td>
       </tr>
       <tr>
         <td colspan="4" style="${lS}">Time of Delivery:</td>
-        <td colspan="3" style="${vS}">—</td>
+        <td colspan="3" style="${vS}">${esc(pi.delivery_time || '—')}</td>
       </tr>
       <tr>
         <td colspan="4" style="${lS}">Port / Airport of discharge:</td>
