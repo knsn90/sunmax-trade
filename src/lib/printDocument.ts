@@ -388,7 +388,7 @@ export function printProforma(
   const B  = 'border:1px solid #888';
   const P  = 'padding:3px 6px';
   const PV = 'padding:4px 6px';
-  const lS = `${G};${B};${P};font-size:9px;font-weight:600;color:#333;vertical-align:top`;
+  const lS = `${W};${B};${P};font-size:9px;font-weight:600;color:#333;vertical-align:top`;
   const vS = `${W};${B};${PV};font-size:10.5px;vertical-align:top`;
 
   const partialText = pi.partial_shipment === 'not'
