@@ -400,10 +400,9 @@ export function printProforma(
     <table style="width:100%;margin-bottom:0;border-collapse:collapse">
       <tr>
         <td style="width:32%;vertical-align:middle;padding-bottom:6px">${logoHTML(settings, 62, 180)}</td>
-        <td style="text-align:center;vertical-align:middle;padding-bottom:6px">
-          <div style="font-size:22px;font-weight:900;color:#000;letter-spacing:3px;text-transform:uppercase">PROFORMA INVOICE</div>
+        <td colspan="2" style="text-align:right;vertical-align:middle;padding-bottom:6px">
+          <div style="font-size:22px;font-weight:900;color:#888;letter-spacing:3px;text-transform:uppercase;white-space:nowrap">PROFORMA INVOICE</div>
         </td>
-        <td style="width:32%;vertical-align:middle"></td>
       </tr>
     </table>
     <div style="border-top:1.5px solid #000;margin-bottom:0"></div>
