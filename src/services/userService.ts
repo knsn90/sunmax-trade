@@ -7,6 +7,7 @@ export const userService = {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return (data ?? []) as Profile[];
@@ -61,6 +62,21 @@ export const userService = {
     const { error } = await supabase.rpc('admin_toggle_user_active', {
       target_id: id,
       new_active: isActive,
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async updatePermissions(id: string, permissions: string[] | null): Promise<void> {
+    const { error } = await supabase.rpc('admin_update_permissions', {
+      target_id: id,
+      new_permissions: permissions,
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    const { error } = await supabase.rpc('admin_delete_user', {
+      target_id: id,
     });
     if (error) throw new Error(error.message);
   },

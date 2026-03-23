@@ -6,8 +6,9 @@ import { companySettingsSchema, type CompanySettingsFormData } from '@/types/for
 import { useSettings, useUpdateSettings, useUploadLogo, useRemoveLogo, useBankAccounts, useUpsertBankAccount } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { isAdmin } from '@/lib/permissions';
-import { useUsers, useCreateUser, useUpdateUserRole, useToggleUserActive } from '@/hooks/useUsers';
-import { USER_ROLES, type UserRole } from '@/types/enums';
+import { useUsers, useCreateUser, useUpdateUserRole, useToggleUserActive, useUpdatePermissions, useDeleteUser } from '@/hooks/useUsers';
+import { USER_ROLES, PAGE_PERMISSIONS, type UserRole } from '@/types/enums';
+import type { Profile } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
@@ -404,37 +405,119 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
   );
 }
 
-// ─── Users Tab ───────────────────────────────────────────────────────────────
+// ─── Permissions Modal ────────────────────────────────────────────────────────
+function PermissionsModal({ user, onClose }: { user: Profile; onClose: () => void }) {
+  const updatePerms = useUpdatePermissions();
+  const allKeys = PAGE_PERMISSIONS.map(p => p.key);
+  const [selected, setSelected] = useState<string[]>(
+    user.permissions ?? allKeys
+  );
 
+  function toggle(key: string) {
+    setSelected(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  }
+
+  async function save() {
+    const perms = selected.length === allKeys.length ? null : selected;
+    await updatePerms.mutateAsync({ id: user.id, permissions: perms });
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-[420px] mx-4 overflow-hidden">
+        <div className="bg-gradient-to-r from-red-600 to-red-500 px-5 py-4">
+          <div className="text-white font-bold text-sm">Sayfa Erişim İzinleri</div>
+          <div className="text-white/75 text-xs mt-0.5">{user.full_name} — {user.email}</div>
+        </div>
+        <div className="px-5 py-4">
+          <p className="text-xs text-gray-500 mb-3">
+            Hangi sayfalara erişebileceğini seç. Tümü seçiliyse kısıtlama yok.
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {PAGE_PERMISSIONS.map(({ key, label }) => (
+              <label key={key} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                selected.includes(key) ? 'bg-red-50 border-red-300' : 'border-gray-200 hover:bg-gray-50'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(key)}
+                  onChange={() => toggle(key)}
+                  className="accent-red-600"
+                />
+                <span className="text-xs font-medium text-gray-700">{label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2 justify-between">
+            <Button variant="outline" size="sm" onClick={() => setSelected(allKeys)} className="text-xs">
+              Tümünü Seç
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={onClose}>İptal</Button>
+              <Button size="sm" onClick={save} disabled={updatePerms.isPending} className="bg-red-600 hover:bg-red-700 text-white">
+                {updatePerms.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Users Tab ───────────────────────────────────────────────────────────────
 function UsersTab({ currentUserId }: { currentUserId?: string }) {
   const { data: users = [], isLoading } = useUsers();
-  const updateRole = useUpdateUserRole();
+  const updateRole   = useUpdateUserRole();
   const toggleActive = useToggleUserActive();
-  const createUser = useCreateUser();
+  const deleteUser   = useDeleteUser();
+  const createUser   = useCreateUser();
 
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newRole, setNewRole] = useState<UserRole>('viewer');
+  const [showAddForm, setShowAddForm]   = useState(false);
+  const [newEmail, setNewEmail]         = useState('');
+  const [newPassword, setNewPassword]   = useState('');
+  const [newName, setNewName]           = useState('');
+  const [newRole, setNewRole]           = useState<UserRole>('viewer');
+  const [permUser, setPermUser]         = useState<Profile | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   async function handleCreate() {
-    if (!newEmail || !newPassword || !newName) {
-      alert('Please fill all fields');
-      return;
-    }
+    if (!newEmail || !newPassword || !newName) { alert('Please fill all fields'); return; }
     await createUser.mutateAsync({ email: newEmail, password: newPassword, fullName: newName, role: newRole });
-    setNewEmail('');
-    setNewPassword('');
-    setNewName('');
-    setNewRole('viewer');
-    setShowAddForm(false);
+    setNewEmail(''); setNewPassword(''); setNewName(''); setNewRole('viewer'); setShowAddForm(false);
+  }
+
+  async function handleDelete(id: string) {
+    await deleteUser.mutateAsync(id);
+    setDeleteConfirm(null);
   }
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
     <div>
+      {permUser && <PermissionsModal user={permUser} onClose={() => setPermUser(null)} />}
+
+      {/* Delete confirm dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-[320px] mx-4 p-6 text-center">
+            <div className="text-3xl mb-2">⚠️</div>
+            <div className="font-bold text-gray-800 mb-1">Kullanıcıyı sil?</div>
+            <p className="text-xs text-gray-500 mb-4">Bu işlem geri alınamaz. Kullanıcı sisteme giriş yapamaz.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(null)}>İptal</Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => handleDelete(deleteConfirm)} disabled={deleteUser.isPending}>
+                {deleteUser.isPending ? 'Siliniyor…' : 'Sil'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm font-semibold">User Management</div>
         <Button size="sm" onClick={() => setShowAddForm((v) => !v)}>
@@ -509,14 +592,25 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    {u.id !== currentUserId && (
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => toggleActive.mutate({ id: u.id, isActive: !u.is_active })}
-                      >
-                        {u.is_active ? 'Deactivate' : 'Activate'}
-                      </Button>
+                    {u.id !== currentUserId ? (
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="xs"
+                          onClick={() => toggleActive.mutate({ id: u.id, isActive: !u.is_active })}>
+                          {u.is_active ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button variant="outline" size="xs" title="Sayfa İzinleri"
+                          onClick={() => setPermUser(u)}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                          🔑
+                        </Button>
+                        <Button variant="outline" size="xs" title="Sil"
+                          onClick={() => setDeleteConfirm(u.id)}
+                          className="text-red-600 border-red-200 hover:bg-red-50">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-2xs text-gray-400">—</span>
                     )}
                   </td>
                 </tr>

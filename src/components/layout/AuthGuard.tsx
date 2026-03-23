@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/ui/shared';
 import type { UserRole } from '@/types/enums';
@@ -10,6 +10,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
   const { user, profile, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -19,22 +20,36 @@ export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  const isAdmin = profile?.role === 'admin';
+
+  // Role-based check (e.g. settings page admin-only)
+  if (requiredRoles && profile && !requiredRoles.includes(profile.role)) {
+    return <AccessDenied />;
   }
 
-  if (requiredRoles && profile && !requiredRoles.includes(profile.role)) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-base font-semibold">Access Denied</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            You don't have permission to view this page.
-          </p>
-        </div>
-      </div>
-    );
+  // Permission-based check — skip for admins
+  if (!isAdmin && profile?.permissions && profile.permissions.length > 0) {
+    const segment = location.pathname.split('/')[1];
+    if (segment && !profile.permissions.includes(segment)) {
+      return <AccessDenied />;
+    }
   }
 
   return <>{children}</>;
+}
+
+function AccessDenied() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="text-center p-8">
+        <div className="text-4xl mb-3">🔒</div>
+        <h2 className="text-base font-semibold text-gray-800">Erişim Yok</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          Bu sayfaya erişim yetkiniz bulunmuyor.
+        </p>
+      </div>
+    </div>
+  );
 }

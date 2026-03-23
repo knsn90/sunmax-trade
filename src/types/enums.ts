@@ -80,3 +80,21 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   EUR: '€',
   TRY: '₺',
 };
+
+// ─── Page Permissions ────────────────────────────────────────────────────────
+export const PAGE_PERMISSIONS = [
+  { key: 'dashboard',         label: 'Dashboard' },
+  { key: 'pipeline',          label: 'Pipeline' },
+  { key: 'files',             label: 'Trade Files' },
+  { key: 'invoices',          label: 'Invoices' },
+  { key: 'packing-lists',     label: 'Packing Lists' },
+  { key: 'proformas',         label: 'Proformas' },
+  { key: 'accounting',        label: 'Accounting' },
+  { key: 'reports',           label: 'Reports' },
+  { key: 'customers',         label: 'Customers' },
+  { key: 'suppliers',         label: 'Suppliers' },
+  { key: 'service-providers', label: 'Service Providers' },
+  { key: 'products',          label: 'Products' },
+] as const;
+
+export type PagePermission = typeof PAGE_PERMISSIONS[number]['key'];

@@ -18,6 +18,8 @@ export interface Profile extends Timestamps {
   full_name: string;
   role: UserRole;
   is_active: boolean;
+  permissions: string[] | null;
+  deleted_at: string | null;
 }
 
 // ─── Company Settings ───────────────────────────────────────────────────────

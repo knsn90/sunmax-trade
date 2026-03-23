@@ -48,3 +48,22 @@ export function useToggleUserActive() {
     onError: (err: Error) => toast.error(err.message),
   });
 }
+
+export function useUpdatePermissions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, permissions }: { id: string; permissions: string[] | null }) =>
+      userService.updatePermissions(id, permissions),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); toast.success('Permissions updated'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => userService.deleteUser(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); toast.success('User deleted'); },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
