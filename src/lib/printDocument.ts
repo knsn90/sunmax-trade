@@ -557,37 +557,50 @@ export function printProforma(
       </tr>
 
       <!-- ═══ S7: NOTES (C:N = 12 cols) | TOTALS (O:P = 2 cols) ═══ -->
+      <!-- notes spans 6 rows: SubTotal(3) + Discount(1) + Freight(1) + Other(1) -->
       <tr style="vertical-align:top">
-        <td colspan="12" rowspan="4" style="${W};${B};padding:5px 6px;font-size:10px;font-weight:400;line-height:1.7;vertical-align:top">
+        <td colspan="12" rowspan="6" style="${W};${B};padding:5px 6px;font-size:10px;font-weight:400;line-height:1.7;vertical-align:top">
           ${notesHTML}
         </td>
-        <td colspan="2" style="${W};${B};${PV};vertical-align:middle">
-          <div style="font-weight:700;font-size:10px">Total amount:</div>
+        <!-- Sub Total: 3 rows tall -->
+        <td colspan="2" rowspan="3" style="${W};${B};${PV};vertical-align:middle;text-align:center;height:72px">
+          <div style="font-weight:700;font-size:10px">Sub Total:</div>
           <div style="font-weight:700;font-size:12px">${curr} ${tF(pi.subtotal)}</div>
         </td>
       </tr>
+      <tr style="height:24px"></tr>
+      <tr style="height:24px"></tr>
+      <!-- Discount: 1 row -->
       <tr>
         <td colspan="2" style="${W};${B};${PV}">
           <span style="font-weight:700">Discount: </span>${(pi.discount ?? 0) > 0 ? tF(pi.discount) : 'N/A'}
         </td>
       </tr>
+      <!-- Freight: 1 row -->
       <tr>
         <td colspan="2" style="${W};${B};${PV}">
           <span style="font-weight:700">Freight Charges: </span>${(pi.freight ?? 0) > 0 ? tF(pi.freight) : 'N/A'}
         </td>
       </tr>
+      <!-- Other Charges: 1 row -->
       <tr>
         <td colspan="2" style="${W};${B};${PV}">
           <span style="font-weight:700">Other Charges: </span>${(pi.other_charges ?? 0) > 0 ? tF(pi.other_charges) : 'N/A'}
         </td>
       </tr>
-      <!-- Total Amount row (after notes rowspan) -->
+      <!-- Total Amount: 3 rows tall, gray — left side blank (rowspan=3) -->
       <tr>
-        <td colspan="12" style="${W};${B};padding:2px 6px">&nbsp;</td>
-        <td colspan="2" style="${W};${B};${PV};background:#d9d9d9;vertical-align:middle">
+        <td colspan="12" rowspan="3" style="${W};${B};padding:2px 6px"></td>
+        <td colspan="2" rowspan="3" style="${W};${B};${PV};background:#d9d9d9;vertical-align:middle;text-align:center;height:72px">
           <div style="font-weight:700;font-size:10px">Total Amount:</div>
           <div style="font-weight:700;font-size:12px">${curr} ${tF(pi.total)}</div>
         </td>
+      </tr>
+      <tr style="height:24px"></tr>
+      <tr style="height:24px"></tr>
+      <!-- Diagonal cell: spans full width -->
+      <tr>
+        <td colspan="14" style="${W};${B};height:28px;background:linear-gradient(to bottom right,transparent calc(50% - 0.5px),#888 calc(50% - 0.5px),#888 calc(50% + 0.5px),transparent calc(50% + 0.5px))"></td>
       </tr>
 
       <!-- ═══ S8: CERTIFICATION (C:K = 9 cols) | SIGNATORY (L:P = 5 cols) ═══ -->
