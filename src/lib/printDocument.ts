@@ -388,8 +388,8 @@ export function printProforma(
   const B  = 'border:1px solid #888';
   const P  = 'padding:3px 6px';
   const PV = 'padding:4px 6px';
-  const lS = `${W};${B};${P};font-size:9px;font-weight:600;color:#333;vertical-align:top`;
-  const vS = `${W};${B};${PV};font-size:10.5px;vertical-align:top`;
+  const lS = `${W};${B};${P};font-size:10px;font-weight:700;color:#000;vertical-align:top`;
+  const vS = `${W};${B};${PV};font-size:10px;font-weight:400;vertical-align:top`;
 
   const partialText = pi.partial_shipment === 'not'
     ? '(x) not allowed &nbsp;&nbsp; ( ) allowed'
@@ -528,72 +528,65 @@ export function printProforma(
       </tr>
 
       <!-- ═══ S6: PRODUCT TABLE HEADER (full width, gray) ═══ -->
-      <tr style="background:#d9d9d9">
-        <td colspan="1" rowspan="2" style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600;vertical-align:middle">Item</td>
-        <td colspan="4" rowspan="2" style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600;vertical-align:middle">Item description</td>
-        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">Total net</td>
-        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">Total Gross</td>
-        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">Quantity</td>
-        <td colspan="1"            style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">Unit price</td>
-        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">Amount</td>
+      <tr>
+        <td colspan="1" rowspan="2" style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700;vertical-align:middle">Item</td>
+        <td colspan="4" rowspan="2" style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700;vertical-align:middle">Item description</td>
+        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">Total net</td>
+        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">Total Gross</td>
+        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">Quantity</td>
+        <td colspan="1"            style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">Unit price</td>
+        <td colspan="2"            style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">Amount</td>
       </tr>
-      <tr style="background:#d9d9d9">
-        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">wt (KG)</td>
-        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">wt (KG)</td>
-        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">ADMT</td>
-        <td colspan="1" style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">${curr}</td>
-        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:9px;font-weight:600">${curr}</td>
+      <tr>
+        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">wt (KG)</td>
+        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">wt (KG)</td>
+        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">ADMT</td>
+        <td colspan="1" style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">${curr}</td>
+        <td colspan="2" style="${B};${G};${P};text-align:center;font-size:10px;font-weight:700">${curr}</td>
       </tr>
       <!-- data row -->
       <tr>
         <td colspan="1" style="${vS};text-align:center">1</td>
-        <td colspan="4" style="${vS};text-align:center;font-weight:700;font-size:10px">${esc(pi.description || '')}</td>
+        <td colspan="4" style="${vS};text-align:center;font-weight:700">${esc(pi.description || '')}</td>
         <td colspan="2" style="${vS};text-align:center">${pi.net_weight_kg ? fN3(pi.net_weight_kg) : ''}</td>
         <td colspan="2" style="${vS};text-align:center">${pi.gross_weight_kg ? fN3(pi.gross_weight_kg) : ''}</td>
-        <td colspan="2" style="${vS};text-align:center;font-weight:700">${fN3(pi.quantity_admt)}</td>
+        <td colspan="2" style="${vS};text-align:center">${fN3(pi.quantity_admt)}</td>
         <td colspan="1" style="${vS};text-align:center">${tF(pi.unit_price)}</td>
-        <td colspan="2" style="${vS};text-align:center;font-weight:700">${tF(pi.subtotal)}</td>
+        <td colspan="2" style="${vS};text-align:center">${tF(pi.subtotal)}</td>
       </tr>
 
       <!-- ═══ S7: NOTES (C:N = 12 cols) | TOTALS (O:P = 2 cols) ═══ -->
       <tr style="vertical-align:top">
-        <!-- Notes span C:N (cols 1-12) -->
-        <td colspan="12" rowspan="9" style="${W};${B};padding:5px 6px;font-size:9.5px;line-height:1.7;vertical-align:top">
+        <td colspan="12" rowspan="4" style="${W};${B};padding:5px 6px;font-size:10px;font-weight:400;line-height:1.7;vertical-align:top">
           ${notesHTML}
         </td>
-        <!-- Totals col O:P -->
-        <td colspan="2" style="${lS};text-align:center">Total amount:</td>
+        <td colspan="2" style="${W};${B};${PV};vertical-align:middle">
+          <div style="font-weight:700;font-size:10px">Total amount:</div>
+          <div style="font-weight:700;font-size:12px">${curr} ${tF(pi.subtotal)}</div>
+        </td>
       </tr>
       <tr>
-        <td colspan="2" rowspan="2" style="${W};${B};${PV};text-align:center;font-weight:700;font-size:13px;vertical-align:middle">${curr} ${tF(pi.subtotal)}</td>
-      </tr>
-      <tr></tr>
-      <tr>
-        <td colspan="2" style="${lS};text-align:left">Discount: ${(pi.discount ?? 0) > 0 ? '' : 'N/A'}</td>
+        <td colspan="2" style="${W};${B};${PV}">
+          <span style="font-weight:700">Discount: </span>${(pi.discount ?? 0) > 0 ? tF(pi.discount) : 'N/A'}
+        </td>
       </tr>
       <tr>
-        <td colspan="2" style="${vS};text-align:right">${(pi.discount ?? 0) > 0 ? tF(pi.discount) : ''}</td>
+        <td colspan="2" style="${W};${B};${PV}">
+          <span style="font-weight:700">Freight Charges: </span>${(pi.freight ?? 0) > 0 ? tF(pi.freight) : 'N/A'}
+        </td>
       </tr>
       <tr>
-        <td colspan="2" style="${lS}">Freight Charges:</td>
+        <td colspan="2" style="${W};${B};${PV}">
+          <span style="font-weight:700">Other Charges: </span>${(pi.other_charges ?? 0) > 0 ? tF(pi.other_charges) : 'N/A'}
+        </td>
       </tr>
-      <tr>
-        <td colspan="2" style="${vS};text-align:right">${(pi.freight ?? 0) > 0 ? tF(pi.freight) : 'N/A'}</td>
-      </tr>
-      <tr>
-        <td colspan="2" style="${lS}">Other Charges: ${(pi.other_charges ?? 0) > 0 ? '' : 'N/A'}</td>
-      </tr>
-      <tr>
-        <td colspan="2" style="${vS};text-align:right">${(pi.other_charges ?? 0) > 0 ? tF(pi.other_charges) : ''}</td>
-      </tr>
-      <!-- Total Amount (2 separate rows, notes rowspan finished) -->
-      <tr style="vertical-align:top">
-        <td colspan="12" style="${W};${B};padding:3px 6px;font-size:9px">&nbsp;</td>
-        <td colspan="2"  style="${lS};text-align:center">Total Amount:</td>
-      </tr>
+      <!-- Total Amount row (after notes rowspan) -->
       <tr>
         <td colspan="12" style="${W};${B};padding:2px 6px">&nbsp;</td>
-        <td colspan="2"  style="${W};${B};${PV};text-align:center;font-weight:700;font-size:13px;background:#d9d9d9">${curr} ${tF(pi.total)}</td>
+        <td colspan="2" style="${W};${B};${PV};background:#d9d9d9;vertical-align:middle">
+          <div style="font-weight:700;font-size:10px">Total Amount:</div>
+          <div style="font-weight:700;font-size:12px">${curr} ${tF(pi.total)}</div>
+        </td>
       </tr>
 
       <!-- ═══ S8: CERTIFICATION (C:K = 9 cols) | SIGNATORY (L:P = 5 cols) ═══ -->
