@@ -3,7 +3,11 @@ import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-const APPROVE_PASSWORD = '#EsenS2024#';
+export const APPROVE_PASSWORD_KEY = 'sunmax_approve_password';
+export const DEFAULT_APPROVE_PASSWORD = '#EsenS2024#';
+function getApprovePassword() {
+  return localStorage.getItem(APPROVE_PASSWORD_KEY) ?? DEFAULT_APPROVE_PASSWORD;
+}
 
 interface Props {
   open: boolean;
@@ -19,7 +23,7 @@ export function ApproveWithPasswordDialog({ open, onClose, onConfirm, isPending 
   if (!open) return null;
 
   function handleConfirm() {
-    if (password === APPROVE_PASSWORD) {
+    if (password === getApprovePassword()) {
       setPassword('');
       setError('');
       onConfirm();

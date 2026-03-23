@@ -9,6 +9,7 @@ import { TradeFileDetailPage } from '@/pages/TradeFileDetailPage';
 import { AccountingPage } from '@/pages/AccountingPage';
 import { CustomersPage } from '@/pages/CustomersPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { ProfilePage } from '@/pages/ProfilePage';
 import {
   SuppliersPage,
   ServiceProvidersPage,
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: 'suppliers', element: <SuppliersPage /> },
       { path: 'service-providers', element: <ServiceProvidersPage /> },
       { path: 'products', element: <ProductsPage /> },
+      { path: 'profile', element: <ProfilePage /> },
       {
         path: 'settings',
         element: (

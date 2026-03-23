@@ -28,7 +28,10 @@
       "Bash(pip3 install:*)",
       "Bash(python3 /tmp/extract_excel.py)",
       "Bash(npx supabase:*)",
-      "Bash(grep -r \"SUPABASE_URL\\\\|supabase_url\\\\|supabaseUrl\" /Users/saber/Downloads/sunmax-trade/.env*)"
+      "Bash(grep -r \"SUPABASE_URL\\\\|supabase_url\\\\|supabaseUrl\" /Users/saber/Downloads/sunmax-trade/.env*)",
+      "Bash(find /Users/saber/Downloads/sunmax-trade/src -name profile* -o -name Profile*)",
+      "Bash(find /Users/saber/Downloads/sunmax-trade/src -name useAuth* -o -name AuthContext* -o -name auth*)",
+      "Bash(find /Users/saber/Downloads/sunmax-trade/src -name App* -o -name main* -o -name router*)"
     ]
   }
 }

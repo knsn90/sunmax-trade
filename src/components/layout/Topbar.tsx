@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { LogOut, RefreshCw } from 'lucide-react';
@@ -63,6 +63,7 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
 
 export function Topbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
@@ -94,7 +95,10 @@ export function Topbar() {
           <NotificationBell />
 
           {profile && (
-            <div className="hidden md:flex items-center gap-2 pl-3 border-l border-gray-100">
+            <button
+              onClick={() => navigate('/profile')}
+              className="hidden md:flex items-center gap-2 pl-3 border-l border-gray-100 hover:opacity-75 transition-opacity cursor-pointer"
+            >
               <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-[10px] font-bold text-red-600">
                   {profile.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
@@ -104,7 +108,7 @@ export function Topbar() {
                 <span className="text-[11px] font-semibold text-gray-800 leading-none">{profile.full_name}</span>
                 <span className="text-[10px] text-gray-400 leading-none mt-0.5 uppercase">{profile.role}</span>
               </div>
-            </div>
+            </button>
           )}
 
           <Button variant="ghost" size="sm" onClick={signOut} className="text-gray-400 hover:text-gray-600">
@@ -143,10 +147,13 @@ export function Topbar() {
         <div className="hidden md:flex items-center gap-2">
           <span className="text-[11px] text-white/70">{fDate(new Date().toISOString().slice(0, 10))}</span>
           {profile && (
-            <span className="text-[11px] text-white/70">
+            <button
+              onClick={() => navigate('/profile')}
+              className="text-[11px] text-white/70 hover:text-white transition-colors cursor-pointer"
+            >
               {profile.full_name}
               <span className="ml-1 text-white/40 text-2xs uppercase">({profile.role})</span>
-            </span>
+            </button>
           )}
         </div>
         <NotificationBell />
