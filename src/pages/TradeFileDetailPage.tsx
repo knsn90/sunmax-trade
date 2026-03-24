@@ -198,7 +198,7 @@ export function TradeFileDetailPage() {
   return (
     <div className="bg-gray-50 min-h-screen pb-28">
       {/* ── Header card ──────────────────────────────────────────────────── */}
-      <div className="bg-white shadow-sm px-4 pt-4 pb-5">
+      <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm px-4 pt-4 pb-5">
         {/* Back row */}
         <div className="flex items-center justify-between mb-4">
           <button
