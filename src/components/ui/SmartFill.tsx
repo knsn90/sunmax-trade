@@ -24,6 +24,7 @@ interface SmartFillProps {
   mode: OcrMode;
   onResult: (result: OcrResult) => void;
   getCurrentValues?: () => Record<string, unknown>;
+  context?: Record<string, unknown>;
   formName?: string;
 }
 
@@ -37,6 +38,11 @@ interface ConversationEntry {
 // ─── Examples per mode ───────────────────────────────────────────────────────
 
 const EXAMPLES: Record<OcrMode, string[]> = {
+  new_file: [
+    'Müşteri ABC Trading, ürün kağıt hamuru, 150 ton',
+    'Tarih bugün, XYZ müşterisi, Kraft kağıt, 200 ADMT, ref REF-2026-01',
+    'Tonnage bin ton, müşteri İran Kağıt A.Ş.',
+  ],
   transaction: [
     'Bugün ABC Ltd\'den 5000 dolar tahsilat aldım, ödeme referansı INV-2024-001',
     'Yarın XYZ tedarikçisine 3500 euro ödeme yapılacak, navlun faturası',
@@ -63,16 +69,13 @@ const EXAMPLES: Record<OcrMode, string[]> = {
 
 function getSpeechRecognition(): SpeechRecognitionCtor | null {
   if (typeof window === 'undefined') return null;
-  return (
-    (window as Window & { SpeechRecognition?: SpeechRecognitionCtor }).SpeechRecognition ??
-    (window as Window & { webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition ??
-    null
-  );
+  const w = window as unknown as Record<string, unknown>;
+  return (w['SpeechRecognition'] ?? w['webkitSpeechRecognition'] ?? null) as SpeechRecognitionCtor | null;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function SmartFill({ mode, onResult, getCurrentValues, formName }: SmartFillProps) {
+export function SmartFill({ mode, onResult, getCurrentValues, context = {}, formName }: SmartFillProps) {
   const [open, setOpen] = useState(false);
   const [inputMode, setInputMode] = useState<'voice' | 'text'>(() =>
     getSpeechRecognition() ? 'voice' : 'text',
@@ -159,7 +162,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, formName }: SmartF
 
     try {
       const currentValues = getCurrentValues?.() ?? {};
-      const result = await smartFillForm(text, mode, currentValues, chatHistory);
+      const result = await smartFillForm(text, mode, currentValues, chatHistory, context);
 
       // Update filled fields feedback
       const filled = Object.entries(result)

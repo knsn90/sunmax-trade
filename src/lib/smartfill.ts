@@ -5,6 +5,17 @@ import type { OcrMode, OcrResult } from './openai';
 // ─── Form context definitions ─────────────────────────────────────────────────
 
 const FORM_CONTEXTS: Record<OcrMode, { name: string; fields: Record<string, string> }> = {
+  new_file: {
+    name: 'Yeni Ticaret Dosyası',
+    fields: {
+      customer_id:  'Müşteri ID — listeden eşleştir',
+      product_id:   'Ürün ID — listeden eşleştir',
+      tonnage_mt:   'Tonaj (sayı) — "yüz ton" → 100, "bin beş yüz" → 1500',
+      file_date:    'Dosya tarihi (YYYY-MM-DD) — "bugün", "yarın" kabul edilir',
+      customer_ref: 'Müşteri referans numarası',
+      notes:        'Notlar',
+    },
+  },
   transaction: {
     name: 'Muhasebe İşlemi (Tahsilat / Ödeme / Fatura)',
     fields: {
@@ -61,7 +72,7 @@ const FORM_CONTEXTS: Record<OcrMode, { name: string; fields: Record<string, stri
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(mode: OcrMode, currentValues: Record<string, unknown> = {}): string {
+function buildSystemPrompt(mode: OcrMode, currentValues: Record<string, unknown> = {}, context: Record<string, unknown> = {}): string {
   const ctx = FORM_CONTEXTS[mode];
   const fieldList = Object.entries(ctx.fields)
     .map(([k, v]) => `  • ${k}: ${v}`)
@@ -71,10 +82,27 @@ function buildSystemPrompt(mode: OcrMode, currentValues: Record<string, unknown>
     ? `\nMEVCUT FORM DURUMU (dolu alanlar):\n${JSON.stringify(currentValues, null, 2)}\n`
     : '';
 
+  // Extra context block for new_file (customer & product lists)
+  let contextStr = '';
+  if (mode === 'new_file') {
+    const customers = (context.customers as Array<{ id: string; name: string }>) ?? [];
+    const products  = (context.products  as Array<{ id: string; name: string }>) ?? [];
+    contextStr = `
+MÜŞTERİ LİSTESİ (customer_id → isim):
+${customers.map(c => `  ${c.id} → ${c.name}`).join('\n') || '  (boş)'}
+
+ÜRÜN LİSTESİ (product_id → isim):
+${products.map(p => `  ${p.id} → ${p.name}`).join('\n') || '  (boş)'}
+
+Kullanıcının söylediği müşteri adını yukarıdaki listeden en yakın eşleşmeyle bul, customer_id olarak o UUID'yi döndür. Aynısını ürün için yap.
+customer_name ve product_name alanlarını da döndür (okunabilirlik için).
+`;
+  }
+
   return `Sen SunPlus ticaret yönetim sisteminin akıllı form asistanısın.
 Kullanıcı şu an "${ctx.name}" formunu dolduruyor.
 Bugünün tarihi: ${today()}
-${currentStr}
+${currentStr}${contextStr}
 DOLDURULACAK ALANLAR:
 ${fieldList}
 
@@ -108,6 +136,7 @@ export async function smartFillForm(
   mode: OcrMode,
   currentValues: Record<string, unknown> = {},
   history: ChatMessage[] = [],
+  context: Record<string, unknown> = {},
 ): Promise<OcrResult> {
   const apiKey = getApiKey('anthropic');
   if (!apiKey) {
@@ -133,7 +162,7 @@ export async function smartFillForm(
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      system: buildSystemPrompt(mode, currentValues),
+      system: buildSystemPrompt(mode, currentValues, context),
       messages,
     }),
   });
@@ -156,6 +185,14 @@ export async function smartFillForm(
 // ─── Field Labels for feedback ───────────────────────────────────────────────
 
 export const FIELD_LABELS: Record<string, string> = {
+  // new_file
+  customer_name: 'Müşteri',
+  product_name:  'Ürün',
+  tonnage_mt:    'Tonaj (MT)',
+  file_date:     'Tarih',
+  customer_ref:  'Müşteri Ref',
+  notes:         'Notlar',
+  // common
   date: 'Tarih',
   amount: 'Tutar',
   currency: 'Para Birimi',

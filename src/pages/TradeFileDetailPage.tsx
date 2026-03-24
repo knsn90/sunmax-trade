@@ -24,6 +24,7 @@ import { Badge, NativeSelect } from '@/components/ui/form-elements';
 import { Card, CardContent, LoadingSpinner, PageHeader } from '@/components/ui/shared';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
+import { TransportPlanSection } from '@/components/transport/TransportPlanSection';
 import { ArrowLeft, FileText, Package, Receipt, RotateCcw } from 'lucide-react';
 
 export function TradeFileDetailPage() {
@@ -357,6 +358,14 @@ export function TradeFileDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Transport Plan — visible for sale, delivery and completed files */}
+      {['sale', 'delivery', 'completed'].includes(file.status) && (
+        <div className="mb-4">
+          <div className="text-xs font-bold mb-2 text-gray-700">Taşıma Planı</div>
+          <TransportPlanSection file={file} writable={writable} />
+        </div>
+      )}
 
       {/* Modals */}
       <NewFileModal open={editFileOpen} onOpenChange={setEditFileOpen} editMode fileToEdit={file} />

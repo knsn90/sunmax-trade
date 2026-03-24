@@ -7,7 +7,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type OcrMode = 'transaction' | 'invoice' | 'proforma' | 'packing_list';
+export type OcrMode = 'transaction' | 'invoice' | 'proforma' | 'packing_list' | 'new_file';
 
 export interface OcrResult {
   // Common
@@ -38,6 +38,15 @@ export interface OcrResult {
     admt?: number;
     gross_weight_kg?: number;
   }>;
+  // New File
+  customer_id?: string;
+  customer_name?: string;
+  product_id?: string;
+  product_name?: string;
+  tonnage_mt?: number;
+  file_date?: string;
+  customer_ref?: string;
+  notes?: string;
 }
 
 // ─── Storage (Supabase-backed, in-memory cache) ───────────────────────────────
@@ -65,6 +74,7 @@ export async function saveOpenAIKey(key: string): Promise<void> { await saveApiK
 // ─── Prompts ─────────────────────────────────────────────────────────────────
 
 const PROMPTS: Record<OcrMode, string> = {
+  new_file: '',  // handled by smartfill.ts system prompt
   transaction: `Extract information from this invoice or financial document. Return ONLY a valid JSON object (omit fields not visible):
 {
   "date": "YYYY-MM-DD",
