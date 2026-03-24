@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTradeFiles, useDeleteTradeFile } from '@/hooks/useTradeFiles';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
-import { KanbanCard, KanbanColumn } from '@/components/pipeline/KanbanCard';
 import { PnlModal } from '@/components/pipeline/PnlModal';
 import { NewFileModal } from '@/components/trade-files/NewFileModal';
 import { ToSaleModal } from '@/components/trade-files/ToSaleModal';
@@ -12,10 +11,9 @@ import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
 import { LoadingSpinner } from '@/components/ui/shared';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { fN, fDate } from '@/lib/formatters';
-import { Search, Plus, MoreVertical, ChevronRight } from 'lucide-react';
+import { Search, Plus, MoreVertical, ChevronRight, TrendingUp, Truck, FileText, BarChart2 } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -143,13 +141,6 @@ export function PipelinePage() {
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  // Kanban columns for desktop
-  const columns = useMemo(() => ({
-    request: files.filter((f) => f.status === 'request'),
-    sale: files.filter((f) => f.status === 'sale'),
-    delivery: files.filter((f) => f.status === 'delivery'),
-  }), [files]);
-
   if (isLoading) return <LoadingSpinner />;
 
   return (
@@ -180,7 +171,7 @@ export function PipelinePage() {
               <input
                 autoFocus
                 className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
-                placeholder="Müşteri, dosya no, ürün..."
+                placeholder="Customer, file no, product..."
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
               />
@@ -189,7 +180,7 @@ export function PipelinePage() {
                 style={{ color: accent }}
                 onClick={() => { setSearchOpen(false); setSearch(''); }}
               >
-                İptal
+                Cancel
               </button>
             </div>
           ) : (
@@ -234,7 +225,7 @@ export function PipelinePage() {
           {paged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <MoreVertical className="h-8 w-8 mb-2 opacity-30" />
-              <p className="text-sm">Kayıt bulunamadı</p>
+              <p className="text-sm">No records found</p>
             </div>
           ) : (
             paged.map((f, i) => (
@@ -274,48 +265,198 @@ export function PipelinePage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          DESKTOP  (≥ md)  — Kanban unchanged
+          DESKTOP  (≥ md)
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:block">
-        <div className="flex items-center justify-end mb-4">
-          {writable && <Button onClick={() => setNewFileOpen(true)}>+ New File</Button>}
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">
+            <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            <input
+              className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+              placeholder="Search pipeline..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {STATUS_FILTERS.map(s => {
+              const count = s.key === 'all'
+                ? files.length
+                : files.filter(f => f.status === s.key).length;
+              const active = filter === s.key;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => { setFilter(s.key); setPage(1); }}
+                  className={cn(
+                    'shrink-0 px-3 h-7 rounded-full text-[11px] font-bold transition-all whitespace-nowrap',
+                    active ? 'text-white shadow-sm' : 'bg-white text-gray-500 border border-gray-200'
+                  )}
+                  style={active ? { background: accent } : {}}
+                >
+                  {s.label} {count > 0 && <span className={active ? 'opacity-70' : 'text-gray-400'}>({count})</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex-1" />
+
+          {writable && (
+            <button
+              onClick={() => setNewFileOpen(true)}
+              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap"
+              style={{ background: accent }}
+            >
+              + New File
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <KanbanColumn title="Request" emoji="📋" count={columns.request.length} variant="request">
-            {columns.request.map((f) => (
-              <KanbanCard key={f.id} file={f}
-                onDetail={(id) => navigate(`/files/${id}`)}
-                onToSale={writable ? (id) => setSaleFile(findFile(id)) : undefined}
-                onDelete={writable ? handleDelete : undefined}
-              />
-            ))}
-          </KanbanColumn>
+        {/* Table */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Customer / File No', 'Product', 'Tonnage', 'Date', 'Status', 'Actions'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {paged.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-[13px] text-gray-400">
+                    No records found
+                  </td>
+                </tr>
+              ) : (
+                paged.map(f => {
+                  const custName = f.customer?.name ?? 'Unknown';
+                  const meta = STATUS_META[f.status] ?? STATUS_META.request;
+                  return (
+                    <tr
+                      key={f.id}
+                      className="border-b border-gray-50 hover:bg-gray-50/60 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/files/${f.id}`)}
+                    >
+                      {/* Customer + file no */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
+                            style={{ background: avatarColor(custName) }}
+                          >
+                            {initials(custName)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[13px] font-semibold text-gray-900 truncate">{custName}</div>
+                            <div className="text-[10px] font-mono text-gray-400">{f.file_no}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[12px] text-gray-600">{f.product?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 whitespace-nowrap">{fN(f.tonnage_mt, 0)} MT</td>
+                      <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{fDate(f.file_date)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn('w-2 h-2 rounded-full shrink-0', meta.dot)} />
+                          <span className={cn('text-[11px] font-semibold capitalize', meta.text)}>{f.status}</span>
+                        </div>
+                      </td>
+                      {/* Actions */}
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5">
+                          {f.status === 'request' && writable && (
+                            <>
+                              <button
+                                onClick={() => setSaleFile(findFile(f.id))}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+                                style={{ background: accent }}
+                              >
+                                <TrendingUp className="h-3 w-3" /> Sale
+                              </button>
+                              <button
+                                onClick={() => handleDelete(f.id)}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                          {f.status === 'sale' && writable && (
+                            <>
+                              <button
+                                onClick={() => setDeliveryFile(findFile(f.id))}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+                                style={{ background: accent }}
+                              >
+                                <Truck className="h-3 w-3" /> {f.delivered_admt ? 'Delivery' : '+ Delivery'}
+                              </button>
+                              <button
+                                onClick={() => setInvoiceFile(findFile(f.id))}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                              >
+                                <FileText className="h-3 w-3" /> Invoice
+                              </button>
+                              <button
+                                onClick={() => setPnlFileId(f.id)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                              >
+                                <BarChart2 className="h-3 w-3" /> P&L
+                              </button>
+                            </>
+                          )}
+                          {f.status === 'delivery' && (
+                            <>
+                              {writable && (
+                                <button
+                                  onClick={() => setInvoiceFile(findFile(f.id))}
+                                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                                >
+                                  <FileText className="h-3 w-3" /> Invoice
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setPnlFileId(f.id)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                              >
+                                <BarChart2 className="h-3 w-3" /> P&L
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
 
-          <KanbanColumn title="Sale" emoji="🤝" count={columns.sale.length} variant="sale">
-            {columns.sale.map((f) => (
-              <KanbanCard key={f.id} file={f}
-                onDetail={(id) => navigate(`/files/${id}`)}
-                onDelivery={writable ? (id) => setDeliveryFile(findFile(id)) : undefined}
-                onInvoice={writable ? (id) => setInvoiceFile(findFile(id)) : undefined}
-                onProforma={writable ? (id) => setProformaFile(findFile(id)) : undefined}
-                onPackingList={writable ? (id) => setPackingFile(findFile(id)) : undefined}
-                onPnl={(id) => setPnlFileId(id)}
-              />
-            ))}
-          </KanbanColumn>
-
-          <KanbanColumn title="Delivery" emoji="🚚" count={columns.delivery.length} variant="delivery">
-            {columns.delivery.map((f) => (
-              <KanbanCard key={f.id} file={f}
-                onDetail={(id) => navigate(`/files/${id}`)}
-                onInvoice={writable ? (id) => setInvoiceFile(findFile(id)) : undefined}
-                onProforma={writable ? (id) => setProformaFile(findFile(id)) : undefined}
-                onPackingList={writable ? (id) => setPackingFile(findFile(id)) : undefined}
-                onPnl={(id) => setPnlFileId(id)}
-              />
-            ))}
-          </KanbanColumn>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1.5 py-4 border-t border-gray-50">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={cn(
+                    'w-7 h-7 rounded-full text-[11px] font-bold transition-all',
+                    p === currentPage ? 'text-white shadow-sm' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                  )}
+                  style={p === currentPage ? { background: accent } : {}}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
