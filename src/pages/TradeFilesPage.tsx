@@ -187,7 +187,7 @@ export function TradeFilesPage() {
       {/* ══════════════════════════════════════════════════════════════
           MOBILE  (< md)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="md:hidden flex flex-col min-h-screen bg-gray-50">
+      <div className="md:hidden flex flex-col min-h-screen -mx-4 -mt-4 bg-gray-50">
 
         {/* Top bar */}
         <div className="flex items-center justify-end px-4 pt-4 pb-2 bg-gray-50">

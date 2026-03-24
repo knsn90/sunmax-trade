@@ -52,7 +52,7 @@ function initials(name: string) {
 }
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, trend, featured, accent = '#2563eb' }: {
+function KpiCard({ label, value, sub, trend, featured = false, accent = '#2563eb' }: {
   label: string; value: string; sub?: string;
   trend?: 'up' | 'down'; featured?: boolean; accent?: string;
 }) {
@@ -172,7 +172,7 @@ export function DashboardPage() {
   if (filesLoading || summaryLoading) return <LoadingSpinner />;
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-28">
+    <div className="-mx-4 -mt-4 md:mx-0 md:mt-0 bg-gray-50 min-h-screen pb-28">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="px-4 pt-5 pb-4">
@@ -328,7 +328,8 @@ export function DashboardPage() {
                     <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} width={36} />
                     <Tooltip
-                      formatter={(v, n) => [`$${Number(v).toLocaleString()}`, n === 'revenue' ? 'Revenue' : n === 'cost' ? 'Cost' : 'Profit']}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      formatter={(v: any, n: any) => [`$${Number(v).toLocaleString()}`, n === 'revenue' ? 'Revenue' : n === 'cost' ? 'Cost' : 'Profit']}
                       contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                     />
                     <Bar dataKey="revenue" fill={accent + '60'} radius={[4,4,0,0]} />

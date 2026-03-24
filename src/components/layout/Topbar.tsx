@@ -77,9 +77,6 @@ export function Topbar() {
         className="bg-white border-b border-gray-100 px-5 flex items-center gap-3 flex-shrink-0 shadow-sm"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
       >
-        {/* Mobile: page title */}
-        <h1 className="text-base font-bold text-gray-900 truncate md:hidden flex-1">{title}</h1>
-
         {/* Kur bilgisi — solda */}
         <ExchangeRateBar isDonezo={isDonezo} />
 
@@ -135,7 +132,7 @@ export function Topbar() {
           <span className="text-white font-black text-sm tracking-tight">SunPlus</span>
           <span className="text-white/30 mx-1">|</span>
         </div>
-        <h1 className="text-base font-bold text-white truncate min-w-0">{title}</h1>
+        <h1 className="hidden md:block text-base font-bold text-white truncate min-w-0">{title}</h1>
       </div>
 
       {/* Kur — ortada */}

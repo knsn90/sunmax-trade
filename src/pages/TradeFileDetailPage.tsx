@@ -196,7 +196,7 @@ export function TradeFileDetailPage() {
   const avatarBg = avatarColors[Math.abs(hv) % avatarColors.length];
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-28">
+    <div className="-mx-4 -mt-4 md:mx-0 md:mt-0 bg-gray-50 min-h-screen pb-28">
       {/* ── Header card ──────────────────────────────────────────────────── */}
       <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm px-4 pt-4 pb-5">
         {/* Back row */}
