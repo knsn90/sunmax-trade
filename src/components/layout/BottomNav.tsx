@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -9,11 +9,11 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 
 const mainTabs = [
-  { to: '/dashboard', label: 'Dashboard', icon: Home },
-  { to: '/pipeline',  label: 'Pipeline',  icon: BarChart3 },
-  null, // center FAB placeholder
-  { to: '/files',     label: 'Files',     icon: FileText },
-  { to: '/accounting',label: 'Accounting',icon: LayoutDashboard },
+  { to: '/dashboard',  label: 'Dashboard',  icon: Home },
+  { to: '/pipeline',   label: 'Pipeline',   icon: BarChart3 },
+  { to: '/files',      label: 'Files',      icon: FileText },
+  { to: '/accounting', label: 'Accounting', icon: LayoutDashboard },
+  null, // More placeholder
 ];
 
 const moreItems = [
@@ -35,11 +35,11 @@ const adminItems = [
 export function BottomNav() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { theme } = useTheme();
   const { profile } = useAuth();
+
   const isDonezo = theme === 'donezo';
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin  = profile?.role === 'admin';
   const drawerItems = isAdmin ? [...moreItems, ...adminItems] : moreItems;
 
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
@@ -48,19 +48,15 @@ export function BottomNav() {
     location.pathname === item.to || location.pathname.startsWith(item.to + '/')
   );
 
-  const activeColor = isDonezo ? 'text-red-600' : 'text-blue-600';
-  const activeBg = isDonezo ? 'bg-red-50' : 'bg-blue-50';
-  const fabGradient = isDonezo
-    ? 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)'
-    : 'linear-gradient(135deg, #3b5bdb 0%, #4f6ef7 100%)';
-  const fabShadow = isDonezo ? 'shadow-red-300/50' : 'shadow-blue-300/50';
+  // Theme colours
+  const barBg      = isDonezo ? '#dc2626' : '#2563eb';
   const drawerActiveClass = isDonezo
     ? 'bg-red-600 text-white shadow-md shadow-red-200'
     : 'bg-blue-600 text-white shadow-md shadow-blue-200';
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Drawer backdrop */}
       {drawerOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 md:hidden backdrop-blur-sm"
@@ -74,9 +70,8 @@ export function BottomNav() {
           'fixed left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-2xl md:hidden transition-transform duration-300 rounded-t-3xl',
           drawerOpen ? 'translate-y-0' : 'translate-y-full',
         )}
-        style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
+        style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
       >
-        {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-gray-200 rounded-full" />
         </div>
@@ -110,25 +105,37 @@ export function BottomNav() {
         </div>
       </div>
 
-      {/* Bottom Tab Bar */}
+      {/* ── Floating Pill Nav Bar ──────────────────────────────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 md:hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex justify-center"
+        style={{ paddingBottom: 'calc(10px + env(safe-area-inset-bottom))' }}
       >
-        <div className="flex h-16 items-center">
+        <div
+          className="flex items-center gap-1 px-3 h-14 rounded-full shadow-xl"
+          style={{ background: barBg, minWidth: 0, width: 'calc(100% - 32px)', maxWidth: 420 }}
+        >
           {mainTabs.map((tab) => {
-            // Center FAB
+            // More button placeholder
             if (tab === null) {
+              const active = isMoreActive || drawerOpen;
               return (
-                <div key="fab" className="flex-1 flex justify-center items-center">
-                  <button
-                    onClick={() => navigate('/files')}
-                    className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform', fabShadow)}
-                    style={{ background: fabGradient }}
-                  >
-                    <FileText className="h-5 w-5 text-white" />
-                  </button>
-                </div>
+                <button
+                  key="more"
+                  onClick={() => setDrawerOpen(!drawerOpen)}
+                  className={cn(
+                    'flex-1 flex items-center justify-center h-9 rounded-full transition-all active:scale-95',
+                    active ? 'bg-white' : '',
+                  )}
+                >
+                  {active ? (
+                    <span className="flex items-center gap-1.5 px-3" style={{ color: barBg }}>
+                      <MoreHorizontal className="h-4 w-4 shrink-0" />
+                      <span className="text-[11px] font-bold leading-none whitespace-nowrap">More</span>
+                    </span>
+                  ) : (
+                    <MoreHorizontal className="h-5 w-5 text-white/80" />
+                  )}
+                </button>
               );
             }
 
@@ -139,42 +146,24 @@ export function BottomNav() {
                 to={tab.to}
                 className={({ isActive }) =>
                   cn(
-                    'flex-1 flex flex-col items-center justify-center gap-1 transition-colors py-1',
-                    isActive ? activeColor : 'text-gray-400',
+                    'flex-1 flex items-center justify-center h-9 rounded-full transition-all active:scale-95',
+                    isActive ? 'bg-white' : '',
                   )
                 }
               >
-                {({ isActive }) => (
-                  <>
-                    <div className={cn(
-                      'p-1.5 rounded-xl transition-all',
-                      isActive ? activeBg : '',
-                    )}>
-                      <Icon className={cn('h-5 w-5', isActive && 'stroke-[2.5]')} />
-                    </div>
-                    <span className="text-[9px] font-semibold">{tab.label}</span>
-                  </>
-                )}
+                {({ isActive }) =>
+                  isActive ? (
+                    <span className="flex items-center gap-1.5 px-3" style={{ color: barBg }}>
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="text-[11px] font-bold leading-none whitespace-nowrap">{tab.label}</span>
+                    </span>
+                  ) : (
+                    <Icon className="h-5 w-5 text-white/80" />
+                  )
+                }
               </NavLink>
             );
           })}
-
-          {/* More button */}
-          <button
-            onClick={() => setDrawerOpen(!drawerOpen)}
-            className={cn(
-              'flex-1 flex flex-col items-center justify-center gap-1 transition-colors py-1',
-              isMoreActive || drawerOpen ? activeColor : 'text-gray-400',
-            )}
-          >
-            <div className={cn(
-              'p-1.5 rounded-xl transition-all',
-              (isMoreActive || drawerOpen) ? activeBg : '',
-            )}>
-              <MoreHorizontal className={cn('h-5 w-5', (isMoreActive || drawerOpen) && 'stroke-[2.5]')} />
-            </div>
-            <span className="text-[9px] font-semibold">More</span>
-          </button>
         </div>
       </nav>
     </>

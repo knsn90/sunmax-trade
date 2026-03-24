@@ -19,14 +19,116 @@ import { useDeleteProforma } from '@/hooks/useProformas';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { printInvoice, printPackingList, printProforma } from '@/lib/printDocument';
-import { Button } from '@/components/ui/button';
-import { Badge, NativeSelect } from '@/components/ui/form-elements';
-import { Card, CardContent, LoadingSpinner, PageHeader } from '@/components/ui/shared';
+import { NativeSelect } from '@/components/ui/form-elements';
+import { LoadingSpinner } from '@/components/ui/shared';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { TransportPlanSection } from '@/components/transport/TransportPlanSection';
-import { ArrowLeft, FileText, Package, Receipt, RotateCcw } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
+import {
+  ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
+  Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
+  MoreVertical, X, RotateCcw,
+} from 'lucide-react';
 
+// ── Action sheet item ─────────────────────────────────────────────────────────
+function ActionItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl active:bg-gray-50 text-left"
+    >
+      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+        {icon}
+      </div>
+      <span className="text-[13px] font-medium text-gray-800">{label}</span>
+    </button>
+  );
+}
+
+// ── Status colours ────────────────────────────────────────────────────────────
+const STATUS_META: Record<string, { bg: string; text: string; dot: string; pill: string }> = {
+  request:   { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-400',   pill: 'bg-amber-100 text-amber-700' },
+  sale:      { bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-400',    pill: 'bg-blue-100 text-blue-700' },
+  delivery:  { bg: 'bg-violet-50',  text: 'text-violet-700',  dot: 'bg-violet-400',  pill: 'bg-violet-100 text-violet-700' },
+  completed: { bg: 'bg-green-50',   text: 'text-green-700',   dot: 'bg-green-400',   pill: 'bg-green-100 text-green-700' },
+  cancelled: { bg: 'bg-gray-50',    text: 'text-gray-500',    dot: 'bg-gray-300',    pill: 'bg-gray-100 text-gray-500' },
+};
+
+// ── Section card ──────────────────────────────────────────────────────────────
+function Section({
+  title, icon, right, children, accent = false,
+}: {
+  title: string; icon?: React.ReactNode; right?: React.ReactNode;
+  children: React.ReactNode; accent?: boolean;
+}) {
+  return (
+    <div className={cn(
+      'rounded-2xl bg-white shadow-sm overflow-hidden mb-3',
+      accent ? 'ring-1 ring-brand-200' : '',
+    )}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+        <div className="flex items-center gap-2">
+          {icon && <span className="text-gray-400">{icon}</span>}
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</span>
+        </div>
+        {right}
+      </div>
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+// ── Key/Value row ─────────────────────────────────────────────────────────────
+function KV({ label, value, bold }: { label: string; value: React.ReactNode; bold?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between py-1.5 border-b border-gray-50 last:border-0">
+      <span className="text-[11px] text-gray-400 shrink-0 mr-3">{label}</span>
+      <span className={cn('text-[12px] text-right', bold ? 'font-bold text-gray-900' : 'text-gray-700')}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+// ── Document row ──────────────────────────────────────────────────────────────
+function DocRow({
+  no, date, amount, status, children,
+}: {
+  no: string; date?: string; amount?: string; status: string;
+  children?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-gray-50 last:border-0">
+      <div
+        className="flex items-center gap-3 py-3 cursor-pointer active:bg-gray-50"
+        onClick={() => setOpen(o => !o)}
+      >
+        <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+          <FileText className="h-3.5 w-3.5 text-gray-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-[12px] text-gray-900 truncate">{no}</div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <DocStatusBadge status={status as any} />
+            {date && <span className="text-[10px] text-gray-400">{date}</span>}
+            {amount && <span className="text-[11px] font-bold text-brand-600">{amount}</span>}
+          </div>
+        </div>
+        {open ? <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+      </div>
+      {open && children && (
+        <div className="pb-3 flex flex-wrap gap-1.5 pl-11">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export function TradeFileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -40,8 +142,10 @@ export function TradeFileDetailPage() {
   const deletePL = useDeletePackingList();
   const deletePI = useDeleteProforma();
   const defaultBank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
-
   const { data: fileTxns = [] } = useTransactions({ tradeFileId: id });
+  const { theme } = useTheme();
+  const isDonezo = theme === 'donezo';
+  const accent = isDonezo ? '#dc2626' : '#2563eb';
 
   const [saleOpen, setSaleOpen] = useState(false);
   const [editSaleOpen, setEditSaleOpen] = useState(false);
@@ -56,24 +160,24 @@ export function TradeFileDetailPage() {
   const [saleInvoiceOpen, setSaleInvoiceOpen] = useState(false);
   const [editPL, setEditPL] = useState<PackingList | null>(null);
   const [editPI, setEditPI] = useState<Proforma | null>(null);
-  // After delivery saved, auto-open packing list
   const [autoPackingAfterDelivery, setAutoPackingAfterDelivery] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   if (isLoading) return <LoadingSpinner />;
-  if (!file) return <div className="text-center py-12 text-muted-foreground text-xs">File not found</div>;
+  if (!file) return <div className="text-center py-12 text-gray-400 text-sm">Dosya bulunamadı</div>;
 
   const isSaleOrDel = file.status === 'sale' || file.status === 'delivery';
+  const meta = STATUS_META[file.status] ?? STATUS_META.request;
+  const expenses = fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
 
   function handleStatusChange(newStatus: string) {
     if (!newStatus || newStatus === file!.status) return;
-    if (window.confirm(`Change status to "${TRADE_FILE_STATUS_LABELS[newStatus as TradeFileStatus]}"?`)) {
+    if (window.confirm(`Statüyü "${TRADE_FILE_STATUS_LABELS[newStatus as TradeFileStatus]}" olarak değiştir?`))
       changeStatus.mutate({ id: file!.id, status: newStatus as TradeFileStatus });
-    }
   }
 
   function handleDeliveryClose() {
     setDeliveryOpen(false);
-    // #7: After delivery form closes, open packing list
     if (autoPackingAfterDelivery) {
       setAutoPackingAfterDelivery(false);
       setTimeout(() => setPackingOpen(true), 300);
@@ -85,287 +189,409 @@ export function TradeFileDetailPage() {
     setDeliveryOpen(true);
   }
 
+  const custName = file.customer?.name ?? 'Unknown';
+  const custInitials = custName.split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
+  const avatarColors = ['#dc2626','#2563eb','#7c3aed','#059669','#d97706'];
+  let hv = 0; for (let i = 0; i < custName.length; i++) hv = custName.charCodeAt(i) + ((hv << 5) - hv);
+  const avatarBg = avatarColors[Math.abs(hv) % avatarColors.length];
+
   return (
-    <>
-      <div className="mb-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back
-        </Button>
-      </div>
+    <div className="bg-gray-50 min-h-screen pb-28">
+      {/* ── Header card ──────────────────────────────────────────────────── */}
+      <div className="bg-white shadow-sm px-4 pt-4 pb-5">
+        {/* Back row */}
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 active:opacity-60"
+          >
+            <ArrowLeft className="h-4 w-4" /> Pipeline
+          </button>
+          <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
+            {TRADE_FILE_STATUS_LABELS[file.status]}
+          </span>
+        </div>
 
-      <PageHeader title={file.file_no}>
-        <Badge variant={file.status as TradeFileStatus} className="text-xs px-3 py-1">
-          {TRADE_FILE_STATUS_LABELS[file.status]}
-        </Badge>
-        {/* #10: Status change dropdown */}
-        {writable && (
-          <div className="flex items-center gap-1.5">
-            <RotateCcw className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <NativeSelect
-              className="w-[130px] sm:w-[140px]"
-              value={file.status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-            >
-              <option value="request">Request</option>
-              <option value="sale">Sale</option>
-              <option value="delivery">Delivery</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </NativeSelect>
+        {/* Main info — avatar left, all text right, full width */}
+        <div className="flex items-start gap-3">
+          <div
+            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[14px] font-bold shrink-0 shadow-sm mt-0.5"
+            style={{ background: avatarBg }}
+          >
+            {custInitials}
           </div>
-        )}
-      </PageHeader>
-
-      <div className="text-xs text-muted-foreground mb-4">
-        {file.customer?.name} — {file.product?.name} — {fN(file.tonnage_mt, 3)} MT
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-bold text-gray-900 leading-snug">{custName}</div>
+            <div className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
+            <div className="inline-flex items-center gap-1.5 mt-2 bg-gray-100 rounded-lg px-2 py-1">
+              <span className="text-[10px] font-mono text-gray-500 tracking-wider">{file.file_no}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Action buttons */}
+      {/* ── Stats grid (sabit, kaymaz) ───────────────────────────────────── */}
+      <div className="mx-4 mt-3 mb-3 bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="grid grid-cols-2 divide-x divide-y divide-gray-50">
+          <div className="px-4 py-2.5">
+            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Tonnage</div>
+            <div className="text-[12px] font-bold text-gray-900">{fN(file.tonnage_mt, 0)} MT</div>
+          </div>
+          <div className="px-4 py-2.5">
+            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Date</div>
+            <div className="text-[12px] font-bold text-gray-900">{fDate(file.file_date)}</div>
+          </div>
+          <div className="px-4 py-2.5">
+            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Sale Price</div>
+            <div className="text-[12px] font-bold text-gray-900">
+              {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
+            </div>
+          </div>
+          <div className="px-4 py-2.5">
+            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Delivered</div>
+            <div className="text-[12px] font-bold text-gray-900">
+              {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Action buttons ──────────────────────────────────────────────── */}
       {writable && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {file.status === 'request' && (
-            <Button onClick={() => setSaleOpen(true)}>→ Convert to Sale</Button>
+        <div className="flex gap-2 px-4 pb-4">
+          {/* Primary action — full width when no secondary exists, else flex-1 */}
+          {file.status === 'request' ? (
+            <button
+              onClick={() => setSaleOpen(true)}
+              className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80"
+              style={{ background: accent }}
+            >
+              <TrendingUp className="h-3.5 w-3.5" /> Convert to Sale
+            </button>
+          ) : file.status === 'sale' ? (
+            <button
+              onClick={openDeliveryWithPacking}
+              className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80"
+              style={{ background: accent }}
+            >
+              <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
+            </button>
+          ) : (
+            /* No primary action — Actions takes full width */
+            <button
+              onClick={() => setActionsOpen(true)}
+              className="flex-1 h-10 rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 flex items-center justify-center gap-2 shadow-sm active:opacity-70"
+            >
+              <MoreVertical className="h-4 w-4" /> Actions
+            </button>
           )}
-          {file.status === 'sale' && (
-            <Button variant="purple" onClick={openDeliveryWithPacking}>
-              {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
-            </Button>
-          )}
-          {isSaleOrDel && (
-            <>
-              <Button variant="secondary" onClick={() => {
-                const existing = file.invoices?.find(inv => inv.invoice_type === 'sale') ?? null;
-                setEditSaleInvoice(existing);
-                setSaleInvoiceOpen(true);
-              }}>
-                <Receipt className="h-3.5 w-3.5" /> Sale Invoice
-              </Button>
-              <Button variant="outline" onClick={() => { setEditInvoice(null); setInvoiceOpen(true); }}>
-                <Receipt className="h-3.5 w-3.5" /> Com-Invoice
-              </Button>
-              <Button variant="outline" onClick={() => { setEditPL(null); setPackingOpen(true); }}>
-                <Package className="h-3.5 w-3.5" /> Packing List
-              </Button>
-              <Button variant="outline" onClick={() => { setEditPI(null); setProformaOpen(true); }}>
-                <FileText className="h-3.5 w-3.5" /> Proforma
-              </Button>
-            </>
+
+          {/* Actions button — shown alongside primary action */}
+          {(file.status === 'request' || file.status === 'sale') && (
+            <button
+              onClick={() => setActionsOpen(true)}
+              className="h-10 w-10 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm active:opacity-70"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
           )}
         </div>
       )}
 
-      {/* Info grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-2xs font-bold uppercase text-muted-foreground">File Info</div>
-              {writable && <Button variant="edit" size="xs" onClick={() => setEditFileOpen(true)}>Edit</Button>}
+      {/* ── Actions Bottom Sheet ─────────────────────────────────────────── */}
+      {actionsOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setActionsOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl pb-safe">
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
             </div>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-              <dt className="text-muted-foreground">Status</dt>
-              <dd><Badge variant={file.status as TradeFileStatus}>{TRADE_FILE_STATUS_LABELS[file.status]}</Badge></dd>
-              <dt className="text-muted-foreground">Date</dt><dd>{fDate(file.file_date)}</dd>
-              <dt className="text-muted-foreground">Customer</dt><dd className="font-bold">{file.customer?.name}</dd>
-              <dt className="text-muted-foreground">Product</dt><dd>{file.product?.name}</dd>
-              <dt className="text-muted-foreground">Tonnage</dt><dd className="font-bold text-brand-500">{fN(file.tonnage_mt, 3)} MT</dd>
-              {file.customer_ref && (<><dt className="text-muted-foreground">Ref</dt><dd>{file.customer_ref}</dd></>)}
-            </dl>
-          </CardContent>
-        </Card>
+            <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+              <span className="text-[13px] font-bold text-gray-900">Actions</span>
+              <button onClick={() => setActionsOpen(false)} className="text-gray-400 p-1">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-        {file.selling_price ? (
-          <Card className="border-brand-200 bg-brand-50/30">
-            <CardContent>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-2xs font-bold uppercase text-brand-700">Sale Details</div>
-                {writable && <Button variant="edit" size="xs" onClick={() => setEditSaleOpen(true)}>Edit</Button>}
+            {/* Action items */}
+            <div className="px-3 py-2">
+              {/* Edit file */}
+              <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit File"
+                onClick={() => { setActionsOpen(false); setEditFileOpen(true); }} />
+
+              {isSaleOrDel && (
+                <>
+                  <ActionItem icon={<Receipt className="h-4 w-4" />} label="Sale Invoice"
+                    onClick={() => { setActionsOpen(false); const e = file.invoices?.find(i => i.invoice_type === 'sale') ?? null; setEditSaleInvoice(e); setSaleInvoiceOpen(true); }} />
+                  <ActionItem icon={<Receipt className="h-4 w-4" />} label="Commercial Invoice"
+                    onClick={() => { setActionsOpen(false); setEditInvoice(null); setInvoiceOpen(true); }} />
+                  <ActionItem icon={<Package className="h-4 w-4" />} label="Packing List"
+                    onClick={() => { setActionsOpen(false); setEditPL(null); setPackingOpen(true); }} />
+                  <ActionItem icon={<FileText className="h-4 w-4" />} label="Proforma Invoice"
+                    onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
+                </>
+              )}
+
+              {/* Status change */}
+              <div className="flex items-center gap-3 px-3 py-3 rounded-xl active:bg-gray-50">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+                  <RotateCcw className="h-4 w-4" />
+                </div>
+                <span className="flex-1 text-[13px] font-medium text-gray-800">Change Status</span>
+                <NativeSelect
+                  className="text-[12px] font-semibold text-gray-600 bg-gray-100 rounded-lg px-2 py-1 border-0 outline-none"
+                  value={file.status}
+                  onChange={(e) => { handleStatusChange(e.target.value); setActionsOpen(false); }}
+                >
+                  <option value="request">Request</option>
+                  <option value="sale">Sale</option>
+                  <option value="delivery">Delivery</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </NativeSelect>
               </div>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-                <dt className="text-muted-foreground">Sale Price</dt><dd className="font-bold text-brand-600">{fCurrency(file.selling_price)}/MT</dd>
-                <dt className="text-muted-foreground">Purchase</dt><dd>{fCurrency(file.purchase_price)}/MT</dd>
-                <dt className="text-muted-foreground">Supplier</dt><dd>{file.supplier?.name ?? '—'}</dd>
-                <dt className="text-muted-foreground">Incoterms</dt><dd>{file.incoterms} {file.port_of_discharge ?? ''}</dd>
-                <dt className="text-muted-foreground">ETA</dt><dd>{fDate(file.eta)}</dd>
-                {file.vessel_name && (<><dt className="text-muted-foreground">Vessel</dt><dd>{file.vessel_name}</dd></>)}
-                {file.register_no && (<><dt className="text-muted-foreground">Register</dt><dd>{file.register_no}</dd></>)}
-              </dl>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="h-6" />
+          </div>
+        </>
+      )}
+
+      <div className="px-3">
+        {/* ── File Info ────────────────────────────────────────────────── */}
+        <Section title="File Info" icon={<FileText className="h-3.5 w-3.5" />}>
+          <KV label="Status" value={
+            <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold', meta.pill)}>
+              {TRADE_FILE_STATUS_LABELS[file.status]}
+            </span>
+          } />
+          <KV label="Date" value={fDate(file.file_date)} />
+          <KV label="Customer" value={file.customer?.name} bold />
+          <KV label="Product" value={file.product?.name} />
+          <KV label="Tonnage" value={`${fN(file.tonnage_mt, 3)} MT`} bold />
+          {file.customer_ref && <KV label="Ref" value={file.customer_ref} />}
+          {file.notes && <KV label="Notes" value={file.notes} />}
+        </Section>
+
+        {/* ── Sale Details ─────────────────────────────────────────────── */}
+        {file.selling_price ? (
+          <Section
+            title="Sale Details"
+            icon={<TrendingUp className="h-3.5 w-3.5" />}
+            accent
+            right={writable ? (
+              <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
+                <Pencil className="h-3 w-3" /> Edit
+              </button>
+            ) : undefined}
+          >
+            <KV label="Sale Price" value={`${fCurrency(file.selling_price)}/MT`} bold />
+            <KV label="Purchase" value={`${fCurrency(file.purchase_price)}/MT`} />
+            <KV label="Supplier" value={file.supplier?.name ?? '—'} />
+            <KV label="Incoterms" value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
+            {file.eta && <KV label="ETA" value={fDate(file.eta)} />}
+            {file.vessel_name && <KV label="Vessel" value={file.vessel_name} />}
+            {file.register_no && <KV label="Register" value={file.register_no} />}
+          </Section>
         ) : (
-          <Card className="bg-amber-50 border-amber-200 flex items-center justify-center">
-            <span className="text-xs text-amber-700">No sale details yet</span>
-          </Card>
+          <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 mb-3 text-[12px] text-amber-700 font-medium">
+            Henüz satış detayı girilmemiş
+          </div>
+        )}
+
+        {/* ── Delivery ─────────────────────────────────────────────────── */}
+        {file.delivered_admt && (
+          <Section
+            title="Delivery"
+            icon={<Truck className="h-3.5 w-3.5" />}
+            right={writable ? (
+              <button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
+                <Pencil className="h-3 w-3" /> Edit
+              </button>
+            ) : undefined}
+          >
+            <div className="grid grid-cols-2 gap-x-4">
+              <KV label="ADMT" value={fN(file.delivered_admt, 3)} bold />
+              <KV label="Gross (KG)" value={fN(file.gross_weight_kg)} />
+              <KV label="Packages" value={file.packages ?? '—'} />
+              <KV label="Arrival" value={fDate(file.arrival_date)} />
+              <KV label="B/L No" value={file.bl_number || '—'} />
+              <KV label="SEPTI" value={file.septi_ref || '—'} />
+            </div>
+          </Section>
+        )}
+
+        {/* ── Documents ────────────────────────────────────────────────── */}
+        {((file.proformas?.length ?? 0) > 0 ||
+          (file.invoices?.length ?? 0) > 0 ||
+          (file.packing_lists?.length ?? 0) > 0) && (
+          <Section title="Documents" icon={<FileText className="h-3.5 w-3.5" />}>
+            {/* Proformas */}
+            {file.proformas?.map((pi) => (
+              <DocRow
+                key={pi.id}
+                no={pi.proforma_no}
+                date={fDate(pi.proforma_date)}
+                amount={fCurrency(pi.total)}
+                status={pi.doc_status ?? 'draft'}
+              >
+                <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
+                {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
+                  <button onClick={() => { setEditPI(pi); setProformaOpen(true); }}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                )}
+                {settings && (
+                  <button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Printer className="h-3 w-3" /> Print
+                  </button>
+                )}
+                {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
+                  <button onClick={() => { if (window.confirm('Sil?')) deletePI.mutate(pi.id); }}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </DocRow>
+            ))}
+
+            {/* Sale Invoices */}
+            {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
+              <DocRow
+                key={inv.id}
+                no={inv.invoice_no}
+                date={fDate(inv.invoice_date)}
+                amount={fCurrency(inv.total)}
+                status={inv.doc_status ?? 'draft'}
+              >
+                <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
+                  <button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                )}
+                {settings && (
+                  <button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Printer className="h-3 w-3" /> Print
+                  </button>
+                )}
+              </DocRow>
+            ))}
+
+            {/* Com-Invoices */}
+            {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
+              <DocRow
+                key={inv.id}
+                no={inv.invoice_no}
+                date={fDate(inv.invoice_date)}
+                amount={fCurrency(inv.total)}
+                status={inv.doc_status ?? 'draft'}
+              >
+                <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
+                  <button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                )}
+                {settings && (
+                  <button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Printer className="h-3 w-3" /> Print
+                  </button>
+                )}
+                {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
+                  <button onClick={() => { if (window.confirm('Sil?')) deleteInv.mutate(inv.id); }}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </DocRow>
+            ))}
+
+            {/* Packing Lists */}
+            {file.packing_lists?.map((pl) => (
+              <DocRow
+                key={pl.id}
+                no={pl.packing_list_no}
+                date={`${pl.packing_list_items?.length ?? 0} vehicles · ${fN(pl.total_admt, 3)} ADMT`}
+                status={pl.doc_status ?? 'draft'}
+              >
+                <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
+                {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
+                  <button onClick={() => { setEditPL(pl); setPackingOpen(true); }}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                )}
+                {settings && (
+                  <button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <Printer className="h-3 w-3" /> Print
+                  </button>
+                )}
+                {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
+                  <button onClick={() => { if (window.confirm('Sil?')) deletePL.mutate(pl.id); }}
+                    className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </DocRow>
+            ))}
+          </Section>
+        )}
+
+        {/* ── Expenses ─────────────────────────────────────────────────── */}
+        <Section
+          title="Expenses"
+          icon={<Receipt className="h-3.5 w-3.5" />}
+          right={writable ? (
+            <div className="flex gap-1.5">
+              <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })}
+                className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
+                <Plus className="h-3 w-3" /> Purchase
+              </button>
+              <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })}
+                className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
+                <Plus className="h-3 w-3" /> Service
+              </button>
+            </div>
+          ) : undefined}
+        >
+          {expenses.length === 0 ? (
+            <div className="text-[12px] text-gray-400 py-2 text-center">Henüz gider kaydı yok</div>
+          ) : (
+            expenses.map(t => (
+              <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div className="min-w-0">
+                  <div className="text-[12px] font-medium text-gray-800 truncate">{t.description || '—'}</div>
+                  <div className="text-[10px] text-gray-400">{t.transaction_date} · {TRANSACTION_TYPE_LABELS[t.transaction_type]}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <span className="text-[12px] font-bold text-gray-800">{fUSD(t.amount_usd ?? t.amount)}</span>
+                  <span className={cn(
+                    'text-[9px] px-2 py-0.5 rounded-full font-bold',
+                    t.payment_status === 'paid' ? 'bg-green-100 text-green-700'
+                    : t.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
+                  )}>{t.payment_status}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </Section>
+
+        {/* ── Transport Plan ───────────────────────────────────────────── */}
+        {['sale', 'delivery', 'completed'].includes(file.status) && (
+          <Section title="Taşıma Planı" icon={<Truck className="h-3.5 w-3.5" />}>
+            <TransportPlanSection file={file} writable={writable} />
+          </Section>
         )}
       </div>
-
-      {/* Delivery */}
-      {file.delivered_admt && (
-        <Card className="mb-4 bg-purple-50/30 border-purple-200">
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-2xs font-bold uppercase text-purple-700">Delivery</div>
-              {writable && <Button variant="edit" size="xs" onClick={() => setDeliveryOpen(true)}>Edit</Button>}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              <div><span className="text-2xs text-muted-foreground block">ADMT</span><span className="font-bold">{fN(file.delivered_admt, 3)}</span></div>
-              <div><span className="text-2xs text-muted-foreground block">Gross (KG)</span><span>{fN(file.gross_weight_kg)}</span></div>
-              <div><span className="text-2xs text-muted-foreground block">Packages</span><span>{file.packages}</span></div>
-              <div><span className="text-2xs text-muted-foreground block">Arrival</span><span>{fDate(file.arrival_date)}</span></div>
-              <div><span className="text-2xs text-muted-foreground block">B/L No</span><span>{file.bl_number || '—'}</span></div>
-              <div><span className="text-2xs text-muted-foreground block">SEPTI</span><span>{file.septi_ref || '—'}</span></div>
-              <div><span className="text-2xs text-muted-foreground block">Ins.TR</span><span className="text-2xs">{file.insurance_tr || '—'}</span></div>
-              <div><span className="text-2xs text-muted-foreground block">Ins.IR</span><span className="text-2xs">{file.insurance_ir || '—'}</span></div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Proformas */}
-      {file.proformas && file.proformas.length > 0 && (
-        <div className="mb-4">
-          <div className="text-xs font-bold mb-2">Proformas</div>
-          {file.proformas.map((pi) => (
-            <div key={pi.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1 min-w-0 truncate">{pi.proforma_no}</span>
-              <DocStatusBadge status={pi.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{fDate(pi.proforma_date)}</span>
-              <span className="font-bold text-brand-500 text-xs whitespace-nowrap">{fCurrency(pi.total)}</span>
-              <div className="flex flex-wrap gap-1 items-center">
-                <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
-                {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPI(pi); setProformaOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-                {writable && (pi.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }}>Del</Button>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Sale Invoice - auto-generated on delivery */}
-      {file.invoices && file.invoices.some(inv => inv.invoice_type === 'sale') && (
-        <div className="mb-4">
-          <div className="text-xs font-bold mb-2 text-green-700">Sale Invoice</div>
-          {file.invoices.filter(inv => inv.invoice_type === 'sale').map((inv) => (
-            <div key={inv.id} className="flex flex-wrap items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1 min-w-0 truncate">{inv.invoice_no}</span>
-              <DocStatusBadge status={inv.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{fDate(inv.invoice_date)}</span>
-              <span className="text-[11px] text-muted-foreground hidden sm:inline whitespace-nowrap">{fN(inv.quantity_admt, 3)} ADMT × {fCurrency(inv.unit_price)}</span>
-              <span className="font-bold text-green-700 text-xs whitespace-nowrap">{fCurrency(inv.total)}</span>
-              <div className="flex flex-wrap gap-1 items-center">
-                <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Com-Invoices */}
-      {file.invoices && file.invoices.some(inv => inv.invoice_type === 'commercial') && (
-        <div className="mb-4">
-          <div className="text-xs font-bold mb-2">Com-Invoices</div>
-          {file.invoices.filter(inv => inv.invoice_type === 'commercial').map((inv) => (
-            <div key={inv.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1 min-w-0 truncate">{inv.invoice_no}</span>
-              <DocStatusBadge status={inv.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{fDate(inv.invoice_date)}</span>
-              <span className="font-bold text-brand-500 text-xs whitespace-nowrap">{fCurrency(inv.total)}</span>
-              <div className="flex flex-wrap gap-1 items-center">
-                <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-                {writable && (inv.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete com-invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Packing Lists */}
-      {file.packing_lists && file.packing_lists.length > 0 && (
-        <div className="mb-4">
-          <div className="text-xs font-bold mb-2">Packing Lists</div>
-          {file.packing_lists.map((pl) => (
-            <div key={pl.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1.5">
-              <span className="font-bold text-xs flex-1 min-w-0 truncate">{pl.packing_list_no}</span>
-              <DocStatusBadge status={pl.doc_status ?? 'draft'} />
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{pl.packing_list_items?.length ?? 0} vehicles</span>
-              <span className="text-xs whitespace-nowrap">{fN(pl.total_admt, 3)} ADMT</span>
-              <div className="flex flex-wrap gap-1 items-center">
-                <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
-                {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="edit" size="xs" onClick={() => { setEditPL(pl); setPackingOpen(true); }}>Edit</Button>}
-                {settings && <Button variant="outline" size="xs" onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}>🖨 Print</Button>}
-                {writable && (pl.doc_status ?? 'draft') !== 'approved' && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete packing list?')) deletePL.mutate(pl.id); }}>Del</Button>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Expenses */}
-      <Card className="mb-4">
-        <CardContent>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <div className="text-2xs font-bold uppercase text-muted-foreground">Expenses</div>
-            {writable && (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="xs" onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })}>
-                  + Purchase Invoice
-                </Button>
-                <Button variant="outline" size="xs" onClick={() => setTxnModal({ open: true, type: 'svc_inv' })}>
-                  + Service Invoice
-                </Button>
-              </div>
-            )}
-          </div>
-          {fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type)).length === 0 ? (
-            <div className="text-xs text-muted-foreground text-center py-3">No expense transactions yet</div>
-          ) : (
-            <div className="overflow-x-auto"><table className="w-full text-xs min-w-[500px]">
-              <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="text-left py-1 pr-2 font-medium">Date</th>
-                  <th className="text-left py-1 pr-2 font-medium">Description</th>
-                  <th className="text-left py-1 pr-2 font-medium">Type</th>
-                  <th className="text-right py-1 font-medium">Amount</th>
-                  <th className="text-right py-1 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fileTxns
-                  .filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type))
-                  .map(t => (
-                    <tr key={t.id} className="border-b border-border/40">
-                      <td className="py-1 pr-2 text-muted-foreground">{t.transaction_date}</td>
-                      <td className="py-1 pr-2">{t.description}</td>
-                      <td className="py-1 pr-2 text-muted-foreground">{TRANSACTION_TYPE_LABELS[t.transaction_type]}</td>
-                      <td className="py-1 text-right font-medium">{fUSD(t.amount_usd ?? t.amount)}</td>
-                      <td className="py-1 text-right">
-                        <span className={`text-2xs px-1.5 py-0.5 rounded ${
-                          t.payment_status === 'paid' ? 'bg-green-100 text-green-700'
-                          : t.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-red-100 text-red-700'
-                        }`}>{t.payment_status}</span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table></div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Transport Plan — visible for sale, delivery and completed files */}
-      {['sale', 'delivery', 'completed'].includes(file.status) && (
-        <div className="mb-4">
-          <div className="text-xs font-bold mb-2 text-gray-700">Taşıma Planı</div>
-          <TransportPlanSection file={file} writable={writable} />
-        </div>
-      )}
 
       {/* Modals */}
       <NewFileModal open={editFileOpen} onOpenChange={setEditFileOpen} editMode fileToEdit={file} />
@@ -382,6 +608,6 @@ export function TradeFileDetailPage() {
         defaultType={txnModal.type}
         defaultTradeFileId={file.id}
       />
-    </>
+    </div>
   );
 }
