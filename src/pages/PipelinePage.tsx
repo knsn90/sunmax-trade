@@ -160,19 +160,16 @@ export function PipelinePage() {
       <div className="md:hidden flex flex-col min-h-screen bg-gray-50">
 
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 bg-gray-50">
-          <h1 className="text-xl font-bold text-gray-900">Pipeline</h1>
-          <div className="flex items-center gap-2">
-            {writable && (
-              <button
-                onClick={() => setNewFileOpen(true)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow"
-                style={{ background: accent }}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+        <div className="flex items-center justify-end px-4 pt-4 pb-2 bg-gray-50">
+          {writable && (
+            <button
+              onClick={() => setNewFileOpen(true)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow"
+              style={{ background: accent }}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Search bar */}
@@ -280,8 +277,7 @@ export function PipelinePage() {
           DESKTOP  (≥ md)  — Kanban unchanged
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:block">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">Pipeline</h1>
+        <div className="flex items-center justify-end mb-4">
           {writable && <Button onClick={() => setNewFileOpen(true)}>+ New File</Button>}
         </div>
 

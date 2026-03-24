@@ -151,12 +151,6 @@ export function ProfilePage() {
   return (
     <div className="py-6 px-4 md:px-6 max-w-5xl mx-auto space-y-4">
 
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Profil</h1>
-        <p className="text-sm text-gray-400 mt-0.5">{user?.email}</p>
-      </div>
-
       {/* Two-column grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
 

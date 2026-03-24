@@ -866,12 +866,6 @@ export function ReportsPage() {
 
   return (
     <>
-      {/* Page title — Donezo style */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-gray-900">Reports</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Sales, P&L, account statements and analytics</p>
-      </div>
-
       {/* Tab bar — Donezo underline style */}
       <div className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto">
         {TAB_LABELS.map(([key, label]) => (

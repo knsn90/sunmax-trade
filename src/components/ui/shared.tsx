@@ -33,18 +33,17 @@ export function CardContent({
 // ─── Page Header ────────────────────────────────────────────────────────────
 
 export function PageHeader({
-  title,
+  title: _title,
   children,
 }: {
-  title: string;
+  title?: string;
   children?: React.ReactNode;
 }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h1 className="text-xl font-bold truncate min-w-0">{title}</h1>
-      {children && <div className="flex flex-wrap items-center gap-2 flex-shrink-0">{children}</div>}
+  return children ? (
+    <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 flex-shrink-0">{children}</div>
     </div>
-  );
+  ) : null;
 }
 
 // ─── Empty State ────────────────────────────────────────────────────────────
