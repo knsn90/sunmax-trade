@@ -295,9 +295,9 @@ export function PipelinePage() {
         {/* 3-column Kanban */}
         {(() => {
           const STAGES = [
-            { key: 'request',  label: 'Request',  headerBg: '#fef3c7', headerText: '#92400e', dot: '#f59e0b', accentBtn: '#d97706' },
-            { key: 'sale',     label: 'Sale',     headerBg: '#dbeafe', headerText: '#1e3a8a', dot: '#3b82f6', accentBtn: '#2563eb' },
-            { key: 'delivery', label: 'Delivery', headerBg: '#ede9fe', headerText: '#4c1d95', dot: '#8b5cf6', accentBtn: '#7c3aed' },
+            { key: 'request',  label: 'Request',  dot: 'bg-amber-400',  text: 'text-amber-700' },
+            { key: 'sale',     label: 'Sale',     dot: 'bg-blue-400',   text: 'text-blue-700'  },
+            { key: 'delivery', label: 'Delivery', dot: 'bg-violet-400', text: 'text-violet-700'},
           ] as const;
 
           return (
@@ -312,12 +312,12 @@ export function PipelinePage() {
                 return (
                   <div key={stage.key} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                     {/* Column header */}
-                    <div className="flex items-center justify-between px-4 py-3" style={{ background: stage.headerBg }}>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ background: stage.dot }} />
-                        <span className="text-[12px] font-bold" style={{ color: stage.headerText }}>{stage.label}</span>
+                        <span className={cn('w-2 h-2 rounded-full shrink-0', stage.dot)} />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{stage.label}</span>
                       </div>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: stage.dot }}>
+                      <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', stage.text)} style={{ background: 'transparent', border: '1.5px solid currentColor' }}>
                         {stageFiles.length}
                       </span>
                     </div>
@@ -361,7 +361,7 @@ export function PipelinePage() {
                                       <button
                                         onClick={() => setSaleFile(findFile(f.id))}
                                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white shadow-sm hover:opacity-90"
-                                        style={{ background: stage.accentBtn }}
+                                        style={{ background: accent }}
                                       >
                                         <TrendingUp className="h-3 w-3" /> To Sale
                                       </button>
@@ -378,7 +378,7 @@ export function PipelinePage() {
                                       <button
                                         onClick={() => setDeliveryFile(findFile(f.id))}
                                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white shadow-sm hover:opacity-90"
-                                        style={{ background: stage.accentBtn }}
+                                        style={{ background: accent }}
                                       >
                                         <Truck className="h-3 w-3" /> {f.delivered_admt ? 'Delivery' : '+ Delivery'}
                                       </button>
