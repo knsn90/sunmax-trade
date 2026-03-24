@@ -4,9 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '@/types/forms';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { FormGroup } from '@/components/ui/shared';
+import { User, Lock } from 'lucide-react';
 
 const REMEMBER_EMAIL_KEY = 'sunmax_remember_email';
 const REMEMBER_FLAG_KEY = 'sunmax_remember_me';
@@ -46,55 +44,83 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm">
-        <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-extrabold text-brand-500 tracking-tight">SunPlus</h1>
-            <p className="text-xs text-muted-foreground mt-1">Trade Management System</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-200 via-pink-100 to-orange-50">
+      {/* Outer wrapper: extra top padding so avatar has room to float above */}
+      <div className="w-full max-w-sm px-4 pt-12">
+        <div className="relative bg-white rounded-3xl shadow-2xl px-8 pt-14 pb-8">
+
+          {/* Floating avatar circle */}
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-red-500 shadow-lg flex items-center justify-center">
+            <User size={38} color="white" strokeWidth={1.5} />
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <FormGroup label="Email" error={errors.email?.message}>
-              <Input
-                type="email"
-                placeholder="you@company.com"
-                autoComplete="email"
-                {...register('email')}
-              />
-            </FormGroup>
-
-            <FormGroup label="Password" error={errors.password?.message}>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                {...register('password')}
-              />
-            </FormGroup>
-
-            <div className="flex items-center gap-2">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-border accent-brand-500 cursor-pointer"
-              />
-              <label htmlFor="remember-me" className="text-xs text-muted-foreground cursor-pointer select-none">
-                Remember me
-              </label>
+            {/* Email input */}
+            <div>
+              <div className="flex items-center gap-3 bg-gray-100 rounded-full px-4 py-3">
+                <User size={16} className="text-gray-400 shrink-0" />
+                <input
+                  type="email"
+                  placeholder="Username"
+                  autoComplete="email"
+                  className="flex-1 bg-transparent text-sm text-gray-600 placeholder-gray-400 outline-none"
+                  {...register('email')}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-xs text-red-500 mt-1 px-4">{errors.email.message}</p>
+              )}
             </div>
 
+            {/* Password input */}
+            <div>
+              <div className="flex items-center gap-3 bg-gray-100 rounded-full px-4 py-3">
+                <Lock size={16} className="text-gray-400 shrink-0" />
+                <input
+                  type="password"
+                  placeholder="••••••••••••"
+                  autoComplete="current-password"
+                  className="flex-1 bg-transparent text-sm text-gray-600 placeholder-gray-400 outline-none"
+                  {...register('password')}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-xs text-red-500 mt-1 px-4">{errors.password.message}</p>
+              )}
+            </div>
+
+            {/* Remember me + Forgot password */}
+            <div className="flex items-center justify-between px-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded accent-red-500 cursor-pointer"
+                />
+                <span className="text-xs text-gray-400">Remember me</span>
+              </label>
+              <span className="text-xs text-gray-400 italic cursor-pointer hover:text-gray-600">
+                Forgot Password?
+              </span>
+            </div>
+
+            {/* Error message */}
             {error && (
               <div className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
                 {error}
               </div>
             )}
 
-            <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign In'}
-            </Button>
+            {/* Login button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-full bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white font-bold tracking-widest text-sm py-3 transition-colors"
+            >
+              {isSubmitting ? 'Signing in…' : 'LOGIN'}
+            </button>
           </form>
         </div>
       </div>

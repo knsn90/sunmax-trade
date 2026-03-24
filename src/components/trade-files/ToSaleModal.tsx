@@ -133,7 +133,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
             <FormGroup label="Transport Mode">
               <NativeSelect {...register('transport_mode')}>
                 <option value="truck">By Truck</option>
-                <option value="train">By Train</option>
+                <option value="railway">By Railway</option>
                 <option value="sea">By Sea</option>
               </NativeSelect>
             </FormGroup>

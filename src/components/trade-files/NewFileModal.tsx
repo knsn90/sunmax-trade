@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea, NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { Plus } from 'lucide-react';
+import { SmartFill } from '@/components/ui/SmartFill';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
@@ -66,6 +68,57 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
     setValue('product_id', p.id); setNewProdName(''); setShowNewProd(false);
   }
 
+  async function handleAIFill(fields: Record<string, unknown>) {
+    // ── Customer ──────────────────────────────────────────────────────────────
+    if (fields.customer_id && customers.find(c => c.id === fields.customer_id)) {
+      // AI matched to an existing customer
+      setValue('customer_id', String(fields.customer_id));
+    } else if (fields.customer_name) {
+      const name = String(fields.customer_name).trim();
+      // Try a case-insensitive local match first (AI might hallucinate IDs)
+      const local = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (local) {
+        setValue('customer_id', local.id);
+      } else {
+        // Not found → create automatically
+        try {
+          const created = await createCust.mutateAsync({
+            name, country: '', address: '', contact_email: '', contact_phone: '', notes: '',
+          });
+          setValue('customer_id', created.id);
+          toast.success(`"${name}" müşterisi oluşturuldu`);
+        } catch {
+          toast.error(`Müşteri oluşturulamadı: ${name}`);
+        }
+      }
+    }
+
+    // ── Product ───────────────────────────────────────────────────────────────
+    if (fields.product_id && products.find(p => p.id === fields.product_id)) {
+      setValue('product_id', String(fields.product_id));
+    } else if (fields.product_name) {
+      const name = String(fields.product_name).trim();
+      const local = products.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (local) {
+        setValue('product_id', local.id);
+      } else {
+        try {
+          const created = await createProd.mutateAsync({ name, hs_code: '', unit: 'ADMT' });
+          setValue('product_id', created.id);
+          toast.success(`"${name}" ürünü oluşturuldu`);
+        } catch {
+          toast.error(`Ürün oluşturulamadı: ${name}`);
+        }
+      }
+    }
+
+    // ── Scalar fields ─────────────────────────────────────────────────────────
+    if (fields.tonnage_mt != null)             setValue('tonnage_mt',   Number(fields.tonnage_mt));
+    if (fields.file_date)                      setValue('file_date',    String(fields.file_date));
+    if (fields.customer_ref !== undefined)     setValue('customer_ref', String(fields.customer_ref ?? ''));
+    if (fields.notes !== undefined)            setValue('notes',        String(fields.notes ?? ''));
+  }
+
   async function onSubmit(data: NewTradeFileFormData) {
     if (editMode && fileToEdit) {
       await updateFileInfo.mutateAsync({ id: fileToEdit.id, data });
@@ -83,6 +136,16 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
       <DialogContent>
         <DialogHeader><DialogTitle>{editMode ? 'Edit File Info' : 'New File'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
+          {!editMode && (
+            <div className="mb-3 flex justify-end">
+              <SmartFill
+                mode="new_file"
+                context={{ customers, products }}
+                formName="Yeni Dosya"
+                onResult={(r) => handleAIFill(r as Record<string, unknown>)}
+              />
+            </div>
+          )}
           <FormRow>
             <FormGroup label="Customer *" error={errors.customer_id?.message}>
               <div className="flex gap-1.5">
