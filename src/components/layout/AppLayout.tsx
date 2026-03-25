@@ -51,7 +51,7 @@ function LayoutInner() {
         <Topbar />
         <MobilePageHeader />
         <main
-          className="flex-1 overflow-y-auto px-4 pb-4 md:p-6 scrollbar-thin"
+          className="flex-1 overflow-y-auto px-4 pb-4 md:p-6 md:bg-gray-50 scrollbar-thin"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 4rem + 8px)' }}
         >
           <Outlet />
