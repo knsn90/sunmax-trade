@@ -8,9 +8,10 @@ import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEntities';
 import { useTransactions, useTransactionsByEntityEnhanced } from '@/hooks/useTransactions';
 import { fDate, fCurrency, fN, fUSD } from '@/lib/formatters';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
+import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { TradeFile } from '@/types/database';
 
 // ─── Print helper ──────────────────────────────────────────────────────────
@@ -40,6 +41,8 @@ const TAB_LABELS: [RepTab, string][] = [
 function SalesReportTab() {
   const { data: files = [] } = useTradeFiles();
   const { data: customers = [] } = useCustomers();
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   const [custFilter, setCustFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -131,9 +134,8 @@ function SalesReportTab() {
   return (
     <div>
       {/* Filter panel */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-        <div className="text-sm font-bold text-gray-800 mb-4">Filters</div>
-        <div className="grid grid-cols-4 gap-3 mb-3">
+      <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Customer</label>
             <NativeSelect value={custFilter} onChange={(e) => setCustFilter(e.target.value)}>
@@ -160,13 +162,34 @@ function SalesReportTab() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" onClick={() => setRan(true)}>Show Report</Button>
-          <Button size="sm" variant="outline" onClick={() => { setCustFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setRan(false); }}>Reset</Button>
+          <button
+            onClick={() => setRan(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold text-white transition-colors hover:opacity-90"
+            style={{ background: accent }}
+          >
+            Show Report
+          </button>
+          <button
+            onClick={() => { setCustFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setRan(false); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            Reset
+          </button>
           {ran && results.length > 0 && (
-            <Button size="sm" variant="outline" onClick={() => printSalesReport(results)}>🖨 Print / PDF</Button>
+            <button
+              onClick={() => printSalesReport(results)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              🖨 Print / PDF
+            </button>
           )}
           {ran && results.length > 0 && (
-            <Button size="sm" variant="outline" onClick={() => exportSalesExcel(results)}>📥 Excel</Button>
+            <button
+              onClick={() => exportSalesExcel(results)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              📥 Excel
+            </button>
           )}
         </div>
       </div>
@@ -174,48 +197,48 @@ function SalesReportTab() {
       {ran && results.length > 0 && (
         <>
           {/* Summary cards */}
-          <div className="flex gap-3 flex-wrap mb-5">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="flex gap-3 flex-wrap mb-4">
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
               <div className="text-xs text-gray-400 mb-0.5">Total Files</div>
               <div className="text-lg font-bold text-gray-900">{results.length}</div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
               <div className="text-xs text-gray-400 mb-0.5">Total ADMT</div>
               <div className="text-lg font-bold text-gray-900">{fN(totalAdmt, 3)}</div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
               <div className="text-xs text-gray-400 mb-0.5">Estimated Revenue</div>
               <div className="text-lg font-bold text-gray-900">{fUSD(totalRevenue)}</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
+                  <tr className="border-b border-gray-100">
                     {['No','Customer','Product','ADMT','Incoterms','Transport','Loading Port','Discharge Port','Selling Price','Purchase Price','Status','PI No','Reg. No','Insurance No'].map((h) => (
-                      <th key={h} className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((f) => (
-                    <tr key={f.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-2.5 py-1.5 text-xs font-bold">{f.file_no}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.customer?.name ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.product?.name ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs text-right">{fN(f.delivered_admt ?? f.tonnage_mt ?? 0, 3)}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.incoterms ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs capitalize">{f.transport_mode ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.port_of_loading ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.port_of_discharge ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs text-right">{f.selling_price ? fCurrency(f.selling_price) : '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs text-right">{f.purchase_price ? fCurrency(f.purchase_price) : '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs capitalize">{f.status}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.proforma_ref ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.register_no ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-xs">{f.insurance_tr ?? '—'}</td>
+                    <tr key={f.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                      <td className="px-4 py-3 text-[12px] font-bold">{f.file_no}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.customer?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.product?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px] text-right">{fN(f.delivered_admt ?? f.tonnage_mt ?? 0, 3)}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.incoterms ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px] capitalize">{f.transport_mode ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.port_of_loading ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.port_of_discharge ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px] text-right">{f.selling_price ? fCurrency(f.selling_price) : '—'}</td>
+                      <td className="px-4 py-3 text-[12px] text-right">{f.purchase_price ? fCurrency(f.purchase_price) : '—'}</td>
+                      <td className="px-4 py-3 text-[12px] capitalize">{f.status}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.proforma_ref ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.register_no ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px]">{f.insurance_tr ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -290,8 +313,7 @@ function PnlReportTab() {
 
   return (
     <div>
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-        <div className="text-sm font-bold text-gray-800 mb-4">Select a file to open P&L Report</div>
+      <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
         <div className="flex gap-3 items-center flex-wrap">
           <NativeSelect
             value={selectedFileId}
@@ -306,7 +328,12 @@ function PnlReportTab() {
             ))}
           </NativeSelect>
           {selectedFile && pnl && (
-            <Button size="sm" variant="outline" onClick={printPnl}>🖨 Print / PDF</Button>
+            <button
+              onClick={printPnl}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              🖨 Print / PDF
+            </button>
           )}
         </div>
       </div>
@@ -325,7 +352,7 @@ function PnlReportTab() {
               { label: 'Net Profit', value: fUSD(pnl.profit), color: col(pnl.profit) },
               { label: 'Margin', value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
             ].map((card) => (
-              <div key={card.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
+              <div key={card.label} className="bg-white rounded-2xl shadow-sm p-4 text-center">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
                 <div className="text-xl font-black" style={{ color: card.color }}>{card.value}</div>
               </div>
@@ -333,7 +360,7 @@ function PnlReportTab() {
           </div>
 
           {/* P&L Detail */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+          <div className="bg-white rounded-2xl shadow-sm p-5 mb-5">
             <div className="text-sm font-bold text-gray-800 mb-4">
               P&L Detail — {selectedFile.file_no}
             </div>
@@ -482,9 +509,8 @@ function AccountStatementTab() {
 
   return (
     <div>
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-        <div className="text-sm font-bold text-gray-800 mb-4">Filters</div>
-        <div className="grid grid-cols-4 gap-3 items-end">
+      <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Entity Type</label>
             <NativeSelect value={entityType} onChange={(e) => { setEntityType(e.target.value as typeof entityType); setEntityId(''); }}>
@@ -514,19 +540,19 @@ function AccountStatementTab() {
             <span className="text-xs text-gray-500 font-medium">Print language:</span>
             <button
               onClick={() => printStatement('en')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               🖨 English
             </button>
             <button
               onClick={() => printStatement('tr')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               🖨 Türkçe
             </button>
             <button
               onClick={() => printStatement('fa')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               🖨 فارسی
             </button>
@@ -537,45 +563,45 @@ function AccountStatementTab() {
       {entityId && txns.length > 0 && (
         <>
           {/* Summary */}
-          <div className="grid grid-cols-3 gap-4 mb-5">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Total Debit</div>
               <div className="text-lg font-black text-red-600">{fUSD(totalDebit)}</div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Total Credit</div>
               <div className="text-lg font-black text-green-600">{fUSD(totalCredit)}</div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Net Balance</div>
               <div className="text-lg font-black" style={{ color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>{fUSD(netBalance)}</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
+                  <tr className="border-b border-gray-100">
                     {['Date', 'Type', 'Reference', 'Description', 'Debit', 'Credit', 'Balance'].map((h) => (
-                      <th key={h} className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {txnsWithBalance.map((t) => (
-                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-3 py-1.5 text-xs">{fDate(t.transaction_date)}</td>
-                      <td className="px-3 py-1.5 text-xs capitalize">{t.transaction_type.replace('_', ' ')}</td>
-                      <td className="px-3 py-1.5 text-xs">{t.reference_no || '—'}</td>
-                      <td className="px-3 py-1.5 text-xs">{t.description}</td>
-                      <td className="px-3 py-1.5 text-xs text-right text-red-600">
+                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                      <td className="px-4 py-3 text-[12px]">{fDate(t.transaction_date)}</td>
+                      <td className="px-4 py-3 text-[12px] capitalize">{t.transaction_type.replace('_', ' ')}</td>
+                      <td className="px-4 py-3 text-[12px]">{t.reference_no || '—'}</td>
+                      <td className="px-4 py-3 text-[12px]">{t.description}</td>
+                      <td className="px-4 py-3 text-[12px] text-right text-red-600">
                         {t.isDebit ? fUSD(t.amt) : '—'}
                       </td>
-                      <td className="px-3 py-1.5 text-xs text-right text-green-600">
+                      <td className="px-4 py-3 text-[12px] text-right text-green-600">
                         {!t.isDebit ? fUSD(t.amt) : '—'}
                       </td>
-                      <td className="px-3 py-1.5 text-xs text-right font-semibold" style={{ color: t.balance >= 0 ? '#10b981' : '#ef4444' }}>
+                      <td className="px-4 py-3 text-[12px] text-right font-semibold" style={{ color: t.balance >= 0 ? '#10b981' : '#ef4444' }}>
                         {fUSD(t.balance)}
                       </td>
                     </tr>
@@ -604,6 +630,8 @@ const CHART_COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4
 
 function AnalyticsTab() {
   const { data: files = [] } = useTradeFiles();
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const [period, setPeriod] = useState<'6m' | '12m' | 'all'>('12m');
 
   const filteredFiles = useMemo(() => {
@@ -696,20 +724,29 @@ function AnalyticsTab() {
     <div className="space-y-5">
       {/* Controls */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+        <div className="flex gap-1.5">
           {([['6m','Last 6M'],['12m','Last 12M'],['all','All Time']] as [typeof period, string][]).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setPeriod(key)}
-              className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-                period === key ? 'bg-white shadow text-red-600' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={cn(
+                'shrink-0 px-3 h-7 rounded-full text-[11px] font-bold transition-all whitespace-nowrap',
+                period === key
+                  ? 'text-white shadow-sm'
+                  : 'bg-white text-gray-500 border border-gray-200'
+              )}
+              style={period === key ? { background: accent } : {}}
             >
               {label}
             </button>
           ))}
         </div>
-        <Button size="sm" variant="outline" onClick={exportAnalyticsExcel}>📥 Excel Export</Button>
+        <button
+          onClick={exportAnalyticsExcel}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          📥 Excel Export
+        </button>
       </div>
 
       {/* KPI row */}
@@ -721,7 +758,7 @@ function AnalyticsTab() {
           { label: 'Total Cost', value: fUSD(totalCost), color: 'text-red-600' },
           { label: 'Net Profit / Margin', value: `${fUSD(totalProfit)} / ${avgMargin.toFixed(1)}%`, color: totalProfit >= 0 ? 'text-green-700' : 'text-red-600' },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
+          <div key={kpi.label} className="bg-white rounded-2xl shadow-sm p-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{kpi.label}</div>
             <div className={`text-sm font-black ${kpi.color}`}>{kpi.value}</div>
           </div>
@@ -729,13 +766,13 @@ function AnalyticsTab() {
       </div>
 
       {noData ? (
-        <div className="text-center py-16 text-gray-400 text-sm bg-white border border-gray-100 rounded-2xl">
+        <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl shadow-sm">
           No data found for the selected period.
         </div>
       ) : (
         <>
           {/* Monthly trend chart */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl shadow-sm p-5">
             <div className="text-sm font-bold text-gray-800 mb-4">Monthly Revenue / Cost / Profit Trend</div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={monthlyData} barCategoryGap="25%">
@@ -770,7 +807,7 @@ function AnalyticsTab() {
 
           <div className="grid grid-cols-5 gap-4">
             {/* Customer revenue bar */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 col-span-3">
+            <div className="bg-white rounded-2xl shadow-sm p-5 col-span-3">
               <div className="text-sm font-bold text-gray-800 mb-4">Revenue by Customer (Top 8)</div>
               {customerData.length === 0 ? (
                 <div className="text-center py-8 text-gray-400 text-xs">No data</div>
@@ -798,7 +835,7 @@ function AnalyticsTab() {
             </div>
 
             {/* Status pie */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 col-span-2">
+            <div className="bg-white rounded-2xl shadow-sm p-5 col-span-2">
               <div className="text-sm font-bold text-gray-800 mb-4">File Status Distribution</div>
               {statusData.length === 0 ? (
                 <div className="text-center py-8 text-gray-400 text-xs">No data</div>
@@ -818,16 +855,16 @@ function AnalyticsTab() {
           </div>
 
           {/* Customer detail table */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
               <div className="text-sm font-bold text-gray-800">Customer Performance</div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
+                  <tr className="border-b border-gray-100">
                     {['Customer','Files','Total ADMT','Revenue','Cost','Net Profit','Margin'].map(h => (
-                      <th key={h} className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -835,14 +872,14 @@ function AnalyticsTab() {
                   {customerData.map((c, i) => {
                     const margin = c.revenue > 0 ? (c.profit / c.revenue * 100) : 0;
                     return (
-                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="px-3 py-2 text-xs font-semibold">{c.name}</td>
-                        <td className="px-3 py-2 text-xs text-center">{c.files}</td>
-                        <td className="px-3 py-2 text-xs text-right">{fN(c.admt, 3)}</td>
-                        <td className="px-3 py-2 text-xs text-right font-medium text-blue-700">{fUSD(c.revenue)}</td>
-                        <td className="px-3 py-2 text-xs text-right text-red-600">{fUSD(c.revenue - c.profit)}</td>
-                        <td className="px-3 py-2 text-xs text-right font-bold" style={{ color: c.profit >= 0 ? '#10b981' : '#ef4444' }}>{fUSD(c.profit)}</td>
-                        <td className="px-3 py-2 text-xs text-right">
+                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                        <td className="px-4 py-3 text-[12px] font-semibold">{c.name}</td>
+                        <td className="px-4 py-3 text-[12px] text-center">{c.files}</td>
+                        <td className="px-4 py-3 text-[12px] text-right">{fN(c.admt, 3)}</td>
+                        <td className="px-4 py-3 text-[12px] text-right font-medium text-blue-700">{fUSD(c.revenue)}</td>
+                        <td className="px-4 py-3 text-[12px] text-right text-red-600">{fUSD(c.revenue - c.profit)}</td>
+                        <td className="px-4 py-3 text-[12px] text-right font-bold" style={{ color: c.profit >= 0 ? '#10b981' : '#ef4444' }}>{fUSD(c.profit)}</td>
+                        <td className="px-4 py-3 text-[12px] text-right">
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${margin >= 10 ? 'bg-green-100 text-green-700' : margin >= 5 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
                             {margin.toFixed(1)}%
                           </span>
@@ -922,20 +959,25 @@ function EtaReportTab() {
           <div className="text-sm font-bold text-gray-800">ETA Tracking Report</div>
           <div className="text-xs text-gray-400 mt-0.5">{etaFiles.length} files with ETA</div>
         </div>
-        <Button size="sm" variant="outline" onClick={exportCsv}>Export CSV</Button>
+        <button
+          onClick={exportCsv}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          Export CSV
+        </button>
       </div>
 
       {etaFiles.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm bg-white border border-gray-100 rounded-2xl">
+        <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl shadow-sm">
           No files with ETA found.
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+        <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
+              <tr className="border-b border-gray-100">
                 {['File No','Customer','Product','Promised ETA','Revised ETA','Actual Arrival','Delay','Status'].map(h => (
-                  <th key={h} className="px-3 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -944,23 +986,23 @@ function EtaReportTab() {
                 const { label, cls } = statusCell(f);
                 const d = delayDays(f);
                 return (
-                  <tr key={f.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-3 py-2.5 font-mono font-bold text-gray-800">{f.file_no}</td>
-                    <td className="px-3 py-2.5 text-gray-700">{f.customer?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-600">{f.product?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-gray-700">{f.eta ? fDate(f.eta) : '—'}</td>
-                    <td className="px-3 py-2.5">
+                  <tr key={f.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
+                    <td className="px-4 py-3 text-[12px] font-mono font-bold text-gray-800">{f.file_no}</td>
+                    <td className="px-4 py-3 text-[12px] text-gray-700">{f.customer?.name ?? '—'}</td>
+                    <td className="px-4 py-3 text-[12px] text-gray-600">{f.product?.name ?? '—'}</td>
+                    <td className="px-4 py-3 text-[12px] text-gray-700">{f.eta ? fDate(f.eta) : '—'}</td>
+                    <td className="px-4 py-3 text-[12px]">
                       {(f as TradeFile & { revised_eta?: string }).revised_eta
                         ? <span className="text-amber-600 font-semibold">{fDate((f as TradeFile & { revised_eta?: string }).revised_eta!)}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-gray-700">{f.arrival_date ? fDate(f.arrival_date) : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-3 py-2.5 font-semibold">
+                    <td className="px-4 py-3 text-[12px] text-gray-700">{f.arrival_date ? fDate(f.arrival_date) : <span className="text-gray-300">—</span>}</td>
+                    <td className="px-4 py-3 text-[12px] font-semibold">
                       {d !== null
                         ? <span className={d > 0 ? 'text-red-600' : 'text-green-600'}>{d > 0 ? `+${d}d` : `${d}d`}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-4 py-3 text-[12px]">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${cls}`}>{label}</span>
                     </td>
                   </tr>
@@ -978,20 +1020,24 @@ function EtaReportTab() {
 
 export function ReportsPage() {
   const [activeTab, setActiveTab] = useState<RepTab>('sales');
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   return (
     <>
-      {/* Tab bar — Donezo underline style */}
-      <div className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto">
+      {/* Tab bar — pill style */}
+      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
         {TAB_LABELS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${
+            className={cn(
+              'shrink-0 px-3.5 h-8 rounded-full text-[12px] font-bold transition-all whitespace-nowrap',
               activeTab === key
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-400 hover:text-gray-700'
-            }`}
+                ? 'text-white shadow-sm'
+                : 'bg-white text-gray-500 border border-gray-200'
+            )}
+            style={activeTab === key ? { background: accent } : {}}
           >
             {label}
           </button>
