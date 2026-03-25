@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  PieChart, Pie,
 } from 'recharts';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useTransactionSummary } from '@/hooks/useTransactions';
@@ -162,6 +163,53 @@ export function DashboardPage() {
 
   const hasChart = chartData.some(d => d.revenue > 0 || d.cost > 0);
 
+  // ── Delay analytics ──────────────────────────────────────────────────────
+  const delayData = useMemo(() => {
+    const today = new Date(new Date().toDateString()).getTime();
+    return files
+      .filter(f => f.eta && ['sale', 'delivery', 'completed'].includes(f.status))
+      .map(f => {
+        const etaMs = new Date((f.eta as string) + 'T00:00:00').getTime();
+        const compareMs = f.arrival_date
+          ? new Date(f.arrival_date + 'T00:00:00').getTime()
+          : today;
+        const days = Math.round((compareMs - etaMs) / 86400000);
+        let status: 'ontime' | 'late' | 'overdue' | 'pending';
+        if (f.arrival_date) {
+          status = days <= 0 ? 'ontime' : 'late';
+        } else if (days > 0) {
+          status = 'overdue';
+        } else {
+          status = 'pending';
+        }
+        return { file: f, days, status };
+      });
+  }, [files]);
+
+  const delayPieData = useMemo(() => {
+    const counts = { ontime: 0, late: 0, overdue: 0, pending: 0 };
+    delayData.forEach(d => counts[d.status]++);
+    return [
+      { name: 'On Time',       value: counts.ontime,  color: '#4ade80' },
+      { name: 'Late Delivery', value: counts.late,    color: '#f87171' },
+      { name: 'Overdue',       value: counts.overdue, color: '#dc2626' },
+      { name: 'Pending',       value: counts.pending, color: '#93c5fd' },
+    ].filter(d => d.value > 0);
+  }, [delayData]);
+
+  const delayBarData = useMemo(() =>
+    delayData
+      .filter(d => d.status !== 'pending')
+      .sort((a, b) => b.days - a.days)
+      .slice(0, 7)
+      .map(d => ({
+        name: d.file.file_no,
+        days: d.days,
+        fill: d.status === 'ontime' ? '#4ade80' : d.status === 'late' ? '#f87171' : '#dc2626',
+      })),
+    [delayData]
+  );
+
   const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
@@ -269,6 +317,64 @@ export function DashboardPage() {
             </div>
           )}
         </Section>
+
+        {/* ── Delivery Performance Chart ──────────────────────────────────── */}
+        {delayPieData.length > 0 && (
+          <Section title="Delivery Performance" action={() => navigate('/reports')} actionLabel="ETA Report">
+            <div className="px-4 py-4">
+              {/* Donut + legend row */}
+              <div className="flex items-center gap-4">
+                <PieChart width={96} height={96}>
+                  <Pie
+                    data={delayPieData}
+                    cx={43} cy={43}
+                    innerRadius={28} outerRadius={44}
+                    dataKey="value"
+                    strokeWidth={2}
+                    stroke="#f9fafb"
+                    startAngle={90} endAngle={-270}
+                  >
+                    {delayPieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                </PieChart>
+                <div className="flex flex-col gap-2 flex-1">
+                  {delayPieData.map(d => (
+                    <div key={d.name} className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                      <span className="text-[11px] text-gray-500 flex-1">{d.name}</span>
+                      <span className="text-[12px] font-bold text-gray-900">{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Per-file delay bar chart */}
+              {delayBarData.length > 0 && (
+                <>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-4 mb-2">
+                    Delay by File (days)
+                  </div>
+                  <ResponsiveContainer width="100%" height={delayBarData.length * 30}>
+                    <BarChart data={delayBarData} layout="vertical" barCategoryGap="20%" margin={{ left: 0, right: 16 }}>
+                      <XAxis type="number" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false}
+                        tickFormatter={v => `${v}d`} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }}
+                        axisLine={false} tickLine={false} width={80} />
+                      <Tooltip
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        formatter={(v: any) => [`${v > 0 ? '+' : ''}${v} days`, 'vs ETA']}
+                        contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                      />
+                      <Bar dataKey="days" radius={[0, 4, 4, 0]}>
+                        {delayBarData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </>
+              )}
+            </div>
+          </Section>
+        )}
 
         {/* ── Recent Files ────────────────────────────────────────────────── */}
         <Section title="Recent Files" action={() => navigate('/files')} actionLabel="All files">
