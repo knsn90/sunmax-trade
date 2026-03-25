@@ -175,12 +175,12 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mb-4 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50/80 to-indigo-50/60 p-3 space-y-2">
+    <div className="mb-4 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50/80 to-blue-50/60 p-3 space-y-2">
       {/* Header */}
       <div className="flex items-center gap-1.5">
-        <Sparkles className="h-3.5 w-3.5 text-violet-600" />
-        <span className="text-xs font-semibold text-violet-700">AI ile Doldur</span>
-        <span className="text-[10px] text-violet-400 ml-1">
+        <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+        <span className="text-xs font-semibold text-blue-700">AI ile Doldur</span>
+        <span className="text-[10px] text-blue-400 ml-1">
           {voiceSupported ? '— sesle veya yazarak tarif edin' : '— yazarak tarif edin'}
         </span>
       </div>
@@ -195,7 +195,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
             className={`flex-shrink-0 p-2 rounded-lg border transition-all ${
               isRecording
                 ? 'bg-red-500 border-red-500 text-white shadow-md animate-pulse'
-                : 'bg-white border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-600'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'
             }`}
           >
             {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -223,7 +223,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
           size="sm"
           onClick={handleAnalyze}
           disabled={!text.trim() || isLoading || isRecording}
-          className="bg-violet-600 hover:bg-violet-700 text-white h-9 px-3 flex-shrink-0"
+          className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3 flex-shrink-0"
         >
           {isLoading
             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -241,9 +241,9 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
 
       {/* Preview */}
       {preview && (
-        <div className="bg-white border border-violet-200 rounded-lg p-2.5 space-y-1.5">
+        <div className="bg-white border border-blue-200 rounded-lg p-2.5 space-y-1.5">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-semibold text-violet-700">Algılanan bilgiler</p>
+            <p className="text-xs font-semibold text-blue-700">Algılanan bilgiler</p>
             <button type="button" onClick={dismiss} className="text-gray-400 hover:text-gray-600">
               <X className="h-3.5 w-3.5" />
             </button>
@@ -262,7 +262,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
             type="button"
             size="xs"
             onClick={applyFields}
-            className="mt-1.5 bg-violet-600 hover:bg-violet-700 text-white"
+            className="mt-1.5 bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Check className="h-3 w-3 mr-1" /> Formu Doldur
           </Button>

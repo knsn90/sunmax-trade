@@ -195,169 +195,151 @@ export function TradeFileDetailPage() {
   let hv = 0; for (let i = 0; i < custName.length; i++) hv = custName.charCodeAt(i) + ((hv << 5) - hv);
   const avatarBg = avatarColors[Math.abs(hv) % avatarColors.length];
 
+  // ── Shared section content ────────────────────────────────────────────────
+  const statsGrid = (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="grid grid-cols-2 divide-x divide-y divide-gray-50">
+        <div className="px-4 py-3">
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Tonnage</div>
+          <div className="text-[13px] font-bold text-gray-900">{fN(file.tonnage_mt, 0)} MT</div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Date</div>
+          <div className="text-[13px] font-bold text-gray-900">{fDate(file.file_date)}</div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Sale Price</div>
+          <div className="text-[13px] font-bold text-gray-900">
+            {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
+          </div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Delivered</div>
+          <div className="text-[13px] font-bold text-gray-900">
+            {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const actionsPanel = (isMobile: boolean) => (
+    <div className={cn('bg-white rounded-2xl shadow-sm overflow-hidden', isMobile ? '' : '')}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Actions</span>
+      </div>
+      <div className="px-3 py-2">
+        <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit File"
+          onClick={() => { setActionsOpen(false); setEditFileOpen(true); }} />
+        {isSaleOrDel && (
+          <>
+            <ActionItem icon={<Receipt className="h-4 w-4" />} label="Sale Invoice"
+              onClick={() => { setActionsOpen(false); const e = file.invoices?.find(i => i.invoice_type === 'sale') ?? null; setEditSaleInvoice(e); setSaleInvoiceOpen(true); }} />
+            <ActionItem icon={<Receipt className="h-4 w-4" />} label="Commercial Invoice"
+              onClick={() => { setActionsOpen(false); setEditInvoice(null); setInvoiceOpen(true); }} />
+            <ActionItem icon={<Package className="h-4 w-4" />} label="Packing List"
+              onClick={() => { setActionsOpen(false); setEditPL(null); setPackingOpen(true); }} />
+            <ActionItem icon={<FileText className="h-4 w-4" />} label="Proforma Invoice"
+              onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
+          </>
+        )}
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+            <RotateCcw className="h-4 w-4" />
+          </div>
+          <span className="flex-1 text-[13px] font-medium text-gray-800">Change Status</span>
+          <NativeSelect
+            className="text-[12px] font-semibold text-gray-600 bg-gray-100 rounded-lg px-2 py-1 border-0 outline-none"
+            value={file.status}
+            onChange={(e) => { handleStatusChange(e.target.value); setActionsOpen(false); }}
+          >
+            <option value="request">Request</option>
+            <option value="sale">Sale</option>
+            <option value="delivery">Delivery</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </NativeSelect>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="-mx-4 -mt-4 md:mx-0 md:mt-0 bg-gray-50 min-h-screen pb-28">
-      {/* ── Header card ──────────────────────────────────────────────────── */}
-      <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm px-4 pt-4 pb-5">
-        {/* Back row */}
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 active:opacity-60"
-          >
-            <ArrowLeft className="h-4 w-4" /> Pipeline
-          </button>
-          <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
-            {TRADE_FILE_STATUS_LABELS[file.status]}
-          </span>
-        </div>
+    <div className="-mx-4 -mt-4 md:mx-0 md:mt-0 bg-gray-50 min-h-screen pb-8">
 
-        {/* Main info — avatar left, all text right, full width */}
-        <div className="flex items-start gap-3">
-          <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[14px] font-bold shrink-0 shadow-sm mt-0.5"
-            style={{ background: avatarBg }}
-          >
-            {custInitials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-bold text-gray-900 leading-snug">{custName}</div>
-            <div className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
-            <div className="inline-flex items-center gap-1.5 mt-2 bg-gray-100 rounded-lg px-2 py-1">
-              <span className="text-[10px] font-mono text-gray-500 tracking-wider">{file.file_no}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Stats grid (sabit, kaymaz) ───────────────────────────────────── */}
-      <div className="mx-4 mt-3 mb-3 bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="grid grid-cols-2 divide-x divide-y divide-gray-50">
-          <div className="px-4 py-2.5">
-            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Tonnage</div>
-            <div className="text-[12px] font-bold text-gray-900">{fN(file.tonnage_mt, 0)} MT</div>
-          </div>
-          <div className="px-4 py-2.5">
-            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Date</div>
-            <div className="text-[12px] font-bold text-gray-900">{fDate(file.file_date)}</div>
-          </div>
-          <div className="px-4 py-2.5">
-            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Sale Price</div>
-            <div className="text-[12px] font-bold text-gray-900">
-              {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
-            </div>
-          </div>
-          <div className="px-4 py-2.5">
-            <div className="text-[9px] text-gray-400 font-medium mb-0.5">Delivered</div>
-            <div className="text-[12px] font-bold text-gray-900">
-              {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Action buttons ──────────────────────────────────────────────── */}
-      {writable && (
-        <div className="flex gap-2 px-4 pb-4">
-          {/* Primary action — full width when no secondary exists, else flex-1 */}
-          {file.status === 'request' ? (
-            <button
-              onClick={() => setSaleOpen(true)}
-              className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80"
-              style={{ background: accent }}
-            >
-              <TrendingUp className="h-3.5 w-3.5" /> Convert to Sale
+      {/* ══════════════════════════════════════════════════════════════
+          MOBILE  (< md)
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="md:hidden pb-28">
+        {/* Header card */}
+        <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm px-4 pt-4 pb-5">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 active:opacity-60">
+              <ArrowLeft className="h-4 w-4" /> Back
             </button>
-          ) : file.status === 'sale' ? (
-            <button
-              onClick={openDeliveryWithPacking}
-              className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80"
-              style={{ background: accent }}
-            >
-              <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
-            </button>
-          ) : (
-            /* No primary action — Actions takes full width */
-            <button
-              onClick={() => setActionsOpen(true)}
-              className="flex-1 h-10 rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 flex items-center justify-center gap-2 shadow-sm active:opacity-70"
-            >
-              <MoreVertical className="h-4 w-4" /> Actions
-            </button>
-          )}
-
-          {/* Actions button — shown alongside primary action */}
-          {(file.status === 'request' || file.status === 'sale') && (
-            <button
-              onClick={() => setActionsOpen(true)}
-              className="h-10 w-10 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm active:opacity-70"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Actions Bottom Sheet ─────────────────────────────────────────── */}
-      {actionsOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setActionsOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl pb-safe">
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
+              {TRADE_FILE_STATUS_LABELS[file.status]}
+            </span>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[14px] font-bold shrink-0 shadow-sm mt-0.5" style={{ background: avatarBg }}>
+              {custInitials}
             </div>
-            <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-              <span className="text-[13px] font-bold text-gray-900">Actions</span>
-              <button onClick={() => setActionsOpen(false)} className="text-gray-400 p-1">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Action items */}
-            <div className="px-3 py-2">
-              {/* Edit file */}
-              <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit File"
-                onClick={() => { setActionsOpen(false); setEditFileOpen(true); }} />
-
-              {isSaleOrDel && (
-                <>
-                  <ActionItem icon={<Receipt className="h-4 w-4" />} label="Sale Invoice"
-                    onClick={() => { setActionsOpen(false); const e = file.invoices?.find(i => i.invoice_type === 'sale') ?? null; setEditSaleInvoice(e); setSaleInvoiceOpen(true); }} />
-                  <ActionItem icon={<Receipt className="h-4 w-4" />} label="Commercial Invoice"
-                    onClick={() => { setActionsOpen(false); setEditInvoice(null); setInvoiceOpen(true); }} />
-                  <ActionItem icon={<Package className="h-4 w-4" />} label="Packing List"
-                    onClick={() => { setActionsOpen(false); setEditPL(null); setPackingOpen(true); }} />
-                  <ActionItem icon={<FileText className="h-4 w-4" />} label="Proforma Invoice"
-                    onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
-                </>
-              )}
-
-              {/* Status change */}
-              <div className="flex items-center gap-3 px-3 py-3 rounded-xl active:bg-gray-50">
-                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
-                  <RotateCcw className="h-4 w-4" />
-                </div>
-                <span className="flex-1 text-[13px] font-medium text-gray-800">Change Status</span>
-                <NativeSelect
-                  className="text-[12px] font-semibold text-gray-600 bg-gray-100 rounded-lg px-2 py-1 border-0 outline-none"
-                  value={file.status}
-                  onChange={(e) => { handleStatusChange(e.target.value); setActionsOpen(false); }}
-                >
-                  <option value="request">Request</option>
-                  <option value="sale">Sale</option>
-                  <option value="delivery">Delivery</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </NativeSelect>
+            <div className="flex-1 min-w-0">
+              <div className="text-[15px] font-bold text-gray-900 leading-snug">{custName}</div>
+              <div className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
+              <div className="inline-flex mt-2 bg-gray-100 rounded-lg px-2 py-1">
+                <span className="text-[10px] font-mono text-gray-500 tracking-wider">{file.file_no}</span>
               </div>
             </div>
-            <div className="h-6" />
           </div>
-        </>
-      )}
+        </div>
 
-      <div className="px-3">
+        {/* Stats */}
+        <div className="mx-4 mt-3 mb-3">{statsGrid}</div>
+
+        {/* Action buttons */}
+        {writable && (
+          <div className="flex gap-2 px-4 pb-4">
+            {file.status === 'request' ? (
+              <button onClick={() => setSaleOpen(true)} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
+                <TrendingUp className="h-3.5 w-3.5" /> Convert to Sale
+              </button>
+            ) : file.status === 'sale' ? (
+              <button onClick={openDeliveryWithPacking} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
+                <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
+              </button>
+            ) : (
+              <button onClick={() => setActionsOpen(true)} className="flex-1 h-10 rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 flex items-center justify-center gap-2 shadow-sm active:opacity-70">
+                <MoreVertical className="h-4 w-4" /> Actions
+              </button>
+            )}
+            {(file.status === 'request' || file.status === 'sale') && (
+              <button onClick={() => setActionsOpen(true)} className="h-10 w-10 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm active:opacity-70">
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Mobile bottom sheet */}
+        {actionsOpen && (
+          <>
+            <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setActionsOpen(false)} />
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl pb-safe">
+              <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
+              <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-[13px] font-bold text-gray-900">Actions</span>
+                <button onClick={() => setActionsOpen(false)} className="text-gray-400 p-1"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="px-3 py-2">{actionsPanel(true)}</div>
+              <div className="h-6" />
+            </div>
+          </>
+        )}
+
+        {/* Mobile sections */}
+        <div className="px-3">
         {/* ── File Info ────────────────────────────────────────────────── */}
         <Section title="File Info" icon={<FileText className="h-3.5 w-3.5" />}>
           <KV label="Status" value={
@@ -591,7 +573,182 @@ export function TradeFileDetailPage() {
             <TransportPlanSection file={file} writable={writable} />
           </Section>
         )}
-      </div>
+        </div>{/* end px-3 */}
+      </div>{/* end md:hidden */}
+
+      {/* ══════════════════════════════════════════════════════════════
+          DESKTOP  (≥ md)  — 2-column layout
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="hidden md:grid md:grid-cols-[360px_1fr] md:gap-5 md:items-start">
+
+        {/* ── LEFT column (sticky summary panel) ─────────────────────── */}
+        <div className="space-y-3 sticky top-0 max-h-screen overflow-y-auto pb-6 scrollbar-thin">
+          {/* Back + status */}
+          <div className="flex items-center justify-between pt-1">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 transition-colors">
+              <ArrowLeft className="h-4 w-4" /> Back
+            </button>
+            <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
+              {TRADE_FILE_STATUS_LABELS[file.status]}
+            </span>
+          </div>
+
+          {/* Header card */}
+          <div className="bg-white rounded-2xl shadow-sm p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-[18px] font-bold shrink-0 shadow-sm" style={{ background: avatarBg }}>
+                {custInitials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[17px] font-bold text-gray-900 leading-snug">{custName}</div>
+                <div className="text-[13px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
+                <div className="inline-flex mt-2 bg-gray-100 rounded-lg px-2.5 py-1.5">
+                  <span className="text-[11px] font-mono text-gray-600 tracking-wider">{file.file_no}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          {statsGrid}
+
+          {/* Primary action */}
+          {writable && file.status === 'request' && (
+            <button onClick={() => setSaleOpen(true)} className="w-full h-10 rounded-xl text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity" style={{ background: accent }}>
+              <TrendingUp className="h-3.5 w-3.5" /> Convert to Sale
+            </button>
+          )}
+          {writable && file.status === 'sale' && (
+            <button onClick={openDeliveryWithPacking} className="w-full h-10 rounded-xl text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity" style={{ background: accent }}>
+              <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
+            </button>
+          )}
+
+          {/* Actions panel */}
+          {writable && actionsPanel(false)}
+
+          {/* File Info */}
+          <Section title="File Info" icon={<FileText className="h-3.5 w-3.5" />}>
+            <KV label="Status" value={<span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold', meta.pill)}>{TRADE_FILE_STATUS_LABELS[file.status]}</span>} />
+            <KV label="Date" value={fDate(file.file_date)} />
+            <KV label="Customer" value={file.customer?.name} bold />
+            <KV label="Product" value={file.product?.name} />
+            <KV label="Tonnage" value={`${fN(file.tonnage_mt, 3)} MT`} bold />
+            {file.customer_ref && <KV label="Ref" value={file.customer_ref} />}
+            {file.notes && <KV label="Notes" value={file.notes} />}
+          </Section>
+        </div>
+
+        {/* ── RIGHT column (detail sections) ─────────────────────────── */}
+        <div className="space-y-3 py-1 pb-6">
+          {/* Sale Details */}
+          {file.selling_price ? (
+            <Section title="Sale Details" icon={<TrendingUp className="h-3.5 w-3.5" />} accent
+              right={writable ? (<button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>) : undefined}>
+              <KV label="Sale Price" value={`${fCurrency(file.selling_price)}/MT`} bold />
+              <KV label="Purchase" value={`${fCurrency(file.purchase_price)}/MT`} />
+              <KV label="Supplier" value={file.supplier?.name ?? '—'} />
+              <KV label="Incoterms" value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
+              {file.eta && <KV label="ETA" value={fDate(file.eta)} />}
+              {file.vessel_name && <KV label="Vessel" value={file.vessel_name} />}
+              {file.register_no && <KV label="Register" value={file.register_no} />}
+            </Section>
+          ) : (
+            <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-[12px] text-amber-700 font-medium">
+              Henüz satış detayı girilmemiş
+            </div>
+          )}
+
+          {/* Delivery */}
+          {file.delivered_admt && (
+            <Section title="Delivery" icon={<Truck className="h-3.5 w-3.5" />}
+              right={writable ? (<button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>) : undefined}>
+              <div className="grid grid-cols-2 gap-x-4">
+                <KV label="ADMT" value={fN(file.delivered_admt, 3)} bold />
+                <KV label="Gross (KG)" value={fN(file.gross_weight_kg)} />
+                <KV label="Packages" value={file.packages ?? '—'} />
+                <KV label="Arrival" value={fDate(file.arrival_date)} />
+                <KV label="B/L No" value={file.bl_number || '—'} />
+                <KV label="SEPTI" value={file.septi_ref || '—'} />
+              </div>
+            </Section>
+          )}
+
+          {/* Documents */}
+          {((file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0) && (
+            <Section title="Documents" icon={<FileText className="h-3.5 w-3.5" />}>
+              {file.proformas?.map((pi) => (
+                <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'}>
+                  <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
+                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
+                  {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
+                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Sil?')) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                </DocRow>
+              ))}
+              {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
+                <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
+                  <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
+                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
+                </DocRow>
+              ))}
+              {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
+                <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
+                  <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
+                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
+                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Sil?')) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                </DocRow>
+              ))}
+              {file.packing_lists?.map((pl) => (
+                <DocRow key={pl.id} no={pl.packing_list_no} date={`${pl.packing_list_items?.length ?? 0} vehicles · ${fN(pl.total_admt, 3)} ADMT`} status={pl.doc_status ?? 'draft'}>
+                  <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
+                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
+                  {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
+                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Sil?')) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                </DocRow>
+              ))}
+            </Section>
+          )}
+
+          {/* Expenses */}
+          <Section title="Expenses" icon={<Receipt className="h-3.5 w-3.5" />}
+            right={writable ? (
+              <div className="flex gap-1.5">
+                <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> Purchase</button>
+                <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> Service</button>
+              </div>
+            ) : undefined}>
+            {expenses.length === 0 ? (
+              <div className="text-[12px] text-gray-400 py-2 text-center">Henüz gider kaydı yok</div>
+            ) : (
+              expenses.map(t => (
+                <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-medium text-gray-800 truncate">{t.description || '—'}</div>
+                    <div className="text-[10px] text-gray-400">{t.transaction_date} · {TRANSACTION_TYPE_LABELS[t.transaction_type]}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <span className="text-[12px] font-bold text-gray-800">{fUSD(t.amount_usd ?? t.amount)}</span>
+                    <span className={cn('text-[9px] px-2 py-0.5 rounded-full font-bold',
+                      t.payment_status === 'paid' ? 'bg-green-100 text-green-700'
+                      : t.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-red-100 text-red-700'
+                    )}>{t.payment_status}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </Section>
+
+          {/* Transport Plan */}
+          {['sale', 'delivery', 'completed'].includes(file.status) && (
+            <Section title="Taşıma Planı" icon={<Truck className="h-3.5 w-3.5" />}>
+              <TransportPlanSection file={file} writable={writable} />
+            </Section>
+          )}
+        </div>
+      </div>{/* end desktop grid */}
 
       {/* Modals */}
       <NewFileModal open={editFileOpen} onOpenChange={setEditFileOpen} editMode fileToEdit={file} />
