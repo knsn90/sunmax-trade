@@ -340,55 +340,63 @@ export function AccountingPage() {
               ))}
             </div>
 
-            {/* Desktop */}
+            {/* Desktop — 5 merged columns, no scroll */}
             <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[780px]">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      {['Invoice No', 'File', 'Customer', 'Date', 'ADMT', 'Unit Price', 'Total', 'Status', 'Actions'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
-                      ))}
+              <table className="w-full table-fixed">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[22%]">Invoice / File</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[22%]">Customer / Date</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">ADMT / Unit Price</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Total / Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[22%]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSaleInvoices.length === 0 ? (
+                    <tr><td colSpan={5} className="py-14 text-center text-[13px] text-gray-400">No sale invoices yet</td></tr>
+                  ) : filteredSaleInvoices.map(inv => (
+                    <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="text-[13px] font-bold text-emerald-700 truncate">{inv.invoice_no}</div>
+                        <div className="text-[11px] font-mono text-gray-400 truncate">{inv.trade_file?.file_no ?? '—'}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-[12px] text-gray-800 truncate">{inv.customer?.name ?? '—'}</div>
+                        <div className="text-[11px] text-gray-400">{fDate(inv.invoice_date)}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-[12px] font-semibold text-gray-800">{fN(inv.quantity_admt, 3)} MT</div>
+                        <div className="text-[11px] text-gray-400">{fCurrency(inv.unit_price)}/MT</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-[13px] font-bold text-emerald-700">{fCurrency(inv.total)}</div>
+                        <div className="mt-0.5"><DocStatusBadge status={inv.doc_status ?? 'draft'} /></div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                          {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
+                            <button onClick={() => { setEditingSaleInv(inv); setSaleInvModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {settings && (
+                            <button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                              <Printer className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {admin && (inv.doc_status ?? 'draft') !== 'approved' && (
+                            <button onClick={() => { if (window.confirm('Delete?')) deleteInvoice.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSaleInvoices.length === 0 ? (
-                      <tr><td colSpan={9} className="py-14 text-center text-[13px] text-gray-400">No sale invoices yet</td></tr>
-                    ) : filteredSaleInvoices.map(inv => (
-                      <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                        <td className="px-4 py-3 text-[13px] font-bold text-emerald-700">{inv.invoice_no}</td>
-                        <td className="px-4 py-3 text-[12px] font-mono text-gray-500">{inv.trade_file?.file_no ?? '—'}</td>
-                        <td className="px-4 py-3 text-[12px] text-gray-700">{inv.customer?.name ?? '—'}</td>
-                        <td className="px-4 py-3 text-[12px] text-gray-500">{fDate(inv.invoice_date)}</td>
-                        <td className="px-4 py-3 text-[12px] text-gray-600">{fN(inv.quantity_admt, 3)}</td>
-                        <td className="px-4 py-3 text-[12px] text-gray-600">{fCurrency(inv.unit_price)}</td>
-                        <td className="px-4 py-3 text-[13px] font-bold text-emerald-700">{fCurrency(inv.total)}</td>
-                        <td className="px-4 py-3"><DocStatusBadge status={inv.doc_status ?? 'draft'} /></td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-                            {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
-                              <button onClick={() => { setEditingSaleInv(inv); setSaleInvModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            {settings && (
-                              <button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
-                                <Printer className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            {admin && (inv.doc_status ?? 'draft') !== 'approved' && (
-                              <button onClick={() => { if (window.confirm('Delete?')) deleteInvoice.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         )}
@@ -417,69 +425,84 @@ export function AccountingPage() {
               ))}
             </div>
 
-            {/* Desktop */}
+            {/* Desktop — 6 merged columns, no scroll */}
             <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[960px]">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      {['Date', 'Type', 'File', 'Party', 'Description', 'Amount', 'Remaining', 'Pay Status', 'Doc Status', 'Actions'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTxns.length === 0 ? (
-                      <tr><td colSpan={10} className="py-14 text-center text-[13px] text-gray-400">No transactions found</td></tr>
-                    ) : filteredTxns.map(t => {
-                      const remaining = t.amount - (t.paid_amount ?? 0);
-                      const partyName = t.customer?.name ?? t.supplier?.name ?? t.service_provider?.name ?? t.party_name ?? '—';
-                      const typeColor = TYPE_COLORS[t.transaction_type] ?? '#6b7280';
-                      const isDraft = (t.doc_status ?? 'draft') !== 'approved';
-                      return (
-                        <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                          <td className="px-4 py-3 text-[11px] text-gray-500 whitespace-nowrap">{fDate(t.transaction_date)}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: typeColor }} />
-                              <Badge variant={t.transaction_type as TransactionType}>
-                                {TRANSACTION_TYPE_LABELS[t.transaction_type]}
-                              </Badge>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-[12px] font-mono font-bold text-gray-700">{t.trade_file?.file_no ?? '—'}</td>
-                          <td className="px-4 py-3 text-[12px] text-gray-700 whitespace-nowrap">{partyName}</td>
-                          <td className="px-4 py-3 text-[11px] text-gray-500 max-w-[160px] truncate">{t.description}</td>
-                          <td className="px-4 py-3 text-[13px] font-bold text-gray-900 whitespace-nowrap">{fCurrency(t.amount, t.currency)}</td>
-                          <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{fCurrency(remaining, t.currency)}</td>
-                          <td className="px-4 py-3"><Badge variant={t.payment_status as PaymentStatus}>{PAYMENT_STATUS_LABELS[t.payment_status]}</Badge></td>
-                          <td className="px-4 py-3"><DocStatusBadge status={t.doc_status ?? 'draft'} /></td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
-                              <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
-                              {settings && (
-                                <button onClick={() => handleTxnPrint(t)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
-                                  <Printer className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                              {writable && isDraft && (
-                                <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                              {admin && isDraft && (
-                                <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <table className="w-full table-fixed">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Type / Date</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[20%]">File / Party</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Description</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Amount / Remaining</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[14%]">Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[14%]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTxns.length === 0 ? (
+                    <tr><td colSpan={6} className="py-14 text-center text-[13px] text-gray-400">No transactions found</td></tr>
+                  ) : filteredTxns.map(t => {
+                    const remaining = t.amount - (t.paid_amount ?? 0);
+                    const partyName = t.customer?.name ?? t.supplier?.name ?? t.service_provider?.name ?? t.party_name ?? '—';
+                    const typeColor = TYPE_COLORS[t.transaction_type] ?? '#6b7280';
+                    const isDraft = (t.doc_status ?? 'draft') !== 'approved';
+                    return (
+                      <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                        {/* Type + Date */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: typeColor }} />
+                            <Badge variant={t.transaction_type as TransactionType}>
+                              {TRANSACTION_TYPE_LABELS[t.transaction_type]}
+                            </Badge>
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-0.5 pl-3">{fDate(t.transaction_date)}</div>
+                        </td>
+                        {/* File + Party */}
+                        <td className="px-4 py-3">
+                          <div className="text-[12px] font-mono font-bold text-gray-700 truncate">{t.trade_file?.file_no ?? '—'}</div>
+                          <div className="text-[11px] text-gray-500 truncate">{partyName}</div>
+                        </td>
+                        {/* Description */}
+                        <td className="px-4 py-3 text-[11px] text-gray-500 truncate">{t.description || '—'}</td>
+                        {/* Amount + Remaining */}
+                        <td className="px-4 py-3">
+                          <div className="text-[13px] font-bold text-gray-900">{fCurrency(t.amount, t.currency)}</div>
+                          {remaining > 0 && remaining < t.amount && (
+                            <div className="text-[10px] text-amber-500 font-semibold">rem {fCurrency(remaining, t.currency)}</div>
+                          )}
+                        </td>
+                        {/* Pay + Doc status */}
+                        <td className="px-4 py-3">
+                          <Badge variant={t.payment_status as PaymentStatus}>{PAYMENT_STATUS_LABELS[t.payment_status]}</Badge>
+                          <div className="mt-1"><DocStatusBadge status={t.doc_status ?? 'draft'} /></div>
+                        </td>
+                        {/* Actions */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
+                            {settings && (
+                              <button onClick={() => handleTxnPrint(t)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                                <Printer className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {writable && isDraft && (
+                              <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {admin && isDraft && (
+                              <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </>
         )}
