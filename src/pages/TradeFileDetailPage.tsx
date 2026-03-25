@@ -657,7 +657,7 @@ export function TradeFileDetailPage() {
             <Section title="Sale Details" icon={<TrendingUp className="h-3.5 w-3.5" />} accent
               right={writable ? (
                 <div className="flex items-center gap-2">
-                  {file.eta && !file.arrival_date && (
+                  {file.eta && !['completed','cancelled'].includes(file.status) && (
                     <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
                       <Bell className="h-3 w-3" /> Delay
                     </button>
