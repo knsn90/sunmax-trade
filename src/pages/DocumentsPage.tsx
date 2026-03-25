@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { canWrite, isAdmin } from '@/lib/permissions';
@@ -10,21 +10,51 @@ import { useProformas, useDeleteProforma } from '@/hooks/useProformas';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
-import { Card, LoadingSpinner, EmptyState } from '@/components/ui/shared';
-import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/shared';
 import { cn } from '@/lib/utils';
+import { Search, Printer, Pencil, Trash2, Receipt, FileText, Package } from 'lucide-react';
 import type { Invoice, PackingList, Proforma, TradeFile } from '@/types/database';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type Tab = 'invoices' | 'proformas' | 'packing-lists';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'invoices',      label: 'Invoices' },
-  { key: 'proformas',     label: 'Proformas' },
-  { key: 'packing-lists', label: 'Packing Lists' },
+const TABS: { key: Tab; label: string; icon: typeof Receipt }[] = [
+  { key: 'invoices',      label: 'Invoices',      icon: Receipt },
+  { key: 'proformas',     label: 'Proformas',     icon: FileText },
+  { key: 'packing-lists', label: 'Packing Lists', icon: Package },
 ];
 
+const TAB_COLORS: Record<Tab, string> = {
+  'invoices':      '#0ea5e9',
+  'proformas':     '#8b5cf6',
+  'packing-lists': '#10b981',
+};
+
+// ─── Shared helpers ────────────────────────────────────────────────────────────
+function DocIcon({ tab, size = 'md' }: { tab: Tab; size?: 'sm' | 'md' }) {
+  const Icon = TABS.find(t => t.key === tab)!.icon;
+  const color = TAB_COLORS[tab];
+  const cls = size === 'md'
+    ? 'w-10 h-10 rounded-xl flex items-center justify-center shrink-0'
+    : 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0';
+  return (
+    <div className={cls} style={{ background: color + '18' }}>
+      <Icon className={size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} style={{ color }} />
+    </div>
+  );
+}
+
+function EmptyDocs({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+      <FileText className="h-10 w-10 mb-3 opacity-20" />
+      <p className="text-sm font-medium">{message}</p>
+    </div>
+  );
+}
+
 // ─── Invoices Tab ─────────────────────────────────────────────────────────────
-function InvoicesTab() {
+function InvoicesTab({ accent }: { accent: string }) {
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -34,6 +64,17 @@ function InvoicesTab() {
   const deleteInv = useDeleteInvoice();
   const [editInv, setEditInv] = useState<Invoice | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return invoices;
+    const q = search.toLowerCase();
+    return invoices.filter(i =>
+      i.invoice_no?.toLowerCase().includes(q) ||
+      (i.trade_file as any)?.file_no?.toLowerCase().includes(q) ||
+      (i.customer as any)?.name?.toLowerCase().includes(q)
+    );
+  }, [invoices, search]);
 
   function openEdit(inv: Invoice) { setEditInv(inv); setEditOpen(true); }
   function handlePrint(inv: Invoice) {
@@ -43,49 +84,104 @@ function InvoicesTab() {
   }
 
   if (isLoading) return <LoadingSpinner />;
+
   return (
     <>
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead><tr>
-              {['Invoice No', 'File No', 'Customer', 'ADMT', 'Unit Price', 'Total', 'Date', 'Actions'].map(h =>
-                <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>
-              )}
-            </tr></thead>
-            <tbody>
-              {invoices.length === 0
-                ? <tr><td colSpan={8}><EmptyState message="No invoices yet" /></td></tr>
-                : invoices.map(inv => (
-                  <tr key={inv.id} className="hover:bg-gray-50/50">
-                    <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{inv.invoice_no}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{(inv.trade_file as any)?.file_no ?? '—'}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{(inv.customer as any)?.name ?? '—'}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fN(inv.quantity_admt, 3)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fCurrency(inv.unit_price)}</td>
-                    <td className="px-2.5 py-2 text-xs font-bold text-brand-500 border-b border-border">{fCurrency(inv.total)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fDate(inv.invoice_date)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">
-                      <div className="flex gap-1">
-                        {writable && <Button variant="edit" size="xs" onClick={() => openEdit(inv)}>Edit</Button>}
-                        <Button variant="outline" size="xs" onClick={() => handlePrint(inv)}>🖨 Print</Button>
-                        {adminRole && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete invoice?')) deleteInv.mutate(inv.id); }}>Del</Button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {/* Search */}
+      <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 mb-4 max-w-xs">
+        <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+        <input
+          className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+          placeholder="Search invoices..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden mx-0 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
+        {filtered.length === 0 ? <EmptyDocs message="No invoices found" /> : filtered.map(inv => (
+          <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
+            <DocIcon tab="invoices" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-bold text-gray-900">{inv.invoice_no}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">
+                <span className="font-mono">{(inv.trade_file as any)?.file_no ?? '—'}</span>
+                {' · '}{(inv.customer as any)?.name ?? '—'}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="text-[13px] font-bold" style={{ color: accent }}>{fCurrency(inv.total)}</span>
+              <span className="text-[10px] text-gray-400">{fDate(inv.invoice_date)}</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-1">
+              <button onClick={() => handlePrint(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                <Printer className="h-3.5 w-3.5" />
+              </button>
+              {writable && <button onClick={() => openEdit(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>}
+              {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deleteInv.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              {['Invoice No', 'File No', 'Customer', 'ADMT', 'Unit Price', 'Total', 'Date', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={8}><EmptyDocs message="No invoices found" /></td></tr>
+            ) : filtered.map(inv => (
+              <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <DocIcon tab="invoices" size="sm" />
+                    <span className="text-[13px] font-bold text-gray-900">{inv.invoice_no}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">{(inv.trade_file as any)?.file_no ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-700">{(inv.customer as any)?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{fN(inv.quantity_admt, 3)}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{fCurrency(inv.unit_price)}</td>
+                <td className="px-4 py-3 text-[13px] font-bold" style={{ color: accent }}>{fCurrency(inv.total)}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-500">{fDate(inv.invoice_date)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => handlePrint(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                      <Printer className="h-3.5 w-3.5" />
+                    </button>
+                    {writable && <button onClick={() => openEdit(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>}
+                    {adminRole && <button onClick={() => { if (window.confirm('Delete invoice?')) deleteInv.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <InvoiceModal open={editOpen} onOpenChange={setEditOpen} file={editInv?.trade_file as TradeFile ?? null} invoice={editInv} />
     </>
   );
 }
 
 // ─── Proformas Tab ────────────────────────────────────────────────────────────
-function ProformasTab() {
+function ProformasTab({ accent }: { accent: string }) {
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -95,6 +191,16 @@ function ProformasTab() {
   const deletePI = useDeleteProforma();
   const [editPI, setEditPI] = useState<Proforma | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return proformas;
+    const q = search.toLowerCase();
+    return proformas.filter(p =>
+      p.proforma_no?.toLowerCase().includes(q) ||
+      (p.trade_file as any)?.file_no?.toLowerCase().includes(q)
+    );
+  }, [proformas, search]);
 
   function openEdit(pi: Proforma) { setEditPI(pi); setEditOpen(true); }
   function handlePrint(pi: Proforma) {
@@ -104,48 +210,102 @@ function ProformasTab() {
   }
 
   if (isLoading) return <LoadingSpinner />;
+
   return (
     <>
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead><tr>
-              {['PI No', 'File No', 'Date', 'Quantity', 'Unit Price', 'Total', 'Actions'].map(h =>
-                <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>
-              )}
-            </tr></thead>
-            <tbody>
-              {proformas.length === 0
-                ? <tr><td colSpan={7}><EmptyState message="No proformas yet" /></td></tr>
-                : proformas.map(pi => (
-                  <tr key={pi.id} className="hover:bg-gray-50/50">
-                    <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{pi.proforma_no}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{(pi.trade_file as any)?.file_no ?? '—'}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fDate(pi.proforma_date)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fN(pi.quantity_admt, 3)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fCurrency(pi.unit_price)}</td>
-                    <td className="px-2.5 py-2 text-xs font-bold text-brand-500 border-b border-border">{fCurrency(pi.total)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">
-                      <div className="flex gap-1">
-                        {writable && <Button variant="edit" size="xs" onClick={() => openEdit(pi)}>Edit</Button>}
-                        <Button variant="outline" size="xs" onClick={() => handlePrint(pi)}>🖨 Print</Button>
-                        {adminRole && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }}>Del</Button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 mb-4 max-w-xs">
+        <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+        <input
+          className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+          placeholder="Search proformas..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Mobile */}
+      <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
+        {filtered.length === 0 ? <EmptyDocs message="No proformas found" /> : filtered.map(pi => (
+          <div key={pi.id} className="flex items-center gap-3 px-4 py-3">
+            <DocIcon tab="proformas" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-bold text-gray-900">{pi.proforma_no}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">
+                <span className="font-mono">{(pi.trade_file as any)?.file_no ?? '—'}</span>
+                {' · '}{fDate(pi.proforma_date)}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="text-[13px] font-bold" style={{ color: accent }}>{fCurrency(pi.total)}</span>
+              <span className="text-[10px] text-gray-400">{fN(pi.quantity_admt, 3)} MT</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-1">
+              <button onClick={() => handlePrint(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                <Printer className="h-3.5 w-3.5" />
+              </button>
+              {writable && <button onClick={() => openEdit(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>}
+              {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deletePI.mutate(pi.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              {['PI No', 'File No', 'Date', 'Quantity', 'Unit Price', 'Total', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={7}><EmptyDocs message="No proformas found" /></td></tr>
+            ) : filtered.map(pi => (
+              <tr key={pi.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <DocIcon tab="proformas" size="sm" />
+                    <span className="text-[13px] font-bold text-gray-900">{pi.proforma_no}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">{(pi.trade_file as any)?.file_no ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(pi.proforma_date)}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{fN(pi.quantity_admt, 3)}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{fCurrency(pi.unit_price)}</td>
+                <td className="px-4 py-3 text-[13px] font-bold" style={{ color: accent }}>{fCurrency(pi.total)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => handlePrint(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                      <Printer className="h-3.5 w-3.5" />
+                    </button>
+                    {writable && <button onClick={() => openEdit(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>}
+                    {adminRole && <button onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <ProformaModal open={editOpen} onOpenChange={setEditOpen} file={editPI?.trade_file as TradeFile ?? null} proforma={editPI} />
     </>
   );
 }
 
 // ─── Packing Lists Tab ────────────────────────────────────────────────────────
-function PackingListsTab() {
+function PackingListsTab({ accent: _accent }: { accent: string }) {
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const adminRole = isAdmin(profile?.role);
@@ -154,6 +314,17 @@ function PackingListsTab() {
   const deletePL = useDeletePackingList();
   const [editPL, setEditPL] = useState<PackingList | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return pls;
+    const q = search.toLowerCase();
+    return pls.filter(p =>
+      p.packing_list_no?.toLowerCase().includes(q) ||
+      (p.trade_file as any)?.file_no?.toLowerCase().includes(q) ||
+      (p.customer as any)?.name?.toLowerCase().includes(q)
+    );
+  }, [pls, search]);
 
   function openEdit(pl: PackingList) { setEditPL(pl); setEditOpen(true); }
   function handlePrint(pl: PackingList) {
@@ -162,41 +333,95 @@ function PackingListsTab() {
   }
 
   if (isLoading) return <LoadingSpinner />;
+
   return (
     <>
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead><tr>
-              {['PL No', 'File No', 'Customer', 'Vehicles', 'ADMT', 'Gross Weight', 'Actions'].map(h =>
-                <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>
-              )}
-            </tr></thead>
-            <tbody>
-              {pls.length === 0
-                ? <tr><td colSpan={7}><EmptyState message="No packing lists yet" /></td></tr>
-                : pls.map(pl => (
-                  <tr key={pl.id} className="hover:bg-gray-50/50">
-                    <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{pl.packing_list_no}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{(pl.trade_file as any)?.file_no ?? '—'}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{(pl.customer as any)?.name ?? '—'}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{pl.packing_list_items?.length ?? 0}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fN(pl.total_admt, 3)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{fN(pl.total_gross_kg, 0)}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">
-                      <div className="flex gap-1">
-                        {writable && <Button variant="edit" size="xs" onClick={() => openEdit(pl)}>Edit</Button>}
-                        <Button variant="outline" size="xs" onClick={() => handlePrint(pl)}>🖨 Print</Button>
-                        {adminRole && <Button variant="destructive" size="xs" onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }}>Del</Button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 mb-4 max-w-xs">
+        <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+        <input
+          className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+          placeholder="Search packing lists..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Mobile */}
+      <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
+        {filtered.length === 0 ? <EmptyDocs message="No packing lists found" /> : filtered.map(pl => (
+          <div key={pl.id} className="flex items-center gap-3 px-4 py-3">
+            <DocIcon tab="packing-lists" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-bold text-gray-900">{pl.packing_list_no}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">
+                <span className="font-mono">{(pl.trade_file as any)?.file_no ?? '—'}</span>
+                {' · '}{(pl.customer as any)?.name ?? '—'}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="text-[12px] font-semibold text-gray-700">{fN(pl.total_admt, 3)} MT</span>
+              <span className="text-[10px] text-gray-400">{pl.packing_list_items?.length ?? 0} vehicles</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-1">
+              <button onClick={() => handlePrint(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                <Printer className="h-3.5 w-3.5" />
+              </button>
+              {writable && <button onClick={() => openEdit(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>}
+              {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              {['PL No', 'File No', 'Customer', 'Vehicles', 'ADMT', 'Gross Weight', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={7}><EmptyDocs message="No packing lists found" /></td></tr>
+            ) : filtered.map(pl => (
+              <tr key={pl.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <DocIcon tab="packing-lists" size="sm" />
+                    <span className="text-[13px] font-bold text-gray-900">{pl.packing_list_no}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">{(pl.trade_file as any)?.file_no ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-700">{(pl.customer as any)?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{pl.packing_list_items?.length ?? 0}</td>
+                <td className="px-4 py-3 text-[12px] font-semibold text-gray-700">{fN(pl.total_admt, 3)}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{fN(pl.total_gross_kg, 0)} kg</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => handlePrint(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                      <Printer className="h-3.5 w-3.5" />
+                    </button>
+                    {writable && <button onClick={() => openEdit(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>}
+                    {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <PackingListModal open={editOpen} onOpenChange={setEditOpen} file={editPL?.trade_file as TradeFile ?? null} packingList={editPL} />
     </>
   );
@@ -205,31 +430,39 @@ function PackingListsTab() {
 // ─── Documents Page ───────────────────────────────────────────────────────────
 export function DocumentsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('invoices');
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   return (
     <div>
-      {/* Tab bar */}
-      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm w-fit">
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={cn(
-              'px-4 py-1.5 rounded-lg text-sm font-semibold transition-all',
-              activeTab === t.key
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Tab bar — pill style matching app design */}
+      <div className="flex gap-1.5 mb-4 overflow-x-auto scrollbar-none">
+        {TABS.map(t => {
+          const Icon = t.icon;
+          const isActive = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={cn(
+                'shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-full text-[12px] font-bold transition-all',
+                isActive
+                  ? 'text-white shadow-sm'
+                  : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300',
+              )}
+              style={isActive ? { background: accent } : {}}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content */}
-      {activeTab === 'invoices'      && <InvoicesTab />}
-      {activeTab === 'proformas'     && <ProformasTab />}
-      {activeTab === 'packing-lists' && <PackingListsTab />}
+      {activeTab === 'invoices'      && <InvoicesTab accent={accent} />}
+      {activeTab === 'proformas'     && <ProformasTab accent={accent} />}
+      {activeTab === 'packing-lists' && <PackingListsTab accent={accent} />}
     </div>
   );
 }
