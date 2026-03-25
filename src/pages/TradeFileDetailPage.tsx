@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import {
   ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
   Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
-  MoreVertical, X, RotateCcw, Bell, AlertTriangle,
+  MoreVertical, X, RotateCcw, Bell, AlertTriangle, ExternalLink,
 } from 'lucide-react';
 
 // ── Action sheet item ─────────────────────────────────────────────────────────
@@ -394,7 +394,20 @@ export function TradeFileDetailPage() {
               } />
             )}
             {file.delay_notes && <KV label="Delay Reason" value={file.delay_notes} />}
-            {file.vessel_name && <KV label="Vessel" value={file.vessel_name} />}
+            {file.vessel_name && (
+              <KV label="Vessel" value={
+                <a
+                  href={`https://www.marinetraffic.com/en/ais/index/search/all?keyword=${encodeURIComponent(file.vessel_name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-blue-600 hover:underline font-medium"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {file.vessel_name}
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+              } />
+            )}
             {file.register_no && <KV label="Register" value={file.register_no} />}
           </Section>
         ) : (
@@ -679,7 +692,20 @@ export function TradeFileDetailPage() {
                 } />
               )}
               {file.delay_notes && <KV label="Delay Reason" value={file.delay_notes} />}
-              {file.vessel_name && <KV label="Vessel" value={file.vessel_name} />}
+              {file.vessel_name && (
+              <KV label="Vessel" value={
+                <a
+                  href={`https://www.marinetraffic.com/en/ais/index/search/all?keyword=${encodeURIComponent(file.vessel_name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-blue-600 hover:underline font-medium"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {file.vessel_name}
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+              } />
+            )}
               {file.register_no && <KV label="Register" value={file.register_no} />}
             </Section>
           ) : (
