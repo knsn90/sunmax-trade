@@ -15,11 +15,9 @@ import {
   SuppliersPage,
   ServiceProvidersPage,
   ProductsPage,
-  InvoicesPage,
-  PackingListsPage,
-  ProformasPage,
   ReportsPage,
 } from '@/pages/StubPages';
+import { DocumentsPage } from '@/pages/DocumentsPage';
 
 export const router = createBrowserRouter([
   {
@@ -39,9 +37,7 @@ export const router = createBrowserRouter([
       { path: 'pipeline', element: <PipelinePage /> },
       { path: 'files', element: <TradeFilesPage /> },
       { path: 'files/:id', element: <TradeFileDetailPage /> },
-      { path: 'invoices', element: <InvoicesPage /> },
-      { path: 'packing-lists', element: <PackingListsPage /> },
-      { path: 'proformas', element: <ProformasPage /> },
+      { path: 'documents', element: <DocumentsPage /> },
       { path: 'accounting', element: <AccountingPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'customers', element: <CustomersPage /> },

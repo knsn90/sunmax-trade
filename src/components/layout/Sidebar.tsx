@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  BarChart3, FileText, Package, Receipt, LineChart, Users, Truck,
+  BarChart3, FileText, Receipt, LineChart, Users, Truck,
   Clock, Box, Settings, LayoutDashboard, Home, Activity,
 } from 'lucide-react';
 
@@ -37,9 +37,7 @@ export function Sidebar() {
     {
       label: 'DOCUMENTS',
       items: [
-        { to: '/invoices', label: 'Invoices', icon: <Receipt className="h-4 w-4" /> },
-        { to: '/proformas', label: 'Proformas', icon: <FileText className="h-4 w-4" /> },
-        { to: '/packing-lists', label: 'Packing Lists', icon: <Package className="h-4 w-4" /> },
+        { to: '/documents', label: 'Documents', icon: <Receipt className="h-4 w-4" /> },
       ],
     },
     {

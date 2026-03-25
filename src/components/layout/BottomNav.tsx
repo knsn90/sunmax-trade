@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   Home, BarChart3, FileText, LayoutDashboard, MoreHorizontal,
-  Receipt, Package, LineChart, Users, Truck, Clock, Box, Settings, X, Activity,
+  Receipt, LineChart, Users, Truck, Clock, Box, Settings, X, Activity,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,9 +17,7 @@ const mainTabs = [
 ];
 
 const moreItems = [
-  { to: '/invoices',          label: 'Invoices',      icon: Receipt },
-  { to: '/proformas',         label: 'Proformas',     icon: FileText },
-  { to: '/packing-lists',     label: 'Packing Lists', icon: Package },
+  { to: '/documents',         label: 'Documents',     icon: Receipt },
   { to: '/reports',           label: 'Reports',       icon: LineChart },
   { to: '/customers',         label: 'Customers',     icon: Users },
   { to: '/suppliers',         label: 'Suppliers',     icon: Truck },
