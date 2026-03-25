@@ -13,7 +13,7 @@ import { PackingListModal } from '@/components/documents/PackingListModal';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { cn } from '@/lib/utils';
 import { fN, fDate } from '@/lib/formatters';
-import { Search, Plus, MoreVertical, ChevronRight, TrendingUp, Truck, FileText, BarChart2 } from 'lucide-react';
+import { Search, Plus, MoreVertical, ChevronRight, TrendingUp, Truck, FileText, BarChart2, AlertTriangle } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -48,10 +48,23 @@ function initials(name: string) {
 
 const PAGE_SIZE = 10;
 
+// ─── Delay helpers ────────────────────────────────────────────────────────────
+function getDelayStatus(file: TradeFile): 'overdue' | 'delayed' | null {
+  if (['completed', 'cancelled'].includes(file.status)) return null;
+  if (!file.eta) return null;
+  const etaMs = new Date(file.eta + 'T00:00:00').getTime();
+  const today = new Date(new Date().toDateString()).getTime();
+  const isOverdue = etaMs < today && !file.arrival_date;
+  if (isOverdue) return 'overdue';
+  if (file.revised_eta) return 'delayed';
+  return null;
+}
+
 // ─── Mobile list row ──────────────────────────────────────────────────────────
 function PipelineRow({ file, onClick }: { file: TradeFile; onClick: () => void }) {
   const custName = file.customer?.name ?? 'Unknown';
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
+  const delay = getDelayStatus(file);
 
   return (
     <div
@@ -59,11 +72,21 @@ function PipelineRow({ file, onClick }: { file: TradeFile; onClick: () => void }
       onClick={onClick}
     >
       {/* Avatar */}
-      <div
-        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white text-[13px] font-bold shadow-sm"
-        style={{ background: avatarColor(custName) }}
-      >
-        {initials(custName)}
+      <div className="relative shrink-0">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold shadow-sm"
+          style={{ background: avatarColor(custName) }}
+        >
+          {initials(custName)}
+        </div>
+        {delay && (
+          <span className={cn(
+            'absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center',
+            delay === 'overdue' ? 'bg-red-500' : 'bg-amber-400'
+          )}>
+            <AlertTriangle className="h-2.5 w-2.5 text-white" />
+          </span>
+        )}
       </div>
 
       {/* Info */}
@@ -72,7 +95,7 @@ function PipelineRow({ file, onClick }: { file: TradeFile; onClick: () => void }
         <div className="text-[11px] text-gray-400 mt-0.5 truncate">
           {file.file_no} · {file.product?.name ?? '—'}
         </div>
-        <div className="flex items-center gap-1.5 mt-1">
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
           <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', meta.dot)} />
           <span className={cn('text-[10px] font-semibold capitalize', meta.text)}>
             {file.status}
@@ -80,11 +103,26 @@ function PipelineRow({ file, onClick }: { file: TradeFile; onClick: () => void }
           {file.tonnage_mt > 0 && (
             <span className="text-[10px] text-gray-400">· {fN(file.tonnage_mt, 0)} MT</span>
           )}
+          {delay === 'overdue' && (
+            <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full">
+              ETA Overdue
+            </span>
+          )}
+          {delay === 'delayed' && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+              ⚠ Delayed
+            </span>
+          )}
         </div>
       </div>
 
       {/* Right side */}
       <div className="flex flex-col items-end gap-1 shrink-0">
+        {file.eta && (
+          <span className={cn('text-[10px] font-medium', delay === 'overdue' ? 'text-red-500' : delay === 'delayed' ? 'text-amber-500' : 'text-gray-400')}>
+            ETA {fDate(file.revised_eta ?? file.eta)}
+          </span>
+        )}
         <span className="text-[11px] text-gray-400">{fDate(file.file_date)}</span>
         <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
       </div>
@@ -346,11 +384,26 @@ export function PipelinePage() {
                                   <div className="text-[13px] font-semibold text-gray-900 truncate">{custName}</div>
                                   <div className="text-[10px] font-mono text-gray-400">{f.file_no}</div>
                                   <div className="text-[11px] text-gray-500 truncate mt-0.5">{f.product?.name ?? '—'}</div>
-                                  <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400">
+                                  <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400 flex-wrap">
                                     <span className="font-semibold text-gray-700">{fN(f.tonnage_mt, 0)} MT</span>
                                     <span>·</span>
                                     <span>{fDate(f.file_date)}</span>
+                                    {f.eta && (
+                                      <span className={cn('font-medium', getDelayStatus(f) === 'overdue' ? 'text-red-500' : getDelayStatus(f) === 'delayed' ? 'text-amber-500' : 'text-gray-400')}>
+                                        · ETA {fDate((f as TradeFile & { revised_eta?: string }).revised_eta ?? f.eta)}
+                                      </span>
+                                    )}
                                   </div>
+                                  {getDelayStatus(f) === 'overdue' && (
+                                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                                      <AlertTriangle className="h-2.5 w-2.5" /> ETA Overdue
+                                    </span>
+                                  )}
+                                  {getDelayStatus(f) === 'delayed' && (
+                                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                      <AlertTriangle className="h-2.5 w-2.5" /> Delayed
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               {/* Action buttons */}
