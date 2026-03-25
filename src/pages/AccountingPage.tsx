@@ -240,17 +240,6 @@ export function AccountingPage() {
 
           <div className="flex-1 hidden md:block" />
 
-          {/* Search */}
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 w-full md:w-56">
-            <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-            <input
-              className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-              placeholder="Search..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-
           {/* Type + Status filters — desktop only */}
           {activeTab !== 'sale' && (
             <div className="hidden md:flex items-center gap-2">
@@ -265,17 +254,28 @@ export function AccountingPage() {
             </div>
           )}
 
-          {/* New Transaction btn */}
-          {writable && (
-            <button
-              onClick={openNew}
-              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap flex items-center gap-1.5"
-              style={{ background: accent }}
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden md:inline">New Transaction</span>
-            </button>
-          )}
+          {/* Search + New Transaction side by side */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 md:w-56">
+              <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+              <input
+                className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+                placeholder="Search..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            {writable && (
+              <button
+                onClick={openNew}
+                title="New Transaction"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity shrink-0"
+                style={{ background: accent }}
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mobile filters */}
