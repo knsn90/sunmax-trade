@@ -199,30 +199,46 @@ export function TradeFileDetailPage() {
   let hv = 0; for (let i = 0; i < custName.length; i++) hv = custName.charCodeAt(i) + ((hv << 5) - hv);
   const avatarBg = avatarColors[Math.abs(hv) % avatarColors.length];
 
-  // ── Shared section content ────────────────────────────────────────────────
-  const statsGrid = (
+  // ── Combined file info card (replaces statsGrid + File Info section) ────────
+  const fileInfoCard = (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div className="grid grid-cols-2 divide-x divide-y divide-gray-50">
-        <div className="px-4 py-3">
-          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Tonnage</div>
-          <div className="text-[13px] font-bold text-gray-900">{fN(file.tonnage_mt, 0)} MT</div>
-        </div>
-        <div className="px-4 py-3">
+      {/* 2-col grid: key stats */}
+      <div className="grid grid-cols-2 divide-x divide-gray-50">
+        <div className="px-4 py-3 border-b border-gray-50">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Date</div>
           <div className="text-[13px] font-bold text-gray-900">{fDate(file.file_date)}</div>
         </div>
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 border-b border-gray-50">
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Tonnage</div>
+          <div className="text-[13px] font-bold text-gray-900">{fN(file.tonnage_mt, 3)} MT</div>
+        </div>
+        <div className="px-4 py-3 border-b border-gray-50">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Sale Price</div>
           <div className="text-[13px] font-bold text-gray-900">
             {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
           </div>
         </div>
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 border-b border-gray-50">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Delivered</div>
           <div className="text-[13px] font-bold text-gray-900">
             {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
           </div>
         </div>
+      </div>
+      {/* KV rows: remaining file info */}
+      <div className="divide-y divide-gray-50">
+        {file.customer_ref && (
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-[11px] text-gray-400">Ref</span>
+            <span className="text-[11px] font-medium text-gray-700">{file.customer_ref}</span>
+          </div>
+        )}
+        {file.notes && (
+          <div className="flex items-start justify-between gap-4 px-4 py-2.5">
+            <span className="text-[11px] text-gray-400 shrink-0">Notes</span>
+            <span className="text-[11px] text-gray-700 text-right">{file.notes}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -299,8 +315,8 @@ export function TradeFileDetailPage() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="mx-4 mt-3 mb-3">{statsGrid}</div>
+        {/* Combined file info card */}
+        <div className="mx-4 mt-3 mb-3">{fileInfoCard}</div>
 
         {/* Action buttons */}
         {writable && (
@@ -344,20 +360,6 @@ export function TradeFileDetailPage() {
 
         {/* Mobile sections */}
         <div className="px-3">
-        {/* ── File Info ────────────────────────────────────────────────── */}
-        <Section title="File Info" icon={<FileText className="h-3.5 w-3.5" />}>
-          <KV label="Status" value={
-            <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold', meta.pill)}>
-              {TRADE_FILE_STATUS_LABELS[file.status]}
-            </span>
-          } />
-          <KV label="Date" value={fDate(file.file_date)} />
-          <KV label="Customer" value={file.customer?.name} bold />
-          <KV label="Product" value={file.product?.name} />
-          <KV label="Tonnage" value={`${fN(file.tonnage_mt, 3)} MT`} bold />
-          {file.customer_ref && <KV label="Ref" value={file.customer_ref} />}
-          {file.notes && <KV label="Notes" value={file.notes} />}
-        </Section>
 
         {/* ── Sale Details ─────────────────────────────────────────────── */}
         {file.selling_price ? (
@@ -629,8 +631,8 @@ export function TradeFileDetailPage() {
             </div>
           </div>
 
-          {/* Stats */}
-          {statsGrid}
+          {/* Combined file info card */}
+          {fileInfoCard}
 
           {/* Primary action */}
           {writable && file.status === 'request' && (
@@ -646,17 +648,6 @@ export function TradeFileDetailPage() {
 
           {/* Actions panel */}
           {writable && actionsPanel(false)}
-
-          {/* File Info */}
-          <Section title="File Info" icon={<FileText className="h-3.5 w-3.5" />}>
-            <KV label="Status" value={<span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold', meta.pill)}>{TRADE_FILE_STATUS_LABELS[file.status]}</span>} />
-            <KV label="Date" value={fDate(file.file_date)} />
-            <KV label="Customer" value={file.customer?.name} bold />
-            <KV label="Product" value={file.product?.name} />
-            <KV label="Tonnage" value={`${fN(file.tonnage_mt, 3)} MT`} bold />
-            {file.customer_ref && <KV label="Ref" value={file.customer_ref} />}
-            {file.notes && <KV label="Notes" value={file.notes} />}
-          </Section>
         </div>
 
         {/* ── RIGHT column (detail sections) ─────────────────────────── */}
