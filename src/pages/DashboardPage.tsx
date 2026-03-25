@@ -13,7 +13,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  ChevronRight, FileText, BarChart2,
+  ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet,
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -35,12 +35,12 @@ function formatMonthLabel(key: string) {
 }
 
 // ─── Status config ────────────────────────────────────────────────────────────
-const STATUS_CFG: Record<string, { dot: string; text: string; label: string }> = {
-  request:   { dot: 'bg-amber-400',  text: 'text-amber-700',  label: 'Request' },
-  sale:      { dot: 'bg-blue-400',   text: 'text-blue-700',   label: 'Sale' },
-  delivery:  { dot: 'bg-violet-400', text: 'text-violet-700', label: 'Delivery' },
-  completed: { dot: 'bg-green-400',  text: 'text-green-700',  label: 'Completed' },
-  cancelled: { dot: 'bg-gray-300',   text: 'text-gray-500',   label: 'Cancelled' },
+const STATUS_CFG: Record<string, { dot: string; text: string; bg: string; label: string }> = {
+  request:   { dot: 'bg-amber-400',  text: 'text-amber-700',  bg: 'bg-amber-50',  label: 'Request' },
+  sale:      { dot: 'bg-blue-400',   text: 'text-blue-700',   bg: 'bg-blue-50',   label: 'Sale' },
+  delivery:  { dot: 'bg-violet-400', text: 'text-violet-700', bg: 'bg-violet-50', label: 'Delivery' },
+  completed: { dot: 'bg-green-400',  text: 'text-green-700',  bg: 'bg-green-50',  label: 'Completed' },
+  cancelled: { dot: 'bg-gray-300',   text: 'text-gray-500',   bg: 'bg-gray-50',   label: 'Cancelled' },
 };
 
 const AVATAR_COLORS = ['#dc2626','#2563eb','#7c3aed','#059669','#d97706'];
@@ -53,47 +53,57 @@ function initials(name: string) {
 }
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, trend, featured = false, accent = '#2563eb' }: {
+function KpiCard({ label, value, sub, trend, icon, accent }: {
   label: string; value: string; sub?: string;
-  trend?: 'up' | 'down'; featured?: boolean; accent?: string;
+  trend?: 'up' | 'down'; icon: React.ReactNode; accent: string;
 }) {
-  if (featured) {
-    return (
-      <div className="rounded-2xl p-4 text-white shadow-md col-span-2 relative overflow-hidden"
-        style={{ background: accent }}>
-        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-6 translate-x-6" />
-        <div className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">{label}</div>
-        <div className="text-3xl font-black">{value}</div>
-        {sub && <div className="text-[11px] opacity-60 mt-1">{sub}</div>}
-      </div>
-    );
-  }
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">{label}</div>
-      <div className="text-xl font-black text-gray-900">{value}</div>
-      {sub && (
-        <div className="flex items-center gap-1 mt-1">
-          {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-green-500" />}
-          {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
-          <span className="text-[10px] text-gray-400">{sub}</span>
+    <div className="bg-white rounded-2xl p-3.5 md:p-5 shadow-sm border border-gray-100 overflow-hidden">
+      {/* Mobile layout: compact vertical */}
+      <div className="flex flex-col gap-1 md:hidden">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</div>
+        <div className="text-[15px] font-black text-gray-900 leading-tight truncate">{value}</div>
+        {sub && (
+          <div className="flex items-center gap-1">
+            {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-green-500 shrink-0" />}
+            {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-red-500 shrink-0" />}
+            <span className="text-[10px] text-gray-400 truncate">{sub}</span>
+          </div>
+        )}
+      </div>
+      {/* Desktop layout: icon + text side by side */}
+      <div className="hidden md:flex items-start gap-4">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: accent + '18' }}>
+          <span style={{ color: accent }}>{icon}</span>
         </div>
-      )}
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{label}</div>
+          <div className="text-2xl font-black text-gray-900 leading-none">{value}</div>
+          {sub && (
+            <div className="flex items-center gap-1 mt-1.5">
+              {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-green-500 shrink-0" />}
+              {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />}
+              <span className="text-[11px] text-gray-400">{sub}</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-function Section({ title, children, action, actionLabel }: {
+// ─── Card wrapper ─────────────────────────────────────────────────────────────
+function Card({ title, children, action, actionLabel, className }: {
   title: string; children: React.ReactNode;
-  action?: () => void; actionLabel?: string;
+  action?: () => void; actionLabel?: string; className?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+    <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden', className)}>
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
         <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</span>
         {action && (
-          <button onClick={action} className="text-[11px] font-semibold flex items-center gap-0.5" style={{ color: 'inherit' }}>
+          <button onClick={action} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 flex items-center gap-0.5 transition-colors">
             {actionLabel} <ChevronRight className="h-3 w-3" />
           </button>
         )}
@@ -152,7 +162,7 @@ export function DashboardPage() {
   }, [files]);
 
   const recentFiles = useMemo(() =>
-    [...files].sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime()).slice(0, 6),
+    [...files].sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime()).slice(0, 8),
     [files]);
 
   const totalProfit = useMemo(() =>
@@ -220,246 +230,269 @@ export function DashboardPage() {
   if (filesLoading || summaryLoading) return <LoadingSpinner />;
 
   return (
-    <div className="-mx-4 -mt-4 md:mx-0 md:mt-0 bg-gray-50 min-h-screen pb-28">
+    <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8">
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="px-4 pt-5 pb-4">
-        <div className="text-[12px] text-gray-400 font-medium">{greeting} 👋</div>
-        <div className="text-[20px] font-black text-gray-900 mt-0.5">
-          {profile?.full_name?.split(' ')[0] ?? 'Dashboard'}
-        </div>
+      {/* ── Page Header ──────────────────────────────────────────────────── */}
+      {/* Mobile: greeting only (title comes from AppLayout) */}
+      <div className="md:hidden px-4 py-4">
+        <div className="text-[12px] text-gray-400 font-medium">{greeting}, {profile?.full_name?.split(' ')[0]} 👋</div>
       </div>
+      <div className="px-3 md:px-6 space-y-3 md:space-y-5">
 
-      <div className="px-3 space-y-3">
+        {/* Desktop: greeting card — same width as KPI grid */}
+        <div className="hidden md:flex items-center justify-between bg-white rounded-2xl shadow-sm px-6 py-4">
+          <div>
+            <div className="text-[12px] text-gray-400 font-medium">{greeting} 👋</div>
+            <div className="text-xl font-black text-gray-900 mt-0.5">
+              {profile?.full_name ?? 'Dashboard'}
+            </div>
+          </div>
+          <span className="text-[12px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
+        </div>
 
-        {/* ── KPI Grid ───────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* ── KPI Row ──────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <KpiCard
             label="Active Files"
             value={String(activeFiles)}
             sub={`${thisMonth} new this month`}
-            featured
+            icon={<Package className="h-5 w-5" />}
             accent={accent}
-          />
-          <KpiCard
-            label="Receivable"
-            value={fUSD(summary?.totalReceivable ?? 0)}
-            sub="Customer"
-          />
-          <KpiCard
-            label="Payable"
-            value={fUSD(summary?.totalPayable ?? 0)}
-            sub="Supplier / service"
           />
           <KpiCard
             label="Total Profit"
             value={fUSD(totalProfit)}
             sub={`${byStatus.completed} completed`}
             trend={totalProfit >= 0 ? 'up' : 'down'}
+            icon={<TrendingUp className="h-5 w-5" />}
+            accent="#10b981"
+          />
+          <KpiCard
+            label="Receivable"
+            value={fUSD(summary?.totalReceivable ?? 0)}
+            sub="From customers"
+            icon={<DollarSign className="h-5 w-5" />}
+            accent="#2563eb"
+          />
+          <KpiCard
+            label="Payable"
+            value={fUSD(summary?.totalPayable ?? 0)}
+            sub="To suppliers"
+            icon={<Wallet className="h-5 w-5" />}
+            accent="#f59e0b"
           />
         </div>
 
-        {/* ── Pipeline Status ─────────────────────────────────────────────── */}
-        <Section title="Pipeline" action={() => navigate('/pipeline')} actionLabel="See all">
-          <div className="px-4 py-2">
-            {(['request','sale','delivery','completed','cancelled'] as const).map((key) => {
-              const cfg = STATUS_CFG[key];
-              const count = byStatus[key];
-              const pct = files.length > 0 ? (count / files.length) * 100 : 0;
-              return (
-                <button
-                  key={key}
-                  onClick={() => navigate('/pipeline')}
-                  className="w-full flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0 active:bg-gray-50"
-                >
-                  <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot)} />
-                  <span className="text-[13px] text-gray-700 flex-1 text-left">{cfg.label}</span>
-                  <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={cn('h-full rounded-full', cfg.dot)} style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className={cn('text-[12px] font-bold w-5 text-right shrink-0', cfg.text)}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </Section>
+        {/* ── Main Grid ────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
 
-        {/* ── Alerts ──────────────────────────────────────────────────────── */}
-        <Section
-          title={`Alerts${alerts.length > 0 ? ` · ${alerts.length}` : ''}`}
-        >
-          {alerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-2">
-              <CheckCircle2 className="h-7 w-7 text-green-400" />
-              <span className="text-[12px] text-gray-400">All clear — no alerts</span>
-            </div>
-          ) : (
-            <div className="px-4 py-2">
-              {alerts.map((a, i) => (
-                <button
-                  key={i}
-                  onClick={() => navigate(a.href)}
-                  className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 active:bg-gray-50 text-left"
-                >
-                  <div className={cn(
-                    'w-8 h-8 rounded-xl flex items-center justify-center shrink-0',
-                    a.type === 'danger' ? 'bg-red-50' : 'bg-amber-50'
-                  )}>
-                    <AlertTriangle className={cn('h-4 w-4', a.type === 'danger' ? 'text-red-500' : 'text-amber-500')} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[12px] font-semibold text-gray-900 truncate">{a.label}</div>
-                    <div className="text-[11px] text-gray-400 truncate mt-0.5">{a.sub}</div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
-                </button>
-              ))}
-            </div>
-          )}
-        </Section>
+          {/* Left col: Pipeline + Alerts */}
+          <div className="space-y-4 md:space-y-5">
 
-        {/* ── Delivery Performance Chart ──────────────────────────────────── */}
-        {delayPieData.length > 0 && (
-          <Section title="Delivery Performance" action={() => navigate('/reports')} actionLabel="ETA Report">
-            <div className="px-4 py-4">
-              {/* Donut + legend row */}
-              <div className="flex items-center gap-4">
-                <PieChart width={96} height={96}>
-                  <Pie
-                    data={delayPieData}
-                    cx={43} cy={43}
-                    innerRadius={28} outerRadius={44}
-                    dataKey="value"
-                    strokeWidth={2}
-                    stroke="#f9fafb"
-                    startAngle={90} endAngle={-270}
-                  >
-                    {delayPieData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                  </Pie>
-                </PieChart>
-                <div className="flex flex-col gap-2 flex-1">
-                  {delayPieData.map(d => (
-                    <div key={d.name} className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
-                      <span className="text-[11px] text-gray-500 flex-1">{d.name}</span>
-                      <span className="text-[12px] font-bold text-gray-900">{d.value}</span>
-                    </div>
+            {/* Pipeline Status */}
+            <Card title="Pipeline" action={() => navigate('/pipeline')} actionLabel="See all">
+              <div className="px-5 py-1">
+                {(['request','sale','delivery','completed','cancelled'] as const).map((key) => {
+                  const cfg = STATUS_CFG[key];
+                  const count = byStatus[key];
+                  const pct = files.length > 0 ? (count / files.length) * 100 : 0;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => navigate('/pipeline')}
+                      className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 rounded-xl -mx-1 px-1 transition-colors"
+                    >
+                      <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot)} />
+                      <span className="text-[13px] text-gray-700 flex-1 text-left">{cfg.label}</span>
+                      <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={cn('h-full rounded-full', cfg.dot)} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className={cn('text-[12px] font-bold w-5 text-right shrink-0', cfg.text)}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Alerts */}
+            <Card title={`Alerts${alerts.length > 0 ? ` · ${alerts.length}` : ''}`}>
+              {alerts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                  <CheckCircle2 className="h-8 w-8 text-green-400" />
+                  <span className="text-[12px] text-gray-400">All clear — no alerts</span>
+                </div>
+              ) : (
+                <div className="px-5 py-1">
+                  {alerts.map((a, i) => (
+                    <button
+                      key={i}
+                      onClick={() => navigate(a.href)}
+                      className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 rounded-xl -mx-1 px-1 transition-colors text-left"
+                    >
+                      <div className={cn(
+                        'w-8 h-8 rounded-xl flex items-center justify-center shrink-0',
+                        a.type === 'danger' ? 'bg-red-50' : 'bg-amber-50'
+                      )}>
+                        <AlertTriangle className={cn('h-4 w-4', a.type === 'danger' ? 'text-red-500' : 'text-amber-500')} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] font-semibold text-gray-900 truncate">{a.label}</div>
+                        <div className="text-[11px] text-gray-400 truncate mt-0.5">{a.sub}</div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+                    </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Per-file delay bar chart */}
-              {delayBarData.length > 0 && (
-                <>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-4 mb-2">
-                    Delay by File (days)
-                  </div>
-                  <ResponsiveContainer width="100%" height={delayBarData.length * 30}>
-                    <BarChart data={delayBarData} layout="vertical" barCategoryGap="20%" margin={{ left: 0, right: 16 }}>
-                      <XAxis type="number" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false}
-                        tickFormatter={v => `${v}d`} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }}
-                        axisLine={false} tickLine={false} width={80} />
-                      <Tooltip
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        formatter={(v: any) => [`${v > 0 ? '+' : ''}${v} days`, 'vs ETA']}
-                        contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
-                      />
-                      <Bar dataKey="days" radius={[0, 4, 4, 0]}>
-                        {delayBarData.map((d, i) => <Cell key={i} fill={d.fill} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </>
               )}
-            </div>
-          </Section>
-        )}
+            </Card>
 
-        {/* ── Recent Files ────────────────────────────────────────────────── */}
-        <Section title="Recent Files" action={() => navigate('/files')} actionLabel="All files">
-          {recentFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-2">
-              <FileText className="h-7 w-7 text-gray-200" />
-              <span className="text-[12px] text-gray-400">No files yet</span>
-            </div>
-          ) : (
-            <div className="px-4 py-2">
-              {recentFiles.map((f) => {
-                const name = f.customer?.name ?? 'Unknown';
-                const cfg = STATUS_CFG[f.status] ?? STATUS_CFG.request;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => navigate(`/files/${f.id}`)}
-                    className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 active:bg-gray-50"
-                  >
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0"
-                      style={{ background: avatarBg(name) }}
-                    >
-                      {initials(name)}
+          </div>
+
+          {/* Middle + Right cols: Recent Files (span 2) */}
+          <div className="md:col-span-2 space-y-4 md:space-y-5">
+
+            {/* Recent Files */}
+            <Card title="Recent Files" action={() => navigate('/files')} actionLabel="All files">
+              {recentFiles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                  <FileText className="h-8 w-8 text-gray-200" />
+                  <span className="text-[12px] text-gray-400">No files yet</span>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {recentFiles.map((f) => {
+                    const name = f.customer?.name ?? 'Unknown';
+                    const cfg = STATUS_CFG[f.status] ?? STATUS_CFG.request;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => navigate(`/files/${f.id}`)}
+                        className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0"
+                          style={{ background: avatarBg(name) }}
+                        >
+                          {initials(name)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-semibold text-gray-900 truncate">{name}</div>
+                          <div className="text-[11px] font-mono text-gray-400 mt-0.5">{f.file_no}</div>
+                        </div>
+                        <div className="hidden md:block text-[11px] text-gray-400 shrink-0">
+                          {fDate(f.file_date)}
+                        </div>
+                        <span className={cn('text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0', cfg.text, cfg.bg)}>
+                          {cfg.label}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+
+            {/* Delivery Performance */}
+            {delayPieData.length > 0 && (
+              <Card title="Delivery Performance" action={() => navigate('/reports')} actionLabel="ETA Report">
+                <div className="px-5 py-4">
+                  <div className="flex items-center gap-6">
+                    <PieChart width={100} height={100}>
+                      <Pie
+                        data={delayPieData}
+                        cx={45} cy={45}
+                        innerRadius={28} outerRadius={46}
+                        dataKey="value"
+                        strokeWidth={2}
+                        stroke="#f9fafb"
+                        startAngle={90} endAngle={-270}
+                      >
+                        {delayPieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                      </Pie>
+                    </PieChart>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 flex-1">
+                      {delayPieData.map(d => (
+                        <div key={d.name} className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                          <span className="text-[11px] text-gray-500 flex-1">{d.name}</span>
+                          <span className="text-[13px] font-bold text-gray-900">{d.value}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="text-[13px] font-semibold text-gray-900 truncate">{name}</div>
-                      <div className="text-[10px] font-mono text-gray-400 mt-0.5">{f.file_no}</div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <div className="flex items-center gap-1">
-                        <span className={cn('w-1.5 h-1.5 rounded-full', cfg.dot)} />
-                        <span className={cn('text-[10px] font-semibold', cfg.text)}>{cfg.label}</span>
+                  </div>
+
+                  {delayBarData.length > 0 && (
+                    <div className="mt-5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">
+                        Delay by File (days)
                       </div>
-                      <span className="text-[10px] text-gray-400">{fDate(f.file_date)}</span>
+                      <ResponsiveContainer width="100%" height={delayBarData.length * 28}>
+                        <BarChart data={delayBarData} layout="vertical" barCategoryGap="25%" margin={{ left: 0, right: 16 }}>
+                          <XAxis type="number" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false}
+                            tickFormatter={v => `${v}d`} />
+                          <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }}
+                            axisLine={false} tickLine={false} width={80} />
+                          <Tooltip
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            formatter={(v: any) => [`${v > 0 ? '+' : ''}${v} days`, 'vs ETA']}
+                            contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                          />
+                          <Bar dataKey="days" radius={[0, 4, 4, 0]}>
+                            {delayBarData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </Section>
+                  )}
+                </div>
+              </Card>
+            )}
 
-        {/* ── P&L Chart ───────────────────────────────────────────────────── */}
-        <Section title="Revenue & Cost · Last 6 Months">
-          <div className="px-4 py-4">
+          </div>
+        </div>
+
+        {/* ── Revenue & Cost Chart ─────────────────────────────────────────── */}
+        <Card title="Revenue & Cost · Last 6 Months">
+          <div className="px-5 py-5">
             {!hasChart ? (
-              <div className="flex flex-col items-center justify-center h-32 gap-2">
+              <div className="flex flex-col items-center justify-center h-36 gap-2">
                 <BarChart2 className="h-8 w-8 text-gray-200" />
                 <span className="text-[12px] text-gray-400">No data yet</span>
               </div>
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={chartData} barCategoryGap="35%" barGap={2}>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartData} barCategoryGap="40%" barGap={2}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} width={36} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}
+                      tickFormatter={v => `$${(v/1000).toFixed(0)}k`} width={40} />
                     <Tooltip
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       formatter={(v: any, n: any) => [`$${Number(v).toLocaleString()}`, n === 'revenue' ? 'Revenue' : n === 'cost' ? 'Cost' : 'Profit']}
                       contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                     />
-                    <Bar dataKey="revenue" fill={accent + '60'} radius={[4,4,0,0]} />
-                    <Bar dataKey="cost"    fill="#f87171" radius={[4,4,0,0]} />
+                    <Bar dataKey="revenue" fill={accent + '40'} radius={[4,4,0,0]} />
+                    <Bar dataKey="cost"    fill="#f8717140" radius={[4,4,0,0]} />
                     <Bar dataKey="profit"  radius={[4,4,0,0]}>
-                      {chartData.map((e, i) => <Cell key={i} fill={e.profit >= 0 ? '#4ade80' : '#fb923c'} />)}
+                      {chartData.map((e, i) => <Cell key={i} fill={e.profit >= 0 ? '#4ade8066' : '#fb923c66'} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="flex items-center justify-center gap-4 mt-3">
-                  {[[accent + '60','Revenue'],['#f87171','Cost'],['#4ade80','Profit']].map(([c,l]) => (
+                <div className="flex items-center justify-center gap-6 mt-3">
+                  {[[accent + '40','Revenue'],['#f8717140','Cost'],['#4ade8066','Profit']].map(([c,l]) => (
                     <div key={l} className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full" style={{ background: c }} />
-                      <span className="text-[10px] text-gray-400">{l}</span>
+                      <div className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />
+                      <span className="text-[11px] text-gray-400">{l}</span>
                     </div>
                   ))}
                 </div>
               </>
             )}
           </div>
-        </Section>
+        </Card>
 
-        {/* bottom safe area for nav */}
-        <div className="h-4" />
       </div>
     </div>
   );

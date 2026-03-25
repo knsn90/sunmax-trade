@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useHeaderAction } from '@/contexts/HeaderContext';
 import { useNavigate } from 'react-router-dom';
 import { useTradeFiles, useDeleteTradeFile } from '@/hooks/useTradeFiles';
 import { useAuth } from '@/hooks/useAuth';
@@ -157,6 +158,21 @@ export function TradeFilesPage() {
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const { setAction } = useHeaderAction();
+
+  useEffect(() => {
+    if (!writable) return;
+    setAction(
+      <button
+        onClick={() => setNewFileOpen(true)}
+        className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow"
+        style={{ background: accent }}
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    );
+    return () => setAction(null);
+  }, [writable, accent, setAction]);
 
   const filtered = useMemo(() => {
     let list = files;
@@ -187,20 +203,7 @@ export function TradeFilesPage() {
       {/* ══════════════════════════════════════════════════════════════
           MOBILE  (< md)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="md:hidden flex flex-col min-h-screen -mx-4 -mt-4 bg-gray-50">
-
-        {/* Top bar */}
-        <div className="flex items-center justify-end px-4 pt-4 pb-2 bg-gray-50">
-          {writable && (
-            <button
-              onClick={() => setNewFileOpen(true)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow"
-              style={{ background: accent }}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+      <div className="md:hidden flex flex-col min-h-screen -mx-4 bg-gray-50">
 
         {/* Search bar */}
         <div className="px-4 pb-3">

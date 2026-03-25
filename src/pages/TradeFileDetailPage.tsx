@@ -285,7 +285,7 @@ export function TradeFileDetailPage() {
   );
 
   return (
-    <div className="-mx-4 -mt-4 md:mx-0 md:mt-0 bg-gray-50 min-h-screen pb-8">
+    <div className="-mx-4 md:mx-0 bg-gray-50 min-h-screen pb-8">
 
       {/* ══════════════════════════════════════════════════════════════
           MOBILE  (< md)
@@ -397,7 +397,7 @@ export function TradeFileDetailPage() {
             {file.vessel_name && (
               <KV label="Vessel" value={
                 <a
-                  href={`https://www.marinetraffic.com/en/ais/index/search/all?keyword=${encodeURIComponent(file.vessel_name)}`}
+                  href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-blue-600 hover:underline font-medium"
@@ -695,7 +695,7 @@ export function TradeFileDetailPage() {
               {file.vessel_name && (
               <KV label="Vessel" value={
                 <a
-                  href={`https://www.marinetraffic.com/en/ais/index/search/all?keyword=${encodeURIComponent(file.vessel_name)}`}
+                  href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-blue-600 hover:underline font-medium"

@@ -77,7 +77,15 @@ export function Topbar() {
         className="bg-white border-b border-gray-100 px-5 flex items-center gap-3 flex-shrink-0 shadow-sm"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
       >
-        {/* Kur bilgisi — solda */}
+        {/* Mobil: logo — solda */}
+        <div className="md:hidden flex items-center gap-2 flex-1">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#dc2626' }}>
+            <span className="font-black text-xs text-white">S</span>
+          </div>
+          <span className="font-black text-sm tracking-tight text-gray-900">SunPlus</span>
+        </div>
+
+        {/* Desktop: kur bilgisi — solda */}
         <ExchangeRateBar isDonezo={isDonezo} />
 
         {/* Sağa iten boşluk */}

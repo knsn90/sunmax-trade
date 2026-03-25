@@ -37,7 +37,9 @@
       "WebFetch(domain:figma-make-production.figma.com)",
       "WebSearch",
       "Bash(gh run:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "WebFetch(domain:magicport.ai)",
+      "Bash(grep -rn \"+ Add\\\\|+ New\\\\|openNew\\\\|setShowForm\\\\|setOpen\\(true\\)\" /Users/saber/Downloads/sunmax-trade/src/pages/*.tsx)"
     ]
   }
 }

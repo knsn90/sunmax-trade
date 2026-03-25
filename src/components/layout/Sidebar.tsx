@@ -19,6 +19,8 @@ export function Sidebar() {
   const isDonezo = theme === 'donezo';
   const isAdmin = profile?.role === 'admin';
 
+  const barBg = isDonezo ? '#dc2626' : '#2563eb';
+
   const sections: { label?: string; items: NavItem[] }[] = [
     {
       items: [
@@ -68,49 +70,29 @@ export function Sidebar() {
   ];
 
   return (
-    <aside
-      className={cn(
-        'hidden md:flex w-[190px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin',
-        isDonezo
-          ? 'bg-white border-r border-gray-100 shadow-sm'
-          : 'border-r border-white/10',
-      )}
-      style={isDonezo ? {} : { background: 'linear-gradient(180deg, #1a1f6e 0%, #2d3494 60%, #3b5bdb 100%)' }}
-    >
+    <aside className="hidden md:flex w-[200px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin bg-white border-r border-gray-100">
       {/* Logo */}
-      <div className={cn(
-        'h-[60px] flex items-center px-5 flex-shrink-0',
-        isDonezo ? 'border-b border-gray-100' : 'border-b border-white/10',
-      )}>
+      <div className="h-[60px] flex items-center px-4 flex-shrink-0 border-b border-gray-100">
         <div className="flex items-center gap-2.5">
-          <div className={cn(
-            'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0',
-            isDonezo
-              ? 'bg-red-600 text-white'
-              : 'bg-white/20 text-white',
-          )}>
-            <span className="font-black text-sm">S</span>
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: barBg }}
+          >
+            <span className="font-black text-sm text-white">S</span>
           </div>
           <div>
-            <div className={cn('font-black text-sm tracking-tight', isDonezo ? 'text-gray-900' : 'text-white')}>
-              SunPlus
-            </div>
-            <div className={cn('text-[9px] font-medium -mt-0.5', isDonezo ? 'text-gray-400' : 'text-white/50')}>
-              Trade Management
-            </div>
+            <div className="font-black text-sm tracking-tight text-gray-900">SunPlus</div>
+            <div className="text-[9px] font-medium -mt-0.5 text-gray-400">Trade Management</div>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      <nav className="flex-1 py-4 px-3 space-y-0.5">
         {sections.map((section, si) => (
-          <div key={si} className={si > 0 ? 'pt-2' : ''}>
+          <div key={si} className={si > 0 ? 'pt-3' : ''}>
             {section.label && (
-              <div className={cn(
-                'text-[9px] font-bold tracking-widest px-3 py-1.5',
-                isDonezo ? 'text-gray-400' : 'text-white/30',
-              )}>
+              <div className="text-[9px] font-bold tracking-widest px-3 py-1.5 text-gray-400">
                 {section.label}
               </div>
             )}
@@ -120,24 +102,27 @@ export function Sidebar() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl transition-all mb-0.5 relative',
-                    isDonezo
-                      ? isActive
-                        ? 'bg-red-50 text-red-600 font-semibold'
-                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                      : isActive
-                        ? 'bg-white/20 text-white font-semibold shadow-sm'
-                        : 'text-white/60 hover:text-white hover:bg-white/10',
+                    'flex items-center gap-2.5 w-full px-3 py-2 rounded-xl transition-all mb-0.5',
+                    isActive
+                      ? 'bg-red-50 font-semibold'
+                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50',
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    {isDonezo && isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-red-600 rounded-r-full" />
-                    )}
-                    <span className="flex-shrink-0">{item.icon}</span>
-                    <span className="text-xs font-medium">{item.label}</span>
+                    <span
+                      className="flex-shrink-0"
+                      style={isActive ? { color: barBg } : {}}
+                    >
+                      {item.icon}
+                    </span>
+                    <span
+                      className="text-xs font-medium"
+                      style={isActive ? { color: barBg } : { }}
+                    >
+                      {item.label}
+                    </span>
                   </>
                 )}
               </NavLink>

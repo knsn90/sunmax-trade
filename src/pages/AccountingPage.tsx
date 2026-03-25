@@ -86,13 +86,14 @@ export function AccountingPage() {
   return (
     <>
       {/* Action bar */}
-      {writable && (
-        <div className="flex justify-end mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-[20px] font-black text-gray-900">Accounting</h1>
+        {writable && (
           <Button onClick={openNew} className="bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-sm">
             + New Transaction
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Summary KPI Cards */}
       {summary && (

@@ -65,45 +65,44 @@ export function BottomNav() {
       )}
 
       {/* More Drawer */}
-      <div
-        className={cn(
-          'fixed left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-2xl md:hidden transition-transform duration-300 rounded-t-3xl',
-          drawerOpen ? 'translate-y-0' : 'translate-y-full',
-        )}
-        style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
-      >
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+      {drawerOpen && (
+        <div
+          className="fixed left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-2xl md:hidden rounded-t-3xl"
+          style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+        >
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="w-10 h-1 bg-gray-200 rounded-full" />
+          </div>
+          <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+            <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">More</span>
+            <button onClick={() => setDrawerOpen(false)} className="text-gray-400 p-1 hover:text-gray-600">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2 p-4 pb-5">
+            {drawerItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.to ||
+                location.pathname.startsWith(item.to + '/');
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-3 rounded-2xl transition-all',
+                    isActive
+                      ? drawerActiveClass
+                      : 'text-gray-500 bg-gray-50 hover:bg-gray-100 active:scale-95',
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[10px] font-semibold leading-none text-center">{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </div>
         </div>
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
-          <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">More</span>
-          <button onClick={() => setDrawerOpen(false)} className="text-gray-400 p-1 hover:text-gray-600">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-2 p-4 pb-5">
-          {drawerItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.to ||
-              location.pathname.startsWith(item.to + '/');
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  'flex flex-col items-center gap-2 p-3 rounded-2xl transition-all',
-                  isActive
-                    ? drawerActiveClass
-                    : 'text-gray-500 bg-gray-50 hover:bg-gray-100 active:scale-95',
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="text-[10px] font-semibold leading-none text-center">{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
       {/* ── Floating Pill Nav Bar ──────────────────────────────────────────── */}
       <nav
