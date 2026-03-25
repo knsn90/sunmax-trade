@@ -29,43 +29,30 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
     else setStatus.mutate({ id, status: 'approved' });
   }
 
-  function handlePasswordConfirm() {
-    setShowPasswordDialog(false);
-    setStatus.mutate({ id, status: 'approved' });
-  }
-
   if (currentStatus === 'draft') {
     return (
       <>
         <ApproveWithPasswordDialog
           open={showPasswordDialog}
           onClose={() => setShowPasswordDialog(false)}
-          onConfirm={handlePasswordConfirm}
+          onConfirm={() => { setShowPasswordDialog(false); setStatus.mutate({ id, status: 'approved' }); }}
           isPending={pending}
         />
-        {/* Approve */}
         <button
           onClick={handleApproveClick}
           disabled={pending}
           title="Approve"
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold
-            bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200
-            transition-colors disabled:opacity-50"
+          className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50"
         >
-          <Check className="h-3 w-3" />
-          Approve
+          <Check className="h-3.5 w-3.5" />
         </button>
-        {/* Reject */}
         <button
           onClick={() => setStatus.mutate({ id, status: 'rejected' })}
           disabled={pending}
           title="Reject"
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold
-            bg-red-50 text-red-600 hover:bg-red-100 border border-red-200
-            transition-colors disabled:opacity-50"
+          className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 transition-colors disabled:opacity-50"
         >
-          <X className="h-3 w-3" />
-          Reject
+          <X className="h-3.5 w-3.5" />
         </button>
       </>
     );
@@ -77,17 +64,13 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
         onClick={() => setStatus.mutate({ id, status: 'draft' })}
         disabled={pending}
         title="Reset to Draft"
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold
-          bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200
-          transition-colors disabled:opacity-50"
+        className="p-1.5 rounded-lg bg-amber-50 text-amber-500 hover:bg-amber-100 border border-amber-200 transition-colors disabled:opacity-50"
       >
-        <RotateCcw className="h-3 w-3" />
-        To Draft
+        <RotateCcw className="h-3.5 w-3.5" />
       </button>
     );
   }
 
-  // approved — revert
   return (
     <button
       onClick={() => {
@@ -96,12 +79,9 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
       }}
       disabled={pending}
       title="Revert to Draft"
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold
-        bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200
-        transition-colors disabled:opacity-50"
+      className="p-1.5 rounded-lg bg-gray-100 text-gray-400 hover:bg-gray-200 border border-gray-200 transition-colors disabled:opacity-50"
     >
-      <RotateCcw className="h-3 w-3" />
-      Revert
+      <RotateCcw className="h-3.5 w-3.5" />
     </button>
   );
 }
