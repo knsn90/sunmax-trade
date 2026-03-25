@@ -346,10 +346,10 @@ export function AccountingPage() {
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[22%]">Invoice / File</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[22%]">Customer / Date</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">ADMT / Unit Price</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Total / Status</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[22%]">Actions</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[21%]">Customer / Date</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[15%]">ADMT / Unit Price</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Total / Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[26%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -374,7 +374,7 @@ export function AccountingPage() {
                         <div className="mt-0.5"><DocStatusBadge status={inv.doc_status ?? 'draft'} /></div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center gap-1 flex-nowrap">
                           <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                           {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
                             <button onClick={() => { setEditingSaleInv(inv); setSaleInvModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
@@ -430,12 +430,12 @@ export function AccountingPage() {
               <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Type / Date</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[20%]">File / Party</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Type / Date</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">File / Party</th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Description</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Amount / Remaining</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[14%]">Status</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[14%]">Actions</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[15%]">Amount / Remaining</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[13%]">Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[20%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -479,7 +479,7 @@ export function AccountingPage() {
                         </td>
                         {/* Actions */}
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 flex-wrap">
+                          <div className="flex items-center gap-1 flex-nowrap">
                             <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
                             {settings && (
                               <button onClick={() => handleTxnPrint(t)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
