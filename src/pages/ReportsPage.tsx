@@ -25,13 +25,14 @@ function openPrint(html: string, title: string) {
   win.document.close();
 }
 
-type RepTab = 'sales' | 'pnl' | 'cari' | 'analytics';
+type RepTab = 'sales' | 'pnl' | 'cari' | 'analytics' | 'eta';
 
 const TAB_LABELS: [RepTab, string][] = [
   ['sales',     'Sales Report'],
   ['pnl',       'P&L Report'],
   ['cari',      'Account Statement'],
   ['analytics', 'Analytics'],
+  ['eta',       'ETA Report'],
 ];
 
 // ─── Sales Report ──────────────────────────────────────────────────────────
@@ -859,6 +860,120 @@ function AnalyticsTab() {
   );
 }
 
+// ─── ETA Report Tab ────────────────────────────────────────────────────────
+
+function EtaReportTab() {
+  const { data: files = [] } = useTradeFiles();
+
+  const etaFiles = useMemo(() =>
+    files
+      .filter(f => f.eta || f.revised_eta)
+      .sort((a, b) => (a.eta ?? '') < (b.eta ?? '') ? -1 : 1),
+    [files]
+  );
+
+  function delayDays(f: TradeFile): number | null {
+    const ref = f.eta;
+    const actual = f.arrival_date;
+    if (!ref || !actual) return null;
+    return Math.round((new Date(actual).getTime() - new Date(ref).getTime()) / 86400000);
+  }
+
+  function statusCell(f: TradeFile) {
+    if (f.arrival_date) {
+      const d = delayDays(f);
+      if (d === null) return { label: 'Arrived', cls: 'bg-gray-100 text-gray-600' };
+      if (d <= 0) return { label: `On time ✅`, cls: 'bg-green-100 text-green-700' };
+      return { label: `+${d} days 🔴`, cls: 'bg-red-100 text-red-700' };
+    }
+    if (f.revised_eta) return { label: 'Delayed ⏳', cls: 'bg-amber-100 text-amber-700' };
+    return { label: 'Pending', cls: 'bg-blue-100 text-blue-700' };
+  }
+
+  function exportCsv() {
+    const rows = [
+      ['File No', 'Customer', 'Product', 'Status', 'Promised ETA', 'Revised ETA', 'Actual Arrival', 'Delay (days)', 'Delay Reason'],
+      ...etaFiles.map(f => {
+        const d = delayDays(f);
+        return [
+          f.file_no,
+          f.customer?.name ?? '',
+          f.product?.name ?? '',
+          f.status,
+          f.eta ?? '',
+          f.revised_eta ?? '',
+          f.arrival_date ?? '',
+          d !== null ? String(d) : '',
+          (f as TradeFile & { delay_notes?: string }).delay_notes ?? '',
+        ];
+      }),
+    ];
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `eta-report-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-bold text-gray-800">ETA Tracking Report</div>
+          <div className="text-xs text-gray-400 mt-0.5">{etaFiles.length} files with ETA</div>
+        </div>
+        <Button size="sm" variant="outline" onClick={exportCsv}>Export CSV</Button>
+      </div>
+
+      {etaFiles.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 text-sm bg-white border border-gray-100 rounded-2xl">
+          No files with ETA found.
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/50">
+                {['File No','Customer','Product','Promised ETA','Revised ETA','Actual Arrival','Delay','Status'].map(h => (
+                  <th key={h} className="px-3 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {etaFiles.map(f => {
+                const { label, cls } = statusCell(f);
+                const d = delayDays(f);
+                return (
+                  <tr key={f.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                    <td className="px-3 py-2.5 font-mono font-bold text-gray-800">{f.file_no}</td>
+                    <td className="px-3 py-2.5 text-gray-700">{f.customer?.name ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-600">{f.product?.name ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-700">{f.eta ? fDate(f.eta) : '—'}</td>
+                    <td className="px-3 py-2.5">
+                      {(f as TradeFile & { revised_eta?: string }).revised_eta
+                        ? <span className="text-amber-600 font-semibold">{fDate((f as TradeFile & { revised_eta?: string }).revised_eta!)}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-gray-700">{f.arrival_date ? fDate(f.arrival_date) : <span className="text-gray-300">—</span>}</td>
+                    <td className="px-3 py-2.5 font-semibold">
+                      {d !== null
+                        ? <span className={d > 0 ? 'text-red-600' : 'text-green-600'}>{d > 0 ? `+${d}d` : `${d}d`}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${cls}`}>{label}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Reports Page ─────────────────────────────────────────────────────
 
 export function ReportsPage() {
@@ -887,6 +1002,7 @@ export function ReportsPage() {
       {activeTab === 'pnl'       && <PnlReportTab />}
       {activeTab === 'cari'      && <AccountStatementTab />}
       {activeTab === 'analytics' && <AnalyticsTab />}
+      {activeTab === 'eta'       && <EtaReportTab />}
     </>
   );
 }

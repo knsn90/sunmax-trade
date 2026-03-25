@@ -134,6 +134,8 @@ export interface TradeFile extends Timestamps {
   payment_terms: string | null;
   transport_mode: TransportMode | null;
   eta: string | null;
+  revised_eta: string | null;
+  delay_notes: string | null;
   vessel_name: string | null;
   proforma_ref: string | null;
   register_no: string | null;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTradeFile, useChangeStatus } from '@/hooks/useTradeFiles';
+import { useTradeFile, useChangeStatus, useNoteDelay } from '@/hooks/useTradeFiles';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate, fCurrency, fUSD } from '@/lib/formatters';
@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import {
   ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
   Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
-  MoreVertical, X, RotateCcw,
+  MoreVertical, X, RotateCcw, Bell, AlertTriangle,
 } from 'lucide-react';
 
 // ── Action sheet item ─────────────────────────────────────────────────────────
@@ -162,6 +162,10 @@ export function TradeFileDetailPage() {
   const [editPI, setEditPI] = useState<Proforma | null>(null);
   const [autoPackingAfterDelivery, setAutoPackingAfterDelivery] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [delayOpen, setDelayOpen] = useState(false);
+  const [delayEta, setDelayEta] = useState('');
+  const [delayNotes, setDelayNotes] = useState('');
+  const noteDelay = useNoteDelay();
 
   if (isLoading) return <LoadingSpinner />;
   if (!file) return <div className="text-center py-12 text-gray-400 text-sm">Dosya bulunamadı</div>;
@@ -362,9 +366,16 @@ export function TradeFileDetailPage() {
             icon={<TrendingUp className="h-3.5 w-3.5" />}
             accent
             right={writable ? (
-              <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-                <Pencil className="h-3 w-3" /> Edit
-              </button>
+              <div className="flex items-center gap-2">
+                {file.eta && !file.arrival_date && (
+                  <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
+                    <Bell className="h-3 w-3" /> Delay
+                  </button>
+                )}
+                <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
+                  <Pencil className="h-3 w-3" /> Edit
+                </button>
+              </div>
             ) : undefined}
           >
             <KV label="Sale Price" value={`${fCurrency(file.selling_price)}/MT`} bold />
@@ -372,6 +383,15 @@ export function TradeFileDetailPage() {
             <KV label="Supplier" value={file.supplier?.name ?? '—'} />
             <KV label="Incoterms" value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
             {file.eta && <KV label="ETA" value={fDate(file.eta)} />}
+            {file.revised_eta && (
+              <KV label="Revised ETA" value={
+                <span className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  <span className="font-bold text-amber-600">{fDate(file.revised_eta)}</span>
+                </span>
+              } />
+            )}
+            {file.delay_notes && <KV label="Delay Reason" value={file.delay_notes} />}
             {file.vessel_name && <KV label="Vessel" value={file.vessel_name} />}
             {file.register_no && <KV label="Register" value={file.register_no} />}
           </Section>
@@ -644,12 +664,30 @@ export function TradeFileDetailPage() {
           {/* Sale Details */}
           {file.selling_price ? (
             <Section title="Sale Details" icon={<TrendingUp className="h-3.5 w-3.5" />} accent
-              right={writable ? (<button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>) : undefined}>
+              right={writable ? (
+                <div className="flex items-center gap-2">
+                  {file.eta && !file.arrival_date && (
+                    <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
+                      <Bell className="h-3 w-3" /> Delay
+                    </button>
+                  )}
+                  <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>
+                </div>
+              ) : undefined}>
               <KV label="Sale Price" value={`${fCurrency(file.selling_price)}/MT`} bold />
               <KV label="Purchase" value={`${fCurrency(file.purchase_price)}/MT`} />
               <KV label="Supplier" value={file.supplier?.name ?? '—'} />
               <KV label="Incoterms" value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
               {file.eta && <KV label="ETA" value={fDate(file.eta)} />}
+              {file.revised_eta && (
+                <KV label="Revised ETA" value={
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span className="font-bold text-amber-600">{fDate(file.revised_eta)}</span>
+                  </span>
+                } />
+              )}
+              {file.delay_notes && <KV label="Delay Reason" value={file.delay_notes} />}
               {file.vessel_name && <KV label="Vessel" value={file.vessel_name} />}
               {file.register_no && <KV label="Register" value={file.register_no} />}
             </Section>
@@ -749,6 +787,56 @@ export function TradeFileDetailPage() {
           )}
         </div>
       </div>{/* end desktop grid */}
+
+      {/* ── Note Delay Modal ─────────────────────────────────────────── */}
+      {delayOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setDelayOpen(false)} />
+          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-5 max-w-sm mx-auto">
+            <div className="text-[15px] font-bold text-gray-900 mb-1">Note Delay</div>
+            {file.eta && (
+              <div className="text-[12px] text-gray-400 mb-4">
+                Original ETA: <span className="font-semibold text-gray-700">{fDate(file.eta)}</span>
+              </div>
+            )}
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">New ETA</label>
+            <input
+              type="date"
+              value={delayEta}
+              onChange={e => setDelayEta(e.target.value)}
+              className="w-full mt-1 mb-3 px-3 py-2.5 rounded-xl border border-gray-200 text-[13px] outline-none focus:border-blue-400"
+            />
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Delay Reason</label>
+            <textarea
+              value={delayNotes}
+              onChange={e => setDelayNotes(e.target.value)}
+              className="w-full mt-1 mb-4 px-3 py-2.5 rounded-xl border border-gray-200 text-[13px] resize-none outline-none focus:border-blue-400"
+              rows={2}
+              placeholder="e.g. Vessel delayed at port of loading"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDelayOpen(false)}
+                className="flex-1 h-10 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!delayEta) return;
+                  noteDelay.mutate({ id: file.id, revised_eta: delayEta, delay_notes: delayNotes || undefined });
+                  setDelayOpen(false);
+                }}
+                disabled={!delayEta || noteDelay.isPending}
+                className="flex-1 h-10 rounded-xl text-white text-[13px] font-semibold disabled:opacity-50"
+                style={{ background: accent }}
+              >
+                Save Delay
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Modals */}
       <NewFileModal open={editFileOpen} onOpenChange={setEditFileOpen} editMode fileToEdit={file} />

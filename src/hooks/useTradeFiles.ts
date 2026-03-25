@@ -123,6 +123,19 @@ export function useUpdateFileInfo() {
   });
 }
 
+export function useNoteDelay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, revised_eta, delay_notes }: { id: string; revised_eta: string; delay_notes?: string }) =>
+      tradeFileService.noteDelay(id, { revised_eta, delay_notes }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tradeFileKeys.all });
+      toast.success('Delay noted');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 export function useChangeStatus() {
   const qc = useQueryClient();
   return useMutation({

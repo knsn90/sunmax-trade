@@ -166,6 +166,14 @@ export const tradeFileService = {
     if (error) throw new Error(error.message);
   },
 
+  async noteDelay(id: string, data: { revised_eta: string; delay_notes?: string }): Promise<void> {
+    const { error } = await supabase
+      .from('trade_files')
+      .update({ revised_eta: data.revised_eta, delay_notes: data.delay_notes ?? null })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
   async countByCustomerPrefix(prefix: string): Promise<number> {
     const { count, error } = await supabase
       .from('trade_files')
