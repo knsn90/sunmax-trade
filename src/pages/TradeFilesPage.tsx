@@ -238,7 +238,7 @@ export function TradeFilesPage() {
         </div>
 
         {/* Filter pills */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mx-4 mb-3 overflow-x-auto scrollbar-none">
           {STATUS_FILTERS.map(s => {
             const count = s.key === 'all'
               ? files.length
@@ -248,15 +248,11 @@ export function TradeFilesPage() {
               <button
                 key={s.key}
                 onClick={() => { setFilter(s.key); setPage(1); }}
-                className={cn(
-                  'shrink-0 px-3.5 h-7 rounded-full text-[11px] font-bold transition-all',
-                  active
-                    ? 'text-white shadow-sm'
-                    : 'bg-white text-gray-500 border border-gray-200'
-                )}
-                style={active ? { background: accent } : {}}
+                className={`shrink-0 px-3.5 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap ${
+                  active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                {s.label} {count > 0 && <span className={active ? 'opacity-70' : 'text-gray-400'}>({count})</span>}
+                {s.label} {count > 0 && <span className={active ? 'text-gray-500' : 'text-gray-400'}>({count})</span>}
               </button>
             );
           })}
@@ -324,7 +320,7 @@ export function TradeFilesPage() {
           </div>
 
           {/* Filter pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
             {STATUS_FILTERS.map(s => {
               const count = s.key === 'all'
                 ? files.length
@@ -334,13 +330,11 @@ export function TradeFilesPage() {
                 <button
                   key={s.key}
                   onClick={() => { setFilter(s.key); setPage(1); }}
-                  className={cn(
-                    'shrink-0 px-3 h-7 rounded-full text-[11px] font-bold transition-all whitespace-nowrap',
-                    active ? 'text-white shadow-sm' : 'bg-white text-gray-500 border border-gray-200'
-                  )}
-                  style={active ? { background: accent } : {}}
+                  className={`shrink-0 px-3 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap ${
+                    active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
                 >
-                  {s.label} {count > 0 && <span className={active ? 'opacity-70' : 'text-gray-400'}>({count})</span>}
+                  {s.label} {count > 0 && <span className={active ? 'text-gray-500' : 'text-gray-400'}>({count})</span>}
                 </button>
               );
             })}

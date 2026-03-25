@@ -2,8 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerService } from '@/services/customerService';
 import { supplierService } from '@/services/supplierService';
 import { productService } from '@/services/productService';
+import { productCategoryService } from '@/services/productCategoryService';
 import { serviceProviderService } from '@/services/serviceProviderService';
-import type { CustomerFormData, SupplierFormData, ProductFormData, ServiceProviderFormData } from '@/types/forms';
+import type { CustomerFormData, SupplierFormData, ProductFormData, ServiceProviderFormData, ProductCategoryFormData } from '@/types/forms';
 import type { ServiceProviderType } from '@/types/enums';
 import { toast } from 'sonner';
 
@@ -186,6 +187,53 @@ export function useDeleteServiceProvider() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['service-providers'] });
       toast.success('Service provider removed');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+// ─── Product Categories ──────────────────────────────────────────────────────
+
+export function useProductCategories() {
+  return useQuery({
+    queryKey: ['product-categories'],
+    queryFn: () => productCategoryService.list(),
+  });
+}
+
+export function useCreateProductCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ProductCategoryFormData) => productCategoryService.create(data),
+    onSuccess: (c) => {
+      qc.invalidateQueries({ queryKey: ['product-categories'] });
+      toast.success(`"${c.name}" kategorisi eklendi`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUpdateProductCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ProductCategoryFormData }) =>
+      productCategoryService.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['product-categories'] });
+      toast.success('Kategori güncellendi');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDeleteProductCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => productCategoryService.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['product-categories'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Kategori silindi');
     },
     onError: (err: Error) => toast.error(err.message),
   });

@@ -1,86 +1,143 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { productSchema, type ProductFormData, type ProductCategoryFormData } from '@/types/forms';
+import type { Product, ProductCategory } from '@/types/database';
 import {
-  supplierSchema, type SupplierFormData,
-  productSchema, type ProductFormData,
-  serviceProviderSchema, type ServiceProviderFormData,
-} from '@/types/forms';
-import type { Supplier, Product, ServiceProvider } from '@/types/database';
-import type { ServiceProviderType } from '@/types/enums';
-import { SERVICE_PROVIDER_TYPE_LABELS } from '@/types/enums';
-import {
-  useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier,
   useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct,
-  useServiceProviders, useCreateServiceProvider, useUpdateServiceProvider, useDeleteServiceProvider,
+  useProductCategories, useCreateProductCategory, useUpdateProductCategory, useDeleteProductCategory,
 } from '@/hooks/useEntities';
-import { useInvoices, useDeleteInvoice } from '@/hooks/useDocuments';
-import { usePackingLists, useDeletePackingList } from '@/hooks/useDocuments';
-import { useProformas, useDeleteProforma } from '@/hooks/useProformas';
 import { useAuth } from '@/hooks/useAuth';
-import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { canWrite, isAdmin } from '@/lib/permissions';
-import { fDate, fCurrency, fN } from '@/lib/formatters';
-import { printInvoice, printPackingList, printProforma } from '@/lib/printDocument';
-import { InvoiceModal } from '@/components/documents/InvoiceModal';
-import { PackingListModal } from '@/components/documents/PackingListModal';
-import { ProformaModal } from '@/components/documents/ProformaModal';
-import type { Invoice, PackingList, Proforma, TradeFile } from '@/types/database';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Card, PageHeader, LoadingSpinner, EmptyState, FormRow, FormGroup } from '@/components/ui/shared';
+import { LoadingSpinner, FormRow, FormGroup } from '@/components/ui/shared';
+import { AIFormFill } from '@/components/ui/AIFormFill';
+import { Search, Pencil, Trash2, Plus, Tag, Check } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
-export { CustomersPage } from './CustomersPage';
+const CATEGORY_COLORS = [
+  '#6b7280', '#3b82f6', '#0ea5e9', '#8b5cf6',
+  '#10b981', '#f59e0b', '#ef4444', '#ec4899',
+];
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SUPPLIERS PAGE
-// ═══════════════════════════════════════════════════════════════════════════
-export function SuppliersPage() {
-  const { profile } = useAuth();
-  const writable = canWrite(profile?.role);
-  const adminRole = isAdmin(profile?.role);
-  const { data: suppliers = [], isLoading } = useSuppliers();
-  const createS = useCreateSupplier(); const updateS = useUpdateSupplier(); const deleteS = useDeleteSupplier();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Supplier | null>(null);
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<SupplierFormData>({
-    resolver: zodResolver(supplierSchema),
-    defaultValues: { name: '', country: '', city: '', contact_name: '', phone: '', email: '', notes: '' },
-  });
-  function openNew() { setEditing(null); reset({ name: '', country: '', city: '', contact_name: '', phone: '', email: '', notes: '' }); setModalOpen(true); }
-  function openEdit(s: Supplier) { setEditing(s); reset({ name: s.name, country: s.country, city: s.city, contact_name: s.contact_name, phone: s.phone, email: s.email, notes: s.notes }); setModalOpen(true); }
-  async function onSubmit(data: SupplierFormData) { editing ? await updateS.mutateAsync({ id: editing.id, data }) : await createS.mutateAsync(data); setModalOpen(false); }
-  if (isLoading) return <LoadingSpinner />;
+// ─── Category Badge ────────────────────────────────────────────────────────────
+function CategoryBadge({ category, size = 'sm' }: { category: ProductCategory; size?: 'sm' | 'xs' }) {
+  const cls = size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-1.5 py-0.5 text-[10px]';
   return (
-    <>
-      <PageHeader title="Suppliers">{writable && <Button onClick={openNew}>+ Add</Button>}</PageHeader>
-      <Card><div className="overflow-x-auto"><table className="w-full"><thead><tr>
-        {['ID','Name','Country','City','Contact','Actions'].map(h=><th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>)}
-      </tr></thead><tbody>
-        {suppliers.length===0?<tr><td colSpan={6}><EmptyState message="No suppliers yet"/></td></tr>:
-        suppliers.map(s=><tr key={s.id} className="hover:bg-gray-50/50">
-          <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{s.code}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{s.name}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{s.country}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{s.city}</td>
-          <td className="px-2.5 py-2 text-xs text-muted-foreground border-b border-border">{s.email||s.phone||'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border"><div className="flex gap-1">
-            {writable&&<Button variant="edit" size="xs" onClick={()=>openEdit(s)}>Edit</Button>}
-            {adminRole&&<Button variant="destructive" size="xs" onClick={()=>{if(window.confirm('Remove?'))deleteS.mutate(s.id)}}>Del</Button>}
-          </div></td></tr>)}
-      </tbody></table></div></Card>
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}><DialogContent>
-        <DialogHeader><DialogTitle>{editing?'Edit Supplier':'Add Supplier'}</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <FormRow><FormGroup label="Name *" error={errors.name?.message}><Input {...register('name')}/></FormGroup><FormGroup label="Country"><Input {...register('country')}/></FormGroup></FormRow>
-          <FormRow><FormGroup label="City"><Input {...register('city')}/></FormGroup><FormGroup label="Contact"><Input {...register('contact_name')}/></FormGroup></FormRow>
-          <FormRow><FormGroup label="Phone"><Input {...register('phone')}/></FormGroup><FormGroup label="Email" error={errors.email?.message}><Input type="email" {...register('email')}/></FormGroup></FormRow>
-          <FormGroup label="Notes" className="mb-2.5"><Textarea rows={2} {...register('notes')}/></FormGroup>
-          <DialogFooter><Button type="button" variant="outline" onClick={()=>setModalOpen(false)}>Cancel</Button><Button type="submit" disabled={createS.isPending||updateS.isPending}>Save</Button></DialogFooter>
-        </form></DialogContent></Dialog>
-    </>);
+    <span className={`inline-flex items-center gap-1 rounded-full font-semibold ${cls}`}
+      style={{ background: category.color + '20', color: category.color }}>
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: category.color }} />
+      {category.name}
+    </span>
+  );
+}
+
+// ─── Manage Categories Modal ────────────────────────────────────────────────────
+function ManageCategoriesModal({ open, onOpenChange, accent }: {
+  open: boolean; onOpenChange: (v: boolean) => void; accent: string;
+}) {
+  const { data: categories = [] } = useProductCategories();
+  const createCat = useCreateProductCategory();
+  const updateCat = useUpdateProductCategory();
+  const deleteCat = useDeleteProductCategory();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState(CATEGORY_COLORS[1]);
+
+  async function handleAdd() {
+    if (!newName.trim()) return;
+    await createCat.mutateAsync({ name: newName.trim(), color: newColor });
+    setNewName('');
+    setNewColor(CATEGORY_COLORS[1]);
+  }
+
+  async function handleUpdate(cat: ProductCategory, field: Partial<ProductCategoryFormData>) {
+    await updateCat.mutateAsync({ id: cat.id, data: { name: cat.name, color: cat.color, ...field } });
+    setEditingId(null);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Kategorileri Yönet</DialogTitle></DialogHeader>
+
+        {/* Existing categories */}
+        <div className="space-y-1.5 max-h-60 overflow-y-auto">
+          {categories.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-4">Henüz kategori yok</p>
+          )}
+          {categories.map(cat => (
+            <div key={cat.id} className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-50">
+              {/* Color dot / picker */}
+              <div className="relative group">
+                <span className="w-5 h-5 rounded-full block cursor-pointer border-2 border-white shadow"
+                  style={{ background: cat.color }} />
+              </div>
+              {editingId === cat.id ? (
+                <input
+                  autoFocus
+                  defaultValue={cat.name}
+                  onBlur={e => handleUpdate(cat, { name: e.target.value })}
+                  onKeyDown={e => { if (e.key === 'Enter') handleUpdate(cat, { name: (e.target as HTMLInputElement).value }); if (e.key === 'Escape') setEditingId(null); }}
+                  className="flex-1 text-sm border-b border-blue-400 outline-none bg-transparent"
+                />
+              ) : (
+                <span className="flex-1 text-sm font-medium text-gray-800 cursor-pointer" onClick={() => setEditingId(cat.id)}>
+                  {cat.name}
+                </span>
+              )}
+              {/* Color picker row */}
+              <div className="flex gap-1">
+                {CATEGORY_COLORS.slice(0, 4).map(c => (
+                  <button key={c} onClick={() => handleUpdate(cat, { color: c })}
+                    className="w-4 h-4 rounded-full border-2 transition-all"
+                    style={{ background: c, borderColor: cat.color === c ? '#1f2937' : 'transparent' }} />
+                ))}
+              </div>
+              <button onClick={() => { if (window.confirm(`"${cat.name}" silinsin mi? Ürünlerin kategorisi kaldırılır.`)) deleteCat.mutate(cat.id); }}
+                className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Add new */}
+        <div className="border-t border-gray-100 pt-3 mt-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Yeni Kategori</p>
+          <div className="flex gap-2 items-center">
+            <input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+              placeholder="Kategori adı…"
+              className="flex-1 h-8 px-2.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-blue-400 transition"
+            />
+            <div className="flex gap-1">
+              {CATEGORY_COLORS.map(c => (
+                <button key={c} onClick={() => setNewColor(c)}
+                  className="w-5 h-5 rounded-full border-2 transition-all"
+                  style={{ background: c, borderColor: newColor === c ? '#1f2937' : 'transparent' }} />
+              ))}
+            </div>
+            <button onClick={handleAdd} disabled={!newName.trim() || createCat.isPending}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 disabled:opacity-40"
+              style={{ background: accent }}>
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <button onClick={() => onOpenChange(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+            Kapat
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,233 +145,259 @@ export function SuppliersPage() {
 // ═══════════════════════════════════════════════════════════════════════════
 export function ProductsPage() {
   const { profile } = useAuth();
-  const writable = canWrite(profile?.role); const adminRole = isAdmin(profile?.role);
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const writable = canWrite(profile?.role);
+  const adminRole = isAdmin(profile?.role);
   const { data: products = [], isLoading } = useProducts();
-  const createP = useCreateProduct(); const updateP = useUpdateProduct(); const deleteP = useDeleteProduct();
+  const { data: categories = [] } = useProductCategories();
+  const createP = useCreateProduct();
+  const updateP = useUpdateProduct();
+  const deleteP = useDeleteProduct();
   const [modalOpen, setModalOpen] = useState(false);
+  const [catModalOpen, setCatModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema), defaultValues: { name: '', hs_code: '', unit: 'ADMT' },
-  });
-  function openNew() { setEditing(null); reset({ name: '', hs_code: '', unit: 'ADMT' }); setModalOpen(true); }
-  function openEdit(p: Product) { setEditing(p); reset({ name: p.name, hs_code: p.hs_code, unit: p.unit }); setModalOpen(true); }
-  async function onSubmit(data: ProductFormData) { editing ? await updateP.mutateAsync({ id: editing.id, data }) : await createP.mutateAsync(data); setModalOpen(false); }
-  if (isLoading) return <LoadingSpinner />;
-  return (
-    <>
-      <PageHeader title="Products">{writable && <Button onClick={openNew}>+ Add</Button>}</PageHeader>
-      <Card><div className="overflow-x-auto"><table className="w-full"><thead><tr>
-        {['ID','Name','HS Code','Unit','Actions'].map(h=><th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>)}
-      </tr></thead><tbody>
-        {products.length===0?<tr><td colSpan={5}><EmptyState message="No products yet"/></td></tr>:
-        products.map(p=><tr key={p.id} className="hover:bg-gray-50/50">
-          <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{p.code}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{p.name}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{p.hs_code||'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{p.unit}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border"><div className="flex gap-1">
-            {writable&&<Button variant="edit" size="xs" onClick={()=>openEdit(p)}>Edit</Button>}
-            {adminRole&&<Button variant="destructive" size="xs" onClick={()=>{if(window.confirm('Remove?'))deleteP.mutate(p.id)}}>Del</Button>}
-          </div></td></tr>)}
-      </tbody></table></div></Card>
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}><DialogContent>
-        <DialogHeader><DialogTitle>{editing?'Edit Product':'Add Product'}</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <FormRow><FormGroup label="Name *" error={errors.name?.message}><Input {...register('name')}/></FormGroup><FormGroup label="HS Code"><Input {...register('hs_code')}/></FormGroup></FormRow>
-          <FormGroup label="Unit" className="mb-2.5"><NativeSelect {...register('unit')}><option value="ADMT">ADMT</option><option value="MT">MT</option><option value="KG">KG</option></NativeSelect></FormGroup>
-          <DialogFooter><Button type="button" variant="outline" onClick={()=>setModalOpen(false)}>Cancel</Button><Button type="submit" disabled={createP.isPending||updateP.isPending}>Save</Button></DialogFooter>
-        </form></DialogContent></Dialog>
-    </>);
-}
+  const [search, setSearch] = useState('');
+  const [filterCatId, setFilterCatId] = useState<string | null>(null);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SERVICE PROVIDERS PAGE
-// ═══════════════════════════════════════════════════════════════════════════
-export function ServiceProvidersPage() {
-  const { profile } = useAuth();
-  const writable = canWrite(profile?.role); const adminRole = isAdmin(profile?.role);
-  const [typeFilter, setTypeFilter] = useState<ServiceProviderType|undefined>(undefined);
-  const { data: providers = [], isLoading } = useServiceProviders(typeFilter);
-  const createSP = useCreateServiceProvider(); const updateSP = useUpdateServiceProvider(); const deleteSP = useDeleteServiceProvider();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<ServiceProvider | null>(null);
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<ServiceProviderFormData>({
-    resolver: zodResolver(serviceProviderSchema),
-    defaultValues: { name: '', service_type: 'other', country: '', city: '', contact_name: '', phone: '', email: '', notes: '' },
+  const EMPTY: ProductFormData = {
+    name: '', hs_code: '', unit: 'ADMT',
+    description: '', origin_country: '', species: '', grade: '',
+    category_id: null,
+  };
+
+  const form = useForm<ProductFormData>({ resolver: zodResolver(productSchema), defaultValues: EMPTY });
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = form;
+  const selectedCatId = watch('category_id');
+
+  const filtered = products.filter(p => {
+    const matchSearch = !search.trim() || (
+      p.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.code?.toLowerCase().includes(search.toLowerCase()) ||
+      p.species?.toLowerCase().includes(search.toLowerCase())
+    );
+    const matchCat = !filterCatId || p.category_id === filterCatId;
+    return matchSearch && matchCat;
   });
-  function openNew() { setEditing(null); reset({ name: '', service_type: 'other', country: '', city: '', contact_name: '', phone: '', email: '', notes: '' }); setModalOpen(true); }
-  function openEdit(sp: ServiceProvider) { setEditing(sp); reset({ name: sp.name, service_type: sp.service_type, country: sp.country, city: sp.city, contact_name: sp.contact_name, phone: sp.phone, email: sp.email, notes: sp.notes }); setModalOpen(true); }
-  async function onSubmit(data: ServiceProviderFormData) { editing ? await updateSP.mutateAsync({ id: editing.id, data }) : await createSP.mutateAsync(data); setModalOpen(false); }
+
+  function openNew() { setEditing(null); reset(EMPTY); setModalOpen(true); }
+  function openEdit(p: Product) {
+    setEditing(p);
+    reset({
+      name: p.name, hs_code: p.hs_code, unit: p.unit,
+      description: p.description ?? '',
+      origin_country: p.origin_country ?? '',
+      species: p.species ?? '',
+      grade: p.grade ?? '',
+      category_id: p.category_id ?? null,
+    });
+    setModalOpen(true);
+  }
+  async function onSubmit(data: ProductFormData) {
+    if (editing) await updateP.mutateAsync({ id: editing.id, data });
+    else await createP.mutateAsync(data);
+    setModalOpen(false);
+  }
+
   if (isLoading) return <LoadingSpinner />;
-  const typeOpts = Object.entries(SERVICE_PROVIDER_TYPE_LABELS) as [ServiceProviderType,string][];
+
   return (
-    <>
-      <PageHeader title="Service Providers">{writable && <Button onClick={openNew}>+ Add</Button>}</PageHeader>
-      <div className="flex gap-1.5 mb-3 flex-wrap">
-        <Button variant={!typeFilter?'default':'outline'} size="sm" onClick={()=>setTypeFilter(undefined)}>All</Button>
-        {typeOpts.map(([k,l])=><Button key={k} variant={typeFilter===k?'default':'outline'} size="sm" onClick={()=>setTypeFilter(typeFilter===k?undefined:k)}>{l}</Button>)}
+    <div className="-mx-4 md:mx-0">
+      <div className="px-4 md:px-0">
+
+        {/* Toolbar — search + categories + buttons all on one row */}
+        <div className="flex items-center gap-2 mb-4">
+          {/* Search — fixed small width */}
+          <div className="relative w-36 md:w-48 shrink-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+              className="w-full pl-7 pr-2 h-8 rounded-xl border border-gray-200 bg-white text-[12px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 transition" />
+          </div>
+
+          {/* Category filter pills */}
+          {categories.length > 0 && (
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl flex-1 overflow-x-auto scrollbar-none min-w-0">
+              <button
+                onClick={() => setFilterCatId(null)}
+                className={`shrink-0 px-3 h-6 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                  !filterCatId ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                All
+              </button>
+              {categories.map(cat => (
+                <button key={cat.id}
+                  onClick={() => setFilterCatId(filterCatId === cat.id ? null : cat.id)}
+                  className={`shrink-0 px-3 h-6 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                    filterCatId === cat.id ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  style={filterCatId === cat.id ? { color: cat.color } : {}}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Icon buttons */}
+          <button onClick={() => setCatModalOpen(true)} title="Manage categories"
+            className="w-8 h-8 rounded-xl flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors shrink-0">
+            <Tag className="h-3.5 w-3.5" />
+          </button>
+          {writable && (
+            <button onClick={openNew} className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ background: accent }}>
+              <Plus className="h-3.5 w-3.5 text-white" />
+            </button>
+          )}
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-2">
+          {filtered.length === 0 ? (
+            <div className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No products yet'}</div>
+          ) : filtered.map(p => (
+            <div key={p.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
+                style={{ background: (p.category as ProductCategory)?.color ? (p.category as ProductCategory).color + '18' : accent + '18', color: (p.category as ProductCategory)?.color ?? accent }}>
+                {p.code?.slice(0, 2)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-sm font-bold text-gray-900 truncate">{p.name}</span>
+                  <span className="text-[10px] font-semibold text-gray-400">{p.unit}</span>
+                  {p.category && <CategoryBadge category={p.category as ProductCategory} size="xs" />}
+                </div>
+                {p.species && <div className="text-xs text-gray-500 truncate">{p.species}{p.grade ? ` · ${p.grade}` : ''}</div>}
+                {(p.hs_code || p.origin_country) && (
+                  <div className="text-xs text-gray-400 truncate">
+                    {[p.hs_code && `HS: ${p.hs_code}`, p.origin_country].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {writable && <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Pencil className="h-3.5 w-3.5" /></button>}
+                {adminRole && <button onClick={() => { if (window.confirm('Remove?')) deleteP.mutate(p.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '7%' }} /><col style={{ width: '22%' }} /><col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} /><col style={{ width: '12%' }} /><col style={{ width: '16%' }} /><col style={{ width: '11%' }} /><col style={{ width: '8%' }} />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Code', 'Name', 'Category', 'Unit', 'HS Code', 'Origin / Species', 'Grade', 'Actions'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={8} className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No products yet'}</td></tr>
+              ) : filtered.map(p => (
+                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                  <td className="px-4 py-3 text-xs font-bold text-gray-400">{p.code}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-900 truncate">{p.name}</td>
+                  <td className="px-4 py-3">
+                    {p.category
+                      ? <CategoryBadge category={p.category as ProductCategory} />
+                      : <span className="text-xs text-gray-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{p.unit}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{p.hs_code || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500 truncate">{[p.origin_country, p.species].filter(Boolean).join(' / ') || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{p.grade || '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1 flex-nowrap">
+                      {writable && <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Pencil className="h-3.5 w-3.5" /></button>}
+                      {adminRole && <button onClick={() => { if (window.confirm('Remove?')) deleteP.mutate(p.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Product Modal */}
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader><DialogTitle>{editing ? 'Edit Product' : 'New Product'}</DialogTitle></DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <AIFormFill
+                formType="new_product"
+                onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ProductFormData>) })}
+                placeholder='Örn: "NBSK Kağıt Hamuru, Kanada menşeli, HS kodu 470321, ADMT birim"'
+              />
+              <FormRow>
+                <FormGroup label="Product Name *" error={errors.name?.message}>
+                  <Input {...register('name')} />
+                </FormGroup>
+                <FormGroup label="Unit">
+                  <NativeSelect {...register('unit')}>
+                    <option value="ADMT">ADMT</option>
+                    <option value="MT">MT</option>
+                    <option value="KG">KG</option>
+                  </NativeSelect>
+                </FormGroup>
+              </FormRow>
+
+              {/* Category selector */}
+              <FormGroup label="Category" className="mb-2.5">
+                <div className="flex gap-1.5 flex-wrap">
+                  <button type="button"
+                    onClick={() => setValue('category_id', null)}
+                    className="px-3 h-7 rounded-full text-[11px] font-semibold border transition-all"
+                    style={!selectedCatId ? { borderColor: accent, background: accent + '18', color: accent } : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
+                    —
+                  </button>
+                  {categories.map(cat => (
+                    <button key={cat.id} type="button"
+                      onClick={() => setValue('category_id', cat.id)}
+                      className="px-3 h-7 rounded-full text-[11px] font-semibold border transition-all flex items-center gap-1"
+                      style={selectedCatId === cat.id
+                        ? { borderColor: cat.color, background: cat.color + '20', color: cat.color }
+                        : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
+                      {selectedCatId === cat.id && <Check className="h-3 w-3" />}
+                      {cat.name}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => { setModalOpen(false); setCatModalOpen(true); }}
+                    className="px-3 h-7 rounded-full text-[11px] font-semibold border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 transition-all flex items-center gap-1">
+                    <Plus className="h-3 w-3" /> Yeni
+                  </button>
+                </div>
+              </FormGroup>
+
+              <FormRow>
+                <FormGroup label="HS Code"><Input {...register('hs_code')} placeholder="e.g. 470321" /></FormGroup>
+                <FormGroup label="Origin Country"><Input {...register('origin_country')} placeholder="e.g. Canada" /></FormGroup>
+              </FormRow>
+              <FormRow>
+                <FormGroup label="Species / Pulp Type"><Input {...register('species')} placeholder="e.g. NBSK, BHKP" /></FormGroup>
+                <FormGroup label="Grade"><Input {...register('grade')} placeholder="e.g. Standard" /></FormGroup>
+              </FormRow>
+              <FormGroup label="Description" className="mb-2.5">
+                <Textarea rows={2} {...register('description')} placeholder="Technical specs, certifications…" />
+              </FormGroup>
+              <DialogFooter>
+                <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={createP.isPending || updateP.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>Save</button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Manage Categories Modal */}
+        <ManageCategoriesModal open={catModalOpen} onOpenChange={setCatModalOpen} accent={accent} />
       </div>
-      <Card><div className="overflow-x-auto"><table className="w-full"><thead><tr>
-        {['Name','Type','Contact','Phone/Email','City','Actions'].map(h=><th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>)}
-      </tr></thead><tbody>
-        {providers.length===0?<tr><td colSpan={6}><EmptyState message="No service providers yet"/></td></tr>:
-        providers.map(sp=><tr key={sp.id} className="hover:bg-gray-50/50">
-          <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{sp.name}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{SERVICE_PROVIDER_TYPE_LABELS[sp.service_type]??sp.service_type}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{sp.contact_name||'—'}</td>
-          <td className="px-2.5 py-2 text-xs text-muted-foreground border-b border-border">{sp.email||sp.phone||'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{sp.city||'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border"><div className="flex gap-1">
-            {writable&&<Button variant="edit" size="xs" onClick={()=>openEdit(sp)}>Edit</Button>}
-            {adminRole&&<Button variant="destructive" size="xs" onClick={()=>{if(window.confirm('Remove?'))deleteSP.mutate(sp.id)}}>Del</Button>}
-          </div></td></tr>)}
-      </tbody></table></div></Card>
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}><DialogContent>
-        <DialogHeader><DialogTitle>{editing?'Edit Service Provider':'Add Service Provider'}</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <FormRow><FormGroup label="Name *" error={errors.name?.message}><Input {...register('name')}/></FormGroup>
-          <FormGroup label="Type *"><NativeSelect {...register('service_type')}>{typeOpts.map(([k,l])=><option key={k} value={k}>{l}</option>)}</NativeSelect></FormGroup></FormRow>
-          <FormRow><FormGroup label="Contact"><Input {...register('contact_name')}/></FormGroup><FormGroup label="Phone"><Input {...register('phone')}/></FormGroup></FormRow>
-          <FormRow><FormGroup label="Email" error={errors.email?.message}><Input type="email" {...register('email')}/></FormGroup>
-          <FormGroup label="Country / City"><div className="flex gap-2"><Input {...register('country')} placeholder="Country"/><Input {...register('city')} placeholder="City"/></div></FormGroup></FormRow>
-          <FormGroup label="Notes" className="mb-2.5"><Textarea rows={2} {...register('notes')}/></FormGroup>
-          <DialogFooter><Button type="button" variant="outline" onClick={()=>setModalOpen(false)}>Cancel</Button><Button type="submit" disabled={createSP.isPending||updateSP.isPending}>Save</Button></DialogFooter>
-        </form></DialogContent></Dialog>
-    </>);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// INVOICES LIST PAGE (#2 - documents section)
-// ═══════════════════════════════════════════════════════════════════════════
-export function InvoicesPage() {
-  const { profile } = useAuth();
-  const { data: settings } = useSettings();
-  const { data: bankAccounts } = useBankAccounts();
-  const adminRole = isAdmin(profile?.role);
-  const writable = canWrite(profile?.role);
-  const { data: invoices = [], isLoading } = useInvoices();
-  const deleteInv = useDeleteInvoice();
-  const [editInv, setEditInv] = useState<Invoice | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  function openEdit(inv: Invoice) { setEditInv(inv); setEditOpen(true); }
-  function handlePrint(inv: Invoice) {
-    if (!settings) return;
-    const bank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
-    printInvoice(inv, settings, bank);
-  }
-  if (isLoading) return <LoadingSpinner />;
-  return (
-    <>
-      <PageHeader title="Commercial Invoices" />
-      <Card><div className="overflow-x-auto"><table className="w-full"><thead><tr>
-        {['Invoice No','File No','Customer','ADMT','Unit Price','Total','Date','Actions'].map(h=>
-          <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>)}
-      </tr></thead><tbody>
-        {invoices.length===0?<tr><td colSpan={8}><EmptyState message="No invoices yet"/></td></tr>:
-        invoices.map(inv=><tr key={inv.id} className="hover:bg-gray-50/50">
-          <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{inv.invoice_no}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{(inv.trade_file as any)?.file_no??'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{(inv.customer as any)?.name??'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fN(inv.quantity_admt,3)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fCurrency(inv.unit_price)}</td>
-          <td className="px-2.5 py-2 text-xs font-bold text-brand-500 border-b border-border">{fCurrency(inv.total)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fDate(inv.invoice_date)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border"><div className="flex gap-1">
-            {writable&&<Button variant="edit" size="xs" onClick={()=>openEdit(inv)}>Edit</Button>}
-            <Button variant="outline" size="xs" onClick={()=>handlePrint(inv)}>🖨 Print</Button>
-            {adminRole&&<Button variant="destructive" size="xs" onClick={()=>{if(window.confirm('Delete invoice?'))deleteInv.mutate(inv.id)}}>Del</Button>}
-          </div></td></tr>)}
-      </tbody></table></div></Card>
-      <InvoiceModal open={editOpen} onOpenChange={setEditOpen} file={editInv?.trade_file as TradeFile ?? null} invoice={editInv} />
-    </>);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PACKING LISTS PAGE (#2)
-// ═══════════════════════════════════════════════════════════════════════════
-export function PackingListsPage() {
-  const { profile } = useAuth();
-  const { data: settings } = useSettings();
-  const adminRole = isAdmin(profile?.role);
-  const writable = canWrite(profile?.role);
-  const { data: pls = [], isLoading } = usePackingLists();
-  const deletePL = useDeletePackingList();
-  const [editPL, setEditPL] = useState<PackingList | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  function openEdit(pl: PackingList) { setEditPL(pl); setEditOpen(true); }
-  function handlePrint(pl: PackingList) {
-    if (!settings) return;
-    printPackingList(pl, settings);
-  }
-  if (isLoading) return <LoadingSpinner />;
-  return (
-    <>
-      <PageHeader title="Packing Lists" />
-      <Card><div className="overflow-x-auto"><table className="w-full"><thead><tr>
-        {['PL No','File No','Customer','Vehicles','ADMT','Gross Weight','Actions'].map(h=>
-          <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>)}
-      </tr></thead><tbody>
-        {pls.length===0?<tr><td colSpan={7}><EmptyState message="No packing lists yet"/></td></tr>:
-        pls.map(pl=><tr key={pl.id} className="hover:bg-gray-50/50">
-          <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{pl.packing_list_no}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{(pl.trade_file as any)?.file_no??'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{(pl.customer as any)?.name??'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{pl.packing_list_items?.length??0}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fN(pl.total_admt,3)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fN(pl.total_gross_kg,0)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border"><div className="flex gap-1">
-            {writable&&<Button variant="edit" size="xs" onClick={()=>openEdit(pl)}>Edit</Button>}
-            <Button variant="outline" size="xs" onClick={()=>handlePrint(pl)}>🖨 Print</Button>
-            {adminRole&&<Button variant="destructive" size="xs" onClick={()=>{if(window.confirm('Delete?'))deletePL.mutate(pl.id)}}>Del</Button>}
-          </div></td></tr>)}
-      </tbody></table></div></Card>
-      <PackingListModal open={editOpen} onOpenChange={setEditOpen} file={editPL?.trade_file as TradeFile ?? null} packingList={editPL} />
-    </>);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PROFORMAS PAGE (#2 - new section under Documents)
-// ═══════════════════════════════════════════════════════════════════════════
-export function ProformasPage() {
-  const { profile } = useAuth();
-  const { data: settings } = useSettings();
-  const { data: bankAccounts } = useBankAccounts();
-  const adminRole = isAdmin(profile?.role);
-  const writable = canWrite(profile?.role);
-  const { data: proformas = [], isLoading } = useProformas();
-  const deletePI = useDeleteProforma();
-  const [editPI, setEditPI] = useState<Proforma | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  function openEdit(pi: Proforma) { setEditPI(pi); setEditOpen(true); }
-  function handlePrint(pi: Proforma) {
-    if (!settings) return;
-    const bank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
-    printProforma(pi, settings, bank, pi.trade_file as TradeFile ?? null);
-  }
-  if (isLoading) return <LoadingSpinner />;
-  return (
-    <>
-      <PageHeader title="Proforma Invoices" />
-      <Card><div className="overflow-x-auto"><table className="w-full"><thead><tr>
-        {['PI No','File No','Date','Quantity','Unit Price','Total','Actions'].map(h=>
-          <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">{h}</th>)}
-      </tr></thead><tbody>
-        {proformas.length===0?<tr><td colSpan={7}><EmptyState message="No proformas yet"/></td></tr>:
-        proformas.map(pi=><tr key={pi.id} className="hover:bg-gray-50/50">
-          <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{pi.proforma_no}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{(pi.trade_file as any)?.file_no??'—'}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fDate(pi.proforma_date)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fN(pi.quantity_admt,3)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border">{fCurrency(pi.unit_price)}</td>
-          <td className="px-2.5 py-2 text-xs font-bold text-brand-500 border-b border-border">{fCurrency(pi.total)}</td>
-          <td className="px-2.5 py-2 text-xs border-b border-border"><div className="flex gap-1">
-            {writable&&<Button variant="edit" size="xs" onClick={()=>openEdit(pi)}>Edit</Button>}
-            <Button variant="outline" size="xs" onClick={()=>handlePrint(pi)}>🖨 Print</Button>
-            {adminRole&&<Button variant="destructive" size="xs" onClick={()=>{if(window.confirm('Delete proforma?'))deletePI.mutate(pi.id)}}>Del</Button>}
-          </div></td></tr>)}
-      </tbody></table></div></Card>
-      <ProformaModal open={editOpen} onOpenChange={setEditOpen} file={editPI?.trade_file as TradeFile ?? null} proforma={editPI} />
-    </>);
+    </div>
+  );
 }
 
 export { ReportsPage } from './ReportsPage';

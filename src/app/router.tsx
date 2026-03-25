@@ -7,13 +7,11 @@ import { PipelinePage } from '@/pages/PipelinePage';
 import { TradeFilesPage } from '@/pages/TradeFilesPage';
 import { TradeFileDetailPage } from '@/pages/TradeFileDetailPage';
 import { AccountingPage } from '@/pages/AccountingPage';
-import { CustomersPage } from '@/pages/CustomersPage';
+import { ContactsPage } from '@/pages/ContactsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { ActivityPage } from '@/pages/ActivityPage';
 import {
-  SuppliersPage,
-  ServiceProvidersPage,
   ProductsPage,
   ReportsPage,
 } from '@/pages/StubPages';
@@ -40,9 +38,7 @@ export const router = createBrowserRouter([
       { path: 'documents', element: <DocumentsPage /> },
       { path: 'accounting', element: <AccountingPage /> },
       { path: 'reports', element: <ReportsPage /> },
-      { path: 'customers', element: <CustomersPage /> },
-      { path: 'suppliers', element: <SuppliersPage /> },
-      { path: 'service-providers', element: <ServiceProvidersPage /> },
+      { path: 'contacts', element: <ContactsPage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'profile', element: <ProfilePage /> },
       {

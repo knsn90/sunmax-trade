@@ -11,7 +11,6 @@ import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
 import { LoadingSpinner } from '@/components/ui/shared';
-import { cn } from '@/lib/utils';
 import { Search, Printer, Pencil, Trash2, Receipt, FileText, Package } from 'lucide-react';
 import type { Invoice, PackingList, Proforma, TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -54,7 +53,7 @@ function EmptyDocs({ message }: { message: string }) {
 }
 
 // ─── Invoices Tab ─────────────────────────────────────────────────────────────
-function InvoicesTab({ accent }: { accent: string }) {
+function InvoicesTab({ accent, search }: { accent: string; search: string }) {
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -64,7 +63,6 @@ function InvoicesTab({ accent }: { accent: string }) {
   const deleteInv = useDeleteInvoice();
   const [editInv, setEditInv] = useState<Invoice | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
     if (!search.trim()) return invoices;
@@ -87,17 +85,6 @@ function InvoicesTab({ accent }: { accent: string }) {
 
   return (
     <>
-      {/* Search */}
-      <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 mb-4 max-w-xs">
-        <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-        <input
-          className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-          placeholder="Search invoices..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
       {/* Mobile cards */}
       <div className="md:hidden mx-0 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
         {filtered.length === 0 ? <EmptyDocs message="No invoices found" /> : filtered.map(inv => (
@@ -181,7 +168,7 @@ function InvoicesTab({ accent }: { accent: string }) {
 }
 
 // ─── Proformas Tab ────────────────────────────────────────────────────────────
-function ProformasTab({ accent }: { accent: string }) {
+function ProformasTab({ accent, search }: { accent: string; search: string }) {
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -191,7 +178,6 @@ function ProformasTab({ accent }: { accent: string }) {
   const deletePI = useDeleteProforma();
   const [editPI, setEditPI] = useState<Proforma | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
     if (!search.trim()) return proformas;
@@ -213,16 +199,6 @@ function ProformasTab({ accent }: { accent: string }) {
 
   return (
     <>
-      <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 mb-4 max-w-xs">
-        <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-        <input
-          className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-          placeholder="Search proformas..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
       {/* Mobile */}
       <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
         {filtered.length === 0 ? <EmptyDocs message="No proformas found" /> : filtered.map(pi => (
@@ -305,7 +281,7 @@ function ProformasTab({ accent }: { accent: string }) {
 }
 
 // ─── Packing Lists Tab ────────────────────────────────────────────────────────
-function PackingListsTab({ accent: _accent }: { accent: string }) {
+function PackingListsTab({ accent: _accent, search }: { accent: string; search: string }) {
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const adminRole = isAdmin(profile?.role);
@@ -314,7 +290,6 @@ function PackingListsTab({ accent: _accent }: { accent: string }) {
   const deletePL = useDeletePackingList();
   const [editPL, setEditPL] = useState<PackingList | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
     if (!search.trim()) return pls;
@@ -336,16 +311,6 @@ function PackingListsTab({ accent: _accent }: { accent: string }) {
 
   return (
     <>
-      <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 mb-4 max-w-xs">
-        <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-        <input
-          className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-          placeholder="Search packing lists..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
       {/* Mobile */}
       <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
         {filtered.length === 0 ? <EmptyDocs message="No packing lists found" /> : filtered.map(pl => (
@@ -430,39 +395,52 @@ function PackingListsTab({ accent: _accent }: { accent: string }) {
 // ─── Documents Page ───────────────────────────────────────────────────────────
 export function DocumentsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('invoices');
+  const [search, setSearch] = useState('');
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
+  function handleTabChange(key: Tab) { setActiveTab(key); setSearch(''); }
+
+  const placeholder = activeTab === 'invoices' ? 'Search invoices...' : activeTab === 'proformas' ? 'Search proformas...' : 'Search packing lists...';
+
   return (
     <div>
-      {/* Tab bar — pill style matching app design */}
-      <div className="flex gap-1.5 mb-4 overflow-x-auto scrollbar-none">
-        {TABS.map(t => {
-          const Icon = t.icon;
-          const isActive = activeTab === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={cn(
-                'shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-full text-[12px] font-bold transition-all',
-                isActive
-                  ? 'text-white shadow-sm'
-                  : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300',
-              )}
-              style={isActive ? { background: accent } : {}}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {t.label}
-            </button>
-          );
-        })}
+      {/* Header row: tabs + search */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none shrink-0">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const isActive = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => handleTabChange(t.key)}
+                className={`shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+                  isActive ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex-1" />
+        <div className="relative w-44 shrink-0">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+          <input
+            className="w-full h-8 pl-8 pr-3 rounded-xl border border-gray-200 bg-white text-[12px] outline-none placeholder:text-gray-400 focus:border-blue-300"
+            placeholder={placeholder}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Tab content */}
-      {activeTab === 'invoices'      && <InvoicesTab accent={accent} />}
-      {activeTab === 'proformas'     && <ProformasTab accent={accent} />}
-      {activeTab === 'packing-lists' && <PackingListsTab accent={accent} />}
+      {activeTab === 'invoices'      && <InvoicesTab accent={accent} search={search} />}
+      {activeTab === 'proformas'     && <ProformasTab accent={accent} search={search} />}
+      {activeTab === 'packing-lists' && <PackingListsTab accent={accent} search={search} />}
     </div>
   );
 }

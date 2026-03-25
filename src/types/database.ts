@@ -60,9 +60,13 @@ export interface Customer extends Timestamps {
   code: string;
   name: string;
   country: string;
+  city: string;
   address: string;
   contact_email: string;
   contact_phone: string;
+  tax_id: string;
+  website: string;
+  payment_terms: string;
   notes: string;
   is_active: boolean;
   created_by: string | null;
@@ -74,9 +78,15 @@ export interface Supplier extends Timestamps {
   name: string;
   country: string;
   city: string;
+  address: string;
   contact_name: string;
   phone: string;
   email: string;
+  tax_id: string;
+  website: string;
+  payment_terms: string;
+  swift_code: string;
+  iban: string;
   notes: string;
   is_active: boolean;
   created_by: string | null;
@@ -89,6 +99,7 @@ export interface ServiceProvider extends Timestamps {
   service_type: ServiceProviderType;
   country: string;
   city: string;
+  address: string;
   contact_name: string;
   phone: string;
   email: string;
@@ -97,12 +108,27 @@ export interface ServiceProvider extends Timestamps {
   created_by: string | null;
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Product extends Timestamps {
   id: string;
   code: string;
   name: string;
   hs_code: string;
   unit: string;
+  description: string;
+  origin_country: string;
+  species: string;
+  grade: string;
+  category_id: string | null;
+  category?: ProductCategory | null;
   is_active: boolean;
   created_by: string | null;
 }

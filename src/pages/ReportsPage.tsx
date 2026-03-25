@@ -1020,24 +1020,18 @@ function EtaReportTab() {
 
 export function ReportsPage() {
   const [activeTab, setActiveTab] = useState<RepTab>('sales');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   return (
     <>
-      {/* Tab bar — pill style */}
-      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
+      {/* Tab bar */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit mb-6 overflow-x-auto scrollbar-none">
         {TAB_LABELS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={cn(
-              'shrink-0 px-3.5 h-8 rounded-full text-[12px] font-bold transition-all whitespace-nowrap',
-              activeTab === key
-                ? 'text-white shadow-sm'
-                : 'bg-white text-gray-500 border border-gray-200'
-            )}
-            style={activeTab === key ? { background: accent } : {}}
+            className={`shrink-0 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+              activeTab === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
             {label}
           </button>

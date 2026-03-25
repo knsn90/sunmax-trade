@@ -109,17 +109,19 @@ export function PartyCombobox({
 
     if (newKind === 'customer') {
       const c = await createCustomer.mutateAsync({
-        name, country: '', address: '', contact_email: '', contact_phone: '', notes: '',
+        name, country: '', city: '', address: '', contact_email: '', contact_phone: '',
+        tax_id: '', website: '', payment_terms: '', notes: '',
       });
       created = { id: c.id, name: c.name, entityType: 'customer' };
     } else if (newKind === 'supplier') {
       const s = await createSupplier.mutateAsync({
-        name, country: '', city: '', contact_name: '', phone: '', email: '', notes: '',
+        name, country: '', city: '', address: '', contact_name: '', phone: '', email: '',
+        tax_id: '', website: '', payment_terms: '', swift_code: '', iban: '', notes: '',
       });
       created = { id: s.id, name: s.name, entityType: 'supplier' };
     } else {
       const sp = await createSP.mutateAsync({
-        name, service_type: 'other', country: '', city: '', contact_name: '', phone: '', email: '', notes: '',
+        name, service_type: 'other', country: '', city: '', address: '', contact_name: '', phone: '', email: '', notes: '',
       });
       created = { id: sp.id, name: sp.name, entityType: 'service_provider' };
     }

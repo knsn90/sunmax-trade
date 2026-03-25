@@ -3,23 +3,33 @@ import { z } from 'zod';
 // ─── Master Data Forms ──────────────────────────────────────────────────────
 
 export const customerSchema = z.object({
-  name: z.string().min(1, 'Customer name is required').max(200),
-  country: z.string().max(100).default(''),
-  address: z.string().max(500).default(''),
-  contact_email: z.string().email('Invalid email').or(z.literal('')).default(''),
-  contact_phone: z.string().max(50).default(''),
-  notes: z.string().max(2000).default(''),
+  name:           z.string().min(1, 'Customer name is required').max(200),
+  country:        z.string().max(100).default(''),
+  city:           z.string().max(100).default(''),
+  address:        z.string().max(500).default(''),
+  contact_email:  z.string().email('Invalid email').or(z.literal('')).default(''),
+  contact_phone:  z.string().max(50).default(''),
+  tax_id:         z.string().max(100).default(''),
+  website:        z.string().max(200).default(''),
+  payment_terms:  z.string().max(200).default(''),
+  notes:          z.string().max(2000).default(''),
 });
 export type CustomerFormData = z.infer<typeof customerSchema>;
 
 export const supplierSchema = z.object({
-  name: z.string().min(1, 'Supplier name is required').max(200),
-  country: z.string().max(100).default(''),
-  city: z.string().max(100).default(''),
-  contact_name: z.string().max(200).default(''),
-  phone: z.string().max(50).default(''),
-  email: z.string().email('Invalid email').or(z.literal('')).default(''),
-  notes: z.string().max(2000).default(''),
+  name:           z.string().min(1, 'Supplier name is required').max(200),
+  country:        z.string().max(100).default(''),
+  city:           z.string().max(100).default(''),
+  address:        z.string().max(500).default(''),
+  contact_name:   z.string().max(200).default(''),
+  phone:          z.string().max(50).default(''),
+  email:          z.string().email('Invalid email').or(z.literal('')).default(''),
+  tax_id:         z.string().max(100).default(''),
+  website:        z.string().max(200).default(''),
+  payment_terms:  z.string().max(200).default(''),
+  swift_code:     z.string().max(50).default(''),
+  iban:           z.string().max(100).default(''),
+  notes:          z.string().max(2000).default(''),
 });
 export type SupplierFormData = z.infer<typeof supplierSchema>;
 
@@ -30,6 +40,7 @@ export const serviceProviderSchema = z.object({
   ]),
   country: z.string().max(100).default(''),
   city: z.string().max(100).default(''),
+  address: z.string().max(500).default(''),
   contact_name: z.string().max(200).default(''),
   phone: z.string().max(50).default(''),
   email: z.string().email('Invalid email').or(z.literal('')).default(''),
@@ -38,11 +49,22 @@ export const serviceProviderSchema = z.object({
 export type ServiceProviderFormData = z.infer<typeof serviceProviderSchema>;
 
 export const productSchema = z.object({
-  name: z.string().min(1, 'Product name is required').max(200),
-  hs_code: z.string().max(20).default(''),
-  unit: z.string().min(1).default('ADMT'),
+  name:           z.string().min(1, 'Product name is required').max(200),
+  hs_code:        z.string().max(20).default(''),
+  unit:           z.string().min(1).default('ADMT'),
+  description:    z.string().max(1000).default(''),
+  origin_country: z.string().max(100).default(''),
+  species:        z.string().max(100).default(''),
+  grade:          z.string().max(100).default(''),
+  category_id:    z.string().nullable().optional(),
 });
 export type ProductFormData = z.infer<typeof productSchema>;
+
+export const productCategorySchema = z.object({
+  name:  z.string().min(1, 'Category name is required').max(100),
+  color: z.string().default('#6b7280'),
+});
+export type ProductCategoryFormData = z.infer<typeof productCategorySchema>;
 
 // ─── Trade File Forms ───────────────────────────────────────────────────────
 

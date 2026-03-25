@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/form-elements';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
-import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2,
@@ -221,17 +220,15 @@ export function AccountingPage() {
 
         {/* ── Toolbar ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Tabs — pill style */}
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+          {/* Tabs */}
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
             {TABS.map(t => (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={cn(
-                  'shrink-0 px-3.5 h-8 rounded-full text-[12px] font-bold transition-all whitespace-nowrap',
-                  activeTab === t.key ? 'text-white shadow-sm' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300',
-                )}
-                style={activeTab === t.key ? { background: accent } : {}}
+                className={`shrink-0 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+                  activeTab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
                 {t.label}
               </button>

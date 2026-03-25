@@ -59,12 +59,12 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
 
   async function addCust() {
     if (!newCustName.trim()) return;
-    const c = await createCust.mutateAsync({ name: newCustName.trim(), country: '', address: '', contact_email: '', contact_phone: '', notes: '' });
+    const c = await createCust.mutateAsync({ name: newCustName.trim(), country: '', city: '', address: '', contact_email: '', contact_phone: '', tax_id: '', website: '', payment_terms: '', notes: '' });
     setValue('customer_id', c.id); setNewCustName(''); setShowNewCust(false);
   }
   async function addProd() {
     if (!newProdName.trim()) return;
-    const p = await createProd.mutateAsync({ name: newProdName.trim(), hs_code: '', unit: 'ADMT' });
+    const p = await createProd.mutateAsync({ name: newProdName.trim(), hs_code: '', unit: 'ADMT', description: '', origin_country: '', species: '', grade: '' });
     setValue('product_id', p.id); setNewProdName(''); setShowNewProd(false);
   }
 
@@ -83,7 +83,8 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
         // Not found → create automatically
         try {
           const created = await createCust.mutateAsync({
-            name, country: '', address: '', contact_email: '', contact_phone: '', notes: '',
+            name, country: '', city: '', address: '', contact_email: '', contact_phone: '',
+            tax_id: '', website: '', payment_terms: '', notes: '',
           });
           setValue('customer_id', created.id);
           toast.success(`"${name}" müşterisi oluşturuldu`);
@@ -103,7 +104,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
         setValue('product_id', local.id);
       } else {
         try {
-          const created = await createProd.mutateAsync({ name, hs_code: '', unit: 'ADMT' });
+          const created = await createProd.mutateAsync({ name, hs_code: '', unit: 'ADMT', description: '', origin_country: '', species: '', grade: '' });
           setValue('product_id', created.id);
           toast.success(`"${name}" ürünü oluşturuldu`);
         } catch {

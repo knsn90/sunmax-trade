@@ -3,8 +3,8 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  BarChart3, FileText, Receipt, LineChart, Users, Truck,
-  Clock, Box, Settings, LayoutDashboard, Home, Activity,
+  BarChart3, FileText, Receipt, LineChart, Users,
+  Box, Settings, LayoutDashboard, Home, Activity,
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,9 +50,7 @@ export function Sidebar() {
     {
       label: 'CONTACTS',
       items: [
-        { to: '/customers', label: 'Customers', icon: <Users className="h-4 w-4" /> },
-        { to: '/suppliers', label: 'Suppliers', icon: <Truck className="h-4 w-4" /> },
-        { to: '/service-providers', label: 'Services', icon: <Clock className="h-4 w-4" /> },
+        { to: '/contacts', label: 'Contacts', icon: <Users className="h-4 w-4" /> },
         { to: '/products', label: 'Products', icon: <Box className="h-4 w-4" /> },
       ],
     },

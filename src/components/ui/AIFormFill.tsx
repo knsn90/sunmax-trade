@@ -21,22 +21,48 @@ interface PreviewItem {
 
 // Field labels for preview display
 const FIELD_LABELS: Record<string, string> = {
-  customer_name:    'Müşteri',
-  product_name:     'Ürün',
-  tonnage_mt:       'Tonaj (MT)',
-  file_date:        'Tarih',
-  customer_ref:     'Müşteri Ref',
-  notes:            'Notlar',
-  loading_date:     'Yükleme Tarihi',
-  freight_company:  'Navlun Firması',
-  selling_price:    'Satış Fiyatı',
-  purchase_price:   'Alış Fiyatı',
-  freight_cost:     'Nakliye Maliyeti',
+  // Trade file
+  customer_name:    'Customer',
+  product_name:     'Product',
+  tonnage_mt:       'Tonnage (MT)',
+  file_date:        'Date',
+  customer_ref:     'Customer Ref',
+  // Transport
+  loading_date:     'Loading Date',
+  freight_company:  'Freight Company',
+  selling_price:    'Selling Price',
+  purchase_price:   'Purchase Price',
+  freight_cost:     'Freight Cost',
   incoterms:        'Incoterms',
-  port_of_loading:  'Yükleme Limanı',
-  port_of_discharge:'Tahliye Limanı',
+  port_of_loading:  'Port of Loading',
+  port_of_discharge:'Port of Discharge',
   eta:              'ETA',
-  payment_terms:    'Ödeme Koşulları',
+  // Common
+  payment_terms:    'Payment Terms',
+  notes:            'Notes',
+  service_type:     'Service Type',
+  // Customer
+  name:             'Name / Company',
+  country:          'Country',
+  city:             'City',
+  address:          'Address',
+  contact_email:    'Email',
+  contact_phone:    'Phone',
+  tax_id:           'Tax ID',
+  website:          'Website',
+  // Supplier
+  contact_name:     'Contact Person',
+  phone:            'Phone',
+  email:            'Email',
+  swift_code:       'SWIFT Code',
+  iban:             'IBAN',
+  // Product
+  hs_code:          'HS Code',
+  unit:             'Unit',
+  description:      'Description',
+  origin_country:   'Origin Country',
+  species:          'Wood Species',
+  grade:            'Grade',
 };
 
 // Fields that should be hidden from the preview (raw IDs)
@@ -109,7 +135,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
     };
     rec.onerror = () => {
       setIsRecording(false);
-      toast.error('Ses tanıma başarısız');
+      toast.error('Voice recognition failed');
     };
     rec.onend = () => setIsRecording(false);
 
@@ -131,7 +157,11 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
         body: { text, formType, context },
       });
 
-      if (error) throw new Error(error.message);
+      // Supabase wraps non-2xx as an error but also puts the body in data
+      if (error) {
+        const detail = (data as { error?: string } | null)?.error ?? error.message;
+        throw new Error(detail);
+      }
       if (data?.error) throw new Error(data.error);
 
       const fields = data?.fields ?? {};
@@ -146,13 +176,13 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
         }));
 
       if (items.length === 0) {
-        toast.warning('Metinden bilgi çıkarılamadı. Daha açık bir şekilde tarif edin.');
+        toast.warning('No information could be extracted. Try describing in more detail.');
         return;
       }
 
       setPreview(items);
     } catch (e) {
-      toast.error(`AI hatası: ${(e as Error).message}`);
+      toast.error(`AI error: ${(e as Error).message}`);
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +194,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
     setPreview(null);
     setRawFields(null);
     setText('');
-    toast.success('Form dolduruldu ✓');
+    toast.success('Form filled ✓');
   }
 
   function dismiss() {
@@ -179,9 +209,9 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
       {/* Header */}
       <div className="flex items-center gap-1.5">
         <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-        <span className="text-xs font-semibold text-blue-700">AI ile Doldur</span>
+        <span className="text-xs font-semibold text-blue-700">AI Fill</span>
         <span className="text-[10px] text-blue-400 ml-1">
-          {voiceSupported ? '— sesle veya yazarak tarif edin' : '— yazarak tarif edin'}
+          {voiceSupported ? '— describe by voice or text' : '— describe in text'}
         </span>
       </div>
 
@@ -191,7 +221,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
           <button
             type="button"
             onClick={toggleRecording}
-            title={isRecording ? 'Kaydı durdur' : 'Sesle giriş'}
+            title={isRecording ? 'Stop recording' : 'Voice input'}
             className={`flex-shrink-0 p-2 rounded-lg border transition-all ${
               isRecording
                 ? 'bg-red-500 border-red-500 text-white shadow-md animate-pulse'
@@ -209,10 +239,10 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
           placeholder={
             placeholder ??
             (formType === 'new_file'
-              ? 'Örn: "ABC müşterisi, kağıt ürünü, 100 ton, ref REF-001"'
+              ? 'e.g. "ABC customer, paper product, 100 tons, ref REF-001"'
               : formType === 'transport_plan'
-              ? 'Örn: "Yükleme tarihi 3 Nisan, navlun firması XYZ Lojistik"'
-              : 'Form bilgilerini tarif edin…')
+              ? 'e.g. "Loading date April 3, freight company XYZ Logistics"'
+              : 'Describe the form details…')
           }
           className="flex-1 text-xs h-9 bg-white"
           disabled={isLoading || isRecording}
@@ -235,7 +265,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
       {isRecording && (
         <div className="flex items-center gap-1.5 text-xs text-red-600">
           <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          Dinleniyor… Konuşmayı bitirince otomatik durur.
+          Listening… Stops automatically when you finish speaking.
         </div>
       )}
 
@@ -243,7 +273,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
       {preview && (
         <div className="bg-white border border-blue-200 rounded-lg p-2.5 space-y-1.5">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-semibold text-blue-700">Algılanan bilgiler</p>
+            <p className="text-xs font-semibold text-blue-700">Detected fields</p>
             <button type="button" onClick={dismiss} className="text-gray-400 hover:text-gray-600">
               <X className="h-3.5 w-3.5" />
             </button>
@@ -264,7 +294,7 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
             onClick={applyFields}
             className="mt-1.5 bg-blue-600 hover:bg-blue-700 text-white"
           >
-            <Check className="h-3 w-3 mr-1" /> Formu Doldur
+            <Check className="h-3 w-3 mr-1" /> Fill Form
           </Button>
         </div>
       )}

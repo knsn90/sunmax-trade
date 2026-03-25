@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { useUsers } from '@/hooks/useUsers';
-import { Card, PageHeader, LoadingSpinner } from '@/components/ui/shared';
-import { NativeSelect } from '@/components/ui/form-elements';
+import { LoadingSpinner } from '@/components/ui/shared';
 import { Input } from '@/components/ui/input';
 import type { AuditLog, Profile } from '@/types/database';
-import { Search, LogIn, LogOut, Plus, Pencil, Trash2, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, LogIn, LogOut, Plus, Pencil, Trash2, RefreshCw, Activity, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LoginEvent {
@@ -18,8 +16,8 @@ interface LoginEvent {
 }
 
 type LogEntry =
-  | { kind: 'audit'; data: AuditLog }
-  | { kind: 'login'; data: LoginEvent };
+  | { kind: 'audit'; data: AuditLog; ts: string }
+  | { kind: 'login'; data: LoginEvent; ts: string };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const TABLE_LABELS: Record<string, string> = {
@@ -37,30 +35,28 @@ const TABLE_LABELS: Record<string, string> = {
   bank_accounts:     'Bank Account',
 };
 
+const ACTION_CONFIG = {
+  create: { label: 'Created',  bg: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', icon: Plus },
+  update: { label: 'Updated',  bg: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500',    icon: Pencil },
+  delete: { label: 'Deleted',  bg: 'bg-red-100 text-red-700',         dot: 'bg-red-500',     icon: Trash2 },
+  login:  { label: 'Login',    bg: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', icon: LogIn },
+  logout: { label: 'Logout',   bg: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-400',    icon: LogOut },
+};
+
 function tableLabel(t: string) { return TABLE_LABELS[t] ?? t; }
 
-function actionIcon(action: string) {
-  if (action === 'create') return <Plus className="h-3.5 w-3.5 text-green-600" />;
-  if (action === 'update') return <Pencil className="h-3.5 w-3.5 text-blue-600" />;
-  if (action === 'delete') return <Trash2 className="h-3.5 w-3.5 text-red-600" />;
-  return null;
-}
-
-function actionLabel(action: string) {
-  if (action === 'create') return 'Oluşturdu';
-  if (action === 'update') return 'Güncelledi';
-  if (action === 'delete') return 'Sildi';
-  return action;
-}
-
-function actionBg(action: string) {
-  if (action === 'create') return 'bg-green-50 text-green-700 border-green-200';
-  if (action === 'update') return 'bg-blue-50 text-blue-700 border-blue-200';
-  if (action === 'delete') return 'bg-red-50 text-red-700 border-red-200';
-  return 'bg-gray-50 text-gray-700 border-gray-200';
-}
-
 function fmtDate(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  if (diff < 60_000) return 'Just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
+    + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDateFull(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
     + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -68,7 +64,13 @@ function fmtDate(iso: string) {
 
 function initials(name?: string) {
   if (!name) return '?';
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function avatarColor(name?: string): string {
+  const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
+  const idx = (name ?? '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
+  return colors[idx];
 }
 
 function recordTitle(log: AuditLog) {
@@ -81,7 +83,7 @@ function changedFields(log: AuditLog): string[] {
   if (!log.old_values || !log.new_values) return [];
   return Object.keys(log.new_values).filter(
     k => JSON.stringify(log.new_values![k]) !== JSON.stringify(log.old_values![k])
-  ).slice(0, 4);
+  ).slice(0, 5);
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -91,11 +93,10 @@ export function ActivityPage() {
   const [loginLogs, setLoginLogs]   = useState<LoginEvent[]>([]);
   const [loading, setLoading]       = useState(true);
   const [filterUser, setFilterUser] = useState('all');
-  const [filterTable, setFilterTable] = useState('all');
   const [filterAction, setFilterAction] = useState('all');
   const [search, setSearch]         = useState('');
   const [page, setPage]             = useState(0);
-  const PER_PAGE = 50;
+  const PER_PAGE = 30;
 
   async function fetchLogs() {
     setLoading(true);
@@ -120,32 +121,28 @@ export function ActivityPage() {
   }
 
   useEffect(() => { fetchLogs(); }, []);
-  useEffect(() => { setPage(0); }, [filterUser, filterTable, filterAction, search]);
+  useEffect(() => { setPage(0); }, [filterUser, filterAction, search]);
 
-  // Merge & sort all entries newest-first
   const allEntries: LogEntry[] = [
     ...auditLogs.map(d => ({ kind: 'audit' as const, data: d, ts: d.created_at })),
     ...loginLogs.map(d => ({ kind: 'login' as const, data: d, ts: d.created_at })),
   ].sort((a, b) => b.ts.localeCompare(a.ts));
 
-  // Filter
   const filtered = allEntries.filter(entry => {
     if (filterUser !== 'all') {
       const uid = entry.kind === 'audit' ? entry.data.user_id : entry.data.user_id;
       if (uid !== filterUser) return false;
     }
-    if (entry.kind === 'audit') {
-      if (filterTable !== 'all' && entry.data.table_name !== filterTable) return false;
-      if (filterAction !== 'all' && entry.data.action !== filterAction) return false;
-    } else {
-      if (filterTable !== 'all') return false;
-      if (filterAction !== 'all' && entry.data.event !== filterAction) return false;
+    if (filterAction !== 'all') {
+      const act = entry.kind === 'audit' ? entry.data.action : entry.data.event;
+      if (act !== filterAction) return false;
     }
     if (search) {
       const s = search.toLowerCase();
-      const name = entry.kind === 'audit'
-        ? (entry.data.user as Profile | undefined)?.full_name ?? ''
-        : (entry.data.user as Profile | undefined)?.full_name ?? '';
+      const user = entry.kind === 'audit'
+        ? (entry.data.user as Profile | undefined)
+        : (entry.data.user as Profile | undefined);
+      const name = user?.full_name ?? user?.email ?? '';
       const detail = entry.kind === 'audit' ? recordTitle(entry.data) : '';
       if (!name.toLowerCase().includes(s) && !detail.toLowerCase().includes(s)) return false;
     }
@@ -155,78 +152,128 @@ export function ActivityPage() {
   const paged = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
 
-  // Unique tables for filter dropdown
-  const tables = Array.from(new Set(auditLogs.map(l => l.table_name))).sort();
+  const ACTION_PILLS = [
+    { key: 'all',    label: 'All' },
+    { key: 'create', label: 'Created' },
+    { key: 'update', label: 'Updated' },
+    { key: 'delete', label: 'Deleted' },
+    { key: 'login',  label: 'Login' },
+    { key: 'logout', label: 'Logout' },
+  ];
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <PageHeader title={`İşlem Geçmişi  —  ${filtered.length} kayıt`} />
-        <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
-          Yenile
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+            <Activity className="h-4.5 w-4.5 text-violet-600" style={{ width: 18, height: 18 }} />
+          </div>
+          <div>
+            <h1 className="text-[15px] font-bold text-gray-900">Activity Log</h1>
+            <p className="text-[11px] text-gray-400">{filtered.length} entries</p>
+          </div>
+        </div>
+        <button
+          onClick={fetchLogs}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 h-8 rounded-full border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
-      {/* Filters */}
-      <Card className="p-3">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-[160px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-            <Input
-              className="pl-8 h-8 text-xs"
-              placeholder="Kullanıcı veya kayıt ara…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <NativeSelect className="h-8 text-xs w-40"
-            value={filterUser} onChange={e => setFilterUser(e.target.value)}>
-            <option value="all">Tüm Kullanıcılar</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
-          </NativeSelect>
-          <NativeSelect className="h-8 text-xs w-36"
-            value={filterTable} onChange={e => setFilterTable(e.target.value)}>
-            <option value="all">Tüm Modüller</option>
-            {tables.map(t => <option key={t} value={t}>{tableLabel(t)}</option>)}
-          </NativeSelect>
-          <NativeSelect className="h-8 text-xs w-32"
-            value={filterAction} onChange={e => setFilterAction(e.target.value)}>
-            <option value="all">Tüm İşlemler</option>
-            <option value="create">Oluşturma</option>
-            <option value="update">Güncelleme</option>
-            <option value="delete">Silme</option>
-            <option value="login">Giriş</option>
-            <option value="logout">Çıkış</option>
-          </NativeSelect>
+      {/* Search + user filter */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <Input
+            className="pl-9 h-9 text-[13px] rounded-xl border-gray-200 bg-white"
+            placeholder="Search user or record…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
-      </Card>
+        <select
+          value={filterUser}
+          onChange={e => setFilterUser(e.target.value)}
+          className="h-9 px-3 rounded-xl border border-gray-200 text-[12px] text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+        >
+          <option value="all">All users</option>
+          {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+        </select>
+      </div>
 
-      {/* Log List */}
+      {/* Action filter pills */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit overflow-x-auto scrollbar-none">
+        {ACTION_PILLS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFilterAction(key)}
+            className={`shrink-0 px-3.5 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+              filterAction === key
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Log list */}
       {loading ? (
-        <div className="flex justify-center py-12"><LoadingSpinner /></div>
+        <div className="flex justify-center py-16"><LoadingSpinner /></div>
       ) : paged.length === 0 ? (
-        <Card className="py-12 text-center text-sm text-gray-400">Kayıt bulunamadı</Card>
+        <div className="bg-white rounded-2xl border border-gray-100 py-16 text-center">
+          <div className="text-3xl mb-2">📋</div>
+          <p className="text-sm text-gray-400">No entries found</p>
+        </div>
       ) : (
-        <Card className="divide-y divide-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
           {paged.map(entry => (
             entry.kind === 'audit'
               ? <AuditRow key={entry.data.id} log={entry.data} />
               : <LoginRow key={entry.data.id} log={entry.data} />
           ))}
-        </Card>
+        </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-            ← Önceki
-          </Button>
-          <span className="text-xs text-gray-500">{page + 1} / {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
-            Sonraki →
-          </Button>
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            disabled={page === 0}
+            onClick={() => setPage(p => p - 1)}
+            className="px-3.5 h-8 rounded-full text-[12px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            ← Prev
+          </button>
+          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+            const p = totalPages <= 7 ? i : Math.max(0, Math.min(page - 3, totalPages - 7)) + i;
+            return (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`w-8 h-8 rounded-full text-[12px] font-semibold transition-all ${
+                  p === page
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {p + 1}
+              </button>
+            );
+          })}
+          <button
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage(p => p + 1)}
+            className="px-3.5 h-8 rounded-full text-[12px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>
@@ -239,54 +286,62 @@ function AuditRow({ log }: { log: AuditLog }) {
   const user = log.user as Profile | undefined;
   const title = recordTitle(log);
   const changed = log.action === 'update' ? changedFields(log) : [];
+  const cfg = ACTION_CONFIG[log.action as keyof typeof ACTION_CONFIG] ?? ACTION_CONFIG.update;
+  const color = avatarColor(user?.full_name);
+  const Icon = cfg.icon;
 
   return (
-    <div className="px-4 py-3 hover:bg-gray-50 transition-colors">
+    <div className="px-4 py-3.5 hover:bg-gray-50/60 transition-colors">
       <div className="flex items-start gap-3">
         {/* Avatar */}
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <span className="text-white text-[10px] font-bold">{initials(user?.full_name)}</span>
+        <div
+          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 text-white text-[11px] font-bold"
+          style={{ background: color }}
+        >
+          {initials(user?.full_name)}
         </div>
 
-        {/* Content */}
+        {/* Main content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-gray-800">
-              {user?.full_name || 'Bilinmeyen Kullanıcı'}
+            <span className="text-[13px] font-semibold text-gray-800">
+              {user?.full_name || 'Unknown'}
             </span>
-            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border ${actionBg(log.action)}`}>
-              {actionIcon(log.action)}
-              {actionLabel(log.action)}
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${cfg.bg}`}>
+              <Icon className="h-3 w-3" />
+              {cfg.label}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-[12px] text-gray-500">
               <span className="font-medium text-gray-700">{tableLabel(log.table_name)}</span>
-              {title && <span className="ml-1 text-gray-400">— {title}</span>}
+              {title && <span className="text-gray-400"> — {title}</span>}
             </span>
           </div>
 
           {changed.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1">
+            <div className="mt-1.5 flex flex-wrap gap-1">
               {changed.map(f => (
-                <span key={f} className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                <span key={f} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
                   {f}
                 </span>
               ))}
-              {changedFields(log).length > 4 && (
-                <span className="text-[10px] text-gray-400">+{changedFields(log).length - 4} daha</span>
+              {changedFields(log).length > 5 && (
+                <span className="text-[10px] text-gray-400">+{changedFields(log).length - 5} more</span>
               )}
             </div>
           )}
         </div>
 
         {/* Time + expand */}
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span className="text-[10px] text-gray-400 whitespace-nowrap">{fmtDate(log.created_at)}</span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-[11px] text-gray-400" title={fmtDateFull(log.created_at)}>
+            {fmtDate(log.created_at)}
+          </span>
           {(log.old_values || log.new_values) && (
             <button
               onClick={() => setOpen(o => !o)}
-              className="text-[10px] text-blue-500 hover:text-blue-700"
+              className="flex items-center gap-0.5 text-[11px] text-violet-500 hover:text-violet-700 font-medium"
             >
-              {open ? 'Gizle' : 'Detay'}
+              {open ? <><ChevronUp className="h-3 w-3" /> Hide</> : <><ChevronDown className="h-3 w-3" /> Detail</>}
             </button>
           )}
         </div>
@@ -294,19 +349,19 @@ function AuditRow({ log }: { log: AuditLog }) {
 
       {/* Expanded diff */}
       {open && (
-        <div className="mt-2 ml-11 grid grid-cols-2 gap-2">
+        <div className="mt-3 ml-11 grid grid-cols-1 md:grid-cols-2 gap-2">
           {log.old_values && (
             <div>
-              <div className="text-[10px] font-bold text-red-500 mb-1">Önceki</div>
-              <pre className="text-[10px] bg-red-50 border border-red-100 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap break-all">
+              <div className="text-[10px] font-bold text-red-500 mb-1 uppercase tracking-wide">Before</div>
+              <pre className="text-[10px] bg-red-50 border border-red-100 rounded-xl p-2.5 overflow-auto max-h-40 whitespace-pre-wrap break-all text-gray-700">
                 {JSON.stringify(log.old_values, null, 2)}
               </pre>
             </div>
           )}
           {log.new_values && (
             <div>
-              <div className="text-[10px] font-bold text-green-500 mb-1">Sonraki</div>
-              <pre className="text-[10px] bg-green-50 border border-green-100 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap break-all">
+              <div className="text-[10px] font-bold text-emerald-600 mb-1 uppercase tracking-wide">After</div>
+              <pre className="text-[10px] bg-emerald-50 border border-emerald-100 rounded-xl p-2.5 overflow-auto max-h-40 whitespace-pre-wrap break-all text-gray-700">
                 {JSON.stringify(log.new_values, null, 2)}
               </pre>
             </div>
@@ -321,33 +376,37 @@ function AuditRow({ log }: { log: AuditLog }) {
 function LoginRow({ log }: { log: LoginEvent }) {
   const user = log.user as Profile | undefined;
   const isLogin = log.event === 'login';
+  const color = avatarColor(user?.full_name);
 
   return (
-    <div className="px-4 py-3 hover:bg-gray-50 transition-colors">
+    <div className="px-4 py-3.5 hover:bg-gray-50/60 transition-colors">
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-          isLogin ? 'bg-green-100' : 'bg-gray-100'
-        }`}>
-          {isLogin
-            ? <LogIn className="h-4 w-4 text-green-600" />
-            : <LogOut className="h-4 w-4 text-gray-500" />}
+        {/* Avatar */}
+        <div
+          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
+          style={{ background: color }}
+        >
+          {initials(user?.full_name)}
         </div>
+
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-gray-800">
-              {user?.full_name || 'Bilinmeyen'}
+            <span className="text-[13px] font-semibold text-gray-800">
+              {user?.full_name || 'Unknown'}
             </span>
-            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${
-              isLogin ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-600 border-gray-200'
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+              isLogin ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
             }`}>
-              {isLogin ? 'Giriş Yaptı' : 'Çıkış Yaptı'}
+              {isLogin ? <LogIn className="h-3 w-3" /> : <LogOut className="h-3 w-3" />}
+              {isLogin ? 'Logged in' : 'Logged out'}
             </span>
             {user?.email && (
-              <span className="text-[10px] text-gray-400">{user.email}</span>
+              <span className="text-[11px] text-gray-400">{user.email}</span>
             )}
           </div>
         </div>
-        <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">
+
+        <span className="text-[11px] text-gray-400 whitespace-nowrap shrink-0" title={fmtDateFull(log.created_at)}>
           {fmtDate(log.created_at)}
         </span>
       </div>

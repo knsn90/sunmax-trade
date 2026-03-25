@@ -6,11 +6,20 @@ export const productService = {
   async list(): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, category:product_categories(*)')
       .eq('is_active', true)
       .order('name');
 
-    if (error) throw new Error(error.message);
+    // If the join fails (e.g. migration not yet run), fall back to plain select
+    if (error) {
+      const { data: plain, error: plainErr } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      if (plainErr) throw new Error(plainErr.message);
+      return (plain ?? []) as Product[];
+    }
     return (data ?? []) as Product[];
   },
 
