@@ -412,7 +412,7 @@ export function TradeFileDetailPage() {
           </Section>
         ) : (
           <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 mb-3 text-[12px] text-amber-700 font-medium">
-            Henüz satış detayı girilmemiş
+            No sale details entered yet
           </div>
         )}
 
@@ -580,7 +580,7 @@ export function TradeFileDetailPage() {
           ) : undefined}
         >
           {expenses.length === 0 ? (
-            <div className="text-[12px] text-gray-400 py-2 text-center">Henüz gider kaydı yok</div>
+            <div className="text-[12px] text-gray-400 py-2 text-center">No expense records yet</div>
           ) : (
             expenses.map(t => (
               <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
@@ -604,7 +604,7 @@ export function TradeFileDetailPage() {
 
         {/* ── Transport Plan ───────────────────────────────────────────── */}
         {['sale', 'delivery', 'completed'].includes(file.status) && (
-          <Section title="Taşıma Planı" icon={<Truck className="h-3.5 w-3.5" />}>
+          <Section title="Transport Plan" icon={<Truck className="h-3.5 w-3.5" />}>
             <TransportPlanSection file={file} writable={writable} />
           </Section>
         )}
@@ -710,7 +710,7 @@ export function TradeFileDetailPage() {
             </Section>
           ) : (
             <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-[12px] text-amber-700 font-medium">
-              Henüz satış detayı girilmemiş
+              No sale details entered yet
             </div>
           )}
 
@@ -775,7 +775,7 @@ export function TradeFileDetailPage() {
               </div>
             ) : undefined}>
             {expenses.length === 0 ? (
-              <div className="text-[12px] text-gray-400 py-2 text-center">Henüz gider kaydı yok</div>
+              <div className="text-[12px] text-gray-400 py-2 text-center">No expense records yet</div>
             ) : (
               expenses.map(t => (
                 <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
@@ -798,7 +798,7 @@ export function TradeFileDetailPage() {
 
           {/* Transport Plan */}
           {['sale', 'delivery', 'completed'].includes(file.status) && (
-            <Section title="Taşıma Planı" icon={<Truck className="h-3.5 w-3.5" />}>
+            <Section title="Transport Plan" icon={<Truck className="h-3.5 w-3.5" />}>
               <TransportPlanSection file={file} writable={writable} />
             </Section>
           )}

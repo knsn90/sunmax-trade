@@ -122,7 +122,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
               </div>
               {(c.country || c.city) && <div className="text-xs text-gray-500 truncate">{[c.city, c.country].filter(Boolean).join(', ')}</div>}
               {(c.contact_email || c.contact_phone) && <div className="text-xs text-gray-400 truncate">{c.contact_email || c.contact_phone}</div>}
-              {c.payment_terms && <div className="text-[10px] text-gray-400 truncate">Ödeme: {c.payment_terms}</div>}
+              {c.payment_terms && <div className="text-[10px] text-gray-400 truncate">Terms: {c.payment_terms}</div>}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               {writable && (
@@ -200,7 +200,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
             <AIFormFill
               formType="new_customer"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<CustomerFormData>) })}
-              placeholder='Örn: "XYZ Kağıt A.Ş., İstanbul, vergi no 1234567890, Net 60 ödeme, info@xyz.com"'
+              placeholder='e.g. "XYZ Paper Co., Istanbul, tax no 1234567890, Net 60 payment, info@xyz.com"'
             />
             <FormRow>
               <FormGroup label="Company Name *" error={errors.name?.message}><Input {...register('name')} /></FormGroup>
@@ -305,7 +305,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
               </div>
               {(s.country || s.city) && <div className="text-xs text-gray-500 truncate">{[s.city, s.country].filter(Boolean).join(', ')}</div>}
               {(s.email || s.phone) && <div className="text-xs text-gray-400 truncate">{s.email || s.phone}</div>}
-              {s.payment_terms && <div className="text-[10px] text-gray-400 truncate">Ödeme: {s.payment_terms}</div>}
+              {s.payment_terms && <div className="text-[10px] text-gray-400 truncate">Terms: {s.payment_terms}</div>}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               {writable && (
@@ -383,7 +383,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
             <AIFormFill
               formType="new_supplier"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<SupplierFormData>) })}
-              placeholder='Örn: "ABC Pulp Co., Kanada, Vancouver, swift AAAABBCC, TT 30 gün ödeme"'
+              placeholder='e.g. "ABC Pulp Co., Canada, Vancouver, swift AAAABBCC, TT 30 days payment"'
             />
             <FormRow>
               <FormGroup label="Company Name *" error={errors.name?.message}><Input {...register('name')} /></FormGroup>
@@ -593,7 +593,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
             <AIFormFill
               formType="new_service_provider"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ServiceProviderFormData>) })}
-              placeholder='Örn: "XYZ Gümrük Müşavirliği, İstanbul, gümrük hizmetleri, info@xyz.com"'
+              placeholder='e.g. "XYZ Customs Brokerage, Istanbul, customs services, info@xyz.com"'
             />
             <FormRow>
               <FormGroup label="Name *" error={errors.name?.message}><Input {...register('name')} /></FormGroup>

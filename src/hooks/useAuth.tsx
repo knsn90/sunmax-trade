@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (p && p.is_active === false) {
           await supabase.auth.signOut();
           setProfile(null);
-          alert('Hesabınız devre dışı bırakıldı. Lütfen yöneticinizle iletişime geçin.');
+          alert('Your account has been deactivated. Please contact your administrator.');
           return;
         }
         setProfile(p);

@@ -81,7 +81,7 @@ export function useMarkNotifSent(tradeFileId: string) {
       transportService.markSent(planId, group, userId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY(tradeFileId) });
-      toast.success('Gönderildi olarak işaretlendi');
+      toast.success('Marked as sent');
     },
     onError: (e: Error) => toast.error(e.message),
   });

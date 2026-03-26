@@ -112,7 +112,7 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-              placeholder="Kategori adı…"
+              placeholder="Category name…"
               className="flex-1 h-8 px-2.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-blue-400 transition"
             />
             <div className="flex gap-1">
@@ -332,7 +332,7 @@ export function ProductsPage() {
               <AIFormFill
                 formType="new_product"
                 onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ProductFormData>) })}
-                placeholder='Örn: "NBSK Kağıt Hamuru, Kanada menşeli, HS kodu 470321, ADMT birim"'
+                placeholder='e.g. "NBSK Pulp, Canadian origin, HS code 470321, ADMT unit"'
               />
               <FormRow>
                 <FormGroup label="Product Name *" error={errors.name?.message}>

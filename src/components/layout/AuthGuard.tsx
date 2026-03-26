@@ -45,9 +45,9 @@ function AccessDenied() {
     <div className="flex h-full items-center justify-center">
       <div className="text-center p-8">
         <div className="text-4xl mb-3">🔒</div>
-        <h2 className="text-base font-semibold text-gray-800">Erişim Yok</h2>
+        <h2 className="text-base font-semibold text-gray-800">Access Denied</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Bu sayfaya erişim yetkiniz bulunmuyor.
+          You do not have permission to access this page.
         </p>
       </div>
     </div>

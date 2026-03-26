@@ -220,7 +220,7 @@ export function useUpdateProductCategory() {
       productCategoryService.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['product-categories'] });
-      toast.success('Kategori güncellendi');
+      toast.success('Category updated');
     },
     onError: (err: Error) => toast.error(err.message),
   });
