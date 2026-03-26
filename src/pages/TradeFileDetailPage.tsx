@@ -168,7 +168,7 @@ export function TradeFileDetailPage() {
   const noteDelay = useNoteDelay();
 
   if (isLoading) return <LoadingSpinner />;
-  if (!file) return <div className="text-center py-12 text-gray-400 text-sm">Dosya bulunamadı</div>;
+  if (!file) return <div className="text-center py-12 text-gray-400 text-sm">File not found</div>;
 
   const isSaleOrDel = file.status === 'sale' || file.status === 'delivery';
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
@@ -176,7 +176,7 @@ export function TradeFileDetailPage() {
 
   function handleStatusChange(newStatus: string) {
     if (!newStatus || newStatus === file!.status) return;
-    if (window.confirm(`Statüyü "${TRADE_FILE_STATUS_LABELS[newStatus as TradeFileStatus]}" olarak değiştir?`))
+    if (window.confirm(`Change status to "${TRADE_FILE_STATUS_LABELS[newStatus as TradeFileStatus]}"?`))
       changeStatus.mutate({ id: file!.id, status: newStatus as TradeFileStatus });
   }
 
@@ -466,7 +466,7 @@ export function TradeFileDetailPage() {
                   </button>
                 )}
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
-                  <button onClick={() => { if (window.confirm('Sil?')) deletePI.mutate(pi.id); }}
+                  <button onClick={() => { if (window.confirm('Delete?')) deletePI.mutate(pi.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -522,7 +522,7 @@ export function TradeFileDetailPage() {
                   </button>
                 )}
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
-                  <button onClick={() => { if (window.confirm('Sil?')) deleteInv.mutate(inv.id); }}
+                  <button onClick={() => { if (window.confirm('Delete?')) deleteInv.mutate(inv.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -552,7 +552,7 @@ export function TradeFileDetailPage() {
                   </button>
                 )}
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
-                  <button onClick={() => { if (window.confirm('Sil?')) deletePL.mutate(pl.id); }}
+                  <button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -737,7 +737,7 @@ export function TradeFileDetailPage() {
                   <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
                   {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
                   {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
-                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Sil?')) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Delete?')) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                 </DocRow>
               ))}
               {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
@@ -752,7 +752,7 @@ export function TradeFileDetailPage() {
                   <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                   {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
                   {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
-                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Sil?')) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Delete?')) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                 </DocRow>
               ))}
               {file.packing_lists?.map((pl) => (
@@ -760,7 +760,7 @@ export function TradeFileDetailPage() {
                   <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
                   {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
                   {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
-                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Sil?')) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                 </DocRow>
               ))}
             </Section>

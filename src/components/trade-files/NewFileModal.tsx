@@ -87,9 +87,9 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
             tax_id: '', website: '', payment_terms: '', notes: '',
           });
           setValue('customer_id', created.id);
-          toast.success(`"${name}" müşterisi oluşturuldu`);
+          toast.success(`Customer "${name}" created`);
         } catch {
-          toast.error(`Müşteri oluşturulamadı: ${name}`);
+          toast.error(`Could not create customer: ${name}`);
         }
       }
     }
@@ -106,9 +106,9 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
         try {
           const created = await createProd.mutateAsync({ name, hs_code: '', unit: 'ADMT', description: '', origin_country: '', species: '', grade: '' });
           setValue('product_id', created.id);
-          toast.success(`"${name}" ürünü oluşturuldu`);
+          toast.success(`Product "${name}" created`);
         } catch {
-          toast.error(`Ürün oluşturulamadı: ${name}`);
+          toast.error(`Could not create product: ${name}`);
         }
       }
     }
@@ -142,7 +142,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               <SmartFill
                 mode="new_file"
                 context={{ customers, products }}
-                formName="Yeni Dosya"
+                formName="New File"
                 onResult={(r) => handleAIFill(r as Record<string, unknown>)}
               />
             </div>

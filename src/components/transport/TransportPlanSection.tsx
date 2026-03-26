@@ -23,7 +23,7 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
-  return new Date(iso + 'T00:00:00').toLocaleDateString('tr-TR');
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB');
 }
 
 function daysUntil(iso: string | null): number | null {
@@ -33,10 +33,10 @@ function daysUntil(iso: string | null): number | null {
 }
 
 const GROUPS: { key: NotifGroup; label: string; emoji: string; color: string }[] = [
-  { key: 'customs',   label: 'Gümrük',       emoji: '🛃', color: 'blue'   },
-  { key: 'warehouse', label: 'Antrepo',       emoji: '📦', color: 'amber'  },
-  { key: 'port',      label: 'Liman',         emoji: '⚓', color: 'cyan'   },
-  { key: 'company',   label: 'Firma Grubu',   emoji: '🏢', color: 'purple' },
+  { key: 'customs',   label: 'Customs',       emoji: '🛃', color: 'blue'   },
+  { key: 'warehouse', label: 'Warehouse',     emoji: '📦', color: 'amber'  },
+  { key: 'port',      label: 'Port',          emoji: '⚓', color: 'cyan'   },
+  { key: 'company',   label: 'Company Group', emoji: '🏢', color: 'purple' },
 ];
 
 const STATUS_STYLE: Record<string, string> = {
@@ -110,12 +110,12 @@ export function TransportPlanSection({ file, writable }: Props) {
 
   function handleParse() {
     const found = parsePlatesFromText(pasteText);
-    if (!found.length) { toast.error('Metinde plaka bulunamadı'); return; }
+    if (!found.length) { toast.error('No plate numbers found in text'); return; }
     // Filter out already-existing plates
     const existing = new Set(plates.map(p => p.plate_no.toUpperCase()));
     const newPlates = found.filter(p => !existing.has(p.toUpperCase()));
     setParsed(newPlates);
-    if (!newPlates.length) toast.info('Tüm plakalar zaten listede');
+    if (!newPlates.length) toast.info('All plates are already in the list');
   }
 
   async function confirmAddPlates() {
@@ -179,7 +179,7 @@ export function TransportPlanSection({ file, writable }: Props) {
     const text = notifTexts[group] || buildNotifText(group);
     await upsertNotif.mutateAsync({ planId: plan.id, group, text });
     await navigator.clipboard.writeText(text);
-    toast.success('Kopyalandı ✓');
+    toast.success('Copied ✓');
   }
 
   async function handleMarkSent(group: NotifGroup) {
@@ -208,14 +208,14 @@ export function TransportPlanSection({ file, writable }: Props) {
         {!modeIsSet ? (
           <><AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
           <span className="text-sm text-amber-700 font-medium">
-            Taşıma tipi henüz belirlenmemiş — Dosyayı düzenleyerek seçin.
+            Transport mode not set — edit the file to choose one.
           </span></>
         ) : file.transport_mode === 'truck' ? (
           <><Truck className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          <span className="text-sm text-blue-700 font-semibold">Tır ile Taşıma Planlanacak</span></>
+          <span className="text-sm text-blue-700 font-semibold">Truck Transport Planned</span></>
         ) : (
           <><Train className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-          <span className="text-sm text-indigo-700 font-semibold">Tren ile Taşıma Planlanacak</span></>
+          <span className="text-sm text-indigo-700 font-semibold">Railway Transport Planned</span></>
         )}
       </div>
 
@@ -224,7 +224,7 @@ export function TransportPlanSection({ file, writable }: Props) {
         <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
           <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
           <span className="text-sm text-red-700 font-medium">
-            ⚠️ Yükleme tarihi geçmiş! ({fmtDate(plan?.loading_date ?? null)})
+            ⚠️ Loading date has passed! ({fmtDate(plan?.loading_date ?? null)})
           </span>
         </div>
       )}
@@ -232,21 +232,21 @@ export function TransportPlanSection({ file, writable }: Props) {
         <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
           <Bell className="h-4 w-4 text-amber-500 flex-shrink-0" />
           <span className="text-sm text-amber-700 font-medium">
-            🔔 Yükleme {days === 0 ? 'bugün' : 'yarın'}! ({fmtDate(plan?.loading_date ?? null)})
+            🔔 Loading {days === 0 ? 'today' : 'tomorrow'}! ({fmtDate(plan?.loading_date ?? null)})
           </span>
         </div>
       )}
       {hasUnnotif && plan && activePlates.length > 0 && (
         <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border border-orange-200 rounded-xl">
           <Bell className="h-4 w-4 text-orange-500 flex-shrink-0" />
-          <span className="text-sm text-orange-700 font-medium">Bildirim gönderilmemiş gruplar var</span>
+          <span className="text-sm text-orange-700 font-medium">Some groups have pending notifications</span>
         </div>
       )}
       {hasCancelled && (
         <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
           <X className="h-4 w-4 text-red-500 flex-shrink-0" />
           <span className="text-sm text-red-700 font-medium">
-            {plates.filter(p => p.plate_status === 'cancelled').length} iptal edilmiş plaka var
+            {plates.filter(p => p.plate_status === 'cancelled').length} cancelled plate(s)
           </span>
         </div>
       )}
@@ -256,11 +256,11 @@ export function TransportPlanSection({ file, writable }: Props) {
         <CardContent>
           <div className="flex items-center gap-2 mb-3">
             <ClipboardList className="h-4 w-4 text-red-600" />
-            <span className="font-semibold text-sm">Plan Bilgileri</span>
+            <span className="font-semibold text-sm">Plan Details</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Yükleme Tarihi</label>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Loading Date</label>
               <Input
                 type="date"
                 value={loadingDate}
@@ -269,11 +269,11 @@ export function TransportPlanSection({ file, writable }: Props) {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Navlun Firması</label>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Freight Company</label>
               <Input
                 value={freightCompany}
                 onChange={e => setFreightCompany(e.target.value)}
-                placeholder="Firma adı"
+                placeholder="Company name"
                 disabled={!writable}
               />
             </div>
@@ -281,7 +281,7 @@ export function TransportPlanSection({ file, writable }: Props) {
           {writable && (
             <Button size="sm" className="mt-3 bg-red-600 hover:bg-red-700 text-white" onClick={saveHeader}
               disabled={upsertPlan.isPending}>
-              {headerSaved ? '✓ Kaydedildi' : 'Kaydet'}
+              {headerSaved ? '✓ Saved' : 'Save'}
             </Button>
           )}
         </CardContent>
@@ -293,14 +293,14 @@ export function TransportPlanSection({ file, writable }: Props) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Truck className="h-4 w-4 text-red-600" />
-              <span className="font-semibold text-sm">Plaka Listesi</span>
+              <span className="font-semibold text-sm">Plate List</span>
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                {activePlates.length} aktif
+                {activePlates.length} active
               </span>
             </div>
             {writable && plan && (
               <Button size="xs" variant="outline" onClick={() => setShowPaste(v => !v)}>
-                <Plus className="h-3 w-3 mr-1" /> Plaka Ekle
+                <Plus className="h-3 w-3 mr-1" /> Add Plate
               </Button>
             )}
           </div>
@@ -309,31 +309,31 @@ export function TransportPlanSection({ file, writable }: Props) {
           {showPaste && plan && (
             <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
               <p className="text-xs text-gray-500">
-                WhatsApp'tan kopyaladığınız plaka listesini yapıştırın, otomatik algılanır.
+                Paste a plate list copied from WhatsApp — plates will be detected automatically.
               </p>
               <textarea
                 className="w-full text-xs border border-gray-200 rounded-lg p-2 h-28 resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
-                placeholder="Plaka listesini buraya yapıştırın…&#10;Örn: 34 ABC 123, 06-BKT-789"
+                placeholder="Paste plate list here…&#10;e.g. 34 ABC 123, 06-BKT-789"
                 value={pasteText}
                 onChange={e => { setPasteText(e.target.value); setParsed([]); }}
               />
               <div className="flex gap-2">
                 <Button size="xs" onClick={handleParse} disabled={!pasteText.trim()}>
-                  🔍 Algıla
+                  🔍 Detect
                 </Button>
                 {parsed.length > 0 && (
                   <Button size="xs" className="bg-green-600 hover:bg-green-700 text-white"
                     onClick={confirmAddPlates} disabled={addPlates.isPending}>
-                    ✓ {parsed.length} plaka ekle
+                    ✓ Add {parsed.length} plate(s)
                   </Button>
                 )}
                 <Button size="xs" variant="outline" onClick={() => { setShowPaste(false); setParsed([]); setPasteText(''); }}>
-                  İptal
+                  Cancel
                 </Button>
               </div>
               {parsed.length > 0 && (
                 <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg p-2">
-                  Algılanan: {parsed.join(' · ')}
+                  Detected: {parsed.join(' · ')}
                 </div>
               )}
             </div>
@@ -342,7 +342,7 @@ export function TransportPlanSection({ file, writable }: Props) {
           {/* No plan yet */}
           {!plan && (
             <div className="text-center py-8 text-sm text-gray-400">
-              Plan bilgilerini kaydedin, ardından plaka ekleyebilirsiniz.
+              Save plan details first, then you can add plates.
             </div>
           )}
 
@@ -352,7 +352,7 @@ export function TransportPlanSection({ file, writable }: Props) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-gray-50">
-                    {['#', 'Plaka', 'Sürücü', 'Durum', 'Not', writable ? 'İşlem' : ''].map((h, i) => (
+                    {['#', 'Plate', 'Driver', 'Status', 'Note', writable ? 'Actions' : ''].map((h, i) => (
                       <th key={i} className="px-2 py-2 text-left font-semibold text-gray-500 uppercase text-[10px]">{h}</th>
                     ))}
                   </tr>
@@ -389,23 +389,23 @@ export function TransportPlanSection({ file, writable }: Props) {
                           <select className="text-xs border rounded px-1 h-6"
                             value={editData.plate_status ?? 'active'}
                             onChange={e => setEditData(d => ({ ...d, plate_status: e.target.value as 'active' | 'cancelled' | 'changed' }))}>
-                            <option value="active">Aktif</option>
-                            <option value="changed">Değişti</option>
-                            <option value="cancelled">İptal</option>
+                            <option value="active">Active</option>
+                            <option value="changed">Changed</option>
+                            <option value="cancelled">Cancelled</option>
                           </select>
                         ) : (
                           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${STATUS_STYLE[plate.plate_status]}`}>
-                            {plate.plate_status === 'active' ? 'Aktif' : plate.plate_status === 'cancelled' ? 'İptal' : 'Değişti'}
+                            {plate.plate_status === 'active' ? 'Active' : plate.plate_status === 'cancelled' ? 'Cancelled' : 'Changed'}
                           </span>
                         )}
                       </td>
                       <td className="px-2 py-2 text-gray-400 max-w-[120px] truncate">
                         {editingId === plate.id && editData.plate_status === 'changed' ? (
-                          <Input className="h-6 text-xs w-24" placeholder="Yeni plaka"
+                          <Input className="h-6 text-xs w-24" placeholder="New plate"
                             value={editData.replacement_plate ?? ''}
                             onChange={e => setEditData(d => ({ ...d, replacement_plate: e.target.value }))} />
                         ) : editingId === plate.id && editData.plate_status === 'cancelled' ? (
-                          <Input className="h-6 text-xs w-24" placeholder="İptal sebebi"
+                          <Input className="h-6 text-xs w-24" placeholder="Cancel reason"
                             value={editData.cancel_reason ?? ''}
                             onChange={e => setEditData(d => ({ ...d, cancel_reason: e.target.value }))} />
                         ) : plate.cancel_reason || ''}
@@ -454,7 +454,7 @@ export function TransportPlanSection({ file, writable }: Props) {
           <CardContent>
             <div className="flex items-center gap-2 mb-3">
               <Bell className="h-4 w-4 text-red-600" />
-              <span className="font-semibold text-sm">Bildirimler</span>
+              <span className="font-semibold text-sm">Notifications</span>
             </div>
             <div className="space-y-2">
               {GROUPS.map(({ key, label, emoji }) => {
@@ -475,12 +475,12 @@ export function TransportPlanSection({ file, writable }: Props) {
                         <span className="text-sm font-medium text-gray-700">{label}</span>
                         {sent && (
                           <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
-                            ✓ Gönderildi
+                            ✓ Sent
                           </span>
                         )}
                         {!sent && notif && (
                           <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">
-                            Bekliyor
+                            Pending
                           </span>
                         )}
                       </div>
@@ -494,7 +494,7 @@ export function TransportPlanSection({ file, writable }: Props) {
                             onClick={() => regenerateText(key)}
                             className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
                           >
-                            <RefreshCw className="h-3 w-3" /> Yeniden Oluştur
+                            <RefreshCw className="h-3 w-3" /> Regenerate
                           </button>
                         </div>
                         <textarea
@@ -505,14 +505,14 @@ export function TransportPlanSection({ file, writable }: Props) {
                         <div className="flex gap-2">
                           <Button size="xs" onClick={() => saveAndCopyNotif(key)}
                             disabled={upsertNotif.isPending}>
-                            <Copy className="h-3 w-3 mr-1" /> Kopyala
+                            <Copy className="h-3 w-3 mr-1" /> Copy
                           </Button>
                           <Button size="xs" variant="outline"
                             className={sent ? 'border-amber-300 text-amber-700' : 'border-green-300 text-green-700'}
                             onClick={() => handleMarkSent(key)}
                             disabled={markSent.isPending}>
                             <CheckCheck className="h-3 w-3 mr-1" />
-                            {sent ? 'Yeniden Gönderildi' : 'Gönderildi İşaretle'}
+                            {sent ? 'Mark Re-sent' : 'Mark as Sent'}
                           </Button>
                         </div>
                       </div>
@@ -531,18 +531,18 @@ export function TransportPlanSection({ file, writable }: Props) {
           <CardContent>
             <div className="flex items-center gap-2 mb-3">
               <CheckSquare className="h-4 w-4 text-red-600" />
-              <span className="font-semibold text-sm">Görev Kapanışı</span>
+              <span className="font-semibold text-sm">Task Closure</span>
               {plan.customs_approval && plan.tir_carnet && plan.t1_document && (
                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium ml-auto">
-                  ✅ Tamamlandı
+                  ✅ Completed
                 </span>
               )}
             </div>
             <div className="space-y-2">
               {[
-                { key: 'customs_approval', label: 'Gümrükçü Onayı Alındı' },
-                { key: 'tir_carnet',       label: 'TIR Karnesi Tamamlandı' },
-                { key: 't1_document',      label: 'T1 Belgesi Hazırlandı' },
+                { key: 'customs_approval', label: 'Customs Approval Obtained' },
+                { key: 'tir_carnet',       label: 'TIR Carnet Completed' },
+                { key: 't1_document',      label: 'T1 Document Prepared' },
               ].map(({ key, label }) => (
                 <label key={key} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
                   (plan as any)[key] ? 'bg-green-50 border-green-200' : 'border-gray-100 hover:bg-gray-50'

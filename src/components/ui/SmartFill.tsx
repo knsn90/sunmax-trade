@@ -39,29 +39,29 @@ interface ConversationEntry {
 
 const EXAMPLES: Record<OcrMode, string[]> = {
   new_file: [
-    'Müşteri ABC Trading, ürün kağıt hamuru, 150 ton',
-    'Tarih bugün, XYZ müşterisi, Kraft kağıt, 200 ADMT, ref REF-2026-01',
-    'Tonnage bin ton, müşteri İran Kağıt A.Ş.',
+    'Customer ABC Trading, product pulp, 150 MT',
+    'Date today, XYZ customer, Kraft paper, 200 ADMT, ref REF-2026-01',
+    'Tonnage 1000 MT, customer Iran Paper Co.',
   ],
   transaction: [
-    'Bugün ABC Ltd\'den 5000 dolar tahsilat aldım, ödeme referansı INV-2024-001',
-    'Yarın XYZ tedarikçisine 3500 euro ödeme yapılacak, navlun faturası',
-    'Tarihi bugün yap, tutar bin beş yüz dolar',
+    'Received 5000 USD from ABC Ltd today, payment ref INV-2024-001',
+    'Payment to XYZ supplier tomorrow, 3500 EUR, freight invoice',
+    'Set date to today, amount 1500 USD',
   ],
   invoice: [
-    '150 ADMT, ton başına 520 dolar, navlun 25 dolar, CFR, 60 gün vadeli',
-    'Tarih bugün, miktar iki yüz ADMT, birim fiyat beş yüz dolar, CIF',
-    'Proforma no PRF-001, CB no CB-2024-01, sigorta POL-123',
+    '150 ADMT, unit price 520 USD, freight 25 USD, CFR, 60 days payment terms',
+    'Date today, quantity 200 ADMT, unit price 500 USD, CIF',
+    'Proforma no PRF-001, CB no CB-2024-01, insurance POL-123',
   ],
   proforma: [
-    '150 ADMT, 520 dolar, CFR İskenderun, 60 gün vadeli, Türkiye menşei',
-    'Miktar iki yüz ADMT, fiyat beş yüz dolar, yükleme limanı Mersin, varış Hamburg',
-    'Tarihi yarın yap, navlun otuz dolar, incoterms FOB',
+    '150 ADMT, 520 USD, CFR Iskenderun, 60 days, origin Turkey',
+    'Quantity 200 ADMT, price 500 USD, port of loading Mersin, discharge Hamburg',
+    'Date tomorrow, freight 30 USD, incoterms FOB',
   ],
   packing_list: [
-    '34ABC123 plakalı araç, 5 rulo, 12.5 ADMT, 14000 kg brüt',
-    'İki araç var: 34XYZ456 dört rulo 10 ADMT 11000 kg, 06DEF789 altı rulo 15 ADMT 16500 kg',
-    'Tarih bugün, 34AAA111 plakalı, 8 rulo, 20 ADMT, 22000 kg',
+    'Truck plate 34ABC123, 5 reels, 12.5 ADMT, 14000 kg gross',
+    'Two trucks: 34XYZ456 four reels 10 ADMT 11000 kg, 06DEF789 six reels 15 ADMT 16500 kg',
+    'Date today, plate 34AAA111, 8 reels, 20 ADMT, 22000 kg',
   ],
 };
 
@@ -109,7 +109,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
     const SR = getSpeechRecognition();
     if (!SR) return;
     const recognition = new SR();
-    recognition.lang = 'tr-TR';
+    recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.continuous = true;
     recognition.maxAlternatives = 1;
@@ -130,7 +130,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
     recognition.onerror = () => {
       isListeningRef.current = false;
       setIsListening(false);
-      toast.error('Mikrofon erişim hatası. İzinleri kontrol edin.');
+      toast.error('Microphone access error. Check permissions.');
     };
 
     recognitionRef.current = recognition;
@@ -184,14 +184,14 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
       onResult(result);
 
       if (filled.length === 0) {
-        toast.warning('Alan doldurulamadı. Farklı bir ifade deneyin.');
+        toast.warning('No fields filled. Try a different phrase.');
       }
 
     } catch (err) {
       setConversation(prev => prev.map(e =>
         e.id === entryId ? { ...e, filledFields: [], isProcessing: false } : e
       ));
-      toast.error(err instanceof Error ? err.message : 'Bir hata oluştu');
+      toast.error(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsProcessing(false);
       textareaRef.current?.focus();
@@ -235,7 +235,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
         onClick={() => setOpen(true)}
       >
         <Wand2 className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Akıllı Giriş</span>
+        <span className="hidden sm:inline">Smart Fill</span>
         <span className="sm:hidden">AI</span>
       </Button>
 
@@ -247,12 +247,12 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
                 <Wand2 className="h-4 w-4 text-brand-500" />
-                Akıllı Giriş {formName ? `— ${formName}` : ''}
+                Smart Fill {formName ? `— ${formName}` : ''}
               </DialogTitle>
               <div className="flex items-center gap-1">
                 {conversation.length > 0 && (
                   <Button variant="ghost" size="xs" onClick={handleReset} className="text-muted-foreground">
-                    <RotateCcw className="h-3.5 w-3.5 mr-1" /> Temizle
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" /> Clear
                   </Button>
                 )}
               </div>
@@ -265,10 +265,10 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
               /* Empty state — examples */
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground text-center">
-                  Türkçe olarak ne istediğinizi söyleyin veya yazın.
+                  Speak or type what you want to fill in.
                 </p>
                 <div className="space-y-1.5">
-                  <p className="text-[11px] font-medium text-muted-foreground">Örnek komutlar:</p>
+                  <p className="text-[11px] font-medium text-muted-foreground">Example commands:</p>
                   {EXAMPLES[mode].map((ex, i) => (
                     <button
                       key={i}
@@ -298,12 +298,12 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
                       {entry.isProcessing ? (
                         <div className="bg-gray-100 text-xs px-3 py-2 rounded-2xl rounded-tl-sm flex items-center gap-1.5 text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          Anlıyorum...
+                          Processing...
                         </div>
                       ) : entry.filledFields.length > 0 ? (
                         <div className="bg-green-50 border border-green-200 text-xs px-3 py-2 rounded-2xl rounded-tl-sm max-w-[85%]">
                           <p className="font-semibold text-green-700 mb-1.5">
-                            ✅ {entry.filledFields.length} alan dolduruldu
+                            ✅ {entry.filledFields.length} {entry.filledFields.length === 1 ? 'field' : 'fields'} filled
                           </p>
                           <div className="flex flex-wrap gap-1">
                             {entry.filledFields.map((f) => (
@@ -312,11 +312,11 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
                               </span>
                             ))}
                           </div>
-                          <p className="text-[10px] text-green-600 mt-1.5">Devam etmek için daha fazla bilgi girebilirsiniz.</p>
+                          <p className="text-[10px] text-green-600 mt-1.5">You can continue adding more details.</p>
                         </div>
                       ) : (
                         <div className="bg-orange-50 border border-orange-200 text-xs px-3 py-2 rounded-2xl rounded-tl-sm text-orange-700">
-                          ⚠️ Alan doldurulamadı. Daha açık bir ifade deneyin.
+                          ⚠️ No fields filled. Try a clearer phrase.
                         </div>
                       )}
                     </div>
@@ -339,7 +339,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
                 } ${!speechSupported ? 'opacity-40 cursor-not-allowed' : ''}`}
                 onClick={() => { if (speechSupported) { setInputMode('voice'); } }}
               >
-                <Mic className="h-3.5 w-3.5" /> Sesli
+                <Mic className="h-3.5 w-3.5" /> Voice
               </button>
               <button
                 type="button"
@@ -348,7 +348,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
                 }`}
                 onClick={() => { setInputMode('text'); stopListening(); }}
               >
-                <Keyboard className="h-3.5 w-3.5" /> Yazılı
+                <Keyboard className="h-3.5 w-3.5" /> Text
               </button>
             </div>
 
@@ -367,7 +367,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
                   {isListening ? <MicOff className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
                 </button>
                 <p className="text-xs text-muted-foreground text-center">
-                  {isListening ? '🔴 Dinleniyor...' : 'Mikrofona bas ve Türkçe söyle'}
+                  {isListening ? '🔴 Listening...' : 'Press the mic button and speak'}
                 </p>
                 {inputText && (
                   <div className="w-full bg-white border border-border rounded-xl px-3 py-2 text-xs text-gray-800 min-h-[44px]">
@@ -382,8 +382,8 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
                     disabled={isProcessing}
                   >
                     {isProcessing
-                      ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> İşleniyor...</>
-                      : <><Wand2 className="h-4 w-4 mr-1.5" /> Formu Doldur</>
+                      ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Processing...</>
+                      : <><Wand2 className="h-4 w-4 mr-1.5" /> Fill Form</>
                     }
                   </Button>
                 )}
@@ -394,7 +394,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
                 <textarea
                   ref={textareaRef}
                   className="flex-1 resize-none rounded-xl border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white min-h-[44px] max-h-[120px]"
-                  placeholder="Türkçe yazın... (Enter ile gönder, Shift+Enter yeni satır)"
+                  placeholder="Type your request... (Enter to send, Shift+Enter for new line)"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -419,7 +419,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
           {/* Close button */}
           <div className="px-3 pb-3 flex-shrink-0">
             <Button type="button" variant="outline" className="w-full" onClick={handleClose} size="sm">
-              <X className="h-4 w-4 mr-1.5" /> Kapat
+              <X className="h-4 w-4 mr-1.5" /> Close
             </Button>
           </div>
 

@@ -6,66 +6,66 @@ import type { OcrMode, OcrResult } from './openai';
 
 const FORM_CONTEXTS: Record<OcrMode, { name: string; fields: Record<string, string> }> = {
   new_file: {
-    name: 'Yeni Ticaret Dosyası',
+    name: 'New Trade File',
     fields: {
-      customer_id:  'Müşteri ID — listeden eşleştir',
-      product_id:   'Ürün ID — listeden eşleştir',
-      tonnage_mt:   'Tonaj (sayı) — "yüz ton" → 100, "bin beş yüz" → 1500',
-      file_date:    'Dosya tarihi (YYYY-MM-DD) — "bugün", "yarın" kabul edilir',
-      customer_ref: 'Müşteri referans numarası',
-      notes:        'Notlar',
+      customer_id:  'Customer ID — match from list',
+      product_id:   'Product ID — match from list',
+      tonnage_mt:   'Tonnage (number) — e.g. "150" or "one thousand five hundred" → 1500',
+      file_date:    'File date (YYYY-MM-DD) — "today", "tomorrow" accepted',
+      customer_ref: 'Customer reference number',
+      notes:        'Notes',
     },
   },
   transaction: {
-    name: 'Muhasebe İşlemi (Tahsilat / Ödeme / Fatura)',
+    name: 'Accounting Transaction (Receipt / Payment / Invoice)',
     fields: {
-      date:         'Tarih (YYYY-MM-DD) — "bugün", "yarın", "3 gün sonra" gibi ifadeler kabul edilir',
-      amount:       'Tutar (sayı) — "bin beş yüz" → 1500',
-      currency:     'Para birimi: USD, EUR veya TRY',
-      party_name:   'Karşı taraf adı (müşteri veya tedarikçi firma adı)',
-      description:  'İşlem açıklaması',
-      reference_no: 'Referans numarası veya fatura numarası',
+      date:         'Date (YYYY-MM-DD) — expressions like "today", "tomorrow", "in 3 days" accepted',
+      amount:       'Amount (number) — e.g. "fifteen hundred" → 1500',
+      currency:     'Currency: USD, EUR or TRY',
+      party_name:   'Counterparty name (customer or supplier company name)',
+      description:  'Transaction description',
+      reference_no: 'Reference number or invoice number',
     },
   },
   invoice: {
-    name: 'Com-Invoice (Ticari Fatura)',
+    name: 'Commercial Invoice',
     fields: {
-      date:         'Fatura tarihi (YYYY-MM-DD)',
-      quantity_admt:'Miktar ADMT (sayı)',
-      unit_price:   'Ton başına birim fiyat (sayı)',
-      currency:     'Para birimi: USD, EUR veya TRY (belirtilmezse USD)',
-      freight:      'Navlun ücreti (sayı)',
-      incoterms:    'Incoterms: CFR, FOB, CIF, DAP, EXW vb.',
-      payment_terms:'Ödeme koşulları — örn: "60 days", "30 gün vadeli", "peşin"',
-      proforma_no:  'Proforma numarası',
-      cb_no:        'CB / konşimento numarası',
-      insurance_no: 'Sigorta poliçe numarası',
+      date:         'Invoice date (YYYY-MM-DD)',
+      quantity_admt:'Quantity ADMT (number)',
+      unit_price:   'Unit price per ton (number)',
+      currency:     'Currency: USD, EUR or TRY (default USD)',
+      freight:      'Freight cost (number)',
+      incoterms:    'Incoterms: CFR, FOB, CIF, DAP, EXW etc.',
+      payment_terms:'Payment terms — e.g. "60 days", "30 days net", "prepaid"',
+      proforma_no:  'Proforma number',
+      cb_no:        'CB / bill of lading number',
+      insurance_no: 'Insurance policy number',
     },
   },
   proforma: {
     name: 'Proforma Invoice',
     fields: {
-      date:               'Proforma tarihi (YYYY-MM-DD)',
-      quantity_admt:      'Miktar ADMT (sayı)',
-      unit_price:         'Ton başına birim fiyat (sayı)',
-      currency:           'Para birimi: USD, EUR veya TRY (belirtilmezse USD)',
-      freight:            'Navlun ücreti (sayı)',
-      incoterms:          'Incoterms: CFR, FOB, CIF, DAP, EXW vb.',
-      payment_terms:      'Ödeme koşulları',
-      port_of_loading:    'Yükleme limanı (şehir/liman adı)',
-      port_of_discharge:  'Boşaltma/varış limanı',
-      country_of_origin:  'Menşei ülke',
+      date:               'Proforma date (YYYY-MM-DD)',
+      quantity_admt:      'Quantity ADMT (number)',
+      unit_price:         'Unit price per ton (number)',
+      currency:           'Currency: USD, EUR or TRY (default USD)',
+      freight:            'Freight cost (number)',
+      incoterms:          'Incoterms: CFR, FOB, CIF, DAP, EXW etc.',
+      payment_terms:      'Payment terms',
+      port_of_loading:    'Port of loading (city/port name)',
+      port_of_discharge:  'Port of discharge / destination port',
+      country_of_origin:  'Country of origin',
     },
   },
   packing_list: {
-    name: 'Packing List (Ambalaj Listesi)',
+    name: 'Packing List',
     fields: {
-      date:  'Packing list tarihi (YYYY-MM-DD)',
-      items: `Araç/konteyner listesi — her satır için:
-        vehicle_plate: Araç plakası
-        reels:         Rulo sayısı
-        admt:          ADMT miktarı
-        gross_weight_kg: Brüt ağırlık (kg)`,
+      date:  'Packing list date (YYYY-MM-DD)',
+      items: `Vehicle/container list — for each entry:
+        vehicle_plate: Truck plate number
+        reels:         Number of reels
+        admt:          ADMT quantity
+        gross_weight_kg: Gross weight (kg)`,
     },
   },
 };
@@ -79,7 +79,7 @@ function buildSystemPrompt(mode: OcrMode, currentValues: Record<string, unknown>
     .join('\n');
 
   const currentStr = Object.keys(currentValues).length > 0
-    ? `\nMEVCUT FORM DURUMU (dolu alanlar):\n${JSON.stringify(currentValues, null, 2)}\n`
+    ? `\nCURRENT FORM STATE (already filled fields):\n${JSON.stringify(currentValues, null, 2)}\n`
     : '';
 
   // Extra context block for new_file (customer & product lists)
@@ -88,38 +88,38 @@ function buildSystemPrompt(mode: OcrMode, currentValues: Record<string, unknown>
     const customers = (context.customers as Array<{ id: string; name: string }>) ?? [];
     const products  = (context.products  as Array<{ id: string; name: string }>) ?? [];
     contextStr = `
-MÜŞTERİ LİSTESİ (customer_id → isim):
-${customers.map(c => `  ${c.id} → ${c.name}`).join('\n') || '  (boş)'}
+CUSTOMER LIST (customer_id → name):
+${customers.map(c => `  ${c.id} → ${c.name}`).join('\n') || '  (empty)'}
 
-ÜRÜN LİSTESİ (product_id → isim):
-${products.map(p => `  ${p.id} → ${p.name}`).join('\n') || '  (boş)'}
+PRODUCT LIST (product_id → name):
+${products.map(p => `  ${p.id} → ${p.name}`).join('\n') || '  (empty)'}
 
-Kullanıcının söylediği müşteri adını yukarıdaki listeden en yakın eşleşmeyle bul, customer_id olarak o UUID'yi döndür. Aynısını ürün için yap.
-customer_name ve product_name alanlarını da döndür (okunabilirlik için).
+Match the customer name the user mentioned to the closest entry above and return that UUID as customer_id. Do the same for product_id.
+Also return customer_name and product_name for readability.
 `;
   }
 
-  return `Sen SunPlus ticaret yönetim sisteminin akıllı form asistanısın.
-Kullanıcı şu an "${ctx.name}" formunu dolduruyor.
-Bugünün tarihi: ${today()}
+  return `You are the smart form assistant for the SunPlus trade management system.
+The user is currently filling in the "${ctx.name}" form.
+Today's date: ${today()}
 ${currentStr}${contextStr}
-DOLDURULACAK ALANLAR:
+FIELDS TO FILL:
 ${fieldList}
 
-GÖREVIN:
-Kullanıcının Türkçe isteğini anlayarak uygun alanları JSON olarak döndür.
+YOUR TASK:
+Understand the user's request and return the appropriate fields as JSON.
 
-KURALLAR:
-- Tamamen doğal Türkçe konuşmayı anlarsın
-- Sayı kelimelerini rakama çevir: "yüz elli" → 150, "bin" → 1000, "iki buçuk" → 2.5
-- Tarih ifadelerini çevir: "bugün" → ${today()}, "yarın" → ileri tarih, "önümüzdeki Pazartesi" vb.
-- Sadece kullanıcının bahsettiği alanları dahil et — diğerlerini atlat
-- Eğer kullanıcı mevcut bir alanı değiştirmek istiyorsa yeni değeri ver
-- incoterms büyük harf olmalı (cif → CIF, cfr → CFR)
-- currency büyük harf olmalı (usd → USD)
-- Anlaşılmayan veya eksik bilgileri dahil etme
-- SADECE geçerli bir JSON objesi döndür, başka hiçbir şey yazma
-- Yanıt şu formatta olacak: {"alan1": değer1, "alan2": değer2, ...}`;
+RULES:
+- Understand natural language in any language
+- Convert number words to digits: "one fifty" → 150, "one thousand" → 1000, "two and a half" → 2.5
+- Convert date expressions: "today" → ${today()}, "tomorrow" → next day, "next Monday" etc.
+- Only include fields the user mentioned — skip the rest
+- If the user wants to change an existing field, provide the new value
+- incoterms must be uppercase (cif → CIF, cfr → CFR)
+- currency must be uppercase (usd → USD)
+- Do not include unclear or missing information
+- Return ONLY a valid JSON object, nothing else
+- Response format: {"field1": value1, "field2": value2, ...}`;
 }
 
 // ─── Conversation message type ────────────────────────────────────────────────
@@ -141,7 +141,7 @@ export async function smartFillForm(
   const apiKey = getApiKey('anthropic');
   if (!apiKey) {
     throw new Error(
-      'Anthropic (Claude) API key bulunamadı. Lütfen Ayarlar → API Anahtarları bölümünden ekleyin.',
+      'Anthropic API key not found. Please add it in Settings → API Keys.',
     );
   }
 
@@ -169,7 +169,7 @@ export async function smartFillForm(
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err.error?.message ?? `API hatası: ${response.status}`);
+    throw new Error(err.error?.message ?? `API error: ${response.status}`);
   }
 
   const data = await response.json() as { content: Array<{ text: string }> };
@@ -177,7 +177,7 @@ export async function smartFillForm(
 
   // Extract JSON from response
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI yanıtı işlenemedi. Lütfen daha açık bir şekilde tekrar deneyin.');
+  if (!jsonMatch) throw new Error('Could not parse AI response. Please try again with a clearer description.');
 
   return JSON.parse(jsonMatch[0]) as OcrResult;
 }
@@ -186,29 +186,29 @@ export async function smartFillForm(
 
 export const FIELD_LABELS: Record<string, string> = {
   // new_file
-  customer_name: 'Müşteri',
-  product_name:  'Ürün',
-  tonnage_mt:    'Tonaj (MT)',
-  file_date:     'Tarih',
-  customer_ref:  'Müşteri Ref',
-  notes:         'Notlar',
+  customer_name: 'Customer',
+  product_name:  'Product',
+  tonnage_mt:    'Tonnage (MT)',
+  file_date:     'Date',
+  customer_ref:  'Customer Ref',
+  notes:         'Notes',
   // common
-  date: 'Tarih',
-  amount: 'Tutar',
-  currency: 'Para Birimi',
-  party_name: 'Taraf',
-  description: 'Açıklama',
-  reference_no: 'Referans No',
-  quantity_admt: 'Miktar (ADMT)',
-  unit_price: 'Birim Fiyat',
-  freight: 'Navlun',
-  payment_terms: 'Ödeme Koşulları',
+  date: 'Date',
+  amount: 'Amount',
+  currency: 'Currency',
+  party_name: 'Party',
+  description: 'Description',
+  reference_no: 'Reference No',
+  quantity_admt: 'Quantity (ADMT)',
+  unit_price: 'Unit Price',
+  freight: 'Freight',
+  payment_terms: 'Payment Terms',
   incoterms: 'Incoterms',
   proforma_no: 'Proforma No',
   cb_no: 'CB No',
-  insurance_no: 'Sigorta No',
-  port_of_loading: 'Yükleme Limanı',
-  port_of_discharge: 'Varış Limanı',
-  country_of_origin: 'Menşei Ülke',
-  items: 'Araç Listesi',
+  insurance_no: 'Insurance No',
+  port_of_loading: 'Port of Loading',
+  port_of_discharge: 'Port of Discharge',
+  country_of_origin: 'Country of Origin',
+  items: 'Vehicle List',
 };

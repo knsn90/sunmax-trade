@@ -28,7 +28,7 @@ export function ApproveWithPasswordDialog({ open, onClose, onConfirm, isPending 
       setError('');
       onConfirm();
     } else {
-      setError('Şifre yanlış. Lütfen tekrar deneyin.');
+      setError('Wrong password. Please try again.');
     }
   }
 
@@ -51,20 +51,20 @@ export function ApproveWithPasswordDialog({ open, onClose, onConfirm, isPending 
             <Lock className="h-4 w-4 text-white" />
           </div>
           <div>
-            <div className="text-white font-bold text-sm">Onay Şifresi</div>
-            <div className="text-white/75 text-xs">Belgeyi onaylamak için şifre giriniz</div>
+            <div className="text-white font-bold text-sm">Approval Password</div>
+            <div className="text-white/75 text-xs">Enter password to approve this document</div>
           </div>
         </div>
 
         {/* Body */}
         <div className="px-5 py-4">
-          <div className="mb-1 text-xs font-medium text-gray-600">Şifre</div>
+          <div className="mb-1 text-xs font-medium text-gray-600">Password</div>
           <Input
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setError(''); }}
             onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
-            placeholder="Şifreyi girin..."
+            placeholder="Enter password..."
             autoFocus
             className="mb-2"
           />
@@ -72,7 +72,7 @@ export function ApproveWithPasswordDialog({ open, onClose, onConfirm, isPending 
             <div className="text-xs text-red-500 font-medium mb-2">{error}</div>
           )}
           <p className="text-xs text-gray-400 mb-4">
-            Bu belge imzalanarak onaylanacak. İmza ve kaşe otomatik olarak eklenecektir.
+            This document will be signed and approved. Signature and stamp will be added automatically.
           </p>
 
           <div className="flex gap-2">
@@ -82,14 +82,14 @@ export function ApproveWithPasswordDialog({ open, onClose, onConfirm, isPending 
               onClick={handleClose}
               disabled={isPending}
             >
-              İptal
+              Cancel
             </Button>
             <Button
               className="flex-1 bg-green-600 hover:bg-green-700 text-white"
               onClick={handleConfirm}
               disabled={isPending || !password}
             >
-              {isPending ? 'Onaylanıyor…' : '✅ Onayla'}
+              {isPending ? 'Approving…' : '✅ Approve'}
             </Button>
           </div>
         </div>

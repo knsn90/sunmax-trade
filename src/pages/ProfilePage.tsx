@@ -48,7 +48,7 @@ export function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
     if (file.size > 2 * 1024 * 1024) {
-      setAvatarMsg({ type: 'error', msg: 'Dosya 2MB\'dan küçük olmalı.' });
+      setAvatarMsg({ type: 'error', msg: 'File must be smaller than 2MB.' });
       return;
     }
     setAvatarLoading(true);
@@ -64,9 +64,9 @@ export function ProfilePage() {
         if (error) throw error;
         setAvatarUrl(base64);
         await refreshProfile();
-        setAvatarMsg({ type: 'success', msg: 'Fotoğraf güncellendi.' });
+        setAvatarMsg({ type: 'success', msg: 'Photo updated.' });
       } catch (err: unknown) {
-        setAvatarMsg({ type: 'error', msg: err instanceof Error ? err.message : 'Hata oluştu.' });
+        setAvatarMsg({ type: 'error', msg: err instanceof Error ? err.message : 'An error occurred.' });
       } finally {
         setAvatarLoading(false);
       }
@@ -90,9 +90,9 @@ export function ProfilePage() {
         .eq('id', profile.id);
       if (error) throw error;
       await refreshProfile();
-      setInfoMsg({ type: 'success', msg: 'İsim güncellendi.' });
+      setInfoMsg({ type: 'success', msg: 'Name updated.' });
     } catch (err: unknown) {
-      setInfoMsg({ type: 'error', msg: err instanceof Error ? err.message : 'Bir hata oluştu.' });
+      setInfoMsg({ type: 'error', msg: err instanceof Error ? err.message : 'An error occurred.' });
     } finally {
       setInfoLoading(false);
     }
@@ -106,9 +106,9 @@ export function ProfilePage() {
   const [passLoading, setPassLoading] = useState(false);
 
   async function changePassword() {
-    if (!currentPass) { setPassMsg({ type: 'error', msg: 'Mevcut şifrenizi girin.' }); return; }
-    if (newPass.length < 6) { setPassMsg({ type: 'error', msg: 'Yeni şifre en az 6 karakter olmalı.' }); return; }
-    if (newPass !== confirmPass) { setPassMsg({ type: 'error', msg: 'Yeni şifreler eşleşmiyor.' }); return; }
+    if (!currentPass) { setPassMsg({ type: 'error', msg: 'Please enter your current password.' }); return; }
+    if (newPass.length < 6) { setPassMsg({ type: 'error', msg: 'New password must be at least 6 characters.' }); return; }
+    if (newPass !== confirmPass) { setPassMsg({ type: 'error', msg: 'New passwords do not match.' }); return; }
     setPassLoading(true);
     setPassMsg(null);
     try {
@@ -116,13 +116,13 @@ export function ProfilePage() {
         email: user?.email ?? '',
         password: currentPass,
       });
-      if (reAuthErr) throw new Error('Mevcut şifre yanlış.');
+      if (reAuthErr) throw new Error('Current password is incorrect.');
       const { error } = await supabase.auth.updateUser({ password: newPass });
       if (error) throw error;
-      setPassMsg({ type: 'success', msg: 'Şifre başarıyla değiştirildi.' });
+      setPassMsg({ type: 'success', msg: 'Password changed successfully.' });
       setCurrentPass(''); setNewPass(''); setConfirmPass('');
     } catch (err: unknown) {
-      setPassMsg({ type: 'error', msg: err instanceof Error ? err.message : 'Bir hata oluştu.' });
+      setPassMsg({ type: 'error', msg: err instanceof Error ? err.message : 'An error occurred.' });
     } finally {
       setPassLoading(false);
     }
@@ -137,11 +137,11 @@ export function ProfilePage() {
 
   function changeApprovePassword() {
     setApproveMsg(null);
-    if (oldApprove !== currentApprove) { setApproveMsg({ type: 'error', msg: 'Mevcut onay şifresi yanlış.' }); return; }
-    if (newApprove.length < 4)         { setApproveMsg({ type: 'error', msg: 'Yeni şifre en az 4 karakter olmalı.' }); return; }
-    if (newApprove !== confirmApprove) { setApproveMsg({ type: 'error', msg: 'Şifreler eşleşmiyor.' }); return; }
+    if (oldApprove !== currentApprove) { setApproveMsg({ type: 'error', msg: 'Current approval password is incorrect.' }); return; }
+    if (newApprove.length < 4)         { setApproveMsg({ type: 'error', msg: 'New password must be at least 4 characters.' }); return; }
+    if (newApprove !== confirmApprove) { setApproveMsg({ type: 'error', msg: 'Passwords do not match.' }); return; }
     localStorage.setItem(APPROVE_PASSWORD_KEY, newApprove);
-    setApproveMsg({ type: 'success', msg: 'Onay şifresi değiştirildi.' });
+    setApproveMsg({ type: 'success', msg: 'Approval password changed.' });
     setOldApprove(''); setNewApprove(''); setConfirmApprove('');
   }
 
@@ -201,37 +201,37 @@ export function ProfilePage() {
                 className="text-xs"
               >
                 {avatarLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Camera className="h-3.5 w-3.5 mr-1.5" />}
-                Fotoğraf Değiştir
+                Change Photo
               </Button>
-              <p className="text-[10px] text-gray-400">JPG, PNG veya WebP — maks. 2MB</p>
+              <p className="text-[10px] text-gray-400">JPG, PNG or WebP — max 2MB</p>
               {avatarMsg && <Alert {...avatarMsg} />}
             </div>
           </div>
 
           {/* Personal info */}
-          <Card icon={<User className="h-3.5 w-3.5" />} title="Kişisel Bilgiler">
+          <Card icon={<User className="h-3.5 w-3.5" />} title="Personal Info">
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Ad Soyad</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Full Name</label>
                 <Input
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
-                  placeholder="Adınız Soyadınız"
+                  placeholder="Your full name"
                   onKeyDown={e => e.key === 'Enter' && saveProfile()}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">E-posta</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Email</label>
                 <Input value={user?.email ?? ''} disabled className="bg-gray-50 text-gray-400 cursor-not-allowed text-xs" />
-                <p className="text-[10px] text-gray-400 mt-1">E-posta değiştirilemez.</p>
+                <p className="text-[10px] text-gray-400 mt-1">Email cannot be changed.</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Rol</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Role</label>
                 <Input value={profile?.role ?? ''} disabled className="bg-gray-50 text-gray-400 cursor-not-allowed uppercase text-xs" />
               </div>
               {infoMsg && <Alert {...infoMsg} />}
               <Button onClick={saveProfile} disabled={infoLoading} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                {infoLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Kaydediliyor…</> : 'Kaydet'}
+                {infoLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Saving…</> : 'Save'}
               </Button>
             </div>
           </Card>
@@ -241,50 +241,50 @@ export function ProfilePage() {
         <div className="space-y-4">
 
           {/* Login password */}
-          <Card icon={<Lock className="h-3.5 w-3.5" />} title="Giriş Şifresi Değiştir">
+          <Card icon={<Lock className="h-3.5 w-3.5" />} title="Change Password">
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Mevcut Şifre</label>
-                <Input type="password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} placeholder="Mevcut şifrenizi girin" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Current Password</label>
+                <Input type="password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} placeholder="Enter your current password" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Yeni Şifre</label>
-                <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="En az 6 karakter" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">New Password</label>
+                <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="At least 6 characters" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Yeni Şifre (Tekrar)</label>
-                <Input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Şifreyi tekrar girin"
+                <label className="text-xs font-medium text-gray-600 mb-1 block">New Password (Confirm)</label>
+                <Input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Repeat new password"
                   onKeyDown={e => e.key === 'Enter' && changePassword()} />
               </div>
               {passMsg && <Alert {...passMsg} />}
               <Button onClick={changePassword} disabled={passLoading || !newPass || !currentPass} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                {passLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Değiştiriliyor…</> : 'Şifreyi Değiştir'}
+                {passLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Changing…</> : 'Change Password'}
               </Button>
             </div>
           </Card>
 
           {/* Approve password */}
-          <Card icon={<KeyRound className="h-3.5 w-3.5" />} title="Belge Onay Şifresi">
+          <Card icon={<KeyRound className="h-3.5 w-3.5" />} title="Document Approval Password">
             <p className="text-xs text-gray-400 mb-4">
-              Belgeleri onaylarken (Approve) istenen şifre.
+              Password required when approving documents.
             </p>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Mevcut Onay Şifresi</label>
-                <Input type="password" value={oldApprove} onChange={e => setOldApprove(e.target.value)} placeholder="Mevcut şifre" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Current Approval Password</label>
+                <Input type="password" value={oldApprove} onChange={e => setOldApprove(e.target.value)} placeholder="Current password" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Yeni Onay Şifresi</label>
-                <Input type="password" value={newApprove} onChange={e => setNewApprove(e.target.value)} placeholder="Yeni şifre" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">New Approval Password</label>
+                <Input type="password" value={newApprove} onChange={e => setNewApprove(e.target.value)} placeholder="New password" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Yeni Onay Şifresi (Tekrar)</label>
-                <Input type="password" value={confirmApprove} onChange={e => setConfirmApprove(e.target.value)} placeholder="Tekrar girin"
+                <label className="text-xs font-medium text-gray-600 mb-1 block">New Approval Password (Confirm)</label>
+                <Input type="password" value={confirmApprove} onChange={e => setConfirmApprove(e.target.value)} placeholder="Repeat password"
                   onKeyDown={e => e.key === 'Enter' && changeApprovePassword()} />
               </div>
               {approveMsg && <Alert {...approveMsg} />}
               <Button onClick={changeApprovePassword} disabled={!oldApprove || !newApprove} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                Onay Şifresini Değiştir
+                Change Approval Password
               </Button>
             </div>
           </Card>

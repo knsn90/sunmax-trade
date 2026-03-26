@@ -61,12 +61,12 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Kategorileri Yönet</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Manage Categories</DialogTitle></DialogHeader>
 
         {/* Existing categories */}
         <div className="space-y-1.5 max-h-60 overflow-y-auto">
           {categories.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">Henüz kategori yok</p>
+            <p className="text-xs text-gray-400 text-center py-4">No categories yet</p>
           )}
           {categories.map(cat => (
             <div key={cat.id} className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-50">
@@ -96,7 +96,7 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
                     style={{ background: c, borderColor: cat.color === c ? '#1f2937' : 'transparent' }} />
                 ))}
               </div>
-              <button onClick={() => { if (window.confirm(`"${cat.name}" silinsin mi? Ürünlerin kategorisi kaldırılır.`)) deleteCat.mutate(cat.id); }}
+              <button onClick={() => { if (window.confirm(`Delete "${cat.name}"? Products in this category will be uncategorized.`)) deleteCat.mutate(cat.id); }}
                 className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -106,7 +106,7 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
 
         {/* Add new */}
         <div className="border-t border-gray-100 pt-3 mt-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Yeni Kategori</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">New Category</p>
           <div className="flex gap-2 items-center">
             <input
               value={newName}
@@ -132,7 +132,7 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
 
         <DialogFooter>
           <button onClick={() => onOpenChange(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-            Kapat
+            Close
           </button>
         </DialogFooter>
       </DialogContent>
@@ -369,7 +369,7 @@ export function ProductsPage() {
                   ))}
                   <button type="button" onClick={() => { setModalOpen(false); setCatModalOpen(true); }}
                     className="px-3 h-7 rounded-full text-[11px] font-semibold border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 transition-all flex items-center gap-1">
-                    <Plus className="h-3 w-3" /> Yeni
+                    <Plus className="h-3 w-3" /> New
                   </button>
                 </div>
               </FormGroup>

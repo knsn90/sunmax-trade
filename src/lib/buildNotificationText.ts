@@ -12,12 +12,12 @@ export interface NotifContext {
 
 function fmtDate(iso: string | null) {
   if (!iso) return 'TBD';
-  return new Date(iso + 'T00:00:00').toLocaleDateString('tr-TR', {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 }
 
-const MODE: Record<string, string> = { truck: 'Tır', railway: 'Tren', sea: 'Deniz' };
+const MODE: Record<string, string> = { truck: 'Truck', railway: 'Railway', sea: 'Sea' };
 
 export function buildNotificationText(group: NotifGroup, ctx: NotifContext): string {
   const date  = fmtDate(ctx.loadingDate);
@@ -28,52 +28,52 @@ export function buildNotificationText(group: NotifGroup, ctx: NotifContext): str
   switch (group) {
     case 'customs':
       return [
-        `📋 GÜMRÜK BİLDİRİMİ`,
-        `Dosya No : ${ctx.fileNo}`,
-        `Ürün     : ${ctx.productName}`,
-        `Yükleme  : ${date}  |  ${mode}`,
-        ctx.freightCompany ? `Navlun   : ${ctx.freightCompany}` : '',
+        `📋 CUSTOMS NOTIFICATION`,
+        `File No  : ${ctx.fileNo}`,
+        `Product  : ${ctx.productName}`,
+        `Loading  : ${date}  |  ${mode}`,
+        ctx.freightCompany ? `Freight  : ${ctx.freightCompany}` : '',
         ``,
-        `Aşağıdaki araçlar için gümrük işlemleri başlatılacaktır:`,
+        `Customs procedures will be initiated for the following vehicles:`,
         list,
         ``,
-        `Toplam: ${count} araç`,
+        `Total: ${count} vehicle(s)`,
       ].filter(l => l !== null && l !== undefined && !(l === '' && false)).join('\n').trim();
 
     case 'warehouse':
       return [
-        `📦 ANTREPO BİLDİRİMİ`,
-        `Dosya No : ${ctx.fileNo}`,
-        `Ürün     : ${ctx.productName}`,
-        `Yükleme  : ${date}`,
+        `📦 WAREHOUSE NOTIFICATION`,
+        `File No  : ${ctx.fileNo}`,
+        `Product  : ${ctx.productName}`,
+        `Loading  : ${date}`,
         ``,
-        `Aşağıdaki araçlar için malzeme hazırlığı rica olunur:`,
+        `Please prepare goods for the following vehicles:`,
         list,
         ``,
-        `Toplam: ${count} araç`,
+        `Total: ${count} vehicle(s)`,
       ].join('\n').trim();
 
     case 'port':
       return [
-        `🚢 LİMAN BİLDİRİMİ`,
-        `Dosya No : ${ctx.fileNo}`,
-        `Ürün     : ${ctx.productName}`,
-        `Yükleme  : ${date}`,
-        ctx.portOfLoading ? `Liman    : ${ctx.portOfLoading}` : '',
+        `🚢 PORT NOTIFICATION`,
+        `File No  : ${ctx.fileNo}`,
+        `Product  : ${ctx.productName}`,
+        `Loading  : ${date}`,
+        ctx.portOfLoading ? `Port     : ${ctx.portOfLoading}` : '',
         ``,
-        `Araç Plakaları (${count} adet):`,
+        `Vehicle Plates (${count}):`,
         list,
       ].filter(l => l !== null).join('\n').trim();
 
     case 'company':
       return [
-        `🏢 FİRMA GRUBU BİLDİRİMİ`,
-        `Dosya No : ${ctx.fileNo}`,
-        `Ürün     : ${ctx.productName}`,
-        ctx.freightCompany ? `Navlun   : ${ctx.freightCompany}` : '',
-        `Yükleme  : ${date}  |  ${mode}`,
+        `🏢 COMPANY GROUP NOTIFICATION`,
+        `File No  : ${ctx.fileNo}`,
+        `Product  : ${ctx.productName}`,
+        ctx.freightCompany ? `Freight  : ${ctx.freightCompany}` : '',
+        `Loading  : ${date}  |  ${mode}`,
         ``,
-        `Araçlar (${count} adet):`,
+        `Vehicles (${count}):`,
         list,
       ].filter(l => l !== null).join('\n').trim();
   }
