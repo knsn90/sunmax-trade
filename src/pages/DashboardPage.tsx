@@ -148,8 +148,8 @@ function Card({ title, children, action, actionLabel, className, dragHandleProps
   isFull?: boolean; onToggleSize?: () => void;
 }) {
   return (
-    <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden', className)}>
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+    <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[340px]', className)}>
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
         <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</span>
         <div className="flex items-center gap-1.5">
           {action && (
@@ -178,7 +178,9 @@ function Card({ title, children, action, actionLabel, className, dragHandleProps
           )}
         </div>
       </div>
-      {children}
+      <div className="flex-1 overflow-y-auto">
+        {children}
+      </div>
     </div>
   );
 }
