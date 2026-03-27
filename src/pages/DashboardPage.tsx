@@ -14,7 +14,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
-import { useTransactionSummary } from '@/hooks/useTransactions';
+import { useTransactions, useTransactionSummary } from '@/hooks/useTransactions';
 import { useAuth } from '@/hooks/useAuth';
 import { fUSD, fDate } from '@/lib/formatters';
 import { LoadingSpinner } from '@/components/ui/shared';
@@ -217,6 +217,7 @@ export function DashboardPage() {
   const { profile } = useAuth();
   const { data: files = [], isLoading: filesLoading } = useTradeFiles();
   const { data: summary, isLoading: summaryLoading } = useTransactionSummary();
+  const { data: transactions = [] } = useTransactions();
   const { data: priceEntries = [] } = usePriceList();
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
@@ -289,13 +290,40 @@ export function DashboardPage() {
 
   const alerts = useMemo(() => {
     const list: { label: string; sub: string; href: string; type: 'danger' | 'warning' }[] = [];
+
+    // ETA overdue
     files.filter(f => ['sale','delivery'].includes(f.status) && f.eta && isOverdueEta(f.eta)).slice(0,5)
       .forEach(f => list.push({ label: `${f.file_no} — ETA Overdue`, sub: `${Math.abs(daysUntil(f.eta) ?? 0)} day(s) late · ${f.customer?.name ?? ''}`, href: `/files/${f.id}`, type: 'danger' }));
+
+    // ETA soon (≤7 days)
     files.filter(f => ['sale','delivery'].includes(f.status) && f.eta && !isOverdueEta(f.eta))
       .filter(f => { const d = daysUntil(f.eta); return d !== null && d <= 7 && d >= 0; }).slice(0,3)
       .forEach(f => list.push({ label: `${f.file_no} — ETA Soon`, sub: `${daysUntil(f.eta)} day(s) · ${f.customer?.name ?? ''}`, href: `/files/${f.id}`, type: 'warning' }));
+
+    // Payment not received — ETA within 10 days
+    // Build set of file IDs that have a fully paid receipt
+    const paidFileIds = new Set(
+      transactions
+        .filter(t => t.transaction_type === 'receipt' && t.payment_status === 'paid' && t.trade_file_id)
+        .map(t => t.trade_file_id as string)
+    );
+    files
+      .filter(f => ['sale','delivery'].includes(f.status) && f.eta && !isOverdueEta(f.eta))
+      .filter(f => { const d = daysUntil(f.eta); return d !== null && d <= 10 && d >= 0; })
+      .filter(f => !paidFileIds.has(f.id))
+      .slice(0, 5)
+      .forEach(f => {
+        const d = daysUntil(f.eta) ?? 0;
+        list.push({
+          label: `${f.file_no} — Payment Pending`,
+          sub: `${d} day(s) to ETA · ${f.customer?.name ?? ''}`,
+          href: `/files/${f.id}`,
+          type: d <= 5 ? 'danger' : 'warning',
+        });
+      });
+
     return list;
-  }, [files]);
+  }, [files, transactions]);
 
   const recentFiles = useMemo(() =>
     [...files].sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime()).slice(0, 8),
