@@ -516,48 +516,43 @@ export function DashboardPage() {
                 <span className="text-[12px] text-gray-400">No price entries yet</span>
               </div>
             ) : (
-              <div className="px-4 py-3 overflow-x-auto scrollbar-none">
-                <div className="flex gap-3" style={{ minWidth: 'max-content' }}>
-                  {latestPrices.map(entry => {
-                    const isExpired = entry.valid_until ? new Date(entry.valid_until) < new Date() : false;
-                    const sym = ({ USD: '$', EUR: '€', TRY: '₺' } as Record<string,string>)[entry.currency] ?? '';
-                    const priceNum = Number(entry.price);
-                    const formatted = priceNum >= 1000
-                      ? priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                      : priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-                    return (
-                      <button key={entry.id} onClick={() => navigate('/price-list')}
-                        className="group flex flex-col gap-2.5 w-44 shrink-0 bg-gray-50 hover:bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md rounded-2xl p-4 transition-all text-left"
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: accent + '18' }}>
-                            <Tag className="h-3.5 w-3.5" style={{ color: accent }} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-[12px] font-bold text-gray-900 leading-tight line-clamp-2">{entry.product?.name ?? '—'}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5 truncate">{entry.supplier?.name ?? '—'}</div>
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-[22px] font-black text-gray-900 leading-none">{sym}{formatted}</span>
-                          <span className="text-[11px] font-semibold text-gray-400 ml-1">{entry.currency}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(entry.price_date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
-                          </span>
+              <div className="divide-y divide-gray-50">
+                {latestPrices.map(entry => {
+                  const isExpired = entry.valid_until ? new Date(entry.valid_until) < new Date() : false;
+                  const sym = ({ USD: '$', EUR: '€', TRY: '₺' } as Record<string,string>)[entry.currency] ?? '';
+                  const priceNum = Number(entry.price);
+                  const formatted = priceNum >= 1000
+                    ? priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+                  return (
+                    <button key={entry.id} onClick={() => navigate('/price-list')}
+                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: accent + '15' }}>
+                        <Tag className="h-3.5 w-3.5" style={{ color: accent }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold text-gray-900 truncate">{entry.product?.name ?? '—'}</div>
+                        <div className="text-[11px] text-gray-400 truncate mt-0.5">{entry.supplier?.name ?? '—'}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-[13px] font-bold text-gray-900">{sym}{formatted} <span className="text-[10px] font-normal text-gray-400">{entry.currency}</span></div>
+                        <div className="mt-0.5">
                           {entry.valid_until ? (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${isExpired ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${isExpired ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
                               {isExpired ? 'Expired' : `Until ${new Date(entry.valid_until + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`}
                             </span>
                           ) : (
-                            <span className="text-[9px] text-gray-300 font-medium">No expiry</span>
+                            <span className="text-[10px] text-gray-300">
+                              {new Date(entry.price_date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                            </span>
                           )}
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </Card>
