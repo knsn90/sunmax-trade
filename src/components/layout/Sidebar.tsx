@@ -30,8 +30,9 @@ export function Sidebar() {
     {
       label: 'TRADE',
       items: [
-        { to: '/pipeline', label: 'Pipeline', icon: <BarChart3 className="h-4 w-4" /> },
-        { to: '/files', label: 'All Files', icon: <FileText className="h-4 w-4" /> },
+        { to: '/pipeline',   label: 'Pipeline',   icon: <BarChart3 className="h-4 w-4" /> },
+        { to: '/files',      label: 'All Files',  icon: <FileText className="h-4 w-4" /> },
+        { to: '/price-list', label: 'Price List', icon: <Tag className="h-4 w-4" /> },
       ],
     },
     {
@@ -50,9 +51,8 @@ export function Sidebar() {
     {
       label: 'CONTACTS',
       items: [
-        { to: '/contacts',    label: 'Contacts',   icon: <Users className="h-4 w-4" /> },
-        { to: '/products',    label: 'Products',   icon: <Box className="h-4 w-4" /> },
-        { to: '/price-list',  label: 'Price List', icon: <Tag className="h-4 w-4" /> },
+        { to: '/contacts', label: 'Contacts', icon: <Users className="h-4 w-4" /> },
+        { to: '/products', label: 'Products', icon: <Box className="h-4 w-4" /> },
       ],
     },
     {
