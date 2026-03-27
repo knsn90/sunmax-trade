@@ -24,16 +24,17 @@ import { usePriceList } from '@/hooks/useEntities';
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet, Tag,
-  GripVertical,
+  GripVertical, Maximize2, Minimize2,
 } from 'lucide-react';
 
-// ─── Widget order ─────────────────────────────────────────────────────────────
+// ─── Widget order & sizes ─────────────────────────────────────────────────────
 const DEFAULT_ORDER = ['kpi', 'pipeline', 'alerts', 'recent_files', 'delivery', 'latest_prices', 'revenue_chart'];
 
-// Full-width widgets on desktop (col-span-2 in 2-col grid)
-const WIDGET_FULL: Record<string, boolean> = {
-  kpi: true, recent_files: true, delivery: true, latest_prices: true, revenue_chart: true,
-  pipeline: false, alerts: false,
+// Default column span per widget ('full' = col-span-2, 'half' = col-span-1)
+const DEFAULT_SIZES: Record<string, 'full' | 'half'> = {
+  kpi: 'full', recent_files: 'full', delivery: 'full',
+  latest_prices: 'full', revenue_chart: 'full',
+  pipeline: 'half', alerts: 'half',
 };
 
 function loadOrder(userId: string): string[] {
@@ -41,7 +42,6 @@ function loadOrder(userId: string): string[] {
     const raw = localStorage.getItem(`dashboard_order_${userId}`);
     if (!raw) return DEFAULT_ORDER;
     const saved: string[] = JSON.parse(raw);
-    // merge: keep saved order, append any new default widgets not yet in saved
     const valid = saved.filter(id => DEFAULT_ORDER.includes(id));
     const missing = DEFAULT_ORDER.filter(id => !valid.includes(id));
     return [...valid, ...missing];
@@ -49,6 +49,19 @@ function loadOrder(userId: string): string[] {
 }
 function saveOrder(userId: string, order: string[]) {
   localStorage.setItem(`dashboard_order_${userId}`, JSON.stringify(order));
+}
+
+function loadSizes(userId: string): Record<string, 'full' | 'half'> {
+  try {
+    const raw = localStorage.getItem(`dashboard_sizes_${userId}`);
+    if (!raw) return { ...DEFAULT_SIZES };
+    const saved = JSON.parse(raw) as Record<string, 'full' | 'half'>;
+    // merge defaults for any new widgets
+    return { ...DEFAULT_SIZES, ...saved };
+  } catch { return { ...DEFAULT_SIZES }; }
+}
+function saveSizes(userId: string, sizes: Record<string, 'full' | 'half'>) {
+  localStorage.setItem(`dashboard_sizes_${userId}`, JSON.stringify(sizes));
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -127,25 +140,36 @@ function KpiCard({ label, value, sub, trend, icon, accent }: {
 }
 
 // ─── Card wrapper ─────────────────────────────────────────────────────────────
-function Card({ title, children, action, actionLabel, className, dragHandleProps }: {
+function Card({ title, children, action, actionLabel, className, dragHandleProps, isFull, onToggleSize }: {
   title: string; children: React.ReactNode;
   action?: () => void; actionLabel?: string; className?: string;
   dragHandleProps?: React.HTMLAttributes<HTMLElement>;
+  isFull?: boolean; onToggleSize?: () => void;
 }) {
   return (
     <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden', className)}>
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
         <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {action && (
-            <button onClick={action} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 flex items-center gap-0.5 transition-colors">
+            <button onClick={action} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 flex items-center gap-0.5 transition-colors mr-1">
               {actionLabel} <ChevronRight className="h-3 w-3" />
+            </button>
+          )}
+          {/* Size toggle — desktop only */}
+          {onToggleSize && (
+            <button
+              onClick={onToggleSize}
+              className="hidden md:flex items-center justify-center w-6 h-6 rounded-md text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              title={isFull ? 'Shrink to half width' : 'Expand to full width'}
+            >
+              {isFull ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </button>
           )}
           {dragHandleProps && (
             <div
               {...dragHandleProps}
-              className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none p-0.5 rounded"
+              className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none flex items-center justify-center w-6 h-6 rounded-md hover:bg-gray-100 transition-colors"
               title="Drag to reorder"
             >
               <GripVertical className="h-4 w-4" />
@@ -159,8 +183,9 @@ function Card({ title, children, action, actionLabel, className, dragHandleProps
 }
 
 // ─── Sortable wrapper ─────────────────────────────────────────────────────────
-function SortableWidget({ id, children }: {
+function SortableWidget({ id, isFull, children }: {
   id: string;
+  isFull: boolean;
   children: (dragHandleProps: React.HTMLAttributes<HTMLElement>) => React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -174,7 +199,7 @@ function SortableWidget({ id, children }: {
       ref={setNodeRef}
       style={style}
       className={cn(
-        WIDGET_FULL[id] ? 'md:col-span-2' : 'md:col-span-1',
+        isFull ? 'md:col-span-2' : 'md:col-span-1',
         isDragging && 'opacity-40',
       )}
     >
@@ -197,7 +222,16 @@ export function DashboardPage() {
   const userId = profile?.id ?? 'default';
 
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() => loadOrder(userId));
+  const [widgetSizes, setWidgetSizes] = useState<Record<string, 'full' | 'half'>>(() => loadSizes(userId));
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const toggleSize = useCallback((id: string) => {
+    setWidgetSizes(prev => {
+      const next: Record<string, 'full' | 'half'> = { ...prev, [id]: prev[id] === 'full' ? 'half' : 'full' };
+      saveSizes(userId, next);
+      return next;
+    });
+  }, [userId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -328,19 +362,31 @@ export function DashboardPage() {
 
   // ── Widget renderer ───────────────────────────────────────────────────────
   function renderWidget(id: string, dragHandleProps: React.HTMLAttributes<HTMLElement>) {
+    const isFull = widgetSizes[id] === 'full';
+    const onToggleSize = () => toggleSize(id);
+
     switch (id) {
 
       case 'kpi':
         return (
           <div className="space-y-0">
-            {/* KPI widget has no Card wrapper — drag handle floats */}
+            {/* KPI widget has no Card wrapper — drag handle + size toggle float */}
             <div className="relative">
-              <div
-                {...dragHandleProps}
-                className="absolute -top-1 right-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none p-1 rounded z-10"
-                title="Drag to reorder"
-              >
-                <GripVertical className="h-4 w-4" />
+              <div className="absolute -top-1 right-0 hidden md:flex items-center gap-1 z-10">
+                <button
+                  onClick={onToggleSize}
+                  className="flex items-center justify-center w-6 h-6 rounded-md text-gray-300 hover:text-gray-600 hover:bg-white transition-colors"
+                  title={isFull ? 'Shrink to half width' : 'Expand to full width'}
+                >
+                  {isFull ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                </button>
+                <div
+                  {...dragHandleProps}
+                  className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none flex items-center justify-center w-6 h-6 rounded-md hover:bg-white transition-colors"
+                  title="Drag to reorder"
+                >
+                  <GripVertical className="h-4 w-4" />
+                </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 <KpiCard label="Active Files" value={String(activeFiles)} sub={`${thisMonth} new this month`}
@@ -358,7 +404,7 @@ export function DashboardPage() {
 
       case 'pipeline':
         return (
-          <Card title="Pipeline" action={() => navigate('/pipeline')} actionLabel="See all" dragHandleProps={dragHandleProps}>
+          <Card title="Pipeline" action={() => navigate('/pipeline')} actionLabel="See all" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-1">
               {(['request','sale','delivery','completed','cancelled'] as const).map((key) => {
                 const cfg = STATUS_CFG[key];
@@ -383,7 +429,7 @@ export function DashboardPage() {
 
       case 'alerts':
         return (
-          <Card title={`Alerts${alerts.length > 0 ? ` · ${alerts.length}` : ''}`} dragHandleProps={dragHandleProps}>
+          <Card title={`Alerts${alerts.length > 0 ? ` · ${alerts.length}` : ''}`} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {alerts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <CheckCircle2 className="h-8 w-8 text-green-400" />
@@ -412,7 +458,7 @@ export function DashboardPage() {
 
       case 'recent_files':
         return (
-          <Card title="Recent Files" action={() => navigate('/files')} actionLabel="All files" dragHandleProps={dragHandleProps}>
+          <Card title="Recent Files" action={() => navigate('/files')} actionLabel="All files" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {recentFiles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <FileText className="h-8 w-8 text-gray-200" />
@@ -451,7 +497,7 @@ export function DashboardPage() {
       case 'delivery':
         if (delayPieData.length === 0) return null;
         return (
-          <Card title="Delivery Performance" action={() => navigate('/reports')} actionLabel="ETA Report" dragHandleProps={dragHandleProps}>
+          <Card title="Delivery Performance" action={() => navigate('/reports')} actionLabel="ETA Report" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-4">
               <div className="flex items-center gap-6">
                 <PieChart width={100} height={100}>
@@ -495,7 +541,7 @@ export function DashboardPage() {
 
       case 'latest_prices':
         return (
-          <Card title="Latest Prices" action={() => navigate('/price-list')} actionLabel="Price List" dragHandleProps={dragHandleProps}>
+          <Card title="Latest Prices" action={() => navigate('/price-list')} actionLabel="Price List" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {latestPrices.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <Tag className="h-8 w-8 text-gray-200" />
@@ -551,7 +597,7 @@ export function DashboardPage() {
 
       case 'revenue_chart':
         return (
-          <Card title="Revenue & Cost · Last 6 Months" dragHandleProps={dragHandleProps}>
+          <Card title="Revenue & Cost · Last 6 Months" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-5">
               {!hasChart ? (
                 <div className="flex flex-col items-center justify-center h-36 gap-2">
@@ -625,7 +671,7 @@ export function DashboardPage() {
           <SortableContext items={widgetOrder} strategy={verticalListSortingStrategy}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               {widgetOrder.map(id => (
-                <SortableWidget key={id} id={id}>
+                <SortableWidget key={id} id={id} isFull={widgetSizes[id] === 'full'}>
                   {(dragHandleProps) => {
                     const content = renderWidget(id, dragHandleProps);
                     return content ?? <></>;
