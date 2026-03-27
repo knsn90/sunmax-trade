@@ -28,11 +28,12 @@ import {
 } from 'lucide-react';
 
 // ─── Widget order & sizes ─────────────────────────────────────────────────────
-const DEFAULT_ORDER = ['kpi', 'pipeline', 'alerts', 'recent_files', 'delivery', 'latest_prices', 'revenue_chart'];
+// 'kpi' is intentionally excluded — it's always fixed at the top
+const DEFAULT_ORDER = ['pipeline', 'alerts', 'recent_files', 'delivery', 'latest_prices', 'revenue_chart'];
 
 // Default column span per widget ('full' = col-span-2, 'half' = col-span-1)
 const DEFAULT_SIZES: Record<string, 'full' | 'half'> = {
-  kpi: 'full', recent_files: 'full', delivery: 'full',
+  recent_files: 'full', delivery: 'full',
   latest_prices: 'full', revenue_chart: 'full',
   pipeline: 'half', alerts: 'half',
 };
@@ -367,41 +368,6 @@ export function DashboardPage() {
 
     switch (id) {
 
-      case 'kpi':
-        return (
-          <div className="space-y-0">
-            {/* KPI widget has no Card wrapper — drag handle + size toggle float */}
-            <div className="relative">
-              <div className="absolute -top-1 right-0 hidden md:flex items-center gap-1 z-10">
-                <button
-                  onClick={onToggleSize}
-                  className="flex items-center justify-center w-6 h-6 rounded-md text-gray-300 hover:text-gray-600 hover:bg-white transition-colors"
-                  title={isFull ? 'Shrink to half width' : 'Expand to full width'}
-                >
-                  {isFull ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                </button>
-                <div
-                  {...dragHandleProps}
-                  className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none flex items-center justify-center w-6 h-6 rounded-md hover:bg-white transition-colors"
-                  title="Drag to reorder"
-                >
-                  <GripVertical className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                <KpiCard label="Active Files" value={String(activeFiles)} sub={`${thisMonth} new this month`}
-                  icon={<Package className="h-5 w-5" />} accent={accent} />
-                <KpiCard label="Total Profit" value={fUSD(totalProfit)} sub={`${byStatus.completed} completed`}
-                  trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981" />
-                <KpiCard label="Receivable" value={fUSD(summary?.totalReceivable ?? 0)} sub="From customers"
-                  icon={<DollarSign className="h-5 w-5" />} accent="#2563eb" />
-                <KpiCard label="Payable" value={fUSD(summary?.totalPayable ?? 0)} sub="To suppliers"
-                  icon={<Wallet className="h-5 w-5" />} accent="#f59e0b" />
-              </div>
-            </div>
-          </div>
-        );
-
       case 'pipeline':
         return (
           <Card title="Pipeline" action={() => navigate('/pipeline')} actionLabel="See all" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
@@ -659,6 +625,18 @@ export function DashboardPage() {
             <div className="text-xl font-black text-gray-900 mt-0.5">{profile?.full_name ?? 'Dashboard'}</div>
           </div>
           <span className="text-[12px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
+        </div>
+
+        {/* ── KPI Row — always fixed at top, not draggable ─────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <KpiCard label="Active Files" value={String(activeFiles)} sub={`${thisMonth} new this month`}
+            icon={<Package className="h-5 w-5" />} accent={accent} />
+          <KpiCard label="Total Profit" value={fUSD(totalProfit)} sub={`${byStatus.completed} completed`}
+            trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981" />
+          <KpiCard label="Receivable" value={fUSD(summary?.totalReceivable ?? 0)} sub="From customers"
+            icon={<DollarSign className="h-5 w-5" />} accent="#2563eb" />
+          <KpiCard label="Payable" value={fUSD(summary?.totalPayable ?? 0)} sub="To suppliers"
+            icon={<Wallet className="h-5 w-5" />} accent="#f59e0b" />
         </div>
 
         {/* Drag-and-drop sortable widget grid */}
