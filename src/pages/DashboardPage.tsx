@@ -11,9 +11,10 @@ import { fUSD, fDate } from '@/lib/formatters';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { usePriceList } from '@/hooks/useEntities';
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet,
+  ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet, Tag,
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,6 +120,7 @@ export function DashboardPage() {
   const { profile } = useAuth();
   const { data: files = [], isLoading: filesLoading } = useTradeFiles();
   const { data: summary, isLoading: summaryLoading } = useTransactionSummary();
+  const { data: priceEntries = [] } = usePriceList();
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
   const accent = isDonezo ? '#dc2626' : '#2563eb';
@@ -219,6 +221,17 @@ export function DashboardPage() {
       })),
     [delayData]
   );
+
+  // Latest price per product (most recent price_date)
+  const latestPrices = useMemo(() => {
+    const map = new Map<string, typeof priceEntries[0]>();
+    [...priceEntries]
+      .sort((a, b) => a.price_date.localeCompare(b.price_date))
+      .forEach(e => map.set(e.product_id, e));
+    return Array.from(map.values()).sort((a, b) =>
+      (a.product?.name ?? '').localeCompare(b.product?.name ?? '')
+    );
+  }, [priceEntries]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -451,6 +464,83 @@ export function DashboardPage() {
 
           </div>
         </div>
+
+        {/* ── Latest Prices ────────────────────────────────────────────────── */}
+        <Card title="Latest Prices" action={() => navigate('/price-list')} actionLabel="Price List">
+          {latestPrices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
+              <Tag className="h-8 w-8 text-gray-200" />
+              <span className="text-[12px] text-gray-400">No price entries yet</span>
+            </div>
+          ) : (
+            <div className="px-4 py-3 overflow-x-auto scrollbar-none">
+              <div className="flex gap-3" style={{ minWidth: 'max-content' }}>
+                {latestPrices.map(entry => {
+                  const isExpired = entry.valid_until
+                    ? new Date(entry.valid_until) < new Date()
+                    : false;
+                  const sym = { USD: '$', EUR: '€', TRY: '₺' }[entry.currency] ?? '';
+                  const priceNum = Number(entry.price);
+                  const formatted = priceNum >= 1000
+                    ? priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+                  return (
+                    <button
+                      key={entry.id}
+                      onClick={() => navigate('/price-list')}
+                      className="group flex flex-col gap-2.5 w-44 shrink-0 bg-gray-50 hover:bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md rounded-2xl p-4 transition-all text-left"
+                    >
+                      {/* Product icon + name */}
+                      <div className="flex items-start gap-2.5">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: accent + '18' }}
+                        >
+                          <Tag className="h-3.5 w-3.5" style={{ color: accent }} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[12px] font-bold text-gray-900 leading-tight line-clamp-2">
+                            {entry.product?.name ?? '—'}
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-0.5 truncate">
+                            {entry.supplier?.name ?? '—'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div>
+                        <span className="text-[22px] font-black text-gray-900 leading-none">
+                          {sym}{formatted}
+                        </span>
+                        <span className="text-[11px] font-semibold text-gray-400 ml-1">{entry.currency}</span>
+                      </div>
+
+                      {/* Date row */}
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(entry.price_date + 'T00:00:00').toLocaleDateString('en-GB', {
+                            day: '2-digit', month: 'short', year: '2-digit',
+                          })}
+                        </span>
+                        {entry.valid_until ? (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                            isExpired ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'
+                          }`}>
+                            {isExpired ? 'Expired' : `Until ${new Date(entry.valid_until + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-gray-300 font-medium">No expiry</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* ── Revenue & Cost Chart ─────────────────────────────────────────── */}
         <Card title="Revenue & Cost · Last 6 Months">
