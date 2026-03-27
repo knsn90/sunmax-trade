@@ -4,7 +4,8 @@ import { supplierService } from '@/services/supplierService';
 import { productService } from '@/services/productService';
 import { productCategoryService } from '@/services/productCategoryService';
 import { serviceProviderService } from '@/services/serviceProviderService';
-import type { CustomerFormData, SupplierFormData, ProductFormData, ServiceProviderFormData, ProductCategoryFormData } from '@/types/forms';
+import { priceListService } from '@/services/priceListService';
+import type { CustomerFormData, SupplierFormData, ProductFormData, ServiceProviderFormData, ProductCategoryFormData, PriceListFormData } from '@/types/forms';
 import type { ServiceProviderType } from '@/types/enums';
 import { toast } from 'sonner';
 
@@ -233,7 +234,61 @@ export function useDeleteProductCategory() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['product-categories'] });
       qc.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Kategori silindi');
+      toast.success('Category removed');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+// ─── Price List ──────────────────────────────────────────────────────────────
+
+export function usePriceList() {
+  return useQuery({
+    queryKey: ['price-list'],
+    queryFn: () => priceListService.list(),
+  });
+}
+
+export function usePriceListByProduct(productId: string) {
+  return useQuery({
+    queryKey: ['price-list', productId],
+    queryFn: () => priceListService.listByProduct(productId),
+    enabled: !!productId,
+  });
+}
+
+export function useCreatePriceList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PriceListFormData) => priceListService.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['price-list'] });
+      toast.success('Price entry created');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUpdatePriceList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: PriceListFormData }) =>
+      priceListService.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['price-list'] });
+      toast.success('Price entry updated');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDeletePriceList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => priceListService.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['price-list'] });
+      toast.success('Price entry removed');
     },
     onError: (err: Error) => toast.error(err.message),
   });

@@ -133,6 +133,24 @@ export interface Product extends Timestamps {
   created_by: string | null;
 }
 
+// ─── Price List ─────────────────────────────────────────────────────────────
+
+export interface PriceList {
+  id: string;
+  product_id: string;
+  supplier_id: string;
+  price: number;
+  currency: string;
+  price_date: string;
+  valid_until: string | null;
+  notes: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  product?: Product | null;
+  supplier?: Supplier | null;
+}
+
 // ─── Trade Files ────────────────────────────────────────────────────────────
 
 export interface TradeFile extends Timestamps {

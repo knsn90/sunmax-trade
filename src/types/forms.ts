@@ -66,6 +66,19 @@ export const productCategorySchema = z.object({
 });
 export type ProductCategoryFormData = z.infer<typeof productCategorySchema>;
 
+// ─── Price List Forms ────────────────────────────────────────────────────────
+
+export const priceListSchema = z.object({
+  product_id:  z.string().min(1, 'Select a product'),
+  supplier_id: z.string().min(1, 'Select a supplier'),
+  price:       z.coerce.number().positive('Price must be positive'),
+  currency:    z.enum(['USD', 'EUR', 'TRY']).default('USD'),
+  price_date:  z.string().min(1, 'Price date is required'),
+  valid_until: z.string().default(''),
+  notes:       z.string().max(2000).default(''),
+});
+export type PriceListFormData = z.infer<typeof priceListSchema>;
+
 // ─── Trade File Forms ───────────────────────────────────────────────────────
 
 export const newTradeFileSchema = z.object({

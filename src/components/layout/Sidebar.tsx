@@ -4,7 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import {
   BarChart3, FileText, Receipt, LineChart, Users,
-  Box, Settings, LayoutDashboard, Home, Activity,
+  Box, Settings, LayoutDashboard, Home, Activity, Tag,
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,8 +50,9 @@ export function Sidebar() {
     {
       label: 'CONTACTS',
       items: [
-        { to: '/contacts', label: 'Contacts', icon: <Users className="h-4 w-4" /> },
-        { to: '/products', label: 'Products', icon: <Box className="h-4 w-4" /> },
+        { to: '/contacts',    label: 'Contacts',   icon: <Users className="h-4 w-4" /> },
+        { to: '/products',    label: 'Products',   icon: <Box className="h-4 w-4" /> },
+        { to: '/price-list',  label: 'Price List', icon: <Tag className="h-4 w-4" /> },
       ],
     },
     {

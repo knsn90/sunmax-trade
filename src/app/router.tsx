@@ -16,6 +16,7 @@ import {
   ReportsPage,
 } from '@/pages/StubPages';
 import { DocumentsPage } from '@/pages/DocumentsPage';
+import { PriceListPage } from '@/pages/PriceListPage';
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'reports', element: <ReportsPage /> },
       { path: 'contacts', element: <ContactsPage /> },
       { path: 'products', element: <ProductsPage /> },
+      { path: 'price-list', element: <PriceListPage /> },
       { path: 'profile', element: <ProfilePage /> },
       {
         path: 'activity',
