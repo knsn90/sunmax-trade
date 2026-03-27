@@ -12,14 +12,14 @@ export default defineConfig({
       manifest: {
         name: 'SunPlus Trade Management',
         short_name: 'SunPlus',
-        description: 'Ticaret dosyası ve belge yönetimi',
+        description: 'Trade file and document management',
         theme_color: '#4f6ef7',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'any',
         start_url: '/dashboard',
         scope: '/',
-        lang: 'tr',
+        lang: 'en',
         icons: [
           { src: '/icons/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
@@ -45,7 +45,7 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: false, // dev'de kapalı, sadece build'de aktif
+        enabled: false, // disabled in dev, active only in build
       },
     }),
   ],
