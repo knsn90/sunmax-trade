@@ -2,6 +2,13 @@ import { supabase } from './supabase';
 import type { Profile } from '@/types/database';
 import type { UserRole } from '@/types/enums';
 
+export async function saveDashboardPrefs(
+  userId: string,
+  prefs: { order: string[]; sizes: Record<string, 'full' | 'half'> },
+): Promise<void> {
+  await supabase.from('profiles').update({ dashboard_prefs: prefs }).eq('id', userId);
+}
+
 export const userService = {
   async listUsers(): Promise<Profile[]> {
     const { data, error } = await supabase

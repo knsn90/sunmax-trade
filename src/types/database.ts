@@ -21,6 +21,7 @@ export interface Profile extends Timestamps {
   permissions: string[] | null;
   deleted_at: string | null;
   avatar_url: string | null;
+  dashboard_prefs: { order?: string[]; sizes?: Record<string, 'full' | 'half'> } | null;
 }
 
 // ─── Company Settings ───────────────────────────────────────────────────────

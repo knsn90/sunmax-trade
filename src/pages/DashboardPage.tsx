@@ -21,6 +21,7 @@ import { LoadingSpinner } from '@/components/ui/shared';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { usePriceList } from '@/hooks/useEntities';
+import { saveDashboardPrefs } from '@/services/userService';
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet, Tag,
@@ -224,18 +225,31 @@ export function DashboardPage() {
   const accent = isDonezo ? '#dc2626' : '#2563eb';
 
   const userId = profile?.id ?? 'default';
+  const dbPrefs = profile?.dashboard_prefs;
 
-  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => loadOrder(userId));
-  const [widgetSizes, setWidgetSizes] = useState<Record<string, 'full' | 'half'>>(() => loadSizes(userId));
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
+    if (dbPrefs?.order) {
+      const valid = dbPrefs.order.filter((id: string) => DEFAULT_ORDER.includes(id));
+      const missing = DEFAULT_ORDER.filter(id => !valid.includes(id));
+      return [...valid, ...missing];
+    }
+    return loadOrder(userId);
+  });
+
+  const [widgetSizes, setWidgetSizes] = useState<Record<string, 'full' | 'half'>>(() => {
+    if (dbPrefs?.sizes) return { ...DEFAULT_SIZES, ...dbPrefs.sizes };
+    return loadSizes(userId);
+  });
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const toggleSize = useCallback((id: string) => {
     setWidgetSizes(prev => {
       const next: Record<string, 'full' | 'half'> = { ...prev, [id]: prev[id] === 'full' ? 'half' : 'full' };
       saveSizes(userId, next);
+      if (profile?.id) saveDashboardPrefs(profile.id, { order: widgetOrder, sizes: next });
       return next;
     });
-  }, [userId]);
+  }, [userId, profile?.id, widgetOrder]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -255,9 +269,10 @@ export function DashboardPage() {
       const newIdx = prev.indexOf(String(over.id));
       const next = arrayMove(prev, oldIdx, newIdx);
       saveOrder(userId, next);
+      if (profile?.id) saveDashboardPrefs(profile.id, { order: next, sizes: widgetSizes });
       return next;
     });
-  }, [userId]);
+  }, [userId, profile?.id, widgetSizes]);
 
   // ── Computed data ─────────────────────────────────────────────────────────
   const byStatus = useMemo(() => ({
