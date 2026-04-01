@@ -39,12 +39,12 @@ CREATE TABLE IF NOT EXISTS companies (
 );
 
 INSERT INTO companies (code, name, functional_currency)
-  SELECT 'DEFAULT', company_name, default_currency
+  SELECT 'DEFAULT', company_name, default_currency::currency_code
   FROM   company_settings LIMIT 1
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO companies (code, name, functional_currency)
-  SELECT 'DEFAULT', 'Default Company', 'USD'
+  SELECT 'DEFAULT', 'Default Company', 'USD'::currency_code
   WHERE  NOT EXISTS (SELECT 1 FROM companies)
 ON CONFLICT (code) DO NOTHING;
 
