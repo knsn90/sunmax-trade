@@ -101,5 +101,35 @@
       "saveBtn": "Save Delay"
     },
     "statusConfirm": "Change status to \"{{label}}\"?"
+  },
+  "obligations": {
+    "title": "Advance & Payment Status",
+    "collected": "collected",
+    "loading": "Loading…",
+    "noObligations": "No obligations yet. They will be created automatically when the advance rate is set.",
+    "allSettled": "Fully settled",
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "paid": "paid",
+    "remaining": "remaining",
+    "recordPayment": "Record Payment",
+    "paymentRecorded": "Payment recorded",
+    "amount": "Amount",
+    "date": "Date",
+    "ref": "Reference",
+    "refPlaceholder": "Wire ref, cheque no…",
+    "save": "Record",
+    "saving": "Saving…",
+    "type": {
+      "advance": "Advance",
+      "final": "Final",
+      "adjustment": "Adj."
+    },
+    "status": {
+      "pending": "Pending",
+      "partial": "Partial",
+      "settled": "Settled",
+      "cancelled": "Cancelled"
+    }
   }
 }

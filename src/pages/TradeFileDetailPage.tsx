@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { TransportPlanSection } from '@/components/transport/TransportPlanSection';
+import { ObligationsSection } from '@/components/trade-files/ObligationsSection';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import {
@@ -469,6 +470,9 @@ export function TradeFileDetailPage() {
           </div>
         )}
 
+        {/* ── Obligations ──────────────────────────────────────────────── */}
+        <ObligationsSection file={file} writable={writable} />
+
         {/* ── Delivery ─────────────────────────────────────────────────── */}
         {file.delivered_admt && (
           <Section
@@ -766,6 +770,9 @@ export function TradeFileDetailPage() {
               {t('detail.saleDetails.noSaleDetails')}
             </div>
           )}
+
+          {/* Obligations */}
+          <ObligationsSection file={file} writable={writable} />
 
           {/* Delivery */}
           {file.delivered_admt && (

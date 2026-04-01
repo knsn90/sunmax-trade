@@ -101,5 +101,35 @@
       "saveBtn": "Gecikmeyi Kaydet"
     },
     "statusConfirm": "Durum \"{{label}}\" olarak değiştirilsin mi?"
+  },
+  "obligations": {
+    "title": "Ön Ödeme & Borç Durumu",
+    "collected": "tahsil edildi",
+    "loading": "Yükleniyor…",
+    "noObligations": "Henüz yükümlülük yok. Avans oranı girildiğinde otomatik oluşturulacak.",
+    "allSettled": "Tamamı tahsil edildi",
+    "customer": "Müşteri",
+    "supplier": "Tedarikçi",
+    "paid": "ödendi",
+    "remaining": "kalan",
+    "recordPayment": "Ödeme Kaydet",
+    "paymentRecorded": "Ödeme kaydedildi",
+    "amount": "Tutar",
+    "date": "Tarih",
+    "ref": "Referans",
+    "refPlaceholder": "Havale ref, çek no…",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor…",
+    "type": {
+      "advance": "Avans",
+      "final": "Final",
+      "adjustment": "Düzeltme"
+    },
+    "status": {
+      "pending": "Bekliyor",
+      "partial": "Kısmi",
+      "settled": "Tamamlandı",
+      "cancelled": "İptal"
+    }
   }
 }
