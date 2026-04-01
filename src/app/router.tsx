@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { LoginPage } from '@/pages/LoginPage';
@@ -18,6 +18,11 @@ import {
 import { DocumentsPage } from '@/pages/DocumentsPage';
 import { PriceListPage } from '@/pages/PriceListPage';
 
+function TradeFileDetailRoute() {
+  const { id } = useParams();
+  return <TradeFileDetailPage key={id} />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -35,7 +40,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'pipeline', element: <PipelinePage /> },
       { path: 'files', element: <TradeFilesPage /> },
-      { path: 'files/:id', element: <TradeFileDetailPage /> },
+      { path: 'files/:id', element: <TradeFileDetailRoute /> },
       { path: 'documents', element: <DocumentsPage /> },
       { path: 'accounting', element: <AccountingPage /> },
       { path: 'reports', element: <ReportsPage /> },

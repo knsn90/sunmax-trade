@@ -404,7 +404,8 @@ export function DashboardPage() {
     return 'Good evening';
   }, []);
 
-  if (filesLoading || summaryLoading) return <LoadingSpinner />;
+  const isFirstLoad = (filesLoading && files.length === 0) || (summaryLoading && !summary);
+  if (isFirstLoad) return <LoadingSpinner />;
 
   // ── Widget renderer ───────────────────────────────────────────────────────
   function renderWidget(id: string, dragHandleProps: React.HTMLAttributes<HTMLElement>) {
