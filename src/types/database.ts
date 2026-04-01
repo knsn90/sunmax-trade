@@ -404,3 +404,106 @@ export interface Attachment {
   uploaded_by: string | null;
   created_at: string;
 }
+
+// ─── Journal (Double-Entry Accounting) ──────────────────────────────────────
+
+export type EntryStatus = 'draft' | 'posted' | 'reversed';
+
+export interface JournalEntry {
+  id: string;
+  entry_no: string;
+  entry_date: string;
+  description: string;
+  source_type: string | null;
+  source_id: string | null;
+  currency: CurrencyCode;
+  exchange_rate: number;
+  status: EntryStatus;
+  period_id: string | null;
+  posted_at: string | null;
+  posted_by: string | null;
+  created_at: string;
+  // Joined
+  lines?: JournalLine[];
+}
+
+export interface JournalLine {
+  id: string;
+  journal_entry_id: string;
+  line_no: number;
+  account_id: string;
+  description: string | null;
+  debit: number;
+  credit: number;
+  line_currency: CurrencyCode;
+  exchange_rate_try: number;
+  base_debit: number;
+  base_credit: number;
+  party_type: PartyType | null;
+  party_id: string | null;
+  // Joined
+  account?: { code: string; name: string };
+}
+
+// ─── Bank Reconciliation ────────────────────────────────────────────────────
+
+export type BankTxnStatus = 'unmatched' | 'matched' | 'excluded';
+
+export interface BankTransaction {
+  id: string;
+  bank_account_id: string;
+  txn_date: string;
+  value_date: string | null;
+  description: string;
+  reference: string | null;
+  amount: number;
+  currency: CurrencyCode;
+  balance_after: number | null;
+  status: BankTxnStatus;
+  notes: string | null;
+  imported_at: string;
+  created_at: string;
+  // Joined
+  bank_account?: { bank_name: string; account_name: string };
+}
+
+export interface ReconciliationMatch {
+  id: string;
+  bank_transaction_id: string;
+  transaction_id: string;
+  match_type: 'manual' | 'auto';
+  difference_amount: number;
+  difference_note: string | null;
+  notes: string | null;
+  matched_by: string | null;
+  matched_at: string;
+}
+
+// ─── Financial Reports ───────────────────────────────────────────────────────
+
+export interface TrialBalanceRow {
+  code: string;
+  name: string;
+  account_type: string;
+  normal_balance: string;
+  total_debit: number;
+  total_credit: number;
+  balance: number;
+  is_zero: boolean;
+}
+
+export interface ProfitLossRow {
+  section: string;
+  code: string;
+  name: string;
+  amount: number;
+  sort_order: number;
+}
+
+export interface BalanceSheetRow {
+  section: string;
+  code: string;
+  name: string;
+  balance: number;
+  sort_order: number;
+}

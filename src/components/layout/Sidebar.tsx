@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   BarChart3, FileText, Receipt, LineChart, Users,
   Box, Settings, LayoutDashboard, Home, Activity, Tag,
+  BookOpen, TrendingUp, Building2,
 } from 'lucide-react';
 
 interface NavItem {
@@ -44,8 +45,11 @@ export function Sidebar() {
     {
       label: 'FINANCE',
       items: [
-        { to: '/accounting', label: 'Accounting', icon: <LayoutDashboard className="h-4 w-4" /> },
-        { to: '/reports', label: 'Reports', icon: <LineChart className="h-4 w-4" /> },
+        { to: '/accounting',  label: 'Accounting',     icon: <LayoutDashboard className="h-4 w-4" /> },
+        { to: '/ledger',      label: 'Journal Ledger', icon: <BookOpen className="h-4 w-4" /> },
+        { to: '/fin-reports', label: 'Fin. Reports',   icon: <TrendingUp className="h-4 w-4" /> },
+        { to: '/bank-recon',  label: 'Bank Recon.',    icon: <Building2 className="h-4 w-4" /> },
+        { to: '/reports',     label: 'Reports',        icon: <LineChart className="h-4 w-4" /> },
       ],
     },
     {
