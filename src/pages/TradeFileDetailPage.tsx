@@ -21,6 +21,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { printInvoice, printPackingList, printProforma } from '@/lib/printDocument';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { LoadingSpinner } from '@/components/ui/shared';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { TransportPlanSection } from '@/components/transport/TransportPlanSection';
@@ -162,6 +163,8 @@ export function TradeFileDetailPage() {
   const [editPI, setEditPI] = useState<Proforma | null>(null);
   const [autoPackingAfterDelivery, setAutoPackingAfterDelivery] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReasonText, setCancelReasonText] = useState('');
   const [delayOpen, setDelayOpen] = useState(false);
   const [delayEta, setDelayEta] = useState('');
   const [delayNotes, setDelayNotes] = useState('');
@@ -176,8 +179,18 @@ export function TradeFileDetailPage() {
 
   function handleStatusChange(newStatus: string) {
     if (!newStatus || newStatus === file!.status) return;
+    if (newStatus === 'cancelled') {
+      setCancelReasonText('');
+      setCancelModalOpen(true);
+      return;
+    }
     if (window.confirm(`Change status to "${TRADE_FILE_STATUS_LABELS[newStatus as TradeFileStatus]}"?`))
       changeStatus.mutate({ id: file!.id, status: newStatus as TradeFileStatus });
+  }
+
+  function confirmCancellation() {
+    changeStatus.mutate({ id: file!.id, status: 'cancelled', cancelReason: cancelReasonText.trim() });
+    setCancelModalOpen(false);
   }
 
   function handleDeliveryClose() {
@@ -239,6 +252,12 @@ export function TradeFileDetailPage() {
             <span className="text-[11px] text-gray-700 text-right">{file.notes}</span>
           </div>
         )}
+        {file.status === 'cancelled' && (
+          <div className="flex items-start justify-between gap-4 px-4 py-2.5 bg-red-50">
+            <span className="text-[11px] text-red-500 font-medium shrink-0">Cancel Reason</span>
+            <span className="text-[11px] text-red-700 text-right">{file.cancel_reason || '—'}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -286,6 +305,37 @@ export function TradeFileDetailPage() {
 
   return (
     <div className="-mx-4 md:mx-0 bg-gray-50 min-h-screen pb-8">
+
+      {/* Cancel Reason Modal */}
+      <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel File</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <p className="text-sm text-gray-500">Please provide a reason for cancelling this file.</p>
+            <textarea
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
+              rows={4}
+              placeholder="Cancellation reason..."
+              value={cancelReasonText}
+              onChange={e => setCancelReasonText(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <button
+              className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200"
+              onClick={() => setCancelModalOpen(false)}
+            >Cancel</button>
+            <button
+              className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+              onClick={confirmCancellation}
+              disabled={changeStatus.isPending}
+            >Confirm Cancellation</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ══════════════════════════════════════════════════════════════
           MOBILE  (< md)

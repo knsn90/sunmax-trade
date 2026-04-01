@@ -235,10 +235,14 @@ export const tradeFileService = {
     return data as TradeFile;
   },
 
-  async changeStatus(id: string, newStatus: TradeFileStatus): Promise<TradeFile> {
+  async changeStatus(id: string, newStatus: TradeFileStatus, cancelReason?: string): Promise<TradeFile> {
+    const patch: Record<string, unknown> = { status: newStatus };
+    if (newStatus === 'cancelled' && cancelReason !== undefined) {
+      patch.cancel_reason = cancelReason || null;
+    }
     const { data, error } = await supabase
       .from('trade_files')
-      .update({ status: newStatus })
+      .update(patch)
       .eq('id', id)
       .select(FILE_SELECT)
       .single();

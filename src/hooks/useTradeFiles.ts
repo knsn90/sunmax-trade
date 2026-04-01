@@ -139,8 +139,8 @@ export function useNoteDelay() {
 export function useChangeStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: TradeFileStatus }) =>
-      tradeFileService.changeStatus(id, status),
+    mutationFn: ({ id, status, cancelReason }: { id: string; status: TradeFileStatus; cancelReason?: string }) =>
+      tradeFileService.changeStatus(id, status, cancelReason),
     onSuccess: (file) => {
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success(`Status changed to ${file.status}`);

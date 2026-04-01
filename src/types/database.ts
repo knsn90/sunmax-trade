@@ -195,6 +195,8 @@ export interface TradeFile extends Timestamps {
   insurance_ir: string | null;
   // P&L
   pnl_data: PnlData | null;
+  // Cancellation
+  cancel_reason: string | null;
   // Meta
   created_by: string | null;
   // Joined relations (from select queries)
