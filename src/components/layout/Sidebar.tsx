@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import {
   BarChart3, FileText, Receipt, LineChart, Users,
-  Box, Settings, LayoutDashboard, Home, Activity, Tag,
+  Box, Settings, LayoutDashboard, Home, Activity, Tag, Database,
   BookOpen, TrendingUp, Building2,
 } from 'lucide-react';
 
@@ -68,6 +68,7 @@ export function Sidebar() {
           { to: '/activity', labelKey: 'items.activityLog', icon: <Activity className="h-4 w-4" /> },
         ] : []),
         { to: '/settings', labelKey: 'items.settings', icon: <Settings className="h-4 w-4" /> },
+        { to: '/legacy-import', labelKey: 'items.legacyImport', icon: <Database className="h-4 w-4" /> },
       ],
     },
   ];

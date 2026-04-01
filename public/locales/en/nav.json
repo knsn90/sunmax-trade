@@ -25,6 +25,7 @@
     "products": "Products",
     "activityLog": "Activity Log",
     "settings": "Settings",
+    "legacyImport": "Legacy Import",
     "profile": "Profile"
   },
   "topbar": {
