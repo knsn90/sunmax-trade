@@ -1,0 +1,61 @@
+{
+  "title": "Financial Reports",
+  "description": "Accounting-grade reports from journal entries",
+  "tabs": {
+    "trialBalance": "Trial Balance",
+    "profitLoss": "Profit & Loss",
+    "balanceSheet": "Balance Sheet"
+  },
+  "trialBalance": {
+    "hideZero": "Hide zero-balance accounts",
+    "balanced": "✓ Balanced",
+    "unbalanced": "✗ Unbalanced!",
+    "total": "TOTAL"
+  },
+  "pnl": {
+    "kpi": {
+      "revenue": "Revenue",
+      "cogs": "COGS",
+      "grossProfit": "Gross Profit",
+      "netIncome": "Net Income"
+    },
+    "sections": {
+      "revenue": "Revenue",
+      "cogs": "COGS",
+      "expense": "Expense"
+    },
+    "netProfitLoss": "Net Profit / Loss"
+  },
+  "balanceSheet": {
+    "kpi": {
+      "totalAssets": "Total Assets",
+      "totalLiabilities": "Total Liabilities",
+      "totalEquity": "Total Equity"
+    },
+    "sections": {
+      "assets": "Assets",
+      "liabilities": "Liabilities",
+      "equity": "Equity"
+    },
+    "balanced": "✓ Assets = Liabilities + Equity",
+    "unbalanced": "✗ Unbalanced — diff: {{diff}}"
+  },
+  "table": {
+    "account": "Account",
+    "type": "Type",
+    "debit": "Debit",
+    "credit": "Credit",
+    "balance": "Balance",
+    "code": "Code",
+    "section": "Section",
+    "amount": "Amount (TRY)"
+  },
+  "empty": {
+    "title": "No data yet",
+    "hint": "Run migrations 018–025 in Supabase and create some invoices/transactions first."
+  },
+  "error": {
+    "loading": "Error loading report",
+    "migration": "Make sure migrations 018–025 are applied in Supabase."
+  }
+}

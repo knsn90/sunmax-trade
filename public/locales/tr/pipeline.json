@@ -1,0 +1,31 @@
+{
+  "title": "Süreç Takibi",
+  "unknown": "Bilinmiyor",
+  "filters": {
+    "search": "Müşteri, dosya no, ürün…"
+  },
+  "buttons": {
+    "newFile": "+ Yeni Dosya",
+    "toSale": "Satışa Geç",
+    "delivery": "+ Teslimat",
+    "deliveryUpdate": "Teslimat",
+    "invoice": "Fatura",
+    "pnl": "K/Z"
+  },
+  "kanban": {
+    "request": "Talep",
+    "sale": "Satış",
+    "delivery": "Teslimat"
+  },
+  "empty": {
+    "noFiles": "Dosya yok",
+    "noRecords": "Kayıt bulunamadı"
+  },
+  "flags": {
+    "etaOverdue": "ETA Geçti",
+    "delayed": "Gecikme"
+  },
+  "confirm": {
+    "deleteFile": "Bu dosyayı silmek istiyor musunuz?"
+  }
+}

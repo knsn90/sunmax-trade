@@ -1,0 +1,35 @@
+{
+  "title": "Yevmiye Defteri",
+  "description": "Çift taraflı muhasebe kayıtları",
+  "stats": {
+    "posted": "kesinleşti",
+    "draft": "taslak"
+  },
+  "filters": {
+    "allStatuses": "Tüm durumlar",
+    "hideZero": "Sıfır tutarlıları gizle"
+  },
+  "table": {
+    "entryNo": "Kayıt #",
+    "account": "Hesap",
+    "source": "Kaynak",
+    "debit": "Borç",
+    "credit": "Alacak",
+    "curr": "Birim",
+    "debitTry": "Borç (TRY)",
+    "creditTry": "Alacak (TRY)",
+    "total": "TOPLAM"
+  },
+  "lines": "satır",
+  "footer": "kayıt — satırları görmek için tıklayın",
+  "unbalanced": "DENGESİZ — TRY fark: {{diff}}",
+  "empty": {
+    "title": "Henüz yevmiye kaydı yok",
+    "hint": "Kayıtlar, fatura veya işlem kaydedildiğinde otomatik oluşturulur.",
+    "migrationHint": "Önce Supabase SQL Editor'da 018–025 migration'larını çalıştırın."
+  },
+  "error": {
+    "loading": "Yevmiye kayıtları yüklenemedi",
+    "migration": "Supabase'de 018–025 migration'larının çalıştırıldığından emin olun."
+  }
+}

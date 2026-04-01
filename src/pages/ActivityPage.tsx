@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/services/supabase';
 import { useUsers } from '@/hooks/useUsers';
 import { LoadingSpinner } from '@/components/ui/shared';
@@ -20,46 +21,36 @@ type LogEntry =
   | { kind: 'login'; data: LoginEvent; ts: string };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const TABLE_LABELS: Record<string, string> = {
-  trade_files:       'Trade File',
-  proformas:         'Proforma',
-  invoices:          'Invoice',
-  packing_lists:     'Packing List',
-  transactions:      'Transaction',
-  customers:         'Customer',
-  suppliers:         'Supplier',
-  service_providers: 'Service Provider',
-  products:          'Product',
-  profiles:          'User',
-  company_settings:  'Settings',
-  bank_accounts:     'Bank Account',
+const ACTION_ICONS = {
+  create: Plus,
+  update: Pencil,
+  delete: Trash2,
+  login:  LogIn,
+  logout: LogOut,
+};
+const ACTION_STYLES: Record<string, { bg: string; dot: string }> = {
+  create: { bg: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+  update: { bg: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500' },
+  delete: { bg: 'bg-red-100 text-red-700',         dot: 'bg-red-500' },
+  login:  { bg: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+  logout: { bg: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-400' },
 };
 
-const ACTION_CONFIG = {
-  create: { label: 'Created',  bg: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', icon: Plus },
-  update: { label: 'Updated',  bg: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500',    icon: Pencil },
-  delete: { label: 'Deleted',  bg: 'bg-red-100 text-red-700',         dot: 'bg-red-500',     icon: Trash2 },
-  login:  { label: 'Login',    bg: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', icon: LogIn },
-  logout: { label: 'Logout',   bg: 'bg-gray-100 text-gray-600',       dot: 'bg-gray-400',    icon: LogOut },
-};
-
-function tableLabel(t: string) { return TABLE_LABELS[t] ?? t; }
-
-function fmtDate(iso: string) {
+function fmtDate(iso: string, t: (k: string, opts?: { count?: number }) => string, lang: string) {
   const d = new Date(iso);
   const now = new Date();
   const diff = now.getTime() - d.getTime();
-  if (diff < 60_000) return 'Just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
-    + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  if (diff < 60_000) return t('time.justNow');
+  if (diff < 3_600_000) return t('time.minutesAgo', { count: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000) return t('time.hoursAgo', { count: Math.floor(diff / 3_600_000) });
+  return d.toLocaleDateString(lang, { day: '2-digit', month: 'short' })
+    + ' ' + d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
 }
 
-function fmtDateFull(iso: string) {
+function fmtDateFull(iso: string, lang: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString(lang, { day: '2-digit', month: '2-digit', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
 }
 
 function initials(name?: string) {
@@ -88,6 +79,8 @@ function changedFields(log: AuditLog): string[] {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ActivityPage() {
+  const { t } = useTranslation('activity');
+  const { t: tc } = useTranslation('common');
   const { data: users = [] } = useUsers();
   const [auditLogs, setAuditLogs]   = useState<AuditLog[]>([]);
   const [loginLogs, setLoginLogs]   = useState<LoginEvent[]>([]);
@@ -97,6 +90,15 @@ export function ActivityPage() {
   const [search, setSearch]         = useState('');
   const [page, setPage]             = useState(0);
   const PER_PAGE = 30;
+
+  const ACTION_PILLS = [
+    { key: 'all',    label: t('filters.all') },
+    { key: 'create', label: t('filters.created') },
+    { key: 'update', label: t('filters.updated') },
+    { key: 'delete', label: t('filters.deleted') },
+    { key: 'login',  label: t('filters.login') },
+    { key: 'logout', label: t('filters.logout') },
+  ];
 
   async function fetchLogs() {
     setLoading(true);
@@ -152,15 +154,6 @@ export function ActivityPage() {
   const paged = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
 
-  const ACTION_PILLS = [
-    { key: 'all',    label: 'All' },
-    { key: 'create', label: 'Created' },
-    { key: 'update', label: 'Updated' },
-    { key: 'delete', label: 'Deleted' },
-    { key: 'login',  label: 'Login' },
-    { key: 'logout', label: 'Logout' },
-  ];
-
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
 
@@ -171,8 +164,8 @@ export function ActivityPage() {
             <Activity className="h-4.5 w-4.5 text-violet-600" style={{ width: 18, height: 18 }} />
           </div>
           <div>
-            <h1 className="text-[15px] font-bold text-gray-900">Activity Log</h1>
-            <p className="text-[11px] text-gray-400">{filtered.length} entries</p>
+            <h1 className="text-[15px] font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-[11px] text-gray-400">{filtered.length} {tc('entries')}</p>
           </div>
         </div>
         <button
@@ -181,7 +174,7 @@ export function ActivityPage() {
           className="flex items-center gap-1.5 px-3 h-8 rounded-full border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('buttons.refresh')}
         </button>
       </div>
 
@@ -191,7 +184,7 @@ export function ActivityPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
           <Input
             className="pl-9 h-9 text-[13px] rounded-xl border-gray-200 bg-white"
-            placeholder="Search user or record…"
+            placeholder={t('search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -201,7 +194,7 @@ export function ActivityPage() {
           onChange={e => setFilterUser(e.target.value)}
           className="h-9 px-3 rounded-xl border border-gray-200 text-[12px] text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
         >
-          <option value="all">All users</option>
+          <option value="all">{t('allUsers')}</option>
           {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
         </select>
       </div>
@@ -229,7 +222,7 @@ export function ActivityPage() {
       ) : paged.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 py-16 text-center">
           <div className="text-3xl mb-2">📋</div>
-          <p className="text-sm text-gray-400">No entries found</p>
+          <p className="text-sm text-gray-400">{t('empty.noEntries')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
@@ -249,7 +242,7 @@ export function ActivityPage() {
             onClick={() => setPage(p => p - 1)}
             className="px-3.5 h-8 rounded-full text-[12px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            ← Prev
+            {t('buttons.prev')}
           </button>
           {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
             const p = totalPages <= 7 ? i : Math.max(0, Math.min(page - 3, totalPages - 7)) + i;
@@ -272,7 +265,7 @@ export function ActivityPage() {
             onClick={() => setPage(p => p + 1)}
             className="px-3.5 h-8 rounded-full text-[12px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Next →
+            {t('buttons.next')}
           </button>
         </div>
       )}
@@ -282,13 +275,14 @@ export function ActivityPage() {
 
 // ─── Audit Row ────────────────────────────────────────────────────────────────
 function AuditRow({ log }: { log: AuditLog }) {
+  const { t, i18n } = useTranslation('activity');
   const [open, setOpen] = useState(false);
   const user = log.user as Profile | undefined;
   const title = recordTitle(log);
   const changed = log.action === 'update' ? changedFields(log) : [];
-  const cfg = ACTION_CONFIG[log.action as keyof typeof ACTION_CONFIG] ?? ACTION_CONFIG.update;
+  const styles = ACTION_STYLES[log.action as keyof typeof ACTION_STYLES] ?? ACTION_STYLES.update;
+  const Icon = ACTION_ICONS[log.action as keyof typeof ACTION_ICONS] ?? Pencil;
   const color = avatarColor(user?.full_name);
-  const Icon = cfg.icon;
 
   return (
     <div className="px-4 py-3.5 hover:bg-gray-50/60 transition-colors">
@@ -305,14 +299,16 @@ function AuditRow({ log }: { log: AuditLog }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13px] font-semibold text-gray-800">
-              {user?.full_name || 'Unknown'}
+              {user?.full_name || t('unknown')}
             </span>
-            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${cfg.bg}`}>
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${styles.bg}`}>
               <Icon className="h-3 w-3" />
-              {cfg.label}
+              {t(`actions.${log.action}` as `actions.${string}`, { defaultValue: log.action })}
             </span>
             <span className="text-[12px] text-gray-500">
-              <span className="font-medium text-gray-700">{tableLabel(log.table_name)}</span>
+              <span className="font-medium text-gray-700">
+                {t(`tables.${log.table_name}` as `tables.${string}`, { defaultValue: log.table_name })}
+              </span>
               {title && <span className="text-gray-400"> — {title}</span>}
             </span>
           </div>
@@ -333,15 +329,18 @@ function AuditRow({ log }: { log: AuditLog }) {
 
         {/* Time + expand */}
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className="text-[11px] text-gray-400" title={fmtDateFull(log.created_at)}>
-            {fmtDate(log.created_at)}
+          <span className="text-[11px] text-gray-400" title={fmtDateFull(log.created_at, i18n.language)}>
+            {fmtDate(log.created_at, t, i18n.language)}
           </span>
           {(log.old_values || log.new_values) && (
             <button
               onClick={() => setOpen(o => !o)}
               className="flex items-center gap-0.5 text-[11px] text-violet-500 hover:text-violet-700 font-medium"
             >
-              {open ? <><ChevronUp className="h-3 w-3" /> Hide</> : <><ChevronDown className="h-3 w-3" /> Detail</>}
+              {open
+                ? <><ChevronUp className="h-3 w-3" /> {t('buttons.hide')}</>
+                : <><ChevronDown className="h-3 w-3" /> {t('buttons.detail')}</>
+              }
             </button>
           )}
         </div>
@@ -352,7 +351,7 @@ function AuditRow({ log }: { log: AuditLog }) {
         <div className="mt-3 ml-11 grid grid-cols-1 md:grid-cols-2 gap-2">
           {log.old_values && (
             <div>
-              <div className="text-[10px] font-bold text-red-500 mb-1 uppercase tracking-wide">Before</div>
+              <div className="text-[10px] font-bold text-red-500 mb-1 uppercase tracking-wide">{t('diff.before')}</div>
               <pre className="text-[10px] bg-red-50 border border-red-100 rounded-xl p-2.5 overflow-auto max-h-40 whitespace-pre-wrap break-all text-gray-700">
                 {JSON.stringify(log.old_values, null, 2)}
               </pre>
@@ -360,7 +359,7 @@ function AuditRow({ log }: { log: AuditLog }) {
           )}
           {log.new_values && (
             <div>
-              <div className="text-[10px] font-bold text-emerald-600 mb-1 uppercase tracking-wide">After</div>
+              <div className="text-[10px] font-bold text-emerald-600 mb-1 uppercase tracking-wide">{t('diff.after')}</div>
               <pre className="text-[10px] bg-emerald-50 border border-emerald-100 rounded-xl p-2.5 overflow-auto max-h-40 whitespace-pre-wrap break-all text-gray-700">
                 {JSON.stringify(log.new_values, null, 2)}
               </pre>
@@ -374,6 +373,7 @@ function AuditRow({ log }: { log: AuditLog }) {
 
 // ─── Login Row ────────────────────────────────────────────────────────────────
 function LoginRow({ log }: { log: LoginEvent }) {
+  const { t, i18n } = useTranslation('activity');
   const user = log.user as Profile | undefined;
   const isLogin = log.event === 'login';
   const color = avatarColor(user?.full_name);
@@ -392,13 +392,13 @@ function LoginRow({ log }: { log: LoginEvent }) {
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13px] font-semibold text-gray-800">
-              {user?.full_name || 'Unknown'}
+              {user?.full_name || t('unknown')}
             </span>
             <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
               isLogin ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
             }`}>
               {isLogin ? <LogIn className="h-3 w-3" /> : <LogOut className="h-3 w-3" />}
-              {isLogin ? 'Logged in' : 'Logged out'}
+              {t(isLogin ? 'actions.login' : 'actions.logout')}
             </span>
             {user?.email && (
               <span className="text-[11px] text-gray-400">{user.email}</span>
@@ -406,8 +406,8 @@ function LoginRow({ log }: { log: LoginEvent }) {
           </div>
         </div>
 
-        <span className="text-[11px] text-gray-400 whitespace-nowrap shrink-0" title={fmtDateFull(log.created_at)}>
-          {fmtDate(log.created_at)}
+        <span className="text-[11px] text-gray-400 whitespace-nowrap shrink-0" title={fmtDateFull(log.created_at, i18n.language)}>
+          {fmtDate(log.created_at, t, i18n.language)}
         </span>
       </div>
     </div>

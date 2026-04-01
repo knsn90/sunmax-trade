@@ -1,0 +1,65 @@
+{
+  "title": "Price List",
+  "subtitle_entry": "{{count}} entry",
+  "subtitle_entries": "{{count}} entries",
+  "search": "Search…",
+  "allProducts": "All Products",
+  "allSuppliers": "All Suppliers",
+  "btnPriceHistory": "Price History",
+  "empty": {
+    "title": "No price entries",
+    "adjustFilters": "Try adjusting your filters",
+    "addFirst": "Click + to add your first price entry"
+  },
+  "table": {
+    "product": "Product",
+    "supplier": "Supplier",
+    "price": "Price",
+    "priceDate": "Price Date",
+    "validUntil": "Valid Until",
+    "notes": "Notes"
+  },
+  "modal": {
+    "titleNew": "New Price Entry",
+    "titleEdit": "Edit Price Entry",
+    "product": "Product *",
+    "selectProduct": "Select product…",
+    "searchProducts": "Search products…",
+    "noProducts": "No products found",
+    "addNewProduct": "+ Add new product",
+    "productNamePlaceholder": "Product name…",
+    "supplier": "Supplier *",
+    "selectSupplier": "Select supplier…",
+    "searchSuppliers": "Search suppliers…",
+    "noSuppliers": "No suppliers found",
+    "addNewSupplier": "+ Add new supplier",
+    "supplierNamePlaceholder": "Supplier name…",
+    "price": "Price *",
+    "currency": "Currency",
+    "priceDate": "Price Date *",
+    "validUntil": "Valid Until",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional notes…",
+    "btnAdd": "Add",
+    "btnSave": "Save",
+    "btnUpdate": "Update",
+    "btnSaving": "Saving…"
+  },
+  "history": {
+    "title": "Price History",
+    "product": "Product",
+    "selectProduct": "Select a product…",
+    "noProductSelected": "Select a product to view its price history",
+    "loading": "Loading…",
+    "noPrices": "No price entries for this product yet",
+    "priceTrend": "Price Trend",
+    "colDate": "Date",
+    "colSupplier": "Supplier",
+    "colPrice": "Price",
+    "colValidUntil": "Valid Until",
+    "colNotes": "Notes"
+  },
+  "confirm": {
+    "delete": "Delete price entry for \"{{product}}\"?"
+  }
+}

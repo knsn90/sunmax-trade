@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHeaderAction } from '@/contexts/HeaderContext';
 import { useNavigate } from 'react-router-dom';
 import { useTradeFiles, useDeleteTradeFile } from '@/hooks/useTradeFiles';
@@ -13,18 +14,7 @@ import { Search, Plus, ChevronRight, MoreVertical } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 
-// ─── Status config ─────────────────────────────────────────────────────────────
-const STATUS_FILTERS = [
-  { key: 'all',       label: 'All' },
-  { key: 'request',   label: 'Request' },
-  { key: 'sale',      label: 'Sale' },
-  { key: 'delivery',  label: 'Delivery' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'cancelled', label: 'Cancelled' },
-] as const;
-
-type FilterKey = typeof STATUS_FILTERS[number]['key'];
-
+// ─── Status meta (styling only, labels resolved via t()) ──────────────────────
 const STATUS_META: Record<string, { dot: string; text: string }> = {
   request:   { dot: 'bg-amber-400',  text: 'text-amber-700' },
   sale:      { dot: 'bg-blue-400',   text: 'text-blue-700' },
@@ -32,6 +22,8 @@ const STATUS_META: Record<string, { dot: string; text: string }> = {
   completed: { dot: 'bg-green-400',  text: 'text-green-700' },
   cancelled: { dot: 'bg-gray-300',   text: 'text-gray-400' },
 };
+
+type FilterKey = 'all' | 'request' | 'sale' | 'delivery' | 'completed' | 'cancelled';
 
 const AVATAR_COLORS = [
   '#dc2626','#2563eb','#7c3aed','#059669','#d97706','#db2777','#0891b2',
@@ -49,7 +41,9 @@ const PAGE_SIZE = 12;
 
 // ─── List row ──────────────────────────────────────────────────────────────────
 function FileRow({ file, onClick }: { file: TradeFile; onClick: () => void }) {
-  const custName = file.customer?.name ?? 'Unknown';
+  const { t } = useTranslation('tradeFiles');
+  const { t: tc } = useTranslation('common');
+  const custName = file.customer?.name ?? t('unknown');
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
 
   return (
@@ -73,8 +67,8 @@ function FileRow({ file, onClick }: { file: TradeFile; onClick: () => void }) {
         </div>
         <div className="flex items-center gap-1.5 mt-1">
           <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', meta.dot)} />
-          <span className={cn('text-[10px] font-semibold capitalize', meta.text)}>
-            {file.status}
+          <span className={cn('text-[10px] font-semibold', meta.text)}>
+            {tc(`status.${file.status}` as `status.${string}`)}
           </span>
           {file.tonnage_mt > 0 && (
             <span className="text-[10px] text-gray-400">· {fN(file.tonnage_mt, 0)} MT</span>
@@ -98,7 +92,9 @@ function FileRow({ file, onClick }: { file: TradeFile; onClick: () => void }) {
 function DesktopRow({ file, onClick, onDelete, writable }: {
   file: TradeFile; onClick: () => void; onDelete: () => void; writable: boolean;
 }) {
-  const custName = file.customer?.name ?? 'Unknown';
+  const { t } = useTranslation('tradeFiles');
+  const { t: tc } = useTranslation('common');
+  const custName = file.customer?.name ?? t('unknown');
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
   return (
     <tr
@@ -125,7 +121,9 @@ function DesktopRow({ file, onClick, onDelete, writable }: {
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">
           <span className={cn('w-2 h-2 rounded-full shrink-0', meta.dot)} />
-          <span className={cn('text-[11px] font-semibold capitalize', meta.text)}>{file.status}</span>
+          <span className={cn('text-[11px] font-semibold', meta.text)}>
+            {tc(`status.${file.status}` as `status.${string}`)}
+          </span>
         </div>
       </td>
       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
@@ -134,7 +132,7 @@ function DesktopRow({ file, onClick, onDelete, writable }: {
             onClick={onDelete}
             className="text-[11px] text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
           >
-            Delete
+            {tc('btn.delete')}
           </button>
         )}
       </td>
@@ -144,6 +142,8 @@ function DesktopRow({ file, onClick, onDelete, writable }: {
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export function TradeFilesPage() {
+  const { t } = useTranslation('tradeFiles');
+  const { t: tc } = useTranslation('common');
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: files = [], isLoading } = useTradeFiles();
@@ -159,6 +159,15 @@ export function TradeFilesPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [page, setPage] = useState(1);
   const { setAction } = useHeaderAction();
+
+  const STATUS_FILTERS: { key: FilterKey; label: string }[] = [
+    { key: 'all',       label: tc('all') },
+    { key: 'request',   label: tc('status.request') },
+    { key: 'sale',      label: tc('status.sale') },
+    { key: 'delivery',  label: tc('status.delivery') },
+    { key: 'completed', label: tc('status.completed') },
+    { key: 'cancelled', label: tc('status.cancelled') },
+  ];
 
   useEffect(() => {
     if (!writable) return;
@@ -193,7 +202,7 @@ export function TradeFilesPage() {
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   function handleDelete(id: string) {
-    if (window.confirm('Delete this file?')) deleteFile.mutate(id);
+    if (window.confirm(t('confirm.deleteFile'))) deleteFile.mutate(id);
   }
 
   if (isLoading) return <LoadingSpinner />;
@@ -213,7 +222,7 @@ export function TradeFilesPage() {
               <input
                 autoFocus
                 className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
-                placeholder="Customer, file no, product..."
+                placeholder={t('filters.search')}
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
               />
@@ -222,7 +231,7 @@ export function TradeFilesPage() {
                 style={{ color: accent }}
                 onClick={() => { setSearchOpen(false); setSearch(''); }}
               >
-                Cancel
+                {tc('btn.cancel')}
               </button>
             </div>
           ) : (
@@ -232,7 +241,7 @@ export function TradeFilesPage() {
               onClick={() => setSearchOpen(true)}
             >
               <Search className="h-4 w-4" />
-              Search
+              {tc('btn.search')}
             </button>
           )}
         </div>
@@ -263,7 +272,7 @@ export function TradeFilesPage() {
           {paged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <MoreVertical className="h-8 w-8 mb-2 opacity-30" />
-              <p className="text-sm">No records found</p>
+              <p className="text-sm">{t('empty.noRecords')}</p>
             </div>
           ) : (
             paged.map((f, i) => (
@@ -313,7 +322,7 @@ export function TradeFilesPage() {
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
             <input
               className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-              placeholder="Search files..."
+              placeholder={t('filters.search')}
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
@@ -348,7 +357,7 @@ export function TradeFilesPage() {
               className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap"
               style={{ background: accent }}
             >
-              + New File
+              {t('buttons.newFile')}
             </button>
           )}
         </div>
@@ -358,7 +367,7 @@ export function TradeFilesPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {['Customer / File No', 'Product', 'Tonnage', 'Date', 'Status', ''].map(h => (
+                {[t('table.customerFileNo'), t('table.product'), t('table.tonnage'), tc('table.date'), tc('table.status'), ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">
                     {h}
                   </th>
@@ -369,7 +378,7 @@ export function TradeFilesPage() {
               {paged.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-16 text-center text-[13px] text-gray-400">
-                    No records found
+                    {t('empty.noRecords')}
                   </td>
                 </tr>
               ) : (

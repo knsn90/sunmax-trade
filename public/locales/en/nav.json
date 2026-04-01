@@ -1,0 +1,51 @@
+{
+  "brand": {
+    "name": "SunPlus",
+    "tagline": "Trade Management"
+  },
+  "sections": {
+    "trade": "TRADE",
+    "documents": "DOCUMENTS",
+    "finance": "FINANCE",
+    "contacts": "CONTACTS",
+    "general": "GENERAL"
+  },
+  "items": {
+    "dashboard": "Dashboard",
+    "pipeline": "Pipeline",
+    "allFiles": "All Files",
+    "priceList": "Price List",
+    "documents": "Documents",
+    "accounting": "Accounting",
+    "journalLedger": "Journal Ledger",
+    "finReports": "Fin. Reports",
+    "bankRecon": "Bank Recon.",
+    "reports": "Reports",
+    "contacts": "Contacts",
+    "products": "Products",
+    "activityLog": "Activity Log",
+    "settings": "Settings",
+    "profile": "Profile"
+  },
+  "topbar": {
+    "pageTitles": {
+      "dashboard": "Dashboard",
+      "pipeline": "Pipeline",
+      "files": "All Files",
+      "documents": "Documents",
+      "accounting": "Accounting",
+      "ledger": "Journal Ledger",
+      "finReports": "Financial Reports",
+      "bankRecon": "Bank Reconciliation",
+      "reports": "Reports",
+      "contacts": "Contacts",
+      "products": "Products",
+      "settings": "Settings",
+      "profile": "Profile",
+      "priceList": "Price List",
+      "activity": "Activity Log"
+    },
+    "refreshRates": "Refresh rates",
+    "logout": "Logout"
+  }
+}

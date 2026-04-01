@@ -1,0 +1,42 @@
+{
+  "title": "Contacts",
+  "tabs": {
+    "customers": "Customers",
+    "suppliers": "Suppliers",
+    "serviceProviders": "Service Providers"
+  },
+  "empty": {
+    "noCustomers": "No customers yet",
+    "noSuppliers": "No suppliers yet",
+    "noServiceProviders": "No service providers yet"
+  },
+  "table": {
+    "countryCity": "Country / City",
+    "contact": "Contact",
+    "emailPhone": "Email / Phone",
+    "phoneEmail": "Phone / Email",
+    "paymentTerms": "Payment Terms"
+  },
+  "modal": {
+    "newCustomer": "New Customer",
+    "editCustomer": "Edit Customer",
+    "newSupplier": "New Supplier",
+    "editSupplier": "Edit Supplier",
+    "newServiceProvider": "New Service Provider",
+    "editServiceProvider": "Edit Service Provider"
+  },
+  "form": {
+    "companyName": "Company Name",
+    "taxId": "Tax ID / VAT",
+    "contactPerson": "Contact Person",
+    "swiftBic": "SWIFT / BIC",
+    "iban": "IBAN",
+    "serviceType": "Service Type"
+  },
+  "confirm": {
+    "removeCustomer": "Remove this customer?",
+    "removeSupplier": "Remove this supplier?",
+    "removeServiceProvider": "Remove this service provider?",
+    "removeLabel": "Remove?"
+  }
+}

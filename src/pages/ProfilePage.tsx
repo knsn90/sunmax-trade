@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/services/supabase';
 import { Button } from '@/components/ui/button';
@@ -36,19 +37,21 @@ function Card({ icon, title, children }: { icon: React.ReactNode; title: string;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function ProfilePage() {
+  const { t } = useTranslation('profile');
+  const { t: tc } = useTranslation('common');
   const { profile, user, refreshProfile } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
   // ── Avatar ─────────────────────────────────────────────────────────────────
-  const [avatarUrl, setAvatarUrl]       = useState<string | null>(profile?.avatar_url ?? null);
+  const [avatarUrl, setAvatarUrl]         = useState<string | null>(profile?.avatar_url ?? null);
   const [avatarLoading, setAvatarLoading] = useState(false);
-  const [avatarMsg, setAvatarMsg]       = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [avatarMsg, setAvatarMsg]         = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
     if (file.size > 2 * 1024 * 1024) {
-      setAvatarMsg({ type: 'error', msg: 'File must be smaller than 2MB.' });
+      setAvatarMsg({ type: 'error', msg: t('photo.hint') });
       return;
     }
     setAvatarLoading(true);
@@ -64,9 +67,9 @@ export function ProfilePage() {
         if (error) throw error;
         setAvatarUrl(base64);
         await refreshProfile();
-        setAvatarMsg({ type: 'success', msg: 'Photo updated.' });
+        setAvatarMsg({ type: 'success', msg: t('success.photoUpdated') });
       } catch (err: unknown) {
-        setAvatarMsg({ type: 'error', msg: err instanceof Error ? err.message : 'An error occurred.' });
+        setAvatarMsg({ type: 'error', msg: err instanceof Error ? err.message : tc('btn.saving') });
       } finally {
         setAvatarLoading(false);
       }
@@ -90,9 +93,9 @@ export function ProfilePage() {
         .eq('id', profile.id);
       if (error) throw error;
       await refreshProfile();
-      setInfoMsg({ type: 'success', msg: 'Name updated.' });
+      setInfoMsg({ type: 'success', msg: t('success.nameUpdated') });
     } catch (err: unknown) {
-      setInfoMsg({ type: 'error', msg: err instanceof Error ? err.message : 'An error occurred.' });
+      setInfoMsg({ type: 'error', msg: err instanceof Error ? err.message : tc('btn.saving') });
     } finally {
       setInfoLoading(false);
     }
@@ -106,9 +109,9 @@ export function ProfilePage() {
   const [passLoading, setPassLoading] = useState(false);
 
   async function changePassword() {
-    if (!currentPass) { setPassMsg({ type: 'error', msg: 'Please enter your current password.' }); return; }
-    if (newPass.length < 6) { setPassMsg({ type: 'error', msg: 'New password must be at least 6 characters.' }); return; }
-    if (newPass !== confirmPass) { setPassMsg({ type: 'error', msg: 'New passwords do not match.' }); return; }
+    if (!currentPass) { setPassMsg({ type: 'error', msg: t('errors.currentPasswordRequired') }); return; }
+    if (newPass.length < 6) { setPassMsg({ type: 'error', msg: t('errors.passwordLength') }); return; }
+    if (newPass !== confirmPass) { setPassMsg({ type: 'error', msg: t('errors.passwordMismatch') }); return; }
     setPassLoading(true);
     setPassMsg(null);
     try {
@@ -116,13 +119,13 @@ export function ProfilePage() {
         email: user?.email ?? '',
         password: currentPass,
       });
-      if (reAuthErr) throw new Error('Current password is incorrect.');
+      if (reAuthErr) throw new Error(t('errors.incorrectPassword'));
       const { error } = await supabase.auth.updateUser({ password: newPass });
       if (error) throw error;
-      setPassMsg({ type: 'success', msg: 'Password changed successfully.' });
+      setPassMsg({ type: 'success', msg: t('success.passwordChanged') });
       setCurrentPass(''); setNewPass(''); setConfirmPass('');
     } catch (err: unknown) {
-      setPassMsg({ type: 'error', msg: err instanceof Error ? err.message : 'An error occurred.' });
+      setPassMsg({ type: 'error', msg: err instanceof Error ? err.message : tc('btn.saving') });
     } finally {
       setPassLoading(false);
     }
@@ -137,11 +140,11 @@ export function ProfilePage() {
 
   function changeApprovePassword() {
     setApproveMsg(null);
-    if (oldApprove !== currentApprove) { setApproveMsg({ type: 'error', msg: 'Current approval password is incorrect.' }); return; }
-    if (newApprove.length < 4)         { setApproveMsg({ type: 'error', msg: 'New password must be at least 4 characters.' }); return; }
-    if (newApprove !== confirmApprove) { setApproveMsg({ type: 'error', msg: 'Passwords do not match.' }); return; }
+    if (oldApprove !== currentApprove) { setApproveMsg({ type: 'error', msg: t('errors.approvalPasswordIncorrect') }); return; }
+    if (newApprove.length < 4)         { setApproveMsg({ type: 'error', msg: t('errors.approvalPasswordLength') }); return; }
+    if (newApprove !== confirmApprove) { setApproveMsg({ type: 'error', msg: t('errors.approvalPasswordMismatch') }); return; }
     localStorage.setItem(APPROVE_PASSWORD_KEY, newApprove);
-    setApproveMsg({ type: 'success', msg: 'Approval password changed.' });
+    setApproveMsg({ type: 'success', msg: t('success.approvalPasswordChanged') });
     setOldApprove(''); setNewApprove(''); setConfirmApprove('');
   }
 
@@ -201,37 +204,37 @@ export function ProfilePage() {
                 className="text-xs"
               >
                 {avatarLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Camera className="h-3.5 w-3.5 mr-1.5" />}
-                Change Photo
+                {t('photo.btnChange')}
               </Button>
-              <p className="text-[10px] text-gray-400">JPG, PNG or WebP — max 2MB</p>
+              <p className="text-[10px] text-gray-400">{t('photo.hint')}</p>
               {avatarMsg && <Alert {...avatarMsg} />}
             </div>
           </div>
 
           {/* Personal info */}
-          <Card icon={<User className="h-3.5 w-3.5" />} title="Personal Info">
+          <Card icon={<User className="h-3.5 w-3.5" />} title={t('sections.personalInfo')}>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Full Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.fullName')}</label>
                 <Input
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t('form.fullName')}
                   onKeyDown={e => e.key === 'Enter' && saveProfile()}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Email</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{tc('form.email')}</label>
                 <Input value={user?.email ?? ''} disabled className="bg-gray-50 text-gray-400 cursor-not-allowed text-xs" />
-                <p className="text-[10px] text-gray-400 mt-1">Email cannot be changed.</p>
+                <p className="text-[10px] text-gray-400 mt-1">{t('form.emailReadOnly')}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Role</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.role')}</label>
                 <Input value={profile?.role ?? ''} disabled className="bg-gray-50 text-gray-400 cursor-not-allowed uppercase text-xs" />
               </div>
               {infoMsg && <Alert {...infoMsg} />}
               <Button onClick={saveProfile} disabled={infoLoading} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                {infoLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Saving…</> : 'Save'}
+                {infoLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{tc('btn.saving')}</> : t('buttons.save')}
               </Button>
             </div>
           </Card>
@@ -241,50 +244,48 @@ export function ProfilePage() {
         <div className="space-y-4">
 
           {/* Login password */}
-          <Card icon={<Lock className="h-3.5 w-3.5" />} title="Change Password">
+          <Card icon={<Lock className="h-3.5 w-3.5" />} title={t('sections.changePassword')}>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Current Password</label>
-                <Input type="password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} placeholder="Enter your current password" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.currentPassword')}</label>
+                <Input type="password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} placeholder={t('form.currentPasswordPlaceholder')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">New Password</label>
-                <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="At least 6 characters" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.newPassword')}</label>
+                <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder={t('form.newPasswordPlaceholder')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">New Password (Confirm)</label>
-                <Input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Repeat new password"
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.confirmPassword')}</label>
+                <Input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder={t('form.confirmPasswordPlaceholder')}
                   onKeyDown={e => e.key === 'Enter' && changePassword()} />
               </div>
               {passMsg && <Alert {...passMsg} />}
               <Button onClick={changePassword} disabled={passLoading || !newPass || !currentPass} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                {passLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Changing…</> : 'Change Password'}
+                {passLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t('buttons.changing')}</> : t('buttons.changePassword')}
               </Button>
             </div>
           </Card>
 
           {/* Approve password */}
-          <Card icon={<KeyRound className="h-3.5 w-3.5" />} title="Document Approval Password">
-            <p className="text-xs text-gray-400 mb-4">
-              Password required when approving documents.
-            </p>
+          <Card icon={<KeyRound className="h-3.5 w-3.5" />} title={t('sections.approvalPassword')}>
+            <p className="text-xs text-gray-400 mb-4">{t('approvalDesc')}</p>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Current Approval Password</label>
-                <Input type="password" value={oldApprove} onChange={e => setOldApprove(e.target.value)} placeholder="Current password" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.currentApprovalPassword')}</label>
+                <Input type="password" value={oldApprove} onChange={e => setOldApprove(e.target.value)} placeholder={t('form.currentApprovalPasswordPlaceholder')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">New Approval Password</label>
-                <Input type="password" value={newApprove} onChange={e => setNewApprove(e.target.value)} placeholder="New password" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.newApprovalPassword')}</label>
+                <Input type="password" value={newApprove} onChange={e => setNewApprove(e.target.value)} placeholder={t('form.newApprovalPasswordPlaceholder')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">New Approval Password (Confirm)</label>
-                <Input type="password" value={confirmApprove} onChange={e => setConfirmApprove(e.target.value)} placeholder="Repeat password"
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.confirmApprovalPassword')}</label>
+                <Input type="password" value={confirmApprove} onChange={e => setConfirmApprove(e.target.value)} placeholder={t('form.confirmApprovalPasswordPlaceholder')}
                   onKeyDown={e => e.key === 'Enter' && changeApprovePassword()} />
               </div>
               {approveMsg && <Alert {...approveMsg} />}
               <Button onClick={changeApprovePassword} disabled={!oldApprove || !newApprove} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                Change Approval Password
+                {t('buttons.changeApprovalPassword')}
               </Button>
             </div>
           </Card>

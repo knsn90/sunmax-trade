@@ -1,0 +1,74 @@
+{
+  "title": "Accounting",
+  "tabs": {
+    "all": "All",
+    "purchases": "Purchases",
+    "services": "Services",
+    "saleInvoices": "Sale Invoices",
+    "cashFlow": "Cash Flow"
+  },
+  "filters": {
+    "allTypes": "All Types",
+    "allStatuses": "All Statuses",
+    "search": "Search…"
+  },
+  "buttons": {
+    "newTransaction": "New Transaction"
+  },
+  "kpi": {
+    "receivable": "Receivable",
+    "payable": "Payable",
+    "revenue": "Revenue",
+    "costs": "Costs",
+    "profitLoss": "Profit / Loss"
+  },
+  "table": {
+    "invoiceFile": "Invoice / File",
+    "customerDate": "Customer / Date",
+    "admtUnitPrice": "ADMT / Unit Price",
+    "totalStatus": "Total / Status",
+    "typeDate": "Type / Date",
+    "fileParty": "File / Party",
+    "amountRemaining": "Amount / Remaining"
+  },
+  "empty": {
+    "noSaleInvoices": "No sale invoices yet",
+    "noTransactions": "No transactions found"
+  },
+  "confirm": {
+    "deleteTransaction": "Delete this transaction? This cannot be undone.",
+    "deleteSaleInvoice": "Delete sale invoice?",
+    "deleteLabel": "Delete?"
+  },
+  "transaction": {
+    "modal": {
+      "titleNew": "New Transaction",
+      "titleEdit": "Edit Transaction",
+      "type": "Transaction Type",
+      "tradeFile": "Trade File (optional)",
+      "tradeFileSelect": "— Select file —",
+      "serviceProvider": "Service Provider",
+      "supplier": "Supplier",
+      "customer": "Customer",
+      "payee": "Payee",
+      "partyPlaceholder": "Search {{party}}…",
+      "descriptionPlaceholder": "e.g. Mersin customs fee",
+      "referenceNo": "Reference No.",
+      "exchangeRate": "USD/TRY Rate",
+      "exchangeRatePlaceholder": "e.g. 32.5",
+      "usdEquivalent": "USD equivalent:",
+      "paidAmount": "Paid Amount",
+      "paymentStatus": "Payment Status",
+      "btnSave": "Save Transaction",
+      "btnUpdate": "Update",
+      "ocrDetected": "OCR detected:",
+      "ocrInstruction": "— please select below",
+      "description": "Description",
+      "amount": "Amount",
+      "party": "Party",
+      "statusOpen": "Open",
+      "statusPartial": "Partially Paid",
+      "statusPaid": "Fully Paid"
+    }
+  }
+}

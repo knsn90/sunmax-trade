@@ -10,6 +10,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -20,15 +21,9 @@ import {
 } from '@/hooks/useEntities';
 import { priceListSchema, type PriceListFormData } from '@/types/forms';
 import type { PriceList } from '@/types/database';
+import { fDate } from '@/lib/formatters';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function fmt(date: string) {
-  if (!date) return '—';
-  return new Date(date + 'T00:00:00').toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-  });
-}
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CURRENCIES = ['USD', 'EUR', 'TRY'] as const;
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', TRY: '₺' };
@@ -42,6 +37,9 @@ interface EntryModalProps {
 }
 
 function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
+  const { t } = useTranslation('priceList');
+  const { t: tc } = useTranslation('common');
+
   const { data: products = [] } = useProducts();
   const { data: suppliers = [] } = useSuppliers();
   const createEntry = useCreatePriceList();
@@ -133,7 +131,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Tag className="h-4 w-4 text-gray-500" />
-            {editing ? 'Edit Price Entry' : 'New Price Entry'}
+            {editing ? t('modal.titleEdit') : t('modal.titleNew')}
           </DialogTitle>
         </DialogHeader>
 
@@ -141,7 +139,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
 
           {/* Product */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Product *</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.product')}</label>
             <div className="relative">
               <button
                 type="button"
@@ -149,7 +147,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                 className="w-full h-9 px-3 text-left text-sm border border-gray-200 rounded-xl bg-white flex items-center justify-between hover:border-gray-300 transition-colors"
               >
                 <span className={selectedProduct ? 'text-gray-900' : 'text-gray-400'}>
-                  {selectedProduct?.name ?? 'Select product...'}
+                  {selectedProduct?.name ?? t('modal.selectProduct')}
                 </span>
                 <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
               </button>
@@ -162,7 +160,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                         autoFocus
                         value={prodSearch}
                         onChange={e => setProdSearch(e.target.value)}
-                        placeholder="Search products..."
+                        placeholder={t('modal.searchProducts')}
                         className="w-full pl-8 pr-3 h-7 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300"
                       />
                     </div>
@@ -178,7 +176,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                       </button>
                     ))}
                     {filteredProducts.length === 0 && (
-                      <div className="px-3 py-2 text-xs text-gray-400">No products found</div>
+                      <div className="px-3 py-2 text-xs text-gray-400">{t('modal.noProducts')}</div>
                     )}
                   </div>
                   <div className="border-t border-gray-100 p-2">
@@ -189,15 +187,15 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                           value={newProdName}
                           onChange={e => setNewProdName(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddProduct())}
-                          placeholder="Product name..."
+                          placeholder={t('modal.productNamePlaceholder')}
                           className="flex-1 h-7 px-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300"
                         />
-                        <button type="button" onClick={handleAddProduct} className="px-2.5 h-7 text-xs bg-gray-900 text-white rounded-lg hover:bg-gray-700">Add</button>
+                        <button type="button" onClick={handleAddProduct} className="px-2.5 h-7 text-xs bg-gray-900 text-white rounded-lg hover:bg-gray-700">{t('modal.btnAdd')}</button>
                         <button type="button" onClick={() => setAddingProd(false)} className="px-2 h-7 text-gray-400 hover:text-gray-600"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     ) : (
                       <button type="button" onClick={() => setAddingProd(true)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 px-1 py-0.5">
-                        <Plus className="h-3 w-3" /> Add new product
+                        <Plus className="h-3 w-3" /> {t('modal.addNewProduct')}
                       </button>
                     )}
                   </div>
@@ -209,7 +207,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
 
           {/* Supplier */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Supplier *</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.supplier')}</label>
             <div className="relative">
               <button
                 type="button"
@@ -217,7 +215,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                 className="w-full h-9 px-3 text-left text-sm border border-gray-200 rounded-xl bg-white flex items-center justify-between hover:border-gray-300 transition-colors"
               >
                 <span className={selectedSupplier ? 'text-gray-900' : 'text-gray-400'}>
-                  {selectedSupplier?.name ?? 'Select supplier...'}
+                  {selectedSupplier?.name ?? t('modal.selectSupplier')}
                 </span>
                 <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
               </button>
@@ -230,7 +228,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                         autoFocus
                         value={supSearch}
                         onChange={e => setSupSearch(e.target.value)}
-                        placeholder="Search suppliers..."
+                        placeholder={t('modal.searchSuppliers')}
                         className="w-full pl-8 pr-3 h-7 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300"
                       />
                     </div>
@@ -246,7 +244,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                       </button>
                     ))}
                     {filteredSuppliers.length === 0 && (
-                      <div className="px-3 py-2 text-xs text-gray-400">No suppliers found</div>
+                      <div className="px-3 py-2 text-xs text-gray-400">{t('modal.noSuppliers')}</div>
                     )}
                   </div>
                   <div className="border-t border-gray-100 p-2">
@@ -257,15 +255,15 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
                           value={newSupName}
                           onChange={e => setNewSupName(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddSupplier())}
-                          placeholder="Supplier name..."
+                          placeholder={t('modal.supplierNamePlaceholder')}
                           className="flex-1 h-7 px-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300"
                         />
-                        <button type="button" onClick={handleAddSupplier} className="px-2.5 h-7 text-xs bg-gray-900 text-white rounded-lg hover:bg-gray-700">Add</button>
+                        <button type="button" onClick={handleAddSupplier} className="px-2.5 h-7 text-xs bg-gray-900 text-white rounded-lg hover:bg-gray-700">{t('modal.btnAdd')}</button>
                         <button type="button" onClick={() => setAddingSup(false)} className="px-2 h-7 text-gray-400 hover:text-gray-600"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     ) : (
                       <button type="button" onClick={() => setAddingSup(true)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 px-1 py-0.5">
-                        <Plus className="h-3 w-3" /> Add new supplier
+                        <Plus className="h-3 w-3" /> {t('modal.addNewSupplier')}
                       </button>
                     )}
                   </div>
@@ -278,7 +276,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
           {/* Price + Currency */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Price *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.price')}</label>
               <input
                 {...register('price')}
                 type="number" step="0.0001" min="0"
@@ -288,7 +286,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
               {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price.message}</p>}
             </div>
             <div className="w-28">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Currency</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.currency')}</label>
               <select
                 {...register('currency')}
                 className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white"
@@ -301,7 +299,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
           {/* Dates */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Price Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.priceDate')}</label>
               <input
                 {...register('price_date')}
                 type="date"
@@ -310,7 +308,7 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
               {errors.price_date && <p className="text-xs text-red-500 mt-1">{errors.price_date.message}</p>}
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Valid Until</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.validUntil')}</label>
               <input
                 {...register('valid_until')}
                 type="date"
@@ -321,11 +319,11 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.notes')}</label>
             <textarea
               {...register('notes')}
               rows={2}
-              placeholder="Optional notes..."
+              placeholder={t('modal.notesPlaceholder')}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
             />
           </div>
@@ -336,14 +334,14 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
               onClick={() => onOpenChange(false)}
               className="px-4 h-9 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {tc('btn.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-5 h-9 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 disabled:opacity-50 transition-colors"
             >
-              {isSubmitting ? 'Saving…' : editing ? 'Update' : 'Save'}
+              {isSubmitting ? t('modal.btnSaving') : editing ? t('modal.btnUpdate') : t('modal.btnSave')}
             </button>
           </DialogFooter>
         </form>
@@ -367,6 +365,9 @@ const LINE_COLORS = [
 ];
 
 function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: HistoryModalProps) {
+  const { t } = useTranslation('priceList');
+  const { t: tc } = useTranslation('common');
+
   const { data: products = [] } = useProducts();
   const [selectedProductId, setSelectedProductId] = useState(initialProductId);
   const { data: history = [], isLoading } = usePriceListByProduct(selectedProductId);
@@ -391,7 +392,7 @@ function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: Histor
 
     const chartData = Array.from(byDate.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, prices]) => ({ date: fmt(date), ...prices }));
+      .map(([date, prices]) => ({ date: fDate(date), ...prices }));
 
     return { chartData, supplierNames };
   }, [history]);
@@ -402,20 +403,20 @@ function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: Histor
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <History className="h-4 w-4 text-gray-500" />
-            Price History
+            {t('history.title')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
           {/* Product selector */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Product</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('history.product')}</label>
             <select
               value={selectedProductId}
               onChange={e => setSelectedProductId(e.target.value)}
               className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white"
             >
-              <option value="">Select a product...</option>
+              <option value="">{t('history.selectProduct')}</option>
               {products.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -424,17 +425,17 @@ function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: Histor
 
           {!selectedProductId && (
             <div className="py-8 text-center text-sm text-gray-400">
-              Select a product to view its price history
+              {t('history.noProductSelected')}
             </div>
           )}
 
           {selectedProductId && isLoading && (
-            <div className="py-8 text-center text-sm text-gray-400">Loading...</div>
+            <div className="py-8 text-center text-sm text-gray-400">{tc('btn.loading')}</div>
           )}
 
           {selectedProductId && !isLoading && history.length === 0 && (
             <div className="py-8 text-center text-sm text-gray-400">
-              No price entries for this product yet
+              {t('history.noPrices')}
             </div>
           )}
 
@@ -443,7 +444,7 @@ function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: Histor
               {/* Chart */}
               {chartData.length > 1 && (
                 <div className="bg-gray-50 rounded-2xl p-4">
-                  <p className="text-xs font-semibold text-gray-500 mb-3">Price Trend</p>
+                  <p className="text-xs font-semibold text-gray-500 mb-3">{t('history.priceTrend')}</p>
                   <ResponsiveContainer width="100%" height={180}>
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -472,22 +473,22 @@ function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: Histor
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Date</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Supplier</th>
-                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500">Price</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Valid Until</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Notes</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">{t('history.colDate')}</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">{t('history.colSupplier')}</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500">{t('history.colPrice')}</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">{t('history.colValidUntil')}</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">{t('history.colNotes')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.map((entry, i) => (
                       <tr key={entry.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                        <td className="px-4 py-2.5 text-xs text-gray-700 whitespace-nowrap">{fmt(entry.price_date)}</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-700 whitespace-nowrap">{fDate(entry.price_date)}</td>
                         <td className="px-4 py-2.5 text-xs text-gray-700">{entry.supplier?.name ?? '—'}</td>
                         <td className="px-4 py-2.5 text-xs font-semibold text-gray-900 text-right whitespace-nowrap">
                           {CURRENCY_SYMBOLS[entry.currency] ?? ''}{entry.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {entry.currency}
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">{fmt(entry.valid_until ?? '')}</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">{fDate(entry.valid_until ?? '')}</td>
                         <td className="px-4 py-2.5 text-xs text-gray-400 max-w-[160px] truncate">{entry.notes || '—'}</td>
                       </tr>
                     ))}
@@ -503,7 +504,7 @@ function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: Histor
             onClick={() => onOpenChange(false)}
             className="px-4 h-9 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
-            Close
+            {tc('btn.close')}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -514,6 +515,9 @@ function PriceHistoryModal({ open, onOpenChange, initialProductId = '' }: Histor
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function PriceListPage() {
+  const { t } = useTranslation('priceList');
+  const { t: tc } = useTranslation('common');
+
   const { profile } = useAuth();
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
@@ -556,7 +560,7 @@ export function PriceListPage() {
     setModalOpen(true);
   }
   function handleDelete(e: PriceList) {
-    if (!window.confirm(`Delete this price entry for "${e.product?.name}"?`)) return;
+    if (!window.confirm(t('confirm.delete', { product: e.product?.name ?? '' }))) return;
     deleteEntry.mutate(e.id);
   }
   function openHistory(productId = '') {
@@ -581,9 +585,9 @@ export function PriceListPage() {
           <Tag className="h-4 w-4 text-white" />
         </div>
         <div>
-          <h1 className="text-base font-bold text-gray-900 leading-tight">Price List</h1>
+          <h1 className="text-base font-bold text-gray-900 leading-tight">{t('title')}</h1>
           <p className="text-[11px] text-gray-400 leading-tight">
-            {isLoading ? 'Loading...' : `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`}
+            {isLoading ? tc('btn.loading') : t(entries.length === 1 ? 'subtitle_entry' : 'subtitle_entries', { count: entries.length })}
           </p>
         </div>
       </div>
@@ -596,7 +600,7 @@ export function PriceListPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search..."
+            placeholder={t('search')}
             className="w-full h-8 pl-8 pr-3 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200"
           />
         </div>
@@ -607,7 +611,7 @@ export function PriceListPage() {
           onChange={e => setFilterProductId(e.target.value)}
           className="h-8 px-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white text-gray-600 shrink-0 max-w-[130px]"
         >
-          <option value="">All Products</option>
+          <option value="">{t('allProducts')}</option>
           {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
 
@@ -617,7 +621,7 @@ export function PriceListPage() {
           onChange={e => setFilterSupplierId(e.target.value)}
           className="h-8 px-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white text-gray-600 shrink-0 max-w-[130px]"
         >
-          <option value="">All Suppliers</option>
+          <option value="">{t('allSuppliers')}</option>
           {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
 
@@ -629,7 +633,7 @@ export function PriceListPage() {
           className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors shrink-0"
         >
           <History className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Price History</span>
+          <span className="hidden sm:inline">{t('btnPriceHistory')}</span>
         </button>
 
         {/* New button */}
@@ -658,9 +662,9 @@ export function PriceListPage() {
             <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
               <Tag className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-sm font-medium text-gray-600">No price entries</p>
+            <p className="text-sm font-medium text-gray-600">{t('empty.title')}</p>
             <p className="text-xs text-gray-400 mt-1">
-              {entries.length > 0 ? 'Try adjusting your filters' : 'Click + to add your first price entry'}
+              {entries.length > 0 ? t('empty.adjustFilters') : t('empty.addFirst')}
             </p>
           </div>
         )}
@@ -671,12 +675,12 @@ export function PriceListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Product</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Supplier</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">Price</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Price Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Valid Until</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Notes</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{t('table.product')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{t('table.supplier')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">{t('table.price')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{t('table.priceDate')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{t('table.validUntil')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{t('table.notes')}</th>
                   {canWrite && <th className="w-20 px-4 py-3" />}
                 </tr>
               </thead>
@@ -700,11 +704,11 @@ export function PriceListPage() {
                         </span>
                         <span className="text-[10px] text-gray-400 ml-1">{entry.currency}</span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{fmt(entry.price_date)}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{fDate(entry.price_date)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {entry.valid_until ? (
                           <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ${expired ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
-                            {fmt(entry.valid_until)}
+                            {fDate(entry.valid_until)}
                           </span>
                         ) : (
                           <span className="text-xs text-gray-400">—</span>
@@ -763,14 +767,14 @@ export function PriceListPage() {
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <div>
-                      <span className="text-[10px] text-gray-400 block">Price Date</span>
-                      <span className="text-xs text-gray-700">{fmt(entry.price_date)}</span>
+                      <span className="text-[10px] text-gray-400 block">{t('table.priceDate')}</span>
+                      <span className="text-xs text-gray-700">{fDate(entry.price_date)}</span>
                     </div>
                     {entry.valid_until && (
                       <div>
-                        <span className="text-[10px] text-gray-400 block">Valid Until</span>
+                        <span className="text-[10px] text-gray-400 block">{t('table.validUntil')}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded-lg font-medium ${expired ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
-                          {fmt(entry.valid_until)}
+                          {fDate(entry.valid_until)}
                         </span>
                       </div>
                     )}
@@ -784,13 +788,13 @@ export function PriceListPage() {
                         onClick={() => openEdit(entry)}
                         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded-lg hover:bg-gray-50 transition-colors"
                       >
-                        <Pencil className="h-3 w-3" /> Edit
+                        <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(entry)}
                         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
                       >
-                        <Trash2 className="h-3 w-3" /> Delete
+                        <Trash2 className="h-3 w-3" /> {tc('btn.delete')}
                       </button>
                     </div>
                   )}

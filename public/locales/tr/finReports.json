@@ -1,0 +1,61 @@
+{
+  "title": "Mali Raporlar",
+  "description": "Yevmiye defteri tabanlı muhasebe raporları",
+  "tabs": {
+    "trialBalance": "Mizan",
+    "profitLoss": "Kâr & Zarar",
+    "balanceSheet": "Bilanço"
+  },
+  "trialBalance": {
+    "hideZero": "Sıfır bakiyeli hesapları gizle",
+    "balanced": "✓ Dengede",
+    "unbalanced": "✗ Dengesiz!",
+    "total": "TOPLAM"
+  },
+  "pnl": {
+    "kpi": {
+      "revenue": "Gelir",
+      "cogs": "SMM",
+      "grossProfit": "Brüt Kâr",
+      "netIncome": "Net Kâr"
+    },
+    "sections": {
+      "revenue": "Gelirler",
+      "cogs": "Satılan Malın Maliyeti",
+      "expense": "Giderler"
+    },
+    "netProfitLoss": "Net Kâr / Zarar"
+  },
+  "balanceSheet": {
+    "kpi": {
+      "totalAssets": "Toplam Varlıklar",
+      "totalLiabilities": "Toplam Yükümlülükler",
+      "totalEquity": "Toplam Özkaynak"
+    },
+    "sections": {
+      "assets": "Varlıklar",
+      "liabilities": "Yükümlülükler",
+      "equity": "Özkaynak"
+    },
+    "balanced": "✓ Varlıklar = Borçlar + Özkaynak",
+    "unbalanced": "✗ Dengesiz — fark: {{diff}}"
+  },
+  "table": {
+    "account": "Hesap",
+    "type": "Tür",
+    "debit": "Borç",
+    "credit": "Alacak",
+    "balance": "Bakiye",
+    "code": "Kod",
+    "section": "Bölüm",
+    "amount": "Tutar (TRY)"
+  },
+  "empty": {
+    "title": "Henüz veri yok",
+    "hint": "Supabase'de 018–025 migration'larını çalıştırın ve fatura/işlem oluşturun."
+  },
+  "error": {
+    "loading": "Rapor yüklenemedi",
+    "migration": "Supabase'de 018–025 migration'larının uygulandığından emin olun."
+  }
+}

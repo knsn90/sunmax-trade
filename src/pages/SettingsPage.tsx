@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +20,8 @@ import {
 } from 'lucide-react';
 import { getApiKeyFromCache, saveApiKeyToDb, deleteApiKeyFromDb, type ApiService } from '@/services/companySettingsService';
 import { supabase } from '@/services/supabase';
+import { setLanguage, SUPPORTED_LANGUAGES } from '@/i18n';
+import { Globe } from 'lucide-react';
 
 type SettingsTab = 'company' | 'users' | 'backup';
 
@@ -41,8 +44,16 @@ function SectionHeader({ icon: Icon, title, description }: { icon: React.Element
   );
 }
 
+// ─── Static API service config (ids + colors only) ────────────────────────────
+const API_SERVICE_IDS = [
+  { id: 'anthropic' as const, link: 'console.anthropic.com', color: '#8b5cf6' },
+  { id: 'openai'    as const, link: 'platform.openai.com',   color: '#10b981' },
+];
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function SettingsPage() {
+  const { t, i18n } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const admin = isAdmin(profile?.role);
   const { data: settings, isLoading } = useSettings();
@@ -86,7 +97,7 @@ export function SettingsPage() {
   function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast.error('Max 2MB'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error(t('logo.errorSize')); return; }
     uploadLogo.mutate(file);
   }
 
@@ -97,16 +108,25 @@ export function SettingsPage() {
         <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
           <Lock className="h-5 w-5 text-gray-400" />
         </div>
-        <p className="text-sm font-medium text-gray-500">Admins only</p>
+        <p className="text-sm font-medium text-gray-500">{t('users.adminOnly')}</p>
       </div>
     );
   }
 
   const defaultBank = bankAccounts[0];
   const TABS: { key: SettingsTab; label: string; icon: React.ElementType }[] = [
-    { key: 'company', label: 'Company',  icon: Building2 },
-    { key: 'users',   label: 'Users',    icon: Users },
-    { key: 'backup',  label: 'Backup',   icon: Database },
+    { key: 'company', label: t('tabs.company'), icon: Building2 },
+    { key: 'users',   label: t('tabs.users'),   icon: Users },
+    { key: 'backup',  label: t('tabs.backup'),  icon: Database },
+  ];
+
+  const bankFields = [
+    { label: t('bank.bankName'),         key: 'bank_name',          val: defaultBank?.bank_name },
+    { label: t('bank.accountName'),      key: 'account_name',       val: defaultBank?.account_name },
+    { label: t('bank.ibanUsd'),          key: 'iban_usd',           val: defaultBank?.iban_usd },
+    { label: t('bank.ibanEur'),          key: 'iban_eur',           val: defaultBank?.iban_eur },
+    { label: t('bank.swiftBic'),         key: 'swift_bic',          val: defaultBank?.swift_bic },
+    { label: t('bank.correspondentBank'),key: 'correspondent_bank', val: defaultBank?.correspondent_bank },
   ];
 
   return (
@@ -118,8 +138,8 @@ export function SettingsPage() {
           <Building2 className="h-4.5 w-4.5 text-gray-600" style={{ width: 18, height: 18 }} />
         </div>
         <div>
-          <h1 className="text-[15px] font-bold text-gray-900">Settings</h1>
-          <p className="text-[11px] text-gray-400">Manage your workspace</p>
+          <h1 className="text-[15px] font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-[11px] text-gray-400">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -147,7 +167,7 @@ export function SettingsPage() {
 
           {/* Logo */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <SectionHeader icon={ImageIcon} title="Company Logo" description="Shown on invoices and packing lists" />
+            <SectionHeader icon={ImageIcon} title={t('logo.title')} description={t('logo.description')} />
             <div className="flex items-center gap-4">
               <div
                 className="w-[160px] h-[72px] shrink-0 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center bg-gray-50 cursor-pointer hover:border-gray-400 hover:bg-gray-100 transition-colors overflow-hidden"
@@ -158,7 +178,7 @@ export function SettingsPage() {
                 ) : (
                   <div className="text-center">
                     <Upload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
-                    <span className="text-[11px] text-gray-400">Click to upload</span>
+                    <span className="text-[11px] text-gray-400">{t('logo.uploadHint')}</span>
                   </div>
                 )}
               </div>
@@ -167,17 +187,17 @@ export function SettingsPage() {
                   onClick={() => fileRef.current?.click()}
                   className="flex items-center gap-1.5 px-3 h-8 rounded-xl border border-gray-200 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  <Upload className="h-3.5 w-3.5" /> Upload
+                  <Upload className="h-3.5 w-3.5" /> {t('logo.btnUpload')}
                 </button>
                 {settings?.logo_url && (
                   <button
-                    onClick={() => { if (window.confirm('Remove logo?')) removeLogo.mutate(); }}
+                    onClick={() => { if (window.confirm(t('logo.confirm'))) removeLogo.mutate(); }}
                     className="flex items-center gap-1.5 px-3 h-8 rounded-xl border border-red-200 text-[12px] font-medium text-red-600 hover:bg-red-50 transition-colors"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                    <Trash2 className="h-3.5 w-3.5" /> {t('logo.btnRemove')}
                   </button>
                 )}
-                <p className="text-[10px] text-gray-400">PNG, JPG — max 2MB</p>
+                <p className="text-[10px] text-gray-400">{t('logo.hint')}</p>
               </div>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             </div>
@@ -185,41 +205,41 @@ export function SettingsPage() {
 
           {/* Company Info */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <SectionHeader icon={Building2} title="Company Information" />
+            <SectionHeader icon={Building2} title={t('company.title')} />
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <FieldLabel>Company Name</FieldLabel>
+                  <FieldLabel>{t('company.name')}</FieldLabel>
                   <Input {...register('company_name')} placeholder="SunPlus Trade" className="h-9 text-sm" />
                   {errors.company_name && <p className="text-[11px] text-red-500 mt-1">{errors.company_name.message}</p>}
                 </div>
                 <div>
-                  <FieldLabel>Tax / VKN</FieldLabel>
+                  <FieldLabel>{t('company.taxVkn')}</FieldLabel>
                   <Input {...register('tax_id')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>Address Line 1</FieldLabel>
+                  <FieldLabel>{t('company.addressLine1')}</FieldLabel>
                   <Input {...register('address_line1')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>Address Line 2</FieldLabel>
+                  <FieldLabel>{t('company.addressLine2')}</FieldLabel>
                   <Input {...register('address_line2')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>Phone</FieldLabel>
+                  <FieldLabel>{tc('form.phone')}</FieldLabel>
                   <Input {...register('phone')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>Email</FieldLabel>
+                  <FieldLabel>{tc('form.email')}</FieldLabel>
                   <Input type="email" {...register('email')} className="h-9 text-sm" />
                   {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email.message}</p>}
                 </div>
                 <div>
-                  <FieldLabel>Signatory</FieldLabel>
-                  <Input {...register('signatory')} placeholder="Authorized person" className="h-9 text-sm" />
+                  <FieldLabel>{t('company.signatory')}</FieldLabel>
+                  <Input {...register('signatory')} placeholder={t('company.signatoryPlaceholder')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>Default Currency</FieldLabel>
+                  <FieldLabel>{t('company.defaultCurrency')}</FieldLabel>
                   <NativeSelect {...register('default_currency')} className="h-9 text-sm">
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
@@ -227,20 +247,20 @@ export function SettingsPage() {
                   </NativeSelect>
                 </div>
                 <div>
-                  <FieldLabel>Default Port of Loading</FieldLabel>
-                  <Input {...register('default_port_of_loading')} placeholder="MERSIN, TURKEY" className="h-9 text-sm" />
+                  <FieldLabel>{t('company.defaultPort')}</FieldLabel>
+                  <Input {...register('default_port_of_loading')} placeholder={t('company.defaultPortPlaceholder')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>Default Incoterms</FieldLabel>
-                  <Input {...register('default_incoterms')} placeholder="CPT" className="h-9 text-sm" />
+                  <FieldLabel>{t('company.defaultIncoterms')}</FieldLabel>
+                  <Input {...register('default_incoterms')} placeholder={t('company.defaultIncotermsPlaceholder')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>Payment Terms</FieldLabel>
-                  <Input {...register('payment_terms')} placeholder="T/T in advance" className="h-9 text-sm" />
+                  <FieldLabel>{tc('form.payment_terms')}</FieldLabel>
+                  <Input {...register('payment_terms')} placeholder={t('company.paymentTermsPlaceholder')} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <FieldLabel>File Prefix</FieldLabel>
-                  <Input {...register('file_prefix')} placeholder="ESN" className="h-9 text-sm" />
+                  <FieldLabel>{t('company.filePrefix')}</FieldLabel>
+                  <Input {...register('file_prefix')} placeholder={t('company.filePrefixPlaceholder')} className="h-9 text-sm" />
                   {errors.file_prefix && <p className="text-[11px] text-red-500 mt-1">{errors.file_prefix.message}</p>}
                 </div>
               </div>
@@ -251,9 +271,9 @@ export function SettingsPage() {
                   className="flex items-center gap-1.5 px-4 h-9 rounded-xl bg-gray-900 text-white text-[13px] font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
                 >
                   {updateSettings.isPending ? (
-                    <><span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />Saving…</>
+                    <><span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />{t('company.btnSaving')}</>
                   ) : (
-                    <><Check className="h-3.5 w-3.5" />Save Settings</>
+                    <><Check className="h-3.5 w-3.5" />{t('company.btnSave')}</>
                   )}
                 </button>
               </div>
@@ -262,16 +282,9 @@ export function SettingsPage() {
 
           {/* Bank Info */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <SectionHeader icon={CreditCard} title="Bank Information" description="Shown on invoices" />
+            <SectionHeader icon={CreditCard} title={t('bank.title')} description={t('bank.description')} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[
-                { label: 'Bank Name',           key: 'bank_name',         val: defaultBank?.bank_name },
-                { label: 'Account Name',        key: 'account_name',      val: defaultBank?.account_name },
-                { label: 'IBAN (USD)',           key: 'iban_usd',          val: defaultBank?.iban_usd },
-                { label: 'IBAN (EUR)',           key: 'iban_eur',          val: defaultBank?.iban_eur },
-                { label: 'SWIFT / BIC',         key: 'swift_bic',         val: defaultBank?.swift_bic },
-                { label: 'Correspondent Bank',  key: 'correspondent_bank',val: defaultBank?.correspondent_bank },
-              ].map(({ label, key, val }) => (
+              {bankFields.map(({ label, key, val }) => (
                 <div key={key}>
                   <FieldLabel>{label}</FieldLabel>
                   <Input
@@ -289,8 +302,32 @@ export function SettingsPage() {
 
           {/* API Keys */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <SectionHeader icon={Key} title="API Keys" description="For AI and OCR features" />
+            <SectionHeader icon={Key} title={t('api.title')} description={t('api.description')} />
             <ApiKeyList />
+          </div>
+
+          {/* Language */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <SectionHeader icon={Globe} title={t('language.title')} description={t('language.description')} />
+            <div className="flex gap-2">
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const active = i18n.language?.slice(0, 2) === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => setLanguage(lang.code)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>{lang.flag}</span>
+                    <span>{lang.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -305,36 +342,18 @@ export function SettingsPage() {
 }
 
 // ─── API Key List ─────────────────────────────────────────────────────────────
-const API_SERVICES = [
-  {
-    id: 'anthropic' as const,
-    name: 'Anthropic (Claude)',
-    description: 'AI Form Fill — voice & text form filling',
-    placeholder: 'sk-ant-...',
-    link: 'console.anthropic.com',
-    color: '#8b5cf6',
-  },
-  {
-    id: 'openai' as const,
-    name: 'OpenAI',
-    description: 'OCR — PDF, image, Excel document reading',
-    placeholder: 'sk-...',
-    link: 'platform.openai.com',
-    color: '#10b981',
-  },
-] satisfies Array<{ id: 'openai' | 'anthropic'; name: string; description: string; placeholder: string; link: string; color: string }>;
-
 function ApiKeyList() {
   return (
     <div className="space-y-2.5">
-      {API_SERVICES.map((svc) => (
+      {API_SERVICE_IDS.map((svc) => (
         <ApiKeyRow key={svc.id} service={svc} />
       ))}
     </div>
   );
 }
 
-function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
+function ApiKeyRow({ service }: { service: typeof API_SERVICE_IDS[number] }) {
+  const { t } = useTranslation('settings');
   const [stored, setStored] = useState(() => getApiKeyFromCache(service.id as ApiService));
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
@@ -354,9 +373,9 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
       await saveApiKeyToDb(service.id as ApiService, value.trim());
       setStored(value.trim());
       setEditing(false);
-      toast.success('API key saved');
+      toast.success(t('api.keySaved'));
     } catch (err) {
-      toast.error('Save error: ' + (err instanceof Error ? err.message : 'Unknown'));
+      toast.error(err instanceof Error ? err.message : 'Unknown error');
     } finally { setSaving(false); }
   }
 
@@ -366,13 +385,16 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
       await deleteApiKeyFromDb(service.id as ApiService);
       setStored('');
       setEditing(false);
-      toast.success('API key removed');
+      toast.success(t('api.keyRemoved'));
     } catch (err) {
-      toast.error('Delete error: ' + (err instanceof Error ? err.message : 'Unknown'));
+      toast.error(err instanceof Error ? err.message : 'Unknown error');
     } finally { setSaving(false); }
   }
 
   const preview = stored ? stored.slice(0, 8) + '••••••••••••' + stored.slice(-4) : null;
+  const name        = t(`api.${service.id}` as `api.${string}`);
+  const description = t(`api.${service.id}Desc` as `api.${string}`);
+  const placeholder = t(`api.${service.id}Placeholder` as `api.${string}`);
 
   return (
     <div className="rounded-xl border border-gray-100 p-3.5 bg-gray-50/50">
@@ -384,18 +406,18 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-gray-800">{service.name}</span>
+              <span className="text-[13px] font-semibold text-gray-800">{name}</span>
               {stored ? (
                 <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5 font-semibold flex items-center gap-1">
-                  <Check className="h-2.5 w-2.5" /> Configured
+                  <Check className="h-2.5 w-2.5" /> {t('api.configured')}
                 </span>
               ) : (
                 <span className="text-[10px] bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-semibold">
-                  Not set
+                  {t('api.notSet')}
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-gray-400 mt-0.5">{service.description}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{description}</p>
             {stored && !editing && (
               <p className="text-[11px] font-mono text-gray-400 mt-1">{preview}</p>
             )}
@@ -407,7 +429,7 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
               onClick={startEdit}
               className="px-3 h-7 rounded-xl border border-gray-200 text-[12px] font-medium text-gray-700 hover:bg-white transition-colors"
             >
-              {stored ? 'Edit' : 'Add Key'}
+              {stored ? t('api.btnEdit') : t('api.btnAdd')}
             </button>
           )}
           {!editing && stored && (
@@ -429,7 +451,7 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
               type={visible ? 'text' : 'password'}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={service.placeholder}
+              placeholder={placeholder}
               className="pr-9 text-sm h-9 rounded-xl"
               autoFocus
               onKeyDown={e => e.key === 'Enter' && handleSave()}
@@ -447,7 +469,7 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
             disabled={!value.trim() || saving}
             className="px-3 h-9 rounded-xl bg-gray-900 text-white text-[13px] font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors"
           >
-            {saving ? '…' : 'Save'}
+            {saving ? '…' : t('api.btnSave')}
           </button>
           <button
             onClick={() => setEditing(false)}
@@ -464,6 +486,8 @@ function ApiKeyRow({ service }: { service: typeof API_SERVICES[number] }) {
 
 // ─── Permissions Modal ────────────────────────────────────────────────────────
 function PermissionsModal({ user, onClose }: { user: Profile; onClose: () => void }) {
+  const { t } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const updatePerms = useUpdatePermissions();
   const allKeys = PAGE_PERMISSIONS.map(p => p.key);
   const [selected, setSelected] = useState<string[]>(user.permissions ?? allKeys);
@@ -485,7 +509,7 @@ function PermissionsModal({ user, onClose }: { user: Profile; onClose: () => voi
         <div className="px-5 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-bold text-[14px] text-gray-800">Page Permissions</div>
+              <div className="font-bold text-[14px] text-gray-800">{t('users.pagePermissions')}</div>
               <div className="text-[11px] text-gray-400 mt-0.5">{user.full_name} — {user.email}</div>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100">
@@ -514,21 +538,21 @@ function PermissionsModal({ user, onClose }: { user: Profile; onClose: () => voi
               onClick={() => setSelected(allKeys)}
               className="text-[12px] text-blue-600 font-medium hover:underline"
             >
-              Select all
+              {t('users.selectAll')}
             </button>
             <div className="flex gap-2">
               <button
                 onClick={onClose}
                 className="px-3 h-8 rounded-xl border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {tc('btn.cancel')}
               </button>
               <button
                 onClick={save}
                 disabled={updatePerms.isPending}
                 className="px-3 h-8 rounded-xl bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {updatePerms.isPending ? 'Saving…' : 'Save'}
+                {updatePerms.isPending ? tc('btn.saving') : tc('btn.save')}
               </button>
             </div>
           </div>
@@ -540,6 +564,8 @@ function PermissionsModal({ user, onClose }: { user: Profile; onClose: () => voi
 
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 function UsersTab({ currentUserId }: { currentUserId?: string }) {
+  const { t } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const { data: users = [], isLoading } = useUsers();
   const updateRole   = useUpdateUserRole();
   const toggleActive = useToggleUserActive();
@@ -555,7 +581,7 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   async function handleCreate() {
-    if (!newEmail || !newPassword || !newName) { toast.error('Please fill all fields'); return; }
+    if (!newEmail || !newPassword || !newName) { toast.error(t('users.errorFillAll')); return; }
     await createUser.mutateAsync({ email: newEmail, password: newPassword, fullName: newName, role: newRole });
     setNewEmail(''); setNewPassword(''); setNewName(''); setNewRole('viewer'); setShowAddForm(false);
   }
@@ -579,21 +605,21 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
             <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-3">
               <AlertTriangle className="h-6 w-6 text-red-600" />
             </div>
-            <div className="font-bold text-gray-800 mb-1">Delete user?</div>
-            <p className="text-[12px] text-gray-500 mb-4">This cannot be undone. The user will lose access.</p>
+            <div className="font-bold text-gray-800 mb-1">{t('users.deleteTitle')}</div>
+            <p className="text-[12px] text-gray-500 mb-4">{t('users.deleteDesc')}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setDeleteConfirm(null)}
                 className="flex-1 h-9 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {tc('btn.cancel')}
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteUser.isPending}
                 className="flex-1 h-9 rounded-xl bg-red-600 text-white text-[13px] font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
-                {deleteUser.isPending ? 'Deleting…' : 'Delete'}
+                {deleteUser.isPending ? t('users.deleting') : tc('btn.delete')}
               </button>
             </div>
           </div>
@@ -602,7 +628,7 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
 
       {/* Header row */}
       <div className="flex items-center justify-between">
-        <div className="text-[13px] font-bold text-gray-800">{users.length} Users</div>
+        <div className="text-[13px] font-bold text-gray-800">{t('users.userCount', { count: users.length })}</div>
         <button
           onClick={() => setShowAddForm(v => !v)}
           className={`flex items-center gap-1.5 px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${
@@ -611,29 +637,31 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
               : 'bg-gray-900 text-white hover:bg-gray-800'
           }`}
         >
-          {showAddForm ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><UserPlus className="h-3.5 w-3.5" /> Add User</>}
+          {showAddForm
+            ? <><X className="h-3.5 w-3.5" /> {tc('btn.cancel')}</>
+            : <><UserPlus className="h-3.5 w-3.5" /> {t('users.btnAdd')}</>}
         </button>
       </div>
 
       {/* Add user form */}
       {showAddForm && (
         <div className="bg-blue-50 rounded-2xl border border-blue-100 p-4">
-          <div className="text-[12px] font-bold text-blue-800 mb-3">New User</div>
+          <div className="text-[12px] font-bold text-blue-800 mb-3">{t('users.newUser')}</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
             <div>
-              <FieldLabel>Full Name</FieldLabel>
+              <FieldLabel>{t('users.fullName')}</FieldLabel>
               <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="John Doe" className="h-9 text-sm bg-white" />
             </div>
             <div>
-              <FieldLabel>Email</FieldLabel>
+              <FieldLabel>{tc('form.email')}</FieldLabel>
               <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="john@company.com" className="h-9 text-sm bg-white" />
             </div>
             <div>
-              <FieldLabel>Temporary Password</FieldLabel>
-              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="min. 6 characters" className="h-9 text-sm bg-white" />
+              <FieldLabel>{t('users.tempPassword')}</FieldLabel>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder={t('users.tempPasswordPlaceholder')} className="h-9 text-sm bg-white" />
             </div>
             <div>
-              <FieldLabel>Role</FieldLabel>
+              <FieldLabel>{t('users.role')}</FieldLabel>
               <NativeSelect value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} className="h-9 text-sm bg-white">
                 {USER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </NativeSelect>
@@ -644,7 +672,7 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
             disabled={createUser.isPending}
             className="flex items-center gap-1.5 px-4 h-9 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {createUser.isPending ? 'Creating…' : <><Check className="h-3.5 w-3.5" /> Create User</>}
+            {createUser.isPending ? t('users.creating') : <><Check className="h-3.5 w-3.5" /> {t('users.create')}</>}
           </button>
         </div>
       )}
@@ -667,12 +695,12 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[13px] font-semibold text-gray-800">{u.full_name || '—'}</span>
                   {u.id === currentUserId && (
-                    <span className="text-[10px] bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 font-medium shrink-0">you</span>
+                    <span className="text-[10px] bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 font-medium shrink-0">{t('users.you')}</span>
                   )}
                   <span className={`text-[10px] rounded-full px-2 py-0.5 font-semibold shrink-0 ${
                     u.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
                   }`}>
-                    {u.is_active ? 'Active' : 'Inactive'}
+                    {u.is_active ? tc('status.active') : tc('status.inactive')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -696,7 +724,7 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => toggleActive.mutate({ id: u.id, isActive: !u.is_active })}
-                    title={u.is_active ? 'Deactivate' : 'Activate'}
+                    title={u.is_active ? t('users.deactivate') : t('users.activate')}
                     className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors text-[10px] font-bold ${
                       u.is_active
                         ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
@@ -707,14 +735,14 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
                   </button>
                   <button
                     onClick={() => setPermUser(u)}
-                    title="Permissions"
+                    title={t('users.permissions')}
                     className="w-7 h-7 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors"
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => setDeleteConfirm(u.id)}
-                    title="Delete"
+                    title={tc('btn.delete')}
                     className="w-7 h-7 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -741,6 +769,8 @@ const BACKUP_TABLES = [
 type BackupStatus = 'idle' | 'loading' | 'success' | 'error';
 
 function BackupTab() {
+  const { t } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const [exportStatus, setExportStatus] = useState<BackupStatus>('idle');
   const [restoreStatus, setRestoreStatus] = useState<BackupStatus>('idle');
   const [restoreMsg, setRestoreMsg] = useState('');
@@ -813,42 +843,40 @@ function BackupTab() {
     <div className="space-y-4">
       {/* Export */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <SectionHeader icon={Download} title="Export Backup" description="Download all data as a JSON file" />
+        <SectionHeader icon={Download} title={t('backup.exportTitle')} description={t('backup.exportDesc')} />
         <button
           onClick={handleExport}
           disabled={exportStatus === 'loading'}
           className="flex items-center gap-2 px-4 h-9 rounded-xl bg-gray-900 text-white text-[13px] font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
         >
           {exportStatus === 'loading'
-            ? <><span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />Exporting…</>
-            : <><Download className="h-3.5 w-3.5" />Download Backup</>}
+            ? <><span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />{t('backup.exporting')}</>
+            : <><Download className="h-3.5 w-3.5" />{t('backup.btnDownload')}</>}
         </button>
         {exportStatus === 'success' && (
           <p className="flex items-center gap-1.5 mt-3 text-[12px] text-emerald-600 font-medium">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Backup downloaded successfully
+            <CheckCircle2 className="h-3.5 w-3.5" /> {t('backup.exportSuccess')}
           </p>
         )}
         {exportStatus === 'error' && (
           <p className="flex items-center gap-1.5 mt-3 text-[12px] text-red-500 font-medium">
-            <AlertTriangle className="h-3.5 w-3.5" /> Export failed
+            <AlertTriangle className="h-3.5 w-3.5" /> {t('backup.exportError')}
           </p>
         )}
-        <p className="text-[11px] text-gray-400 mt-3">
-          Includes: customers, suppliers, products, trade files, invoices, proformas, packing lists, transactions, company settings.
-        </p>
+        <p className="text-[11px] text-gray-400 mt-3">{t('backup.exportIncludes')}</p>
       </div>
 
       {/* Restore */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <SectionHeader icon={RotateCcw} title="Restore from Backup" description="Upload a previously exported backup file" />
+        <SectionHeader icon={RotateCcw} title={t('backup.restoreTitle')} description={t('backup.restoreDesc')} />
         <button
           onClick={() => fileRef.current?.click()}
           disabled={restoreStatus === 'loading'}
           className="flex items-center gap-2 px-4 h-9 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
         >
           {restoreStatus === 'loading'
-            ? <><span className="h-3.5 w-3.5 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />Restoring…</>
-            : <><RotateCcw className="h-3.5 w-3.5" />Select Backup File</>}
+            ? <><span className="h-3.5 w-3.5 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />{t('backup.restoring')}</>
+            : <><RotateCcw className="h-3.5 w-3.5" />{t('backup.btnSelect')}</>}
         </button>
         {restoreStatus === 'success' && (
           <p className="flex items-center gap-1.5 mt-3 text-[12px] text-emerald-600 font-medium">
@@ -860,9 +888,7 @@ function BackupTab() {
             <AlertTriangle className="h-3.5 w-3.5" /> {restoreMsg}
           </p>
         )}
-        <p className="text-[11px] text-gray-400 mt-3">
-          Existing records with matching IDs will be overwritten. This cannot be undone.
-        </p>
+        <p className="text-[11px] text-gray-400 mt-3">{t('backup.restoreWarning')}</p>
         <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFileSelect} />
       </div>
 
@@ -875,10 +901,9 @@ function BackupTab() {
                 <AlertTriangle className="h-5 w-5 text-amber-600" />
               </div>
               <div>
-                <div className="text-[14px] font-bold text-gray-800 mb-1">Restore Backup?</div>
+                <div className="text-[14px] font-bold text-gray-800 mb-1">{t('backup.confirmTitle')}</div>
                 <p className="text-[12px] text-gray-500">
-                  <span className="font-medium text-gray-700">{pendingFile?.name}</span> will be applied.
-                  Existing records with the same ID will be overwritten. This cannot be undone.
+                  {t('backup.confirmDesc', { filename: pendingFile?.name ?? '' })}
                 </p>
               </div>
             </div>
@@ -887,13 +912,13 @@ function BackupTab() {
                 onClick={() => { setConfirmRestore(false); setPendingFile(null); }}
                 className="flex-1 h-9 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {tc('btn.cancel')}
               </button>
               <button
                 onClick={handleRestore}
                 className="flex-1 h-9 rounded-xl bg-amber-500 text-white text-[13px] font-semibold hover:bg-amber-600 transition-colors"
               >
-                Yes, Restore
+                {t('backup.confirmBtn')}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { LogOut, RefreshCw } from 'lucide-react';
@@ -7,20 +8,28 @@ import { NotificationBell } from '@/components/layout/NotificationBell';
 import { useExchangeRates } from '@/hooks/useExchangeRate';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/pipeline': 'Pipeline',
-  '/files': 'All Files',
-  '/documents': 'Documents',
-  '/accounting': 'Accounting',
-  '/reports': 'Reports',
-  '/contacts': 'Contacts',
-  '/products': 'Products',
-  '/settings': 'Settings',
+const PATH_TITLE_KEYS: Record<string, string> = {
+  '/dashboard': 'topbar.pageTitles.dashboard',
+  '/pipeline':  'topbar.pageTitles.pipeline',
+  '/files':     'topbar.pageTitles.files',
+  '/documents': 'topbar.pageTitles.documents',
+  '/accounting':'topbar.pageTitles.accounting',
+  '/ledger':    'topbar.pageTitles.ledger',
+  '/fin-reports':'topbar.pageTitles.finReports',
+  '/bank-recon':'topbar.pageTitles.bankRecon',
+  '/reports':   'topbar.pageTitles.reports',
+  '/contacts':  'topbar.pageTitles.contacts',
+  '/products':  'topbar.pageTitles.products',
+  '/settings':  'topbar.pageTitles.settings',
+  '/profile':   'topbar.pageTitles.profile',
+  '/price-list':'topbar.pageTitles.priceList',
+  '/activity':  'topbar.pageTitles.activity',
 };
 
 function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
+  const { t } = useTranslation('nav');
   const { data, isLoading, isError, refetch, isFetching } = useExchangeRates();
 
   if (isLoading) return <span className={cn('text-[10px] animate-pulse', isDonezo ? 'text-gray-400' : 'text-white/60')}>Loading…</span>;
@@ -30,7 +39,7 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
   const tryRate = data.rates['TRY'];
 
   const sep = <span className={isDonezo ? 'text-gray-300' : 'text-white/20'}>|</span>;
-  const lbl = (t: string) => <span className={cn('text-[10px] font-medium', isDonezo ? 'text-gray-400' : 'text-white/60')}>{t}</span>;
+  const lbl = (text: string) => <span className={cn('text-[10px] font-medium', isDonezo ? 'text-gray-400' : 'text-white/60')}>{text}</span>;
   const val = (children: React.ReactNode) => (
     <span className={cn('text-[10px] font-semibold', isDonezo ? 'text-gray-800' : 'text-white')}>{children}</span>
   );
@@ -49,7 +58,7 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
         onClick={() => refetch()}
         disabled={isFetching}
         className={cn('disabled:opacity-40 transition-colors ml-0.5', isDonezo ? 'text-gray-400 hover:text-gray-600' : 'text-white/50 hover:text-white')}
-        title="Refresh rates"
+        title={t('topbar.refreshRates')}
       >
         <RefreshCw className={`h-2.5 w-2.5 ${isFetching ? 'animate-spin' : ''}`} />
       </button>
@@ -60,12 +69,14 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
 export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation('nav');
   const { profile, signOut } = useAuth();
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
 
   const basePath = '/' + location.pathname.split('/').filter(Boolean)[0];
-  const title = PAGE_TITLES[basePath] ?? 'SunPlus';
+  const titleKey = PATH_TITLE_KEYS[basePath];
+  const title    = titleKey ? t(titleKey) : t('brand.name');
 
   if (isDonezo) {
     return (
@@ -73,26 +84,23 @@ export function Topbar() {
         className="bg-white border-b border-gray-100 px-5 flex items-center gap-3 flex-shrink-0 shadow-sm"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
       >
-        {/* Mobil: logo — solda */}
+        {/* Mobile logo */}
         <div className="md:hidden flex items-center gap-2 flex-1">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#dc2626' }}>
             <span className="font-black text-xs text-white">S</span>
           </div>
-          <span className="font-black text-sm tracking-tight text-gray-900">SunPlus</span>
+          <span className="font-black text-sm tracking-tight text-gray-900">{t('brand.name')}</span>
         </div>
 
-        {/* Desktop: kur bilgisi — solda */}
         <ExchangeRateBar isDonezo={isDonezo} />
-
-        {/* Sağa iten boşluk */}
         <div className="flex-1 hidden md:block" />
 
-        {/* Tarih + Bildirim + Kullanıcı — en sağda */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <span className="hidden md:block text-[11px] text-gray-400">
             {fDate(new Date().toISOString().slice(0, 10))}
           </span>
 
+          <LanguageSwitcher />
           <NotificationBell />
 
           {profile && (
@@ -113,7 +121,7 @@ export function Topbar() {
             </button>
           )}
 
-          <Button variant="ghost" size="sm" onClick={signOut} className="text-gray-400 hover:text-gray-600">
+          <Button variant="ghost" size="sm" onClick={signOut} title={t('topbar.logout')} className="text-gray-400 hover:text-gray-600">
             <LogOut className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -127,24 +135,21 @@ export function Topbar() {
       className="gradient-header px-4 sm:px-5 flex items-center gap-2 flex-shrink-0 shadow-lg"
       style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
     >
-      {/* Logo + Sayfa başlığı — solda */}
       <div className="flex items-center gap-3 min-w-0">
         <div className="hidden md:flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">S</span>
           </div>
-          <span className="text-white font-black text-sm tracking-tight">SunPlus</span>
+          <span className="text-white font-black text-sm tracking-tight">{t('brand.name')}</span>
           <span className="text-white/30 mx-1">|</span>
         </div>
         <h1 className="hidden md:block text-base font-bold text-white truncate min-w-0">{title}</h1>
       </div>
 
-      {/* Kur — ortada */}
       <div className="flex-1 flex justify-center">
         <ExchangeRateBar isDonezo={false} />
       </div>
 
-      {/* Tarih + Bildirim + Kullanıcı — en sağda */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <div className="hidden md:flex items-center gap-2">
           <span className="text-[11px] text-white/70">{fDate(new Date().toISOString().slice(0, 10))}</span>
@@ -158,8 +163,9 @@ export function Topbar() {
             </button>
           )}
         </div>
+        <LanguageSwitcher />
         <NotificationBell />
-        <Button variant="ghost" size="sm" onClick={signOut} className="text-white/70 hover:text-white hover:bg-white/10">
+        <Button variant="ghost" size="sm" onClick={signOut} title={t('topbar.logout')} className="text-white/70 hover:text-white hover:bg-white/10">
           <LogOut className="h-3.5 w-3.5" />
         </Button>
       </div>

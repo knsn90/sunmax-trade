@@ -1,0 +1,65 @@
+{
+  "title": "Fiyat Listesi",
+  "subtitle_entry": "{{count}} kayıt",
+  "subtitle_entries": "{{count}} kayıt",
+  "search": "Ara…",
+  "allProducts": "Tüm Ürünler",
+  "allSuppliers": "Tüm Tedarikçiler",
+  "btnPriceHistory": "Fiyat Geçmişi",
+  "empty": {
+    "title": "Fiyat kaydı yok",
+    "adjustFilters": "Filtreleri değiştirmeyi deneyin",
+    "addFirst": "İlk fiyat kaydını eklemek için + tuşuna basın"
+  },
+  "table": {
+    "product": "Ürün",
+    "supplier": "Tedarikçi",
+    "price": "Fiyat",
+    "priceDate": "Fiyat Tarihi",
+    "validUntil": "Geçerlilik",
+    "notes": "Notlar"
+  },
+  "modal": {
+    "titleNew": "Yeni Fiyat Girişi",
+    "titleEdit": "Fiyat Girişini Düzenle",
+    "product": "Ürün *",
+    "selectProduct": "Ürün seçin…",
+    "searchProducts": "Ürün ara…",
+    "noProducts": "Ürün bulunamadı",
+    "addNewProduct": "+ Yeni ürün ekle",
+    "productNamePlaceholder": "Ürün adı…",
+    "supplier": "Tedarikçi *",
+    "selectSupplier": "Tedarikçi seçin…",
+    "searchSuppliers": "Tedarikçi ara…",
+    "noSuppliers": "Tedarikçi bulunamadı",
+    "addNewSupplier": "+ Yeni tedarikçi ekle",
+    "supplierNamePlaceholder": "Tedarikçi adı…",
+    "price": "Fiyat *",
+    "currency": "Para Birimi",
+    "priceDate": "Fiyat Tarihi *",
+    "validUntil": "Geçerlilik Tarihi",
+    "notes": "Notlar",
+    "notesPlaceholder": "İsteğe bağlı notlar…",
+    "btnAdd": "Ekle",
+    "btnSave": "Kaydet",
+    "btnUpdate": "Güncelle",
+    "btnSaving": "Kaydediliyor…"
+  },
+  "history": {
+    "title": "Fiyat Geçmişi",
+    "product": "Ürün",
+    "selectProduct": "Ürün seçin…",
+    "noProductSelected": "Fiyat geçmişini görmek için ürün seçin",
+    "loading": "Yükleniyor…",
+    "noPrices": "Bu ürün için henüz fiyat kaydı yok",
+    "priceTrend": "Fiyat Trendi",
+    "colDate": "Tarih",
+    "colSupplier": "Tedarikçi",
+    "colPrice": "Fiyat",
+    "colValidUntil": "Geçerlilik",
+    "colNotes": "Notlar"
+  },
+  "confirm": {
+    "delete": "\"{{product}}\" için fiyat kaydı silinsin mi?"
+  }
+}

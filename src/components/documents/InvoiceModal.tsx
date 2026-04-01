@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { invoiceSchema, type InvoiceFormData } from '@/types/forms';
@@ -30,6 +31,9 @@ interface InvoiceModalProps {
 }
 
 export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 'commercial' }: InvoiceModalProps) {
+  const { t } = useTranslation('documents');
+  const { t: tc } = useTranslation('common');
+
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
   const createInvoice = useCreateInvoice();
@@ -117,9 +121,9 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
       if (imported.insurance_no)  setValue('insurance_no',  imported.insurance_no);
       if (imported.payment_terms) setValue('payment_terms', imported.payment_terms);
       if (imported.packing_info)  setValue('packing_info',  imported.packing_info);
-      toast.success('Invoice data imported from Excel');
+      toast.success(t('invoice.modal.successImported'));
     } catch {
-      toast.error('Could not parse file. Please use the Excel template.');
+      toast.error(t('invoice.modal.errorParseFailed'));
     }
   }
 
@@ -139,7 +143,7 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
   }
 
   function handlePrint() {
-    if (!invoice) { toast.error('Save the invoice first to print it.'); return; }
+    if (!invoice) { toast.error(t('invoice.modal.errorSaveFirst')); return; }
     if (!settings) return;
     const defaultBank = bankAccounts?.find((b) => b.is_default) ?? bankAccounts?.[0] ?? null;
     printInvoice(invoice, settings, defaultBank);
@@ -183,8 +187,8 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
             <div className="min-w-0">
               <DialogTitle>
                 {invoice?.invoice_type === 'sale'
-                  ? (isEdit ? 'Edit Sale Invoice' : 'New Sale Invoice')
-                  : (isEdit ? 'Edit Com-Invoice' : 'New Com-Invoice')}
+                  ? (isEdit ? t('invoice.modal.titleEditSale') : t('invoice.modal.titleNewSale'))
+                  : (isEdit ? t('invoice.modal.titleEditCommercial') : t('invoice.modal.titleNewCommercial'))}
               </DialogTitle>
               <DialogDescription className="truncate">
                 {file?.file_no ?? ''} — {file?.customer?.name ?? invoice?.customer?.name ?? ''}
@@ -199,64 +203,64 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <FormRow cols={3}>
-            <FormGroup label="Date *" error={errors.invoice_date?.message}>
+            <FormGroup label={`${tc('form.date')} *`} error={errors.invoice_date?.message}>
               <Input type="date" {...register('invoice_date')} />
             </FormGroup>
-            <FormGroup label="Currency">
+            <FormGroup label={tc('form.currency')}>
               <NativeSelect {...register('currency')}>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
                 <option value="TRY">TRY</option>
               </NativeSelect>
             </FormGroup>
-            <FormGroup label="Incoterms">
+            <FormGroup label={t('invoice.modal.incoterms')}>
               <Input {...register('incoterms')} />
             </FormGroup>
           </FormRow>
 
           <FormRow cols={3}>
-            <FormGroup label="Quantity (ADMT) *" error={errors.quantity_admt?.message}>
+            <FormGroup label={`${t('invoice.modal.quantityAdmt')} *`} error={errors.quantity_admt?.message}>
               <Input type="number" step="0.001" {...register('quantity_admt')} />
             </FormGroup>
-            <FormGroup label="Unit Price *" error={errors.unit_price?.message}>
+            <FormGroup label={`${t('invoice.modal.unitPrice')} *`} error={errors.unit_price?.message}>
               <Input type="number" step="0.001" {...register('unit_price')} />
             </FormGroup>
-            <FormGroup label="Freight">
+            <FormGroup label={t('invoice.modal.freight')}>
               <Input type="number" step="0.001" {...register('freight')} />
             </FormGroup>
           </FormRow>
 
           {/* Live totals */}
           <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 flex flex-wrap gap-3 sm:gap-5 text-xs">
-            <span>Subtotal: <strong className="text-brand-600">{fCurrency(subtotal, currency as 'USD')}</strong></span>
-            <span>Freight: <strong>{fCurrency(freight, currency as 'USD')}</strong></span>
-            <span>TOTAL: <strong className="text-brand-600">{fCurrency(total, currency as 'USD')}</strong></span>
+            <span>{t('invoice.modal.subtotal')} <strong className="text-brand-600">{fCurrency(subtotal, currency as 'USD')}</strong></span>
+            <span>{t('invoice.modal.freightLabel')} <strong>{fCurrency(freight, currency as 'USD')}</strong></span>
+            <span>{t('invoice.modal.total')} <strong className="text-brand-600">{fCurrency(total, currency as 'USD')}</strong></span>
           </div>
 
           <FormRow>
-            <FormGroup label="Proforma No.">
+            <FormGroup label={t('invoice.modal.proformaNo')}>
               <Input {...register('proforma_no')} />
             </FormGroup>
-            <FormGroup label="CB No.">
+            <FormGroup label={t('invoice.modal.cbNo')}>
               <Input {...register('cb_no')} />
             </FormGroup>
           </FormRow>
 
           <FormRow>
-            <FormGroup label="Insurance No.">
+            <FormGroup label={t('invoice.modal.insuranceNo')}>
               <Input {...register('insurance_no')} />
             </FormGroup>
-            <FormGroup label="Payment Terms">
+            <FormGroup label={tc('form.payment_terms')}>
               <Input {...register('payment_terms')} />
             </FormGroup>
           </FormRow>
 
           <FormRow>
-            <FormGroup label="Gross Weight (KG)">
+            <FormGroup label={t('invoice.modal.grossWeight')}>
               <Input type="number" step="0.001" {...register('gross_weight_kg')} />
             </FormGroup>
-            <FormGroup label="Packing Info">
-              <Input {...register('packing_info')} placeholder="e.g. 70 Reels" />
+            <FormGroup label={t('invoice.modal.packingInfo')}>
+              <Input {...register('packing_info')} placeholder={t('invoice.modal.packingPlaceholder')} />
             </FormGroup>
           </FormRow>
 
@@ -270,18 +274,18 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
             />
             <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-1">
               <Button type="button" variant="outline" size="sm" onClick={() => downloadInvoiceTemplate()}>
-                ↓ Template
+                {t('invoice.modal.btnTemplate')}
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => importRef.current?.click()}>
-                ↑ Import Excel
+                {t('invoice.modal.btnImportExcel')}
               </Button>
             </div>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc('btn.cancel')}
             </Button>
             {isEdit && (
               <Button type="button" variant="outline" onClick={handlePrint}>
-                🖨 Print / PDF
+                {t('invoice.modal.btnPrint')}
               </Button>
             )}
             <Button
@@ -289,7 +293,7 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
               variant="secondary"
               disabled={createInvoice.isPending || updateInvoice.isPending}
             >
-              {isEdit ? 'Update' : 'Save Invoice'}
+              {isEdit ? t('invoice.modal.btnUpdate') : t('invoice.modal.btnSave')}
             </Button>
           </DialogFooter>
         </form>

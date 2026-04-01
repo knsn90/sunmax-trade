@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,62 +11,63 @@ import {
 
 interface NavItem {
   to: string;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
 }
 
 export function Sidebar() {
   const { theme } = useTheme();
   const { profile } = useAuth();
+  const { t } = useTranslation('nav');
   const isDonezo = theme === 'donezo';
   const isAdmin = profile?.role === 'admin';
 
   const barBg = isDonezo ? '#dc2626' : '#2563eb';
 
-  const sections: { label?: string; items: NavItem[] }[] = [
+  const sections: { labelKey?: string; items: NavItem[] }[] = [
     {
       items: [
-        { to: '/dashboard', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
+        { to: '/dashboard', labelKey: 'items.dashboard', icon: <Home className="h-4 w-4" /> },
       ],
     },
     {
-      label: 'TRADE',
+      labelKey: 'sections.trade',
       items: [
-        { to: '/pipeline',   label: 'Pipeline',   icon: <BarChart3 className="h-4 w-4" /> },
-        { to: '/files',      label: 'All Files',  icon: <FileText className="h-4 w-4" /> },
-        { to: '/price-list', label: 'Price List', icon: <Tag className="h-4 w-4" /> },
+        { to: '/pipeline',   labelKey: 'items.pipeline',   icon: <BarChart3 className="h-4 w-4" /> },
+        { to: '/files',      labelKey: 'items.allFiles',   icon: <FileText className="h-4 w-4" /> },
+        { to: '/price-list', labelKey: 'items.priceList',  icon: <Tag className="h-4 w-4" /> },
       ],
     },
     {
-      label: 'DOCUMENTS',
+      labelKey: 'sections.documents',
       items: [
-        { to: '/documents', label: 'Documents', icon: <Receipt className="h-4 w-4" /> },
+        { to: '/documents', labelKey: 'items.documents', icon: <Receipt className="h-4 w-4" /> },
       ],
     },
     {
-      label: 'FINANCE',
+      labelKey: 'sections.finance',
       items: [
-        { to: '/accounting',  label: 'Accounting',     icon: <LayoutDashboard className="h-4 w-4" /> },
-        { to: '/ledger',      label: 'Journal Ledger', icon: <BookOpen className="h-4 w-4" /> },
-        { to: '/fin-reports', label: 'Fin. Reports',   icon: <TrendingUp className="h-4 w-4" /> },
-        { to: '/bank-recon',  label: 'Bank Recon.',    icon: <Building2 className="h-4 w-4" /> },
-        { to: '/reports',     label: 'Reports',        icon: <LineChart className="h-4 w-4" /> },
+        { to: '/accounting',  labelKey: 'items.accounting',    icon: <LayoutDashboard className="h-4 w-4" /> },
+        { to: '/ledger',      labelKey: 'items.journalLedger', icon: <BookOpen className="h-4 w-4" /> },
+        { to: '/fin-reports', labelKey: 'items.finReports',    icon: <TrendingUp className="h-4 w-4" /> },
+        { to: '/bank-recon',  labelKey: 'items.bankRecon',     icon: <Building2 className="h-4 w-4" /> },
+        { to: '/reports',     labelKey: 'items.reports',       icon: <LineChart className="h-4 w-4" /> },
       ],
     },
     {
-      label: 'CONTACTS',
+      labelKey: 'sections.contacts',
       items: [
-        { to: '/contacts', label: 'Contacts', icon: <Users className="h-4 w-4" /> },
-        { to: '/products', label: 'Products', icon: <Box className="h-4 w-4" /> },
+        { to: '/contacts', labelKey: 'items.contacts', icon: <Users className="h-4 w-4" /> },
+        { to: '/products', labelKey: 'items.products', icon: <Box className="h-4 w-4" /> },
       ],
     },
     {
-      label: 'GENERAL',
+      labelKey: 'sections.general',
       items: [
         ...(isAdmin ? [
-          { to: '/activity', label: 'Activity Log', icon: <Activity className="h-4 w-4" /> },
+          { to: '/activity', labelKey: 'items.activityLog', icon: <Activity className="h-4 w-4" /> },
         ] : []),
-        { to: '/settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
+        { to: '/settings', labelKey: 'items.settings', icon: <Settings className="h-4 w-4" /> },
       ],
     },
   ];
@@ -82,8 +84,8 @@ export function Sidebar() {
             <span className="font-black text-sm text-white">S</span>
           </div>
           <div>
-            <div className="font-black text-sm tracking-tight text-gray-900">SunPlus</div>
-            <div className="text-[9px] font-medium -mt-0.5 text-gray-400">Trade Management</div>
+            <div className="font-black text-sm tracking-tight text-gray-900">{t('brand.name')}</div>
+            <div className="text-[9px] font-medium -mt-0.5 text-gray-400">{t('brand.tagline')}</div>
           </div>
         </div>
       </div>
@@ -92,9 +94,9 @@ export function Sidebar() {
       <nav className="flex-1 py-4 px-3 space-y-0.5">
         {sections.map((section, si) => (
           <div key={si} className={si > 0 ? 'pt-3' : ''}>
-            {section.label && (
+            {section.labelKey && (
               <div className="text-[9px] font-bold tracking-widest px-3 py-1.5 text-gray-400">
-                {section.label}
+                {t(section.labelKey)}
               </div>
             )}
             {section.items.map((item) => (
@@ -120,9 +122,9 @@ export function Sidebar() {
                     </span>
                     <span
                       className="text-xs font-medium"
-                      style={isActive ? { color: barBg } : { }}
+                      style={isActive ? { color: barBg } : {}}
                     >
-                      {item.label}
+                      {t(item.labelKey)}
                     </span>
                   </>
                 )}

@@ -1,0 +1,110 @@
+{
+  "btn": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "add": "Ekle",
+    "close": "Kapat",
+    "remove": "Kaldır",
+    "upload": "Yükle",
+    "print": "Yazdır / PDF",
+    "search": "Ara",
+    "clear": "Temizle",
+    "refresh": "Yenile",
+    "new": "Yeni",
+    "update": "Güncelle",
+    "confirm": "Onayla",
+    "back": "Geri",
+    "export": "Dışa Aktar",
+    "import": "İçe Aktar",
+    "saving": "Kaydediliyor…",
+    "loading": "Yükleniyor…"
+  },
+  "status": {
+    "request": "Talep",
+    "sale": "Satış",
+    "delivery": "Teslimat",
+    "completed": "Tamamlandı",
+    "cancelled": "İptal Edildi",
+    "active": "Aktif",
+    "inactive": "Pasif",
+    "open": "Açık",
+    "partially_paid": "Kısmen Ödendi",
+    "fully_paid": "Tam Ödendi",
+    "draft": "Taslak",
+    "posted": "Kesinleşti",
+    "reversed": "İptal Edildi",
+    "matched": "Eşleşti",
+    "unmatched": "Eşleşmedi",
+    "excluded": "Dışlandı",
+    "profitable": "Kârlı",
+    "loss": "Zararda"
+  },
+  "table": {
+    "date": "Tarih",
+    "description": "Açıklama",
+    "status": "Durum",
+    "actions": "İşlemler",
+    "amount": "Tutar",
+    "currency": "Para Birimi",
+    "reference": "Referans",
+    "total": "Toplam",
+    "type": "Tür",
+    "code": "Kod",
+    "name": "Ad"
+  },
+  "form": {
+    "country": "Ülke",
+    "city": "Şehir",
+    "address": "Adres",
+    "email": "E-posta",
+    "phone": "Telefon",
+    "website": "Web Sitesi",
+    "payment_terms": "Ödeme Koşulları",
+    "notes": "Notlar",
+    "currency": "Para Birimi",
+    "date": "Tarih",
+    "required": "zorunlu"
+  },
+  "empty": {
+    "no_results": "Sonuç bulunamadı",
+    "no_records": "Kayıt bulunamadı"
+  },
+  "confirm": {
+    "delete_title": "Sil?",
+    "cannot_undo": "Bu işlem geri alınamaz.",
+    "are_you_sure": "Emin misiniz?"
+  },
+  "pagination": {
+    "showing": "{{total}} kayıttan {{from}}–{{to}} gösteriliyor"
+  },
+  "currency": {
+    "usd": "USD",
+    "eur": "EUR",
+    "try": "TRY",
+    "gbp": "GBP"
+  },
+  "try": "TRY",
+  "all": "Tümü",
+  "from": "Başlangıç",
+  "to": "Bitiş",
+  "as_of": "Tarih İtibarıyla",
+  "all_time": "Tüm zamanlar için boş bırakın",
+  "lines": "satır",
+  "rate": "Kur",
+  "entries": "kayıt",
+  "unknown": "Bilinmiyor",
+  "txType": {
+    "svc_inv": "Hizmet Faturası",
+    "purchase_inv": "Satın Alma Faturası",
+    "receipt": "Makbuz",
+    "payment": "Ödeme",
+    "sale_inv": "Satış Faturası"
+  },
+  "payStatus": {
+    "open": "Açık",
+    "partial": "Kısmî",
+    "paid": "Ödendi"
+  }
+}

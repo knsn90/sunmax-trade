@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useJournalEntries } from '@/hooks/useJournal';
 import { useTheme } from '@/contexts/ThemeContext';
 import { fDate } from '@/lib/formatters';
@@ -17,8 +18,11 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 function JournalLinesTable({ lines }: { lines: JournalLine[] }) {
-  const totalDr = lines.reduce((s, l) => s + l.debit, 0);
-  const totalCr = lines.reduce((s, l) => s + l.credit, 0);
+  const { t } = useTranslation('ledger');
+  const { t: tc } = useTranslation('common');
+
+  const totalDr  = lines.reduce((s, l) => s + l.debit, 0);
+  const totalCr  = lines.reduce((s, l) => s + l.credit, 0);
   const totalBDr = lines.reduce((s, l) => s + (l.base_debit ?? 0), 0);
   const totalBCr = lines.reduce((s, l) => s + (l.base_credit ?? 0), 0);
   const balanced = Math.abs(totalBDr - totalBCr) < 0.01;
@@ -29,14 +33,14 @@ function JournalLinesTable({ lines }: { lines: JournalLine[] }) {
         <thead>
           <tr className="bg-gray-100 text-gray-500">
             <th className="text-left px-3 py-2 font-semibold">#</th>
-            <th className="text-left px-3 py-2 font-semibold">Account</th>
-            <th className="text-left px-3 py-2 font-semibold">Description</th>
-            <th className="text-right px-3 py-2 font-semibold">Debit</th>
-            <th className="text-right px-3 py-2 font-semibold">Credit</th>
-            <th className="text-right px-3 py-2 font-semibold">Curr</th>
-            <th className="text-right px-3 py-2 font-semibold">Rate</th>
-            <th className="text-right px-3 py-2 font-semibold">DR (TRY)</th>
-            <th className="text-right px-3 py-2 font-semibold">CR (TRY)</th>
+            <th className="text-left px-3 py-2 font-semibold">{t('table.account')}</th>
+            <th className="text-left px-3 py-2 font-semibold">{tc('table.description')}</th>
+            <th className="text-right px-3 py-2 font-semibold">{t('table.debit')}</th>
+            <th className="text-right px-3 py-2 font-semibold">{t('table.credit')}</th>
+            <th className="text-right px-3 py-2 font-semibold">{t('table.curr')}</th>
+            <th className="text-right px-3 py-2 font-semibold">{tc('rate')}</th>
+            <th className="text-right px-3 py-2 font-semibold">{t('table.debitTry')}</th>
+            <th className="text-right px-3 py-2 font-semibold">{t('table.creditTry')}</th>
           </tr>
         </thead>
         <tbody>
@@ -66,9 +70,8 @@ function JournalLinesTable({ lines }: { lines: JournalLine[] }) {
               </td>
             </tr>
           ))}
-          {/* Totals */}
           <tr className="border-t-2 border-gray-200 bg-gray-100 font-semibold">
-            <td colSpan={3} className="px-3 py-2 text-xs text-gray-500">TOTAL</td>
+            <td colSpan={3} className="px-3 py-2 text-xs text-gray-500">{t('table.total')}</td>
             <td className="px-3 py-2 text-right font-mono text-gray-800">{fN(totalDr)}</td>
             <td className="px-3 py-2 text-right font-mono text-gray-800">{fN(totalCr)}</td>
             <td colSpan={2} />
@@ -78,7 +81,7 @@ function JournalLinesTable({ lines }: { lines: JournalLine[] }) {
           {!balanced && (
             <tr>
               <td colSpan={9} className="px-3 py-1.5 text-red-600 text-xs font-semibold bg-red-50 text-center">
-                ⚠ UNBALANCED — TRY diff: {fN(Math.abs(totalBDr - totalBCr))}
+                {t('unbalanced', { diff: fN(Math.abs(totalBDr - totalBCr)) })}
               </td>
             </tr>
           )}
@@ -89,8 +92,10 @@ function JournalLinesTable({ lines }: { lines: JournalLine[] }) {
 }
 
 function EntryRow({ entry }: { entry: JournalEntry }) {
+  const { t } = useTranslation('ledger');
+  const { t: tc } = useTranslation('common');
   const [open, setOpen] = useState(false);
-  const sc = STATUS_COLORS[entry.status] ?? { bg: '#f3f4f6', text: '#374151' };
+  const sc    = STATUS_COLORS[entry.status] ?? { bg: '#f3f4f6', text: '#374151' };
   const lines = entry.lines ?? [];
   const totalDr = lines.reduce((s, l) => s + l.debit, 0);
 
@@ -117,10 +122,10 @@ function EntryRow({ entry }: { entry: JournalEntry }) {
             className="px-2 py-0.5 rounded-full text-[10px] font-bold"
             style={{ background: sc.bg, color: sc.text }}
           >
-            {entry.status}
+            {tc(`status.${entry.status}`)}
           </span>
         </td>
-        <td className="px-3 py-3 text-xs text-gray-400">{lines.length} lines</td>
+        <td className="px-3 py-3 text-xs text-gray-400">{lines.length} {t('lines')}</td>
       </tr>
       {open && (
         <tr>
@@ -135,6 +140,8 @@ function EntryRow({ entry }: { entry: JournalEntry }) {
 
 export function LedgerPage() {
   const { theme } = useTheme();
+  const { t } = useTranslation('ledger');
+  const { t: tc } = useTranslation('common');
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   const [statusFilter, setStatusFilter] = useState('');
@@ -148,10 +155,7 @@ export function LedgerPage() {
     dateTo:   dateTo       || undefined,
   });
 
-  const filtered = hideZero
-    ? entries.filter(e => (e.lines ?? []).reduce((s, l) => s + l.debit, 0) > 0)
-    : entries;
-
+  const filtered    = hideZero ? entries.filter(e => (e.lines ?? []).reduce((s, l) => s + l.debit, 0) > 0) : entries;
   const totalPosted = entries.filter(e => e.status === 'posted').length;
   const totalDraft  = entries.filter(e => e.status === 'draft').length;
 
@@ -164,18 +168,18 @@ export function LedgerPage() {
             <BookOpen className="w-5 h-5" style={{ color: accent }} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Journal Ledger</h1>
-            <p className="text-xs text-gray-400">Double-entry accounting records</p>
+            <h1 className="text-lg font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-xs text-gray-400">{t('description')}</p>
           </div>
         </div>
         <div className="flex gap-3 text-xs">
           <div className="bg-green-50 px-3 py-1.5 rounded-xl">
             <span className="font-bold text-green-700">{totalPosted}</span>
-            <span className="text-green-600 ml-1">posted</span>
+            <span className="text-green-600 ml-1">{t('stats.posted')}</span>
           </div>
           <div className="bg-yellow-50 px-3 py-1.5 rounded-xl">
             <span className="font-bold text-yellow-700">{totalDraft}</span>
-            <span className="text-yellow-600 ml-1">draft</span>
+            <span className="text-yellow-600 ml-1">{t('stats.draft')}</span>
           </div>
         </div>
       </div>
@@ -187,41 +191,29 @@ export function LedgerPage() {
           onChange={e => setStatusFilter(e.target.value)}
           className="h-8 px-3 text-xs border border-gray-200 rounded-xl bg-white text-gray-700 focus:outline-none"
         >
-          <option value="">All statuses</option>
-          <option value="posted">Posted</option>
-          <option value="draft">Draft</option>
-          <option value="reversed">Reversed</option>
+          <option value="">{t('filters.allStatuses')}</option>
+          <option value="posted">{tc('status.posted')}</option>
+          <option value="draft">{tc('status.draft')}</option>
+          <option value="reversed">{tc('status.reversed')}</option>
         </select>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">From</span>
-          <input
-            type="date" value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="h-8 px-3 text-xs border border-gray-200 rounded-xl focus:outline-none"
-          />
+          <span className="text-xs text-gray-400">{tc('from')}</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="h-8 px-3 text-xs border border-gray-200 rounded-xl focus:outline-none" />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">To</span>
-          <input
-            type="date" value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            className="h-8 px-3 text-xs border border-gray-200 rounded-xl focus:outline-none"
-          />
+          <span className="text-xs text-gray-400">{tc('to')}</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            className="h-8 px-3 text-xs border border-gray-200 rounded-xl focus:outline-none" />
         </div>
         <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer ml-auto">
-          <input
-            type="checkbox" checked={hideZero}
-            onChange={e => setHideZero(e.target.checked)}
-            className="rounded"
-          />
-          Hide zero-amount
+          <input type="checkbox" checked={hideZero} onChange={e => setHideZero(e.target.checked)} className="rounded" />
+          {t('filters.hideZero')}
         </label>
         {(statusFilter || dateFrom || dateTo) && (
-          <button
-            onClick={() => { setStatusFilter(''); setDateFrom(''); setDateTo(''); }}
-            className="text-xs text-gray-400 hover:text-gray-600 underline"
-          >
-            Clear
+          <button onClick={() => { setStatusFilter(''); setDateFrom(''); setDateTo(''); }}
+            className="text-xs text-gray-400 hover:text-gray-600 underline">
+            {tc('btn.clear')}
           </button>
         )}
       </div>
@@ -232,33 +224,29 @@ export function LedgerPage() {
           <div className="flex items-center justify-center py-16"><LoadingSpinner /></div>
         ) : error ? (
           <div className="p-8 text-center text-red-500 text-sm">
-            <p className="font-semibold mb-1">Error loading journal entries</p>
+            <p className="font-semibold mb-1">{t('error.loading')}</p>
             <p className="text-xs text-gray-400">{(error as Error).message}</p>
-            <p className="text-xs text-gray-400 mt-2">Make sure migrations 018–025 have been run in Supabase.</p>
+            <p className="text-xs text-orange-500 mt-2">{t('error.migration')}</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-gray-400">
             <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium">No journal entries yet</p>
-            <p className="text-xs mt-1">
-              Entries are created automatically when invoices or transactions are saved.
-            </p>
-            <p className="text-xs text-orange-500 mt-2 font-medium">
-              Run migrations 018–025 in Supabase SQL Editor first.
-            </p>
+            <p className="text-sm font-medium">{t('empty.title')}</p>
+            <p className="text-xs mt-1">{t('empty.hint')}</p>
+            <p className="text-xs text-orange-500 mt-2 font-medium">{t('empty.migrationHint')}</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
                 <th className="w-8 px-4 py-3" />
-                <th className="text-left px-3 py-3 text-xs font-semibold">Entry #</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold">Date</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold">Description</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold">Source</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold">Amount</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold">Status</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold">Lines</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold">{t('table.entryNo')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold">{tc('table.date')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold">{tc('table.description')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold">{t('table.source')}</th>
+                <th className="text-right px-3 py-3 text-xs font-semibold">{tc('table.amount')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold">{tc('table.status')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold">{t('lines')}</th>
               </tr>
             </thead>
             <tbody>
@@ -272,7 +260,7 @@ export function LedgerPage() {
 
       {!error && filtered.length > 0 && (
         <p className="text-xs text-gray-400 text-right">
-          {filtered.length} entries — click any row to expand lines
+          {filtered.length} {t('footer')}
         </p>
       )}
     </div>

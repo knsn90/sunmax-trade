@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -79,9 +80,10 @@ function getMonthKey(dateStr: string) {
   const d = new Date(dateStr);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-function formatMonthLabel(key: string) {
+function formatMonthLabel(key: string, lang: string) {
   const [y, m] = key.split('-');
-  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1] + ' ' + y.slice(2);
+  const date = new Date(+y, +m - 1, 1);
+  return new Intl.DateTimeFormat(lang, { month: 'short', year: '2-digit' }).format(date);
 }
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -214,6 +216,8 @@ function SortableWidget({ id, isFull, children }: {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function DashboardPage() {
+  const { t, i18n }  = useTranslation('dashboard');
+  const { t: tc } = useTranslation('common');
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: files = [], isLoading: filesLoading } = useTradeFiles();
@@ -299,28 +303,28 @@ export function DashboardPage() {
       const mf = files.filter(f => getMonthKey(f.created_at ?? '') === key);
       const revenue = mf.reduce((s, f) => s + (f.selling_price ?? 0) * (f.delivered_admt ?? f.tonnage_mt ?? 0), 0);
       const cost    = mf.reduce((s, f) => s + ((f.purchase_price ?? 0) + (f.freight_cost ?? 0)) * (f.delivered_admt ?? f.tonnage_mt ?? 0), 0);
-      return { label: formatMonthLabel(key), revenue, cost, profit: revenue - cost };
+      return { label: formatMonthLabel(key, i18n.language), revenue, cost, profit: revenue - cost };
     });
-  }, [files]);
+  }, [files, i18n.language]);
 
   const alerts = useMemo(() => {
     const list: { label: string; sub: string; href: string; type: 'danger' | 'warning' }[] = [];
 
     // ETA overdue
     files.filter(f => ['sale','delivery'].includes(f.status) && f.eta && isOverdueEta(f.eta)).slice(0,5)
-      .forEach(f => list.push({ label: `${f.file_no} — ETA Overdue`, sub: `${Math.abs(daysUntil(f.eta) ?? 0)} day(s) late · ${f.customer?.name ?? ''}`, href: `/files/${f.id}`, type: 'danger' }));
+      .forEach(f => list.push({ label: `${f.file_no} — ${t('alerts.etaOverdue')}`, sub: t('alerts.daysLate', { count: Math.abs(daysUntil(f.eta) ?? 0), customer: f.customer?.name ?? '' }), href: `/files/${f.id}`, type: 'danger' }));
 
     // ETA soon (≤7 days)
     files.filter(f => ['sale','delivery'].includes(f.status) && f.eta && !isOverdueEta(f.eta))
       .filter(f => { const d = daysUntil(f.eta); return d !== null && d <= 7 && d >= 0; }).slice(0,3)
-      .forEach(f => list.push({ label: `${f.file_no} — ETA Soon`, sub: `${daysUntil(f.eta)} day(s) · ${f.customer?.name ?? ''}`, href: `/files/${f.id}`, type: 'warning' }));
+      .forEach(f => list.push({ label: `${f.file_no} — ${t('alerts.etaSoon')}`, sub: t('alerts.daysToEta', { count: daysUntil(f.eta), customer: f.customer?.name ?? '' }), href: `/files/${f.id}`, type: 'warning' }));
 
     // Payment not received — ETA within 10 days
     // Build set of file IDs that have a fully paid receipt
     const paidFileIds = new Set(
       transactions
-        .filter(t => t.transaction_type === 'receipt' && t.payment_status === 'paid' && t.trade_file_id)
-        .map(t => t.trade_file_id as string)
+        .filter(tx => tx.transaction_type === 'receipt' && tx.payment_status === 'paid' && tx.trade_file_id)
+        .map(tx => tx.trade_file_id as string)
     );
     files
       .filter(f => ['sale','delivery'].includes(f.status) && f.eta && !isOverdueEta(f.eta))
@@ -330,8 +334,8 @@ export function DashboardPage() {
       .forEach(f => {
         const d = daysUntil(f.eta) ?? 0;
         list.push({
-          label: `${f.file_no} — Payment Pending`,
-          sub: `${d} day(s) to ETA · ${f.customer?.name ?? ''}`,
+          label: `${f.file_no} — ${t('alerts.paymentPending')}`,
+          sub: t('alerts.daysToEtaPayment', { count: d, customer: f.customer?.name ?? '' }),
           href: `/files/${f.id}`,
           type: d <= 5 ? 'danger' : 'warning',
         });
@@ -372,10 +376,10 @@ export function DashboardPage() {
     const counts = { ontime: 0, late: 0, overdue: 0, pending: 0 };
     delayData.forEach(d => counts[d.status]++);
     return [
-      { name: 'On Time',       value: counts.ontime,  color: '#4ade80' },
-      { name: 'Late Delivery', value: counts.late,    color: '#f87171' },
-      { name: 'Overdue',       value: counts.overdue, color: '#dc2626' },
-      { name: 'Pending',       value: counts.pending, color: '#93c5fd' },
+      { name: t('delivery.onTime'),      value: counts.ontime,  color: '#4ade80' },
+      { name: t('delivery.lateDelivery'),value: counts.late,    color: '#f87171' },
+      { name: t('delivery.overdue'),     value: counts.overdue, color: '#dc2626' },
+      { name: t('delivery.pending'),     value: counts.pending, color: '#93c5fd' },
     ].filter(d => d.value > 0);
   }, [delayData]);
 
@@ -399,10 +403,10 @@ export function DashboardPage() {
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 18) return 'Good afternoon';
-    return 'Good evening';
-  }, []);
+    if (h < 12) return t('greeting.morning');
+    if (h < 18) return t('greeting.afternoon');
+    return t('greeting.evening');
+  }, [t]);
 
   const isFirstLoad = (filesLoading && files.length === 0) || (summaryLoading && !summary);
   if (isFirstLoad) return <LoadingSpinner />;
@@ -416,7 +420,7 @@ export function DashboardPage() {
 
       case 'pipeline':
         return (
-          <Card title="Pipeline" action={() => navigate('/pipeline')} actionLabel="See all" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.pipeline')} action={() => navigate('/pipeline')} actionLabel={t('actions.seeAll')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-1">
               {(['request','sale','delivery','completed','cancelled'] as const).map((key) => {
                 const cfg = STATUS_CFG[key];
@@ -427,7 +431,7 @@ export function DashboardPage() {
                     className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 rounded-xl -mx-1 px-1 transition-colors"
                   >
                     <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot)} />
-                    <span className="text-[13px] text-gray-700 flex-1 text-left">{cfg.label}</span>
+                    <span className="text-[13px] text-gray-700 flex-1 text-left">{tc('status.' + key)}</span>
                     <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div className={cn('h-full rounded-full', cfg.dot)} style={{ width: `${pct}%` }} />
                     </div>
@@ -441,11 +445,11 @@ export function DashboardPage() {
 
       case 'alerts':
         return (
-          <Card title={`Alerts${alerts.length > 0 ? ` · ${alerts.length}` : ''}`} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={`${t('widgets.alerts')}${alerts.length > 0 ? ` · ${alerts.length}` : ''}`} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {alerts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <CheckCircle2 className="h-8 w-8 text-green-400" />
-                <span className="text-[12px] text-gray-400">All clear — no alerts</span>
+                <span className="text-[12px] text-gray-400">{t('empty.allClear')}</span>
               </div>
             ) : (
               <div className="px-5 py-1">
@@ -470,16 +474,16 @@ export function DashboardPage() {
 
       case 'recent_files':
         return (
-          <Card title="Recent Files" action={() => navigate('/files')} actionLabel="All files" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.recentFiles')} action={() => navigate('/files')} actionLabel={t('actions.allFiles')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {recentFiles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <FileText className="h-8 w-8 text-gray-200" />
-                <span className="text-[12px] text-gray-400">No files yet</span>
+                <span className="text-[12px] text-gray-400">{t('empty.noFiles')}</span>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
                 {recentFiles.map((f) => {
-                  const name = f.customer?.name ?? 'Unknown';
+                  const name = f.customer?.name ?? tc('unknown');
                   const cfg = STATUS_CFG[f.status] ?? STATUS_CFG.request;
                   return (
                     <button key={f.id} onClick={() => navigate(`/files/${f.id}`)}
@@ -495,7 +499,7 @@ export function DashboardPage() {
                       </div>
                       <div className="hidden md:block text-[11px] text-gray-400 shrink-0">{fDate(f.file_date)}</div>
                       <span className={cn('text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0', cfg.text, cfg.bg)}>
-                        {cfg.label}
+                        {tc('status.' + f.status)}
                       </span>
                       <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
                     </button>
@@ -509,7 +513,7 @@ export function DashboardPage() {
       case 'delivery':
         if (delayPieData.length === 0) return null;
         return (
-          <Card title="Delivery Performance" action={() => navigate('/reports')} actionLabel="ETA Report" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.delivery')} action={() => navigate('/reports')} actionLabel={t('actions.etaReport')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-4">
               <div className="flex items-center gap-6">
                 <PieChart width={100} height={100}>
@@ -530,7 +534,7 @@ export function DashboardPage() {
               </div>
               {delayBarData.length > 0 && (
                 <div className="mt-5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Delay by File (days)</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">{t('widgets.delayByFile')}</div>
                   <ResponsiveContainer width="100%" height={delayBarData.length * 28}>
                     <BarChart data={delayBarData} layout="vertical" barCategoryGap="25%" margin={{ left: 0, right: 16 }}>
                       <XAxis type="number" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}d`} />
@@ -553,11 +557,11 @@ export function DashboardPage() {
 
       case 'latest_prices':
         return (
-          <Card title="Latest Prices" action={() => navigate('/price-list')} actionLabel="Price List" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.latestPrices')} action={() => navigate('/price-list')} actionLabel={t('actions.priceList')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {latestPrices.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <Tag className="h-8 w-8 text-gray-200" />
-                <span className="text-[12px] text-gray-400">No price entries yet</span>
+                <span className="text-[12px] text-gray-400">{t('empty.noPrices')}</span>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
@@ -584,11 +588,11 @@ export function DashboardPage() {
                         <div className="mt-0.5">
                           {entry.valid_until ? (
                             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${isExpired ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
-                              {isExpired ? 'Expired' : `Until ${new Date(entry.valid_until + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`}
+                              {isExpired ? t('prices.expired') : t('prices.until', { date: new Date(entry.valid_until + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' }) })}
                             </span>
                           ) : (
                             <span className="text-[10px] text-gray-300">
-                              {new Date(entry.price_date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                              {new Date(entry.price_date + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: '2-digit' })}
                             </span>
                           )}
                         </div>
@@ -604,12 +608,12 @@ export function DashboardPage() {
 
       case 'revenue_chart':
         return (
-          <Card title="Revenue & Cost · Last 6 Months" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.revenueChart')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-5">
               {!hasChart ? (
                 <div className="flex flex-col items-center justify-center h-36 gap-2">
                   <BarChart2 className="h-8 w-8 text-gray-200" />
-                  <span className="text-[12px] text-gray-400">No data yet</span>
+                  <span className="text-[12px] text-gray-400">{t('empty.noChartData')}</span>
                 </div>
               ) : (
                 <>
@@ -621,7 +625,7 @@ export function DashboardPage() {
                         tickFormatter={v => `$${(v/1000).toFixed(0)}k`} width={40} />
                       <Tooltip
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        formatter={(v: any, n: any) => [`$${Number(v).toLocaleString()}`, n === 'revenue' ? 'Revenue' : n === 'cost' ? 'Cost' : 'Profit']}
+                        formatter={(v: any, n: any) => [`$${Number(v).toLocaleString()}`, n === 'revenue' ? t('chart.revenue') : n === 'cost' ? t('chart.cost') : t('chart.profit')]}
                         contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                       />
                       <Bar dataKey="revenue" fill={accent + '40'} radius={[4,4,0,0]} />
@@ -632,7 +636,7 @@ export function DashboardPage() {
                     </BarChart>
                   </ResponsiveContainer>
                   <div className="flex items-center justify-center gap-6 mt-3">
-                    {([[accent + '40','Revenue'],['#f8717140','Cost'],['#4ade8066','Profit']] as [string,string][]).map(([c,l]) => (
+                    {([[accent + '40', t('chart.revenue')],['#f8717140', t('chart.cost')],['#4ade8066', t('chart.profit')]] as [string,string][]).map(([c,l]) => (
                       <div key={l} className="flex items-center gap-1.5">
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />
                         <span className="text-[11px] text-gray-400">{l}</span>
@@ -670,13 +674,13 @@ export function DashboardPage() {
 
         {/* ── KPI Row — always fixed at top, not draggable ─────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <KpiCard label="Active Files" value={String(activeFiles)} sub={`${thisMonth} new this month`}
+          <KpiCard label={t('kpi.activeFiles')} value={String(activeFiles)} sub={t('kpi.newThisMonth', { count: thisMonth })}
             icon={<Package className="h-5 w-5" />} accent={accent} />
-          <KpiCard label="Total Profit" value={fUSD(totalProfit)} sub={`${byStatus.completed} completed`}
+          <KpiCard label={t('kpi.totalProfit')} value={fUSD(totalProfit)} sub={t('kpi.completed', { count: byStatus.completed })}
             trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981" />
-          <KpiCard label="Receivable" value={fUSD(summary?.totalReceivable ?? 0)} sub="From customers"
+          <KpiCard label={t('kpi.receivable')} value={fUSD(summary?.totalReceivable ?? 0)} sub={t('kpi.fromCustomers')}
             icon={<DollarSign className="h-5 w-5" />} accent="#2563eb" />
-          <KpiCard label="Payable" value={fUSD(summary?.totalPayable ?? 0)} sub="To suppliers"
+          <KpiCard label={t('kpi.payable')} value={fUSD(summary?.totalPayable ?? 0)} sub={t('kpi.toSuppliers')}
             icon={<Wallet className="h-5 w-5" />} accent="#f59e0b" />
         </div>
 

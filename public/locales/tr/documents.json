@@ -1,0 +1,66 @@
+{
+  "title": "Belgeler",
+  "tabs": {
+    "invoices": "Faturalar",
+    "proformas": "Proformalar",
+    "packingLists": "Çeki Listeleri"
+  },
+  "search": {
+    "invoices": "Fatura ara…",
+    "proformas": "Proforma ara…",
+    "packingLists": "Çeki listesi ara…"
+  },
+  "empty": {
+    "noInvoices": "Fatura bulunamadı",
+    "noProformas": "Proforma bulunamadı",
+    "noPackingLists": "Çeki listesi bulunamadı"
+  },
+  "table": {
+    "invoiceNo": "Fatura No",
+    "fileNo": "Dosya No",
+    "customer": "Müşteri",
+    "admt": "ADMT",
+    "unitPrice": "Birim Fiyat",
+    "total": "Toplam",
+    "date": "Tarih",
+    "piNo": "PI No",
+    "quantity": "Miktar",
+    "plNo": "ÇL No",
+    "vehicles": "Araçlar",
+    "grossWeight": "Brüt Ağırlık"
+  },
+  "confirm": {
+    "delete": "Silinsin mi?",
+    "deleteInvoice": "Fatura silinsin mi?",
+    "deleteProforma": "Proforma silinsin mi?"
+  },
+  "invoice": {
+    "modal": {
+      "titleNewCommercial": "Yeni Ticari Fatura",
+      "titleEditCommercial": "Ticari Fatura Düzenle",
+      "titleNewSale": "Yeni Satış Faturası",
+      "titleEditSale": "Satış Faturası Düzenle",
+      "incoterms": "Incoterms",
+      "quantityAdmt": "Miktar (ADMT)",
+      "unitPrice": "Birim Fiyat",
+      "freight": "Navlun",
+      "subtotal": "Ara Toplam:",
+      "freightLabel": "Navlun:",
+      "total": "TOPLAM:",
+      "proformaNo": "Proforma No.",
+      "cbNo": "CB No.",
+      "insuranceNo": "Sigorta No.",
+      "grossWeight": "Brüt Ağırlık (KG)",
+      "packingInfo": "Ambalaj Bilgisi",
+      "packingPlaceholder": "örn. 70 Rulo",
+      "btnTemplate": "↓ Şablon",
+      "btnImportExcel": "↑ Excel İçe Aktar",
+      "btnSave": "Faturayı Kaydet",
+      "btnUpdate": "Güncelle",
+      "btnPrint": "🖨 Yazdır / PDF",
+      "errorSaveFirst": "Yazdırmak için önce faturayı kaydedin.",
+      "successImported": "Fatura verisi Excel'den aktarıldı",
+      "errorParseFailed": "Dosya okunamadı. Lütfen Excel şablonunu kullanın."
+    }
+  }
+}

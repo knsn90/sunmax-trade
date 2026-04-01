@@ -1,0 +1,54 @@
+{
+  "title": "Activity Log",
+  "search": "Search user or record…",
+  "allUsers": "All users",
+  "buttons": {
+    "refresh": "Refresh",
+    "detail": "Detail",
+    "hide": "Hide",
+    "prev": "← Prev",
+    "next": "Next →"
+  },
+  "filters": {
+    "all": "All",
+    "created": "Created",
+    "updated": "Updated",
+    "deleted": "Deleted",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "actions": {
+    "create": "Created",
+    "update": "Updated",
+    "delete": "Deleted",
+    "login": "Logged in",
+    "logout": "Logged out"
+  },
+  "tables": {
+    "trade_files": "Trade File",
+    "proformas": "Proforma",
+    "invoices": "Invoice",
+    "packing_lists": "Packing List",
+    "transactions": "Transaction",
+    "customers": "Customer",
+    "suppliers": "Supplier",
+    "service_providers": "Service Provider",
+    "products": "Product",
+    "profiles": "User",
+    "company_settings": "Settings",
+    "bank_accounts": "Bank Account"
+  },
+  "diff": {
+    "before": "Before",
+    "after": "After"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago"
+  },
+  "empty": {
+    "noEntries": "No entries found"
+  },
+  "unknown": "Unknown"
+}

@@ -1,0 +1,51 @@
+{
+  "brand": {
+    "name": "SunPlus",
+    "tagline": "Ticaret Yönetimi"
+  },
+  "sections": {
+    "trade": "TİCARET",
+    "documents": "BELGELER",
+    "finance": "FİNANS",
+    "contacts": "REHBER",
+    "general": "GENEL"
+  },
+  "items": {
+    "dashboard": "Kontrol Paneli",
+    "pipeline": "Süreç Takibi",
+    "allFiles": "Tüm Dosyalar",
+    "priceList": "Fiyat Listesi",
+    "documents": "Belgeler",
+    "accounting": "Muhasebe",
+    "journalLedger": "Yevmiye Defteri",
+    "finReports": "Mali Raporlar",
+    "bankRecon": "Banka Mutabakat",
+    "reports": "Raporlar",
+    "contacts": "Rehber",
+    "products": "Ürünler",
+    "activityLog": "Aktivite Kaydı",
+    "settings": "Ayarlar",
+    "profile": "Profil"
+  },
+  "topbar": {
+    "pageTitles": {
+      "dashboard": "Kontrol Paneli",
+      "pipeline": "Süreç Takibi",
+      "files": "Tüm Dosyalar",
+      "documents": "Belgeler",
+      "accounting": "Muhasebe",
+      "ledger": "Yevmiye Defteri",
+      "finReports": "Mali Raporlar",
+      "bankRecon": "Banka Mutabakatı",
+      "reports": "Raporlar",
+      "contacts": "Rehber",
+      "products": "Ürünler",
+      "settings": "Ayarlar",
+      "profile": "Profil",
+      "priceList": "Fiyat Listesi",
+      "activity": "Aktivite Kaydı"
+    },
+    "refreshRates": "Kurları yenile",
+    "logout": "Çıkış Yap"
+  }
+}

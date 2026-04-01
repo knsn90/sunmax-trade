@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '@/hooks/useEntities';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite, isAdmin } from '@/lib/permissions';
@@ -15,6 +16,8 @@ import {
 import { Card, PageHeader, LoadingSpinner, EmptyState, FormRow, FormGroup } from '@/components/ui/shared';
 
 export function CustomersPage() {
+  const { t } = useTranslation('contacts');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const admin = isAdmin(profile?.role);
@@ -62,7 +65,7 @@ export function CustomersPage() {
   }
 
   function handleDelete(id: string) {
-    if (window.confirm('Remove this customer?')) {
+    if (window.confirm(t('confirm.removeCustomer'))) {
       deleteCustomer.mutate(id);
     }
   }
@@ -71,8 +74,8 @@ export function CustomersPage() {
 
   return (
     <>
-      <PageHeader title="Customers">
-        {writable && <Button onClick={openNew}>+ Add</Button>}
+      <PageHeader title={t('tabs.customers')}>
+        {writable && <Button onClick={openNew}>+ {tc('btn.add')}</Button>}
       </PageHeader>
 
       <Card>
@@ -80,7 +83,7 @@ export function CustomersPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['ID', 'Name', 'Country', 'Contact', 'Actions'].map((h) => (
+                {[tc('table.code'), tc('table.name'), tc('form.country'), t('table.contact'), tc('table.actions')].map((h) => (
                   <th key={h} className="px-2.5 py-2 text-left text-2xs font-bold uppercase text-muted-foreground border-b-2 border-border bg-gray-50">
                     {h}
                   </th>
@@ -89,7 +92,7 @@ export function CustomersPage() {
             </thead>
             <tbody>
               {customers.length === 0 ? (
-                <tr><td colSpan={5}><EmptyState message="No customers yet" /></td></tr>
+                <tr><td colSpan={5}><EmptyState message={t('empty.noCustomers')} /></td></tr>
               ) : (
                 customers.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50/50">
@@ -102,10 +105,10 @@ export function CustomersPage() {
                     <td className="px-2.5 py-2 text-xs border-b border-border">
                       <div className="flex gap-1">
                         {writable && (
-                          <Button variant="edit" size="xs" onClick={() => openEdit(c)}>Edit</Button>
+                          <Button variant="edit" size="xs" onClick={() => openEdit(c)}>{tc('btn.edit')}</Button>
                         )}
                         {admin && (
-                          <Button variant="destructive" size="xs" onClick={() => handleDelete(c.id)}>Del</Button>
+                          <Button variant="destructive" size="xs" onClick={() => handleDelete(c.id)}>{tc('btn.delete')}</Button>
                         )}
                       </div>
                     </td>
@@ -120,35 +123,35 @@ export function CustomersPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
+            <DialogTitle>{editing ? t('modal.editCustomer') : t('modal.newCustomer')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <FormRow>
-              <FormGroup label="Name *" error={errors.name?.message}>
+              <FormGroup label={`${tc('table.name')} *`} error={errors.name?.message}>
                 <Input {...register('name')} />
               </FormGroup>
-              <FormGroup label="Country">
+              <FormGroup label={tc('form.country')}>
                 <Input {...register('country')} />
               </FormGroup>
             </FormRow>
-            <FormGroup label="Address" className="mb-2.5">
+            <FormGroup label={tc('form.address')} className="mb-2.5">
               <Input {...register('address')} />
             </FormGroup>
             <FormRow>
-              <FormGroup label="Email" error={errors.contact_email?.message}>
+              <FormGroup label={tc('form.email')} error={errors.contact_email?.message}>
                 <Input type="email" {...register('contact_email')} />
               </FormGroup>
-              <FormGroup label="Phone">
+              <FormGroup label={tc('form.phone')}>
                 <Input {...register('contact_phone')} />
               </FormGroup>
             </FormRow>
-            <FormGroup label="Notes" className="mb-2.5">
+            <FormGroup label={tc('form.notes')} className="mb-2.5">
               <Textarea rows={2} {...register('notes')} />
             </FormGroup>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>{tc('btn.cancel')}</Button>
               <Button type="submit" disabled={createCustomer.isPending || updateCustomer.isPending}>
-                Save
+                {tc('btn.save')}
               </Button>
             </DialogFooter>
           </form>

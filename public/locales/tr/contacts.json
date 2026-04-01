@@ -1,0 +1,42 @@
+{
+  "title": "Rehber",
+  "tabs": {
+    "customers": "Müşteriler",
+    "suppliers": "Tedarikçiler",
+    "serviceProviders": "Hizmet Sağlayıcılar"
+  },
+  "empty": {
+    "noCustomers": "Henüz müşteri yok",
+    "noSuppliers": "Henüz tedarikçi yok",
+    "noServiceProviders": "Henüz hizmet sağlayıcı yok"
+  },
+  "table": {
+    "countryCity": "Ülke / Şehir",
+    "contact": "İletişim",
+    "emailPhone": "E-posta / Telefon",
+    "phoneEmail": "Telefon / E-posta",
+    "paymentTerms": "Ödeme Koşulları"
+  },
+  "modal": {
+    "newCustomer": "Yeni Müşteri",
+    "editCustomer": "Müşteri Düzenle",
+    "newSupplier": "Yeni Tedarikçi",
+    "editSupplier": "Tedarikçi Düzenle",
+    "newServiceProvider": "Yeni Hizmet Sağlayıcı",
+    "editServiceProvider": "Hizmet Sağlayıcı Düzenle"
+  },
+  "form": {
+    "companyName": "Şirket Adı",
+    "taxId": "Vergi Kimlik No",
+    "contactPerson": "İletişim Kişisi",
+    "swiftBic": "SWIFT / BIC",
+    "iban": "IBAN",
+    "serviceType": "Hizmet Türü"
+  },
+  "confirm": {
+    "removeCustomer": "Bu müşteriyi kaldırmak istiyor musunuz?",
+    "removeSupplier": "Bu tedarikçiyi kaldırmak istiyor musunuz?",
+    "removeServiceProvider": "Bu hizmet sağlayıcıyı kaldırmak istiyor musunuz?",
+    "removeLabel": "Kaldır?"
+  }
+}

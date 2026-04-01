@@ -1,0 +1,51 @@
+{
+  "title": "Profile",
+  "sections": {
+    "personalInfo": "Personal Info",
+    "changePassword": "Change Password",
+    "approvalPassword": "Document Approval Password"
+  },
+  "form": {
+    "fullName": "Full Name",
+    "emailReadOnly": "Email cannot be changed.",
+    "role": "Role",
+    "currentPassword": "Current Password",
+    "currentPasswordPlaceholder": "Enter your current password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "At least 6 characters",
+    "confirmPassword": "New Password (Confirm)",
+    "confirmPasswordPlaceholder": "Repeat new password",
+    "currentApprovalPassword": "Current Approval Password",
+    "currentApprovalPasswordPlaceholder": "Current password",
+    "newApprovalPassword": "New Approval Password",
+    "newApprovalPasswordPlaceholder": "New password",
+    "confirmApprovalPassword": "New Approval Password (Confirm)",
+    "confirmApprovalPasswordPlaceholder": "Repeat password"
+  },
+  "photo": {
+    "btnChange": "Change Photo",
+    "hint": "JPG, PNG or WebP — max 2MB"
+  },
+  "buttons": {
+    "save": "Save",
+    "changePassword": "Change Password",
+    "changing": "Changing…",
+    "changeApprovalPassword": "Change Approval Password"
+  },
+  "approvalDesc": "Password required when approving documents.",
+  "errors": {
+    "currentPasswordRequired": "Please enter your current password.",
+    "passwordLength": "New password must be at least 6 characters.",
+    "passwordMismatch": "New passwords do not match.",
+    "incorrectPassword": "Current password is incorrect.",
+    "approvalPasswordIncorrect": "Current approval password is incorrect.",
+    "approvalPasswordLength": "New password must be at least 4 characters.",
+    "approvalPasswordMismatch": "Passwords do not match."
+  },
+  "success": {
+    "photoUpdated": "Photo updated.",
+    "nameUpdated": "Name updated.",
+    "passwordChanged": "Password changed successfully.",
+    "approvalPasswordChanged": "Approval password changed."
+  }
+}

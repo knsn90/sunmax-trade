@@ -1,0 +1,54 @@
+{
+  "title": "Aktivite Günlüğü",
+  "search": "Kullanıcı veya kayıt ara…",
+  "allUsers": "Tüm kullanıcılar",
+  "buttons": {
+    "refresh": "Yenile",
+    "detail": "Detay",
+    "hide": "Gizle",
+    "prev": "← Önceki",
+    "next": "Sonraki →"
+  },
+  "filters": {
+    "all": "Tümü",
+    "created": "Oluşturuldu",
+    "updated": "Güncellendi",
+    "deleted": "Silindi",
+    "login": "Giriş",
+    "logout": "Çıkış"
+  },
+  "actions": {
+    "create": "Oluşturuldu",
+    "update": "Güncellendi",
+    "delete": "Silindi",
+    "login": "Giriş yapıldı",
+    "logout": "Çıkış yapıldı"
+  },
+  "tables": {
+    "trade_files": "Ticari Dosya",
+    "proformas": "Proforma",
+    "invoices": "Fatura",
+    "packing_lists": "Çeki Listesi",
+    "transactions": "İşlem",
+    "customers": "Müşteri",
+    "suppliers": "Tedarikçi",
+    "service_providers": "Hizmet Sağlayıcı",
+    "products": "Ürün",
+    "profiles": "Kullanıcı",
+    "company_settings": "Ayarlar",
+    "bank_accounts": "Banka Hesabı"
+  },
+  "diff": {
+    "before": "Önce",
+    "after": "Sonra"
+  },
+  "time": {
+    "justNow": "Az önce",
+    "minutesAgo": "{{count}} dk önce",
+    "hoursAgo": "{{count}} sa önce"
+  },
+  "empty": {
+    "noEntries": "Kayıt bulunamadı"
+  },
+  "unknown": "Bilinmiyor"
+}

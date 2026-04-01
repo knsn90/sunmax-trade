@@ -1,0 +1,105 @@
+{
+  "title": "All Files",
+  "buttons": {
+    "newFile": "+ New File"
+  },
+  "filters": {
+    "search": "Customer, file no, product…"
+  },
+  "table": {
+    "customerFileNo": "Customer / File No",
+    "product": "Product",
+    "tonnage": "Tonnage"
+  },
+  "empty": {
+    "noRecords": "No records found"
+  },
+  "unknown": "Unknown",
+  "confirm": {
+    "deleteFile": "Delete this file?"
+  },
+  "detail": {
+    "tabs": {
+      "overview": "Overview",
+      "transport": "Transport",
+      "documents": "Documents",
+      "financials": "Financials"
+    },
+    "fileNotFound": "File not found",
+    "fileInfo": {
+      "date": "Date",
+      "tonnage": "Tonnage",
+      "salePrice": "Sale Price",
+      "delivered": "Delivered",
+      "ref": "Ref",
+      "notes": "Notes",
+      "cancelReason": "Cancel Reason"
+    },
+    "actions": {
+      "title": "Actions",
+      "editFile": "Edit File",
+      "saleInvoice": "Sale Invoice",
+      "commercialInvoice": "Commercial Invoice",
+      "packingList": "Packing List",
+      "proformaInvoice": "Proforma Invoice",
+      "changeStatus": "Change Status"
+    },
+    "cancelModal": {
+      "title": "Cancel File",
+      "body": "Please provide a reason for cancelling this file.",
+      "placeholder": "Cancellation reason...",
+      "confirmBtn": "Confirm Cancellation"
+    },
+    "btn": {
+      "convertToSale": "Convert to Sale",
+      "editDelivery": "Edit Delivery",
+      "addDelivery": "+ Delivery",
+      "actions": "Actions",
+      "delay": "Delay"
+    },
+    "saleDetails": {
+      "title": "Sale Details",
+      "noSaleDetails": "No sale details entered yet",
+      "salePrice": "Sale Price",
+      "purchase": "Purchase",
+      "supplier": "Supplier",
+      "incoterms": "Incoterms",
+      "eta": "ETA",
+      "revisedEta": "Revised ETA",
+      "delayReason": "Delay Reason",
+      "vessel": "Vessel",
+      "register": "Register"
+    },
+    "delivery": {
+      "title": "Delivery",
+      "admt": "ADMT",
+      "grossKg": "Gross (KG)",
+      "packages": "Packages",
+      "arrival": "Arrival",
+      "blNo": "B/L No",
+      "septi": "SEPTI"
+    },
+    "documents": {
+      "title": "Documents",
+      "vehicles": "{{count}} vehicles · {{admt}} ADMT"
+    },
+    "expenses": {
+      "title": "Expenses",
+      "addPurchase": "Purchase",
+      "addService": "Service",
+      "noRecords": "No expense records yet"
+    },
+    "transport": {
+      "title": "Transport Plan"
+    },
+    "delay": {
+      "title": "Note Delay",
+      "originalEta": "Original ETA: {{date}}",
+      "newEtaLabel": "New ETA",
+      "reasonLabel": "Delay Reason",
+      "placeholder": "e.g. Vessel delayed at port of loading",
+      "saveBtn": "Save Delay"
+    },
+    "statusConfirm": "Change status to \"{{label}}\"?"
+  }
+}

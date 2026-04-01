@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie, Legend,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEntities';
 import { useTransactions, useTransactionsByEntityEnhanced } from '@/hooks/useTransactions';
@@ -28,17 +29,11 @@ function openPrint(html: string, title: string) {
 
 type RepTab = 'sales' | 'pnl' | 'cari' | 'analytics' | 'eta';
 
-const TAB_LABELS: [RepTab, string][] = [
-  ['sales',     'Sales Report'],
-  ['pnl',       'P&L Report'],
-  ['cari',      'Account Statement'],
-  ['analytics', 'Analytics'],
-  ['eta',       'ETA Report'],
-];
-
 // ─── Sales Report ──────────────────────────────────────────────────────────
 
 function SalesReportTab() {
+  const { t } = useTranslation('reports');
+  const { t: tc } = useTranslation('common');
   const { data: files = [] } = useTradeFiles();
   const { data: customers = [] } = useCustomers();
   const { theme } = useTheme();
@@ -86,10 +81,10 @@ function SalesReportTab() {
         <td style="padding:5px 6px">${f.insurance_tr ?? '—'}</td>
       </tr>`).join('');
     const html = `
-      <div style="font-size:20px;font-weight:300;color:#374151;margin-bottom:16px">Sales Report</div>
+      <div style="font-size:20px;font-weight:300;color:#374151;margin-bottom:16px">${t('tabs.sales')}</div>
       <table style="width:100%;border-collapse:collapse;font-size:10px">
         <thead><tr style="background:#1e40af;color:#fff">
-          ${['No','Customer','Product','ADMT','Incoterms','Transport','Loading Port','Discharge Port','Selling Price','Purchase Price','Status','PI No','Reg. No','Insurance'].map(h=>`<th style="padding:6px;text-align:left">${h}</th>`).join('')}
+          ${[t('sales.col_no'),t('sales.col_customer'),t('sales.col_product'),t('sales.col_admt'),t('sales.col_incoterms'),t('sales.col_transport'),t('sales.col_loading_port'),t('sales.col_discharge_port'),t('sales.col_selling_price'),t('sales.col_purchase_price'),t('sales.col_status'),t('sales.col_pi_no'),t('sales.col_reg_no'),t('sales.col_insurance_no')].map(h=>`<th style="padding:6px;text-align:left">${h}</th>`).join('')}
         </tr></thead>
         <tbody>${tbody}</tbody>
         <tfoot><tr style="background:#f9fafb;font-weight:700;border-top:2px solid #374151">
@@ -100,7 +95,7 @@ function SalesReportTab() {
           <td colspan="4"></td>
         </tr></tfoot>
       </table>`;
-    openPrint(html, 'Sales Report');
+    openPrint(html, t('tabs.sales'));
   }
 
   function exportSalesExcel(rows: TradeFile[]) {
@@ -137,27 +132,27 @@ function SalesReportTab() {
       <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Customer</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.customer')}</label>
             <NativeSelect value={custFilter} onChange={(e) => setCustFilter(e.target.value)}>
-              <option value="">All Customers</option>
+              <option value="">{t('sales.all_customers')}</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </NativeSelect>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Status</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.status')}</label>
             <NativeSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">All</option>
-              <option value="request">Request</option>
-              <option value="sale">Sale</option>
-              <option value="delivery">Delivery</option>
+              <option value="">{tc('all')}</option>
+              <option value="request">{tc('status.request')}</option>
+              <option value="sale">{tc('status.sale')}</option>
+              <option value="delivery">{tc('status.delivery')}</option>
             </NativeSelect>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Date From</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.date_from')}</label>
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Date To</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.date_to')}</label>
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
         </div>
@@ -167,20 +162,20 @@ function SalesReportTab() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold text-white transition-colors hover:opacity-90"
             style={{ background: accent }}
           >
-            Show Report
+            {t('sales.show_report')}
           </button>
           <button
             onClick={() => { setCustFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setRan(false); }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
           >
-            Reset
+            {t('sales.reset')}
           </button>
           {ran && results.length > 0 && (
             <button
               onClick={() => printSalesReport(results)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
-              🖨 Print / PDF
+              {t('sales.print_pdf')}
             </button>
           )}
           {ran && results.length > 0 && (
@@ -188,7 +183,7 @@ function SalesReportTab() {
               onClick={() => exportSalesExcel(results)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
-              📥 Excel
+              {t('sales.excel')}
             </button>
           )}
         </div>
@@ -199,15 +194,15 @@ function SalesReportTab() {
           {/* Summary cards */}
           <div className="flex gap-3 flex-wrap mb-4">
             <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-xs text-gray-400 mb-0.5">Total Files</div>
+              <div className="text-xs text-gray-400 mb-0.5">{t('sales.total_files')}</div>
               <div className="text-lg font-bold text-gray-900">{results.length}</div>
             </div>
             <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-xs text-gray-400 mb-0.5">Total ADMT</div>
+              <div className="text-xs text-gray-400 mb-0.5">{t('sales.total_admt')}</div>
               <div className="text-lg font-bold text-gray-900">{fN(totalAdmt, 3)}</div>
             </div>
             <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-xs text-gray-400 mb-0.5">Estimated Revenue</div>
+              <div className="text-xs text-gray-400 mb-0.5">{t('sales.estimated_revenue')}</div>
               <div className="text-lg font-bold text-gray-900">{fUSD(totalRevenue)}</div>
             </div>
           </div>
@@ -217,7 +212,22 @@ function SalesReportTab() {
               <table className="w-full min-w-[900px]">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {['No','Customer','Product','ADMT','Incoterms','Transport','Loading Port','Discharge Port','Selling Price','Purchase Price','Status','PI No','Reg. No','Insurance No'].map((h) => (
+                    {[
+                      t('sales.col_no'),
+                      t('sales.col_customer'),
+                      t('sales.col_product'),
+                      t('sales.col_admt'),
+                      t('sales.col_incoterms'),
+                      t('sales.col_transport'),
+                      t('sales.col_loading_port'),
+                      t('sales.col_discharge_port'),
+                      t('sales.col_selling_price'),
+                      t('sales.col_purchase_price'),
+                      t('sales.col_status'),
+                      t('sales.col_pi_no'),
+                      t('sales.col_reg_no'),
+                      t('sales.col_insurance_no'),
+                    ].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
@@ -235,7 +245,7 @@ function SalesReportTab() {
                       <td className="px-4 py-3 text-[12px]">{f.port_of_discharge ?? '—'}</td>
                       <td className="px-4 py-3 text-[12px] text-right">{f.selling_price ? fCurrency(f.selling_price) : '—'}</td>
                       <td className="px-4 py-3 text-[12px] text-right">{f.purchase_price ? fCurrency(f.purchase_price) : '—'}</td>
-                      <td className="px-4 py-3 text-[12px] capitalize">{f.status}</td>
+                      <td className="px-4 py-3 text-[12px] capitalize">{tc('status.' + f.status)}</td>
                       <td className="px-4 py-3 text-[12px]">{f.proforma_ref ?? '—'}</td>
                       <td className="px-4 py-3 text-[12px]">{f.register_no ?? '—'}</td>
                       <td className="px-4 py-3 text-[12px]">{f.insurance_tr ?? '—'}</td>
@@ -249,10 +259,10 @@ function SalesReportTab() {
       )}
 
       {ran && results.length === 0 && (
-        <div className="text-center py-12 text-gray-400 text-sm">No records match the selected filters.</div>
+        <div className="text-center py-12 text-gray-400 text-sm">{t('sales.no_records')}</div>
       )}
       {!ran && (
-        <div className="text-center py-12 text-gray-400 text-sm">Select filters and click "Show Report"</div>
+        <div className="text-center py-12 text-gray-400 text-sm">{t('sales.prompt')}</div>
       )}
     </div>
   );
@@ -261,6 +271,7 @@ function SalesReportTab() {
 // ─── P&L Report ────────────────────────────────────────────────────────────
 
 function PnlReportTab() {
+  const { t } = useTranslation('reports');
   const { data: files = [] } = useTradeFiles();
   const [selectedFileId, setSelectedFileId] = useState('');
 
@@ -291,24 +302,24 @@ function PnlReportTab() {
 
   function printPnl() {
     if (!selectedFile || !pnl) return;
-    const rows = costRows.map((t) =>
-      `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:4px 8px;color:#555;padding-left:20px">— ${t.description}</td><td style="padding:4px 8px;text-align:right">(${fUSD(t.amount_usd ?? t.amount ?? 0)})</td></tr>`
+    const rows = costRows.map((txn) =>
+      `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:4px 8px;color:#555;padding-left:20px">— ${txn.description}</td><td style="padding:4px 8px;text-align:right">(${fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td></tr>`
     ).join('');
     const html = `
       <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:20px;font-weight:300;color:#374151">P&L Report</div>
+        <div style="font-size:20px;font-weight:300;color:#374151">${t('tabs.pnl')}</div>
         <div style="font-size:12px;color:#555;margin-top:4px">${selectedFile.file_no} — ${selectedFile.customer?.name ?? ''}</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;text-align:center">
-        ${[{l:'Revenue',v:fUSD(pnl.revenue),c:'#1e40af'},{l:'Cost',v:fUSD(pnl.costs),c:'#374151'},{l:'Net Profit',v:fUSD(pnl.profit),c:col(pnl.profit)},{l:'Margin',v:pnl.margin.toFixed(2)+'%',c:col(pnl.profit)}]
+        ${[{l:t('pnl.revenue'),v:fUSD(pnl.revenue),c:'#1e40af'},{l:t('pnl.cost'),v:fUSD(pnl.costs),c:'#374151'},{l:t('pnl.net_profit'),v:fUSD(pnl.profit),c:col(pnl.profit)},{l:t('pnl.margin'),v:pnl.margin.toFixed(2)+'%',c:col(pnl.profit)}]
           .map(card=>`<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px"><div style="font-size:9px;color:#666;text-transform:uppercase;margin-bottom:4px">${card.l}</div><div style="font-size:16px;font-weight:700;color:${card.c}">${card.v}</div></div>`).join('')}
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px;color:#555">Revenue (${fN(selectedFile.delivered_admt??selectedFile.tonnage_mt??0,3)} ADMT × ${selectedFile.selling_price?fCurrency(selectedFile.selling_price):'—'})</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e40af">${fUSD(pnl.revenue)}</td></tr>
+        <tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px;color:#555">${t('pnl.revenue')} (${fN(selectedFile.delivered_admt??selectedFile.tonnage_mt??0,3)} ADMT × ${selectedFile.selling_price?fCurrency(selectedFile.selling_price):'—'})</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e40af">${fUSD(pnl.revenue)}</td></tr>
         ${rows}
-        <tr style="border-top:2px solid #374151"><td style="padding:8px;font-weight:700;font-size:13px">Net Profit</td><td style="padding:8px;text-align:right;font-weight:800;font-size:13px;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</td></tr>
+        <tr style="border-top:2px solid #374151"><td style="padding:8px;font-weight:700;font-size:13px">${t('pnl.net_profit')}</td><td style="padding:8px;text-align:right;font-weight:800;font-size:13px;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</td></tr>
       </table>`;
-    openPrint(html, `P&L ${selectedFile.file_no}`);
+    openPrint(html, `${t('tabs.pnl')} ${selectedFile.file_no}`);
   }
 
   return (
@@ -320,7 +331,7 @@ function PnlReportTab() {
             onChange={(e) => setSelectedFileId(e.target.value)}
             className="min-w-[300px]"
           >
-            <option value="">— Select file —</option>
+            <option value="">{t('pnl.select_file')}</option>
             {files.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.file_no} — {f.customer?.name ?? ''} ({f.status})
@@ -332,14 +343,14 @@ function PnlReportTab() {
               onClick={printPnl}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
-              🖨 Print / PDF
+              {t('pnl.print_pdf')}
             </button>
           )}
         </div>
       </div>
 
       {selectedFile && !selectedFile.selling_price && (
-        <div className="text-center py-8 text-gray-400 text-sm">No selling price entered for this file.</div>
+        <div className="text-center py-8 text-gray-400 text-sm">{t('pnl.no_selling_price')}</div>
       )}
 
       {selectedFile && pnl && (
@@ -347,10 +358,10 @@ function PnlReportTab() {
           {/* P&L Summary */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             {[
-              { label: 'Revenue', value: fUSD(pnl.revenue), color: '#1e40af' },
-              { label: 'Cost', value: fUSD(pnl.costs), color: '#374151' },
-              { label: 'Net Profit', value: fUSD(pnl.profit), color: col(pnl.profit) },
-              { label: 'Margin', value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
+              { label: t('pnl.revenue'), value: fUSD(pnl.revenue), color: '#1e40af' },
+              { label: t('pnl.cost'), value: fUSD(pnl.costs), color: '#374151' },
+              { label: t('pnl.net_profit'), value: fUSD(pnl.profit), color: col(pnl.profit) },
+              { label: t('pnl.margin'), value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
             ].map((card) => (
               <div key={card.label} className="bg-white rounded-2xl shadow-sm p-4 text-center">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
@@ -362,22 +373,22 @@ function PnlReportTab() {
           {/* P&L Detail */}
           <div className="bg-white rounded-2xl shadow-sm p-5 mb-5">
             <div className="text-sm font-bold text-gray-800 mb-4">
-              P&L Detail — {selectedFile.file_no}
+              {t('pnl.detail_title', { fileNo: selectedFile.file_no })}
             </div>
             <table className="w-full text-xs">
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="py-1.5 text-gray-500">Revenue ({fN(selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0, 3)} ADMT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'})</td>
+                  <td className="py-1.5 text-gray-500">{t('pnl.revenue')} ({fN(selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0, 3)} ADMT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'})</td>
                   <td className="py-1.5 text-right font-semibold text-blue-700">{fUSD(pnl.revenue)}</td>
                 </tr>
-                {costRows.map((t) => (
-                  <tr key={t.id} className="border-b border-gray-100">
-                    <td className="py-1.5 text-gray-500 pl-3">— {t.description}</td>
-                    <td className="py-1.5 text-right text-gray-700">({fUSD(t.amount_usd ?? t.amount ?? 0)})</td>
+                {costRows.map((txn) => (
+                  <tr key={txn.id} className="border-b border-gray-100">
+                    <td className="py-1.5 text-gray-500 pl-3">— {txn.description}</td>
+                    <td className="py-1.5 text-right text-gray-700">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td>
                   </tr>
                 ))}
                 <tr className="border-t-2 border-gray-700">
-                  <td className="py-2 font-bold text-sm">Net Profit</td>
+                  <td className="py-2 font-bold text-sm">{t('pnl.net_profit')}</td>
                   <td className="py-2 text-right font-bold text-sm" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</td>
                 </tr>
               </tbody>
@@ -387,7 +398,7 @@ function PnlReportTab() {
       )}
 
       {!selectedFileId && (
-        <div className="text-center py-12 text-gray-400 text-sm">Select a file to view P&L</div>
+        <div className="text-center py-12 text-gray-400 text-sm">{t('pnl.select_prompt')}</div>
       )}
     </div>
   );
@@ -424,6 +435,8 @@ const STMT_LABELS: Record<StatementLang, {
 };
 
 function AccountStatementTab() {
+  const { t } = useTranslation('reports');
+  const { t: tc } = useTranslation('common');
   const { data: customers = [] } = useCustomers();
   const { data: suppliers = [] } = useSuppliers();
   const { data: serviceProviders = [] } = useServiceProviders();
@@ -437,9 +450,9 @@ function AccountStatementTab() {
   const { data: rawTxns = [] } = useTransactionsByEntityEnhanced(entityType, entityId || undefined);
 
   const txns = useMemo(() => {
-    return rawTxns.filter((t) => {
-      if (dateFrom && t.transaction_date < dateFrom) return false;
-      if (dateTo && t.transaction_date > dateTo) return false;
+    return rawTxns.filter((txn) => {
+      if (dateFrom && txn.transaction_date < dateFrom) return false;
+      if (dateTo && txn.transaction_date > dateTo) return false;
       return true;
     });
   }, [rawTxns, dateFrom, dateTo]);
@@ -453,16 +466,16 @@ function AccountStatementTab() {
   // Running balance
   const txnsWithBalance = useMemo(() => {
     let balance = 0;
-    return txns.map((t) => {
-      const isDebit = t.transaction_type !== 'receipt';
-      const amt = t.amount_usd ?? t.amount ?? 0;
+    return txns.map((txn) => {
+      const isDebit = txn.transaction_type !== 'receipt';
+      const amt = txn.amount_usd ?? txn.amount ?? 0;
       if (isDebit) balance -= amt; else balance += amt;
-      return { ...t, isDebit, amt, balance };
+      return { ...txn, isDebit, amt, balance };
     });
   }, [txns]);
 
-  const totalDebit = txnsWithBalance.reduce((s, t) => s + (t.isDebit ? t.amt : 0), 0);
-  const totalCredit = txnsWithBalance.reduce((s, t) => s + (!t.isDebit ? t.amt : 0), 0);
+  const totalDebit = txnsWithBalance.reduce((s, txn) => s + (txn.isDebit ? txn.amt : 0), 0);
+  const totalCredit = txnsWithBalance.reduce((s, txn) => s + (!txn.isDebit ? txn.amt : 0), 0);
   const netBalance = totalCredit - totalDebit;
 
   const entityName = entityOptions.find((e) => e.id === entityId)?.name ?? '';
@@ -473,15 +486,15 @@ function AccountStatementTab() {
     const fontFamily = isRtl ? 'Vazirmatn, Arial, sans-serif' : 'Arial, sans-serif';
     const thAlign = isRtl ? 'right' : 'left';
 
-    const rows = txnsWithBalance.map((t) => `
+    const rows = txnsWithBalance.map((txn) => `
       <tr style="border-bottom:1px solid #e5e7eb">
-        <td style="padding:4px 6px">${fDate(t.transaction_date)}</td>
-        <td style="padding:4px 6px">${t.transaction_type.replace('_',' ')}</td>
-        <td style="padding:4px 6px">${t.reference_no||'—'}</td>
-        <td style="padding:4px 6px">${t.description}</td>
-        <td style="padding:4px 6px;text-align:right;color:#dc2626">${t.isDebit?fUSD(t.amt):'—'}</td>
-        <td style="padding:4px 6px;text-align:right;color:#10b981">${!t.isDebit?fUSD(t.amt):'—'}</td>
-        <td style="padding:4px 6px;text-align:right;font-weight:600;color:${t.balance>=0?'#10b981':'#dc2626'}">${fUSD(t.balance)}</td>
+        <td style="padding:4px 6px">${fDate(txn.transaction_date)}</td>
+        <td style="padding:4px 6px">${txn.transaction_type.replace('_',' ')}</td>
+        <td style="padding:4px 6px">${txn.reference_no||'—'}</td>
+        <td style="padding:4px 6px">${txn.description}</td>
+        <td style="padding:4px 6px;text-align:right;color:#dc2626">${txn.isDebit?fUSD(txn.amt):'—'}</td>
+        <td style="padding:4px 6px;text-align:right;color:#10b981">${!txn.isDebit?fUSD(txn.amt):'—'}</td>
+        <td style="padding:4px 6px;text-align:right;font-weight:600;color:${txn.balance>=0?'#10b981':'#dc2626'}">${fUSD(txn.balance)}</td>
       </tr>`).join('');
 
     const fontLink = L.font ? `<link rel="stylesheet" href="${L.font}">` : '';
@@ -512,49 +525,49 @@ function AccountStatementTab() {
       <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Entity Type</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.entity_type')}</label>
             <NativeSelect value={entityType} onChange={(e) => { setEntityType(e.target.value as typeof entityType); setEntityId(''); }}>
-              <option value="customer">Customer</option>
-              <option value="supplier">Supplier</option>
-              <option value="service_provider">Service Provider</option>
+              <option value="customer">{t('statement.entity_type_customer')}</option>
+              <option value="supplier">{t('statement.entity_type_supplier')}</option>
+              <option value="service_provider">{t('statement.entity_type_service_provider')}</option>
             </NativeSelect>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Entity</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.entity')}</label>
             <NativeSelect value={entityId} onChange={(e) => setEntityId(e.target.value)}>
-              <option value="">— Select —</option>
+              <option value="">{t('statement.select_entity')}</option>
               {entityOptions.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </NativeSelect>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Date From</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.date_from')}</label>
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Date To</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.date_to')}</label>
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
         </div>
         {entityId && txns.length > 0 && (
           <div className="mt-4 flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-gray-500 font-medium">Print language:</span>
+            <span className="text-xs text-gray-500 font-medium">{t('statement.print_language')}</span>
             <button
               onClick={() => printStatement('en')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
-              🖨 English
+              {t('statement.print_english')}
             </button>
             <button
               onClick={() => printStatement('tr')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
-              🖨 Turkish
+              {t('statement.print_turkish')}
             </button>
             <button
               onClick={() => printStatement('fa')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
             >
-              🖨 فارسی
+              {t('statement.print_farsi')}
             </button>
           </div>
         )}
@@ -565,15 +578,15 @@ function AccountStatementTab() {
           {/* Summary */}
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Total Debit</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t('statement.total_debit')}</div>
               <div className="text-lg font-black text-red-600">{fUSD(totalDebit)}</div>
             </div>
             <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Total Credit</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t('statement.total_credit')}</div>
               <div className="text-lg font-black text-green-600">{fUSD(totalCredit)}</div>
             </div>
             <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Net Balance</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t('statement.net_balance')}</div>
               <div className="text-lg font-black" style={{ color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>{fUSD(netBalance)}</div>
             </div>
           </div>
@@ -583,26 +596,34 @@ function AccountStatementTab() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {['Date', 'Type', 'Reference', 'Description', 'Debit', 'Credit', 'Balance'].map((h) => (
+                    {[
+                      t('statement.col_date'),
+                      t('statement.col_type'),
+                      t('statement.col_reference'),
+                      t('statement.col_description'),
+                      t('statement.col_debit'),
+                      t('statement.col_credit'),
+                      t('statement.col_balance'),
+                    ].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {txnsWithBalance.map((t) => (
-                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                      <td className="px-4 py-3 text-[12px]">{fDate(t.transaction_date)}</td>
-                      <td className="px-4 py-3 text-[12px] capitalize">{t.transaction_type.replace('_', ' ')}</td>
-                      <td className="px-4 py-3 text-[12px]">{t.reference_no || '—'}</td>
-                      <td className="px-4 py-3 text-[12px]">{t.description}</td>
+                  {txnsWithBalance.map((txn) => (
+                    <tr key={txn.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                      <td className="px-4 py-3 text-[12px]">{fDate(txn.transaction_date)}</td>
+                      <td className="px-4 py-3 text-[12px]">{tc(`txType.${txn.transaction_type}`)}</td>
+                      <td className="px-4 py-3 text-[12px]">{txn.reference_no || '—'}</td>
+                      <td className="px-4 py-3 text-[12px]">{txn.description}</td>
                       <td className="px-4 py-3 text-[12px] text-right text-red-600">
-                        {t.isDebit ? fUSD(t.amt) : '—'}
+                        {txn.isDebit ? fUSD(txn.amt) : '—'}
                       </td>
                       <td className="px-4 py-3 text-[12px] text-right text-green-600">
-                        {!t.isDebit ? fUSD(t.amt) : '—'}
+                        {!txn.isDebit ? fUSD(txn.amt) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-right font-semibold" style={{ color: t.balance >= 0 ? '#10b981' : '#ef4444' }}>
-                        {fUSD(t.balance)}
+                      <td className="px-4 py-3 text-[12px] text-right font-semibold" style={{ color: txn.balance >= 0 ? '#10b981' : '#ef4444' }}>
+                        {fUSD(txn.balance)}
                       </td>
                     </tr>
                   ))}
@@ -614,10 +635,10 @@ function AccountStatementTab() {
       )}
 
       {entityId && txns.length === 0 && (
-        <div className="text-center py-8 text-gray-400 text-sm">No records found.</div>
+        <div className="text-center py-8 text-gray-400 text-sm">{t('statement.no_records')}</div>
       )}
       {!entityId && (
-        <div className="text-center py-12 text-gray-400 text-sm">Select an entity to view their account statement</div>
+        <div className="text-center py-12 text-gray-400 text-sm">{t('statement.select_prompt')}</div>
       )}
     </div>
   );
@@ -625,10 +646,10 @@ function AccountStatementTab() {
 
 // ─── Analytics Tab ─────────────────────────────────────────────────────────
 
-const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const CHART_COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16'];
 
 function AnalyticsTab() {
+  const { t, i18n } = useTranslation('reports');
   const { data: files = [] } = useTradeFiles();
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
@@ -648,7 +669,7 @@ function AnalyticsTab() {
     filteredFiles.forEach(f => {
       const d = new Date(f.created_at ?? '');
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
-      const label = `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+      const label = new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' }).format(d);
       if (!map[key]) map[key] = { label, revenue: 0, cost: 0, profit: 0, files: 0 };
       const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
       const rev = (f.selling_price ?? 0) * qty;
@@ -659,7 +680,7 @@ function AnalyticsTab() {
       map[key].files += 1;
     });
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
-  }, [filteredFiles]);
+  }, [filteredFiles, i18n.language]);
 
   // Customer performance
   const customerData = useMemo(() => {
@@ -687,14 +708,17 @@ function AnalyticsTab() {
       request: '#60a5fa', sale: '#a78bfa', delivery: '#fbbf24',
       completed: '#4ade80', cancelled: '#9ca3af',
     };
-    const labels: Record<string, string> = {
-      request: 'Request', sale: 'Sale', delivery: 'Delivery',
-      completed: 'Completed', cancelled: 'Cancelled',
+    const statusLabels: Record<string, string> = {
+      request: t('analytics.status_request'),
+      sale: t('analytics.status_sale'),
+      delivery: t('analytics.status_delivery'),
+      completed: t('analytics.status_completed'),
+      cancelled: t('analytics.status_cancelled'),
     };
     return Object.entries(counts).map(([key, value]) => ({
-      name: labels[key] ?? key, value, fill: colors[key] ?? '#94a3b8',
+      name: statusLabels[key] ?? key, value, fill: colors[key] ?? '#94a3b8',
     }));
-  }, [filteredFiles]);
+  }, [filteredFiles, t]);
 
   // Summary KPIs
   const totalRevenue = filteredFiles.reduce((s, f) => s + (f.selling_price ?? 0) * (f.delivered_admt ?? f.tonnage_mt ?? 0), 0);
@@ -720,12 +744,18 @@ function AnalyticsTab() {
 
   const noData = monthlyData.length === 0;
 
+  const periodLabels: [typeof period, string][] = [
+    ['6m', t('analytics.last_6m')],
+    ['12m', t('analytics.last_12m')],
+    ['all', t('analytics.all_time')],
+  ];
+
   return (
     <div className="space-y-5">
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1.5">
-          {([['6m','Last 6M'],['12m','Last 12M'],['all','All Time']] as [typeof period, string][]).map(([key, label]) => (
+          {periodLabels.map(([key, label]) => (
             <button
               key={key}
               onClick={() => setPeriod(key)}
@@ -745,18 +775,18 @@ function AnalyticsTab() {
           onClick={exportAnalyticsExcel}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
         >
-          📥 Excel Export
+          {t('analytics.excel_export')}
         </button>
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-5 gap-3">
         {[
-          { label: 'Total Files', value: filteredFiles.length.toString(), color: 'text-blue-700' },
-          { label: 'Total ADMT', value: fN(totalAdmt, 0), color: 'text-purple-700' },
-          { label: 'Total Revenue', value: fUSD(totalRevenue), color: 'text-green-700' },
-          { label: 'Total Cost', value: fUSD(totalCost), color: 'text-red-600' },
-          { label: 'Net Profit / Margin', value: `${fUSD(totalProfit)} / ${avgMargin.toFixed(1)}%`, color: totalProfit >= 0 ? 'text-green-700' : 'text-red-600' },
+          { label: t('analytics.kpi_total_files'), value: filteredFiles.length.toString(), color: 'text-blue-700' },
+          { label: t('analytics.kpi_total_admt'), value: fN(totalAdmt, 0), color: 'text-purple-700' },
+          { label: t('analytics.kpi_total_revenue'), value: fUSD(totalRevenue), color: 'text-green-700' },
+          { label: t('analytics.kpi_total_cost'), value: fUSD(totalCost), color: 'text-red-600' },
+          { label: t('analytics.kpi_net_profit_margin'), value: `${fUSD(totalProfit)} / ${avgMargin.toFixed(1)}%`, color: totalProfit >= 0 ? 'text-green-700' : 'text-red-600' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white rounded-2xl shadow-sm p-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{kpi.label}</div>
@@ -767,13 +797,13 @@ function AnalyticsTab() {
 
       {noData ? (
         <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl shadow-sm">
-          No data found for the selected period.
+          {t('analytics.no_data')}
         </div>
       ) : (
         <>
           {/* Monthly trend chart */}
           <div className="bg-white rounded-2xl shadow-sm p-5">
-            <div className="text-sm font-bold text-gray-800 mb-4">Monthly Revenue / Cost / Profit Trend</div>
+            <div className="text-sm font-bold text-gray-800 mb-4">{t('analytics.chart_monthly_title')}</div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={monthlyData} barCategoryGap="25%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -784,7 +814,7 @@ function AnalyticsTab() {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(value: any, name: any) => [
                     `$${Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-                    name === 'revenue' ? 'Revenue' : name === 'cost' ? 'Cost' : 'Profit',
+                    name === 'revenue' ? t('analytics.legend_revenue') : name === 'cost' ? t('analytics.legend_cost') : t('analytics.legend_profit'),
                   ]}
                   contentStyle={{ fontSize: 11, borderRadius: 8 }}
                 />
@@ -796,7 +826,7 @@ function AnalyticsTab() {
               </BarChart>
             </ResponsiveContainer>
             <div className="flex gap-4 justify-center mt-1">
-              {[['#60a5fa','Revenue'],['#f87171','Cost'],['#4ade80','Profit']].map(([c,l]) => (
+              {[['#60a5fa', t('analytics.legend_revenue')], ['#f87171', t('analytics.legend_cost')], ['#4ade80', t('analytics.legend_profit')]].map(([c, l]) => (
                 <div key={l} className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: c }} />
                   <span className="text-[10px] text-gray-400">{l}</span>
@@ -808,9 +838,9 @@ function AnalyticsTab() {
           <div className="grid grid-cols-5 gap-4">
             {/* Customer revenue bar */}
             <div className="bg-white rounded-2xl shadow-sm p-5 col-span-3">
-              <div className="text-sm font-bold text-gray-800 mb-4">Revenue by Customer (Top 8)</div>
+              <div className="text-sm font-bold text-gray-800 mb-4">{t('analytics.chart_customer_title')}</div>
               {customerData.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-xs">No data</div>
+                <div className="text-center py-8 text-gray-400 text-xs">{t('analytics.no_data_short')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={210}>
                   <BarChart data={customerData} layout="vertical" barCategoryGap="20%">
@@ -822,7 +852,7 @@ function AnalyticsTab() {
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       formatter={(value: any, name: any) => [
                         `$${Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-                        name === 'revenue' ? 'Revenue' : 'Profit',
+                        name === 'revenue' ? t('analytics.legend_revenue') : t('analytics.legend_profit'),
                       ]}
                       contentStyle={{ fontSize: 11, borderRadius: 8 }}
                     />
@@ -836,9 +866,9 @@ function AnalyticsTab() {
 
             {/* Status pie */}
             <div className="bg-white rounded-2xl shadow-sm p-5 col-span-2">
-              <div className="text-sm font-bold text-gray-800 mb-4">File Status Distribution</div>
+              <div className="text-sm font-bold text-gray-800 mb-4">{t('analytics.chart_status_title')}</div>
               {statusData.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-xs">No data</div>
+                <div className="text-center py-8 text-gray-400 text-xs">{t('analytics.no_data_short')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={210}>
                   <PieChart>
@@ -857,13 +887,21 @@ function AnalyticsTab() {
           {/* Customer detail table */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
-              <div className="text-sm font-bold text-gray-800">Customer Performance</div>
+              <div className="text-sm font-bold text-gray-800">{t('analytics.table_customer_perf')}</div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {['Customer','Files','Total ADMT','Revenue','Cost','Net Profit','Margin'].map(h => (
+                    {[
+                      t('analytics.col_customer'),
+                      t('analytics.col_files'),
+                      t('analytics.col_total_admt'),
+                      t('analytics.col_revenue'),
+                      t('analytics.col_cost'),
+                      t('analytics.col_net_profit'),
+                      t('analytics.col_margin'),
+                    ].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                     ))}
                   </tr>
@@ -900,6 +938,7 @@ function AnalyticsTab() {
 // ─── ETA Report Tab ────────────────────────────────────────────────────────
 
 function EtaReportTab() {
+  const { t } = useTranslation('reports');
   const { data: files = [] } = useTradeFiles();
 
   const etaFiles = useMemo(() =>
@@ -919,12 +958,12 @@ function EtaReportTab() {
   function statusCell(f: TradeFile) {
     if (f.arrival_date) {
       const d = delayDays(f);
-      if (d === null) return { label: 'Arrived', cls: 'bg-gray-100 text-gray-600' };
-      if (d <= 0) return { label: `On time ✅`, cls: 'bg-green-100 text-green-700' };
-      return { label: `+${d} days 🔴`, cls: 'bg-red-100 text-red-700' };
+      if (d === null) return { label: t('eta.status_arrived'), cls: 'bg-gray-100 text-gray-600' };
+      if (d <= 0) return { label: t('eta.status_on_time'), cls: 'bg-green-100 text-green-700' };
+      return { label: t('eta.status_delayed_days', { days: d }), cls: 'bg-red-100 text-red-700' };
     }
-    if (f.revised_eta) return { label: 'Delayed ⏳', cls: 'bg-amber-100 text-amber-700' };
-    return { label: 'Pending', cls: 'bg-blue-100 text-blue-700' };
+    if (f.revised_eta) return { label: t('eta.status_delayed'), cls: 'bg-amber-100 text-amber-700' };
+    return { label: t('eta.status_pending'), cls: 'bg-blue-100 text-blue-700' };
   }
 
   function exportCsv() {
@@ -956,27 +995,36 @@ function EtaReportTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-bold text-gray-800">ETA Tracking Report</div>
-          <div className="text-xs text-gray-400 mt-0.5">{etaFiles.length} files with ETA</div>
+          <div className="text-sm font-bold text-gray-800">{t('eta.title')}</div>
+          <div className="text-xs text-gray-400 mt-0.5">{t('eta.subtitle', { count: etaFiles.length })}</div>
         </div>
         <button
           onClick={exportCsv}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
         >
-          Export CSV
+          {t('eta.export_csv')}
         </button>
       </div>
 
       {etaFiles.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl shadow-sm">
-          No files with ETA found.
+          {t('eta.no_files')}
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-100">
-                {['File No','Customer','Product','Promised ETA','Revised ETA','Actual Arrival','Delay','Status'].map(h => (
+                {[
+                  t('eta.col_file_no'),
+                  t('eta.col_customer'),
+                  t('eta.col_product'),
+                  t('eta.col_promised_eta'),
+                  t('eta.col_revised_eta'),
+                  t('eta.col_actual_arrival'),
+                  t('eta.col_delay'),
+                  t('eta.col_status'),
+                ].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -1019,7 +1067,16 @@ function EtaReportTab() {
 // ─── Main Reports Page ─────────────────────────────────────────────────────
 
 export function ReportsPage() {
+  const { t } = useTranslation('reports');
   const [activeTab, setActiveTab] = useState<RepTab>('sales');
+
+  const TAB_LABELS: [RepTab, string][] = [
+    ['sales',     t('tabs.sales')],
+    ['pnl',       t('tabs.pnl')],
+    ['cari',      t('tabs.cari')],
+    ['analytics', t('tabs.analytics')],
+    ['eta',       t('tabs.eta')],
+  ];
 
   return (
     <>

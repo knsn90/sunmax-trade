@@ -1,0 +1,110 @@
+{
+  "btn": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "remove": "Remove",
+    "upload": "Upload",
+    "print": "Print / PDF",
+    "search": "Search",
+    "clear": "Clear",
+    "refresh": "Refresh",
+    "new": "New",
+    "update": "Update",
+    "confirm": "Confirm",
+    "back": "Back",
+    "export": "Export",
+    "import": "Import",
+    "saving": "Saving…",
+    "loading": "Loading…"
+  },
+  "status": {
+    "request": "Request",
+    "sale": "Sale",
+    "delivery": "Delivery",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "active": "Active",
+    "inactive": "Inactive",
+    "open": "Open",
+    "partially_paid": "Partially Paid",
+    "fully_paid": "Fully Paid",
+    "draft": "Draft",
+    "posted": "Posted",
+    "reversed": "Reversed",
+    "matched": "Matched",
+    "unmatched": "Unmatched",
+    "excluded": "Excluded",
+    "profitable": "Profitable",
+    "loss": "Loss"
+  },
+  "table": {
+    "date": "Date",
+    "description": "Description",
+    "status": "Status",
+    "actions": "Actions",
+    "amount": "Amount",
+    "currency": "Currency",
+    "reference": "Reference",
+    "total": "Total",
+    "type": "Type",
+    "code": "Code",
+    "name": "Name"
+  },
+  "form": {
+    "country": "Country",
+    "city": "City",
+    "address": "Address",
+    "email": "Email",
+    "phone": "Phone",
+    "website": "Website",
+    "payment_terms": "Payment Terms",
+    "notes": "Notes",
+    "currency": "Currency",
+    "date": "Date",
+    "required": "required"
+  },
+  "empty": {
+    "no_results": "No results found",
+    "no_records": "No records found"
+  },
+  "confirm": {
+    "delete_title": "Delete?",
+    "cannot_undo": "This action cannot be undone.",
+    "are_you_sure": "Are you sure?"
+  },
+  "pagination": {
+    "showing": "Showing {{from}}–{{to}} of {{total}}"
+  },
+  "currency": {
+    "usd": "USD",
+    "eur": "EUR",
+    "try": "TRY",
+    "gbp": "GBP"
+  },
+  "try": "TRY",
+  "all": "All",
+  "from": "From",
+  "to": "To",
+  "as_of": "As of",
+  "all_time": "Leave blank for all-time",
+  "lines": "lines",
+  "rate": "Rate",
+  "entries": "entries",
+  "unknown": "Unknown",
+  "txType": {
+    "svc_inv": "Service Invoice",
+    "purchase_inv": "Purchase Invoice",
+    "receipt": "Receipt",
+    "payment": "Payment",
+    "sale_inv": "Sale Invoice"
+  },
+  "payStatus": {
+    "open": "Open",
+    "partial": "Partial",
+    "paid": "Paid"
+  }
+}

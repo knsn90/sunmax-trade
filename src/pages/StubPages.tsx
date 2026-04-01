@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { productSchema, type ProductFormData, type ProductCategoryFormData } from '@/types/forms';
@@ -38,6 +39,8 @@ function CategoryBadge({ category, size = 'sm' }: { category: ProductCategory; s
 function ManageCategoriesModal({ open, onOpenChange, accent }: {
   open: boolean; onOpenChange: (v: boolean) => void; accent: string;
 }) {
+  const { t } = useTranslation('products');
+  const { t: tc } = useTranslation('common');
   const { data: categories = [] } = useProductCategories();
   const createCat = useCreateProductCategory();
   const updateCat = useUpdateProductCategory();
@@ -61,12 +64,12 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Manage Categories</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t('manageCategories')}</DialogTitle></DialogHeader>
 
         {/* Existing categories */}
         <div className="space-y-1.5 max-h-60 overflow-y-auto">
           {categories.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">No categories yet</p>
+            <p className="text-xs text-gray-400 text-center py-4">{t('noCategories')}</p>
           )}
           {categories.map(cat => (
             <div key={cat.id} className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-50">
@@ -96,7 +99,7 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
                     style={{ background: c, borderColor: cat.color === c ? '#1f2937' : 'transparent' }} />
                 ))}
               </div>
-              <button onClick={() => { if (window.confirm(`Delete "${cat.name}"? Products in this category will be uncategorized.`)) deleteCat.mutate(cat.id); }}
+              <button onClick={() => { if (window.confirm(t('confirm.deleteCategory', { name: cat.name }))) deleteCat.mutate(cat.id); }}
                 className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -106,13 +109,13 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
 
         {/* Add new */}
         <div className="border-t border-gray-100 pt-3 mt-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">New Category</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">{t('newCategory')}</p>
           <div className="flex gap-2 items-center">
             <input
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-              placeholder="Category name…"
+              placeholder={t('categoryNamePlaceholder')}
               className="flex-1 h-8 px-2.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-blue-400 transition"
             />
             <div className="flex gap-1">
@@ -132,7 +135,7 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
 
         <DialogFooter>
           <button onClick={() => onOpenChange(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-            Close
+            {tc('btn.close')}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -144,6 +147,8 @@ function ManageCategoriesModal({ open, onOpenChange, accent }: {
 // PRODUCTS PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 export function ProductsPage() {
+  const { t } = useTranslation('products');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
@@ -159,6 +164,17 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
   const [filterCatId, setFilterCatId] = useState<string | null>(null);
+
+  const tableHeaders = [
+    t('table.code'),
+    t('table.name'),
+    t('table.category'),
+    t('table.unit'),
+    t('table.hsCode'),
+    t('table.originSpecies'),
+    t('table.grade'),
+    tc('table.actions'),
+  ];
 
   const EMPTY: ProductFormData = {
     name: '', hs_code: '', unit: 'ADMT',
@@ -210,7 +226,7 @@ export function ProductsPage() {
           {/* Search — fixed small width */}
           <div className="relative w-36 md:w-48 shrink-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('search')}
               className="w-full pl-7 pr-2 h-8 rounded-xl border border-gray-200 bg-white text-[12px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 transition" />
           </div>
 
@@ -223,7 +239,7 @@ export function ProductsPage() {
                   !filterCatId ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                All
+                {tc('all')}
               </button>
               {categories.map(cat => (
                 <button key={cat.id}
@@ -240,7 +256,7 @@ export function ProductsPage() {
           )}
 
           {/* Icon buttons */}
-          <button onClick={() => setCatModalOpen(true)} title="Manage categories"
+          <button onClick={() => setCatModalOpen(true)} title={t('manageCategoriesTooltip')}
             className="w-8 h-8 rounded-xl flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors shrink-0">
             <Tag className="h-3.5 w-3.5" />
           </button>
@@ -254,7 +270,7 @@ export function ProductsPage() {
         {/* Mobile cards */}
         <div className="md:hidden space-y-2">
           {filtered.length === 0 ? (
-            <div className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No products yet'}</div>
+            <div className="py-14 text-center text-sm text-gray-400">{search ? t('noResults') : t('noProducts')}</div>
           ) : filtered.map(p => (
             <div key={p.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
@@ -276,7 +292,7 @@ export function ProductsPage() {
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {writable && <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Pencil className="h-3.5 w-3.5" /></button>}
-                {adminRole && <button onClick={() => { if (window.confirm('Remove?')) deleteP.mutate(p.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>}
+                {adminRole && <button onClick={() => { if (window.confirm(t('confirm.removeProduct'))) deleteP.mutate(p.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>}
               </div>
             </div>
           ))}
@@ -291,14 +307,14 @@ export function ProductsPage() {
             </colgroup>
             <thead>
               <tr className="border-b border-gray-100">
-                {['Code', 'Name', 'Category', 'Unit', 'HS Code', 'Origin / Species', 'Grade', 'Actions'].map(h => (
+                {tableHeaders.map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No products yet'}</td></tr>
+                <tr><td colSpan={8} className="py-14 text-center text-sm text-gray-400">{search ? t('noResults') : t('noProducts')}</td></tr>
               ) : filtered.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                   <td className="px-4 py-3 text-xs font-bold text-gray-400">{p.code}</td>
@@ -315,7 +331,7 @@ export function ProductsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 flex-nowrap">
                       {writable && <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Pencil className="h-3.5 w-3.5" /></button>}
-                      {adminRole && <button onClick={() => { if (window.confirm('Remove?')) deleteP.mutate(p.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>}
+                      {adminRole && <button onClick={() => { if (window.confirm(t('confirm.removeProduct'))) deleteP.mutate(p.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>}
                     </div>
                   </td>
                 </tr>
@@ -327,18 +343,18 @@ export function ProductsPage() {
         {/* Product Modal */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{editing ? 'Edit Product' : 'New Product'}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? t('modal.editProduct') : t('modal.newProduct')}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)}>
               <AIFormFill
                 formType="new_product"
                 onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ProductFormData>) })}
-                placeholder='e.g. "NBSK Pulp, Canadian origin, HS code 470321, ADMT unit"'
+                placeholder={t('modal.aiPlaceholder')}
               />
               <FormRow>
-                <FormGroup label="Product Name *" error={errors.name?.message}>
+                <FormGroup label={t('modal.productName')} error={errors.name?.message}>
                   <Input {...register('name')} />
                 </FormGroup>
-                <FormGroup label="Unit">
+                <FormGroup label={t('modal.unit')}>
                   <NativeSelect {...register('unit')}>
                     <option value="ADMT">ADMT</option>
                     <option value="MT">MT</option>
@@ -348,7 +364,7 @@ export function ProductsPage() {
               </FormRow>
 
               {/* Category selector */}
-              <FormGroup label="Category" className="mb-2.5">
+              <FormGroup label={t('modal.category')} className="mb-2.5">
                 <div className="flex gap-1.5 flex-wrap">
                   <button type="button"
                     onClick={() => setValue('category_id', null)}
@@ -369,25 +385,25 @@ export function ProductsPage() {
                   ))}
                   <button type="button" onClick={() => { setModalOpen(false); setCatModalOpen(true); }}
                     className="px-3 h-7 rounded-full text-[11px] font-semibold border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 transition-all flex items-center gap-1">
-                    <Plus className="h-3 w-3" /> New
+                    <Plus className="h-3 w-3" /> {tc('btn.new')}
                   </button>
                 </div>
               </FormGroup>
 
               <FormRow>
-                <FormGroup label="HS Code"><Input {...register('hs_code')} placeholder="e.g. 470321" /></FormGroup>
-                <FormGroup label="Origin Country"><Input {...register('origin_country')} placeholder="e.g. Canada" /></FormGroup>
+                <FormGroup label={t('modal.hsCode')}><Input {...register('hs_code')} placeholder={t('modal.hsCodePlaceholder')} /></FormGroup>
+                <FormGroup label={t('modal.originCountry')}><Input {...register('origin_country')} placeholder={t('modal.originCountryPlaceholder')} /></FormGroup>
               </FormRow>
               <FormRow>
-                <FormGroup label="Species / Pulp Type"><Input {...register('species')} placeholder="e.g. NBSK, BHKP" /></FormGroup>
-                <FormGroup label="Grade"><Input {...register('grade')} placeholder="e.g. Standard" /></FormGroup>
+                <FormGroup label={t('modal.speciesPulpType')}><Input {...register('species')} placeholder={t('modal.speciesPlaceholder')} /></FormGroup>
+                <FormGroup label={t('modal.grade')}><Input {...register('grade')} placeholder={t('modal.gradePlaceholder')} /></FormGroup>
               </FormRow>
-              <FormGroup label="Description" className="mb-2.5">
-                <Textarea rows={2} {...register('description')} placeholder="Technical specs, certifications…" />
+              <FormGroup label={t('modal.description')} className="mb-2.5">
+                <Textarea rows={2} {...register('description')} placeholder={t('modal.descriptionPlaceholder')} />
               </FormGroup>
               <DialogFooter>
-                <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={createP.isPending || updateP.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>Save</button>
+                <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">{tc('btn.cancel')}</button>
+                <button type="submit" disabled={createP.isPending || updateP.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>{tc('btn.save')}</button>
               </DialogFooter>
             </form>
           </DialogContent>

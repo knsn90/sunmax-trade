@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useTradeFile, useChangeStatus, useNoteDelay } from '@/hooks/useTradeFiles';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate, fCurrency, fUSD } from '@/lib/formatters';
-import { TRADE_FILE_STATUS_LABELS, TRANSACTION_TYPE_LABELS } from '@/types/enums';
 import type { Invoice, PackingList, Proforma } from '@/types/database';
 import type { TradeFileStatus } from '@/types/enums';
 import { ToSaleModal } from '@/components/trade-files/ToSaleModal';
@@ -131,6 +131,9 @@ function DocRow({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export function TradeFileDetailPage() {
+  const { t } = useTranslation('tradeFiles');
+  const { t: tc } = useTranslation('common');
+
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -171,7 +174,7 @@ export function TradeFileDetailPage() {
   const noteDelay = useNoteDelay();
 
   if (isLoading) return <LoadingSpinner />;
-  if (!file) return <div className="text-center py-12 text-gray-400 text-sm">File not found</div>;
+  if (!file) return <div className="text-center py-12 text-gray-400 text-sm">{t('detail.fileNotFound')}</div>;
 
   const isSaleOrDel = file.status === 'sale' || file.status === 'delivery';
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
@@ -184,7 +187,7 @@ export function TradeFileDetailPage() {
       setCancelModalOpen(true);
       return;
     }
-    if (window.confirm(`Change status to "${TRADE_FILE_STATUS_LABELS[newStatus as TradeFileStatus]}"?`))
+    if (window.confirm(t('detail.statusConfirm', { label: tc('status.' + newStatus) })))
       changeStatus.mutate({ id: file!.id, status: newStatus as TradeFileStatus });
   }
 
@@ -206,7 +209,7 @@ export function TradeFileDetailPage() {
     setDeliveryOpen(true);
   }
 
-  const custName = file.customer?.name ?? 'Unknown';
+  const custName = file.customer?.name ?? t('unknown');
   const custInitials = custName.split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
   const avatarColors = ['#dc2626','#2563eb','#7c3aed','#059669','#d97706'];
   let hv = 0; for (let i = 0; i < custName.length; i++) hv = custName.charCodeAt(i) + ((hv << 5) - hv);
@@ -218,21 +221,21 @@ export function TradeFileDetailPage() {
       {/* 2-col grid: key stats */}
       <div className="grid grid-cols-2 divide-x divide-gray-50">
         <div className="px-4 py-3 border-b border-gray-50">
-          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Date</div>
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.date')}</div>
           <div className="text-[13px] font-bold text-gray-900">{fDate(file.file_date)}</div>
         </div>
         <div className="px-4 py-3 border-b border-gray-50">
-          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Tonnage</div>
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.tonnage')}</div>
           <div className="text-[13px] font-bold text-gray-900">{fN(file.tonnage_mt, 3)} MT</div>
         </div>
         <div className="px-4 py-3 border-b border-gray-50">
-          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Sale Price</div>
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.salePrice')}</div>
           <div className="text-[13px] font-bold text-gray-900">
             {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
           </div>
         </div>
         <div className="px-4 py-3 border-b border-gray-50">
-          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">Delivered</div>
+          <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.delivered')}</div>
           <div className="text-[13px] font-bold text-gray-900">
             {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
           </div>
@@ -242,19 +245,19 @@ export function TradeFileDetailPage() {
       <div className="divide-y divide-gray-50">
         {file.customer_ref && (
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-[11px] text-gray-400">Ref</span>
+            <span className="text-[11px] text-gray-400">{t('detail.fileInfo.ref')}</span>
             <span className="text-[11px] font-medium text-gray-700">{file.customer_ref}</span>
           </div>
         )}
         {file.notes && (
           <div className="flex items-start justify-between gap-4 px-4 py-2.5">
-            <span className="text-[11px] text-gray-400 shrink-0">Notes</span>
+            <span className="text-[11px] text-gray-400 shrink-0">{t('detail.fileInfo.notes')}</span>
             <span className="text-[11px] text-gray-700 text-right">{file.notes}</span>
           </div>
         )}
         {file.status === 'cancelled' && (
           <div className="flex items-start justify-between gap-4 px-4 py-2.5 bg-red-50">
-            <span className="text-[11px] text-red-500 font-medium shrink-0">Cancel Reason</span>
+            <span className="text-[11px] text-red-500 font-medium shrink-0">{t('detail.fileInfo.cancelReason')}</span>
             <span className="text-[11px] text-red-700 text-right">{file.cancel_reason || '—'}</span>
           </div>
         )}
@@ -265,20 +268,20 @@ export function TradeFileDetailPage() {
   const actionsPanel = (isMobile: boolean) => (
     <div className={cn('bg-white rounded-2xl shadow-sm overflow-hidden', isMobile ? '' : '')}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Actions</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{t('detail.actions.title')}</span>
       </div>
       <div className="px-3 py-2">
-        <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit File"
+        <ActionItem icon={<Pencil className="h-4 w-4" />} label={t('detail.actions.editFile')}
           onClick={() => { setActionsOpen(false); setEditFileOpen(true); }} />
         {isSaleOrDel && (
           <>
-            <ActionItem icon={<Receipt className="h-4 w-4" />} label="Sale Invoice"
+            <ActionItem icon={<Receipt className="h-4 w-4" />} label={t('detail.actions.saleInvoice')}
               onClick={() => { setActionsOpen(false); const e = file.invoices?.find(i => i.invoice_type === 'sale') ?? null; setEditSaleInvoice(e); setSaleInvoiceOpen(true); }} />
-            <ActionItem icon={<Receipt className="h-4 w-4" />} label="Commercial Invoice"
+            <ActionItem icon={<Receipt className="h-4 w-4" />} label={t('detail.actions.commercialInvoice')}
               onClick={() => { setActionsOpen(false); setEditInvoice(null); setInvoiceOpen(true); }} />
-            <ActionItem icon={<Package className="h-4 w-4" />} label="Packing List"
+            <ActionItem icon={<Package className="h-4 w-4" />} label={t('detail.actions.packingList')}
               onClick={() => { setActionsOpen(false); setEditPL(null); setPackingOpen(true); }} />
-            <ActionItem icon={<FileText className="h-4 w-4" />} label="Proforma Invoice"
+            <ActionItem icon={<FileText className="h-4 w-4" />} label={t('detail.actions.proformaInvoice')}
               onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
           </>
         )}
@@ -286,17 +289,17 @@ export function TradeFileDetailPage() {
           <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
             <RotateCcw className="h-4 w-4" />
           </div>
-          <span className="flex-1 text-[13px] font-medium text-gray-800">Change Status</span>
+          <span className="flex-1 text-[13px] font-medium text-gray-800">{t('detail.actions.changeStatus')}</span>
           <NativeSelect
             className="text-[12px] font-semibold text-gray-600 bg-gray-100 rounded-lg px-2 py-1 border-0 outline-none"
             value={file.status}
             onChange={(e) => { handleStatusChange(e.target.value); setActionsOpen(false); }}
           >
-            <option value="request">Request</option>
-            <option value="sale">Sale</option>
-            <option value="delivery">Delivery</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="request">{tc('status.request')}</option>
+            <option value="sale">{tc('status.sale')}</option>
+            <option value="delivery">{tc('status.delivery')}</option>
+            <option value="completed">{tc('status.completed')}</option>
+            <option value="cancelled">{tc('status.cancelled')}</option>
           </NativeSelect>
         </div>
       </div>
@@ -310,14 +313,14 @@ export function TradeFileDetailPage() {
       <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel File</DialogTitle>
+            <DialogTitle>{t('detail.cancelModal.title')}</DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-3">
-            <p className="text-sm text-gray-500">Please provide a reason for cancelling this file.</p>
+            <p className="text-sm text-gray-500">{t('detail.cancelModal.body')}</p>
             <textarea
               className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
               rows={4}
-              placeholder="Cancellation reason..."
+              placeholder={t('detail.cancelModal.placeholder')}
               value={cancelReasonText}
               onChange={e => setCancelReasonText(e.target.value)}
               autoFocus
@@ -327,12 +330,12 @@ export function TradeFileDetailPage() {
             <button
               className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200"
               onClick={() => setCancelModalOpen(false)}
-            >Cancel</button>
+            >{tc('btn.cancel')}</button>
             <button
               className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
               onClick={confirmCancellation}
               disabled={changeStatus.isPending}
-            >Confirm Cancellation</button>
+            >{t('detail.cancelModal.confirmBtn')}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -345,10 +348,10 @@ export function TradeFileDetailPage() {
         <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm px-4 pt-4 pb-5">
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 active:opacity-60">
-              <ArrowLeft className="h-4 w-4" /> Back
+              <ArrowLeft className="h-4 w-4" /> {tc('btn.back')}
             </button>
             <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
-              {TRADE_FILE_STATUS_LABELS[file.status]}
+              {tc('status.' + file.status)}
             </span>
           </div>
           <div className="flex items-start gap-3">
@@ -373,15 +376,15 @@ export function TradeFileDetailPage() {
           <div className="flex gap-2 px-4 pb-4">
             {file.status === 'request' ? (
               <button onClick={() => setSaleOpen(true)} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
-                <TrendingUp className="h-3.5 w-3.5" /> Convert to Sale
+                <TrendingUp className="h-3.5 w-3.5" /> {t('detail.btn.convertToSale')}
               </button>
             ) : file.status === 'sale' ? (
               <button onClick={openDeliveryWithPacking} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
-                <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
+                <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? t('detail.btn.editDelivery') : t('detail.btn.addDelivery')}
               </button>
             ) : (
               <button onClick={() => setActionsOpen(true)} className="flex-1 h-10 rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 flex items-center justify-center gap-2 shadow-sm active:opacity-70">
-                <MoreVertical className="h-4 w-4" /> Actions
+                <MoreVertical className="h-4 w-4" /> {t('detail.btn.actions')}
               </button>
             )}
             {(file.status === 'request' || file.status === 'sale') && (
@@ -399,7 +402,7 @@ export function TradeFileDetailPage() {
             <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl pb-safe">
               <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
               <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-                <span className="text-[13px] font-bold text-gray-900">Actions</span>
+                <span className="text-[13px] font-bold text-gray-900">{t('detail.btn.actions')}</span>
                 <button onClick={() => setActionsOpen(false)} className="text-gray-400 p-1"><X className="h-4 w-4" /></button>
               </div>
               <div className="px-3 py-2">{actionsPanel(true)}</div>
@@ -414,38 +417,38 @@ export function TradeFileDetailPage() {
         {/* ── Sale Details ─────────────────────────────────────────────── */}
         {file.selling_price ? (
           <Section
-            title="Sale Details"
+            title={t('detail.saleDetails.title')}
             icon={<TrendingUp className="h-3.5 w-3.5" />}
             accent
             right={writable ? (
               <div className="flex items-center gap-2">
                 {file.eta && !['completed','cancelled'].includes(file.status) && (
                   <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
-                    <Bell className="h-3 w-3" /> Delay
+                    <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
                   </button>
                 )}
                 <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-                  <Pencil className="h-3 w-3" /> Edit
+                  <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                 </button>
               </div>
             ) : undefined}
           >
-            <KV label="Sale Price" value={`${fCurrency(file.selling_price)}/MT`} bold />
-            <KV label="Purchase" value={`${fCurrency(file.purchase_price)}/MT`} />
-            <KV label="Supplier" value={file.supplier?.name ?? '—'} />
-            <KV label="Incoterms" value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
-            {file.eta && <KV label="ETA" value={fDate(file.eta)} />}
+            <KV label={t('detail.saleDetails.salePrice')} value={`${fCurrency(file.selling_price)}/MT`} bold />
+            <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
+            <KV label={t('detail.saleDetails.supplier')} value={file.supplier?.name ?? '—'} />
+            <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
+            {file.eta && <KV label={t('detail.saleDetails.eta')} value={fDate(file.eta)} />}
             {file.revised_eta && (
-              <KV label="Revised ETA" value={
+              <KV label={t('detail.saleDetails.revisedEta')} value={
                 <span className="flex items-center gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                   <span className="font-bold text-amber-600">{fDate(file.revised_eta)}</span>
                 </span>
               } />
             )}
-            {file.delay_notes && <KV label="Delay Reason" value={file.delay_notes} />}
+            {file.delay_notes && <KV label={t('detail.saleDetails.delayReason')} value={file.delay_notes} />}
             {file.vessel_name && (
-              <KV label="Vessel" value={
+              <KV label={t('detail.saleDetails.vessel')} value={
                 <a
                   href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`}
                   target="_blank"
@@ -458,32 +461,32 @@ export function TradeFileDetailPage() {
                 </a>
               } />
             )}
-            {file.register_no && <KV label="Register" value={file.register_no} />}
+            {file.register_no && <KV label={t('detail.saleDetails.register')} value={file.register_no} />}
           </Section>
         ) : (
           <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 mb-3 text-[12px] text-amber-700 font-medium">
-            No sale details entered yet
+            {t('detail.saleDetails.noSaleDetails')}
           </div>
         )}
 
         {/* ── Delivery ─────────────────────────────────────────────────── */}
         {file.delivered_admt && (
           <Section
-            title="Delivery"
+            title={t('detail.delivery.title')}
             icon={<Truck className="h-3.5 w-3.5" />}
             right={writable ? (
               <button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-                <Pencil className="h-3 w-3" /> Edit
+                <Pencil className="h-3 w-3" /> {tc('btn.edit')}
               </button>
             ) : undefined}
           >
             <div className="grid grid-cols-2 gap-x-4">
-              <KV label="ADMT" value={fN(file.delivered_admt, 3)} bold />
-              <KV label="Gross (KG)" value={fN(file.gross_weight_kg)} />
-              <KV label="Packages" value={file.packages ?? '—'} />
-              <KV label="Arrival" value={fDate(file.arrival_date)} />
-              <KV label="B/L No" value={file.bl_number || '—'} />
-              <KV label="SEPTI" value={file.septi_ref || '—'} />
+              <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
+              <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
+              <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
+              <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
+              <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
+              <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
             </div>
           </Section>
         )}
@@ -492,7 +495,7 @@ export function TradeFileDetailPage() {
         {((file.proformas?.length ?? 0) > 0 ||
           (file.invoices?.length ?? 0) > 0 ||
           (file.packing_lists?.length ?? 0) > 0) && (
-          <Section title="Documents" icon={<FileText className="h-3.5 w-3.5" />}>
+          <Section title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}>
             {/* Proformas */}
             {file.proformas?.map((pi) => (
               <DocRow
@@ -506,17 +509,17 @@ export function TradeFileDetailPage() {
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { setEditPI(pi); setProformaOpen(true); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Pencil className="h-3 w-3" /> Edit
+                    <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                   </button>
                 )}
                 {settings && (
                   <button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Printer className="h-3 w-3" /> Print
+                    <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
-                  <button onClick={() => { if (window.confirm('Delete?')) deletePI.mutate(pi.id); }}
+                  <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePI.mutate(pi.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -537,13 +540,13 @@ export function TradeFileDetailPage() {
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Pencil className="h-3 w-3" /> Edit
+                    <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                   </button>
                 )}
                 {settings && (
                   <button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Printer className="h-3 w-3" /> Print
+                    <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
               </DocRow>
@@ -562,17 +565,17 @@ export function TradeFileDetailPage() {
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Pencil className="h-3 w-3" /> Edit
+                    <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                   </button>
                 )}
                 {settings && (
                   <button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Printer className="h-3 w-3" /> Print
+                    <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
-                  <button onClick={() => { if (window.confirm('Delete?')) deleteInv.mutate(inv.id); }}
+                  <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -585,24 +588,24 @@ export function TradeFileDetailPage() {
               <DocRow
                 key={pl.id}
                 no={pl.packing_list_no}
-                date={`${pl.packing_list_items?.length ?? 0} vehicles · ${fN(pl.total_admt, 3)} ADMT`}
+                date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })}
                 status={pl.doc_status ?? 'draft'}
               >
                 <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { setEditPL(pl); setPackingOpen(true); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Pencil className="h-3 w-3" /> Edit
+                    <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                   </button>
                 )}
                 {settings && (
                   <button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                    <Printer className="h-3 w-3" /> Print
+                    <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
-                  <button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }}
+                  <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -614,38 +617,38 @@ export function TradeFileDetailPage() {
 
         {/* ── Expenses ─────────────────────────────────────────────────── */}
         <Section
-          title="Expenses"
+          title={t('detail.expenses.title')}
           icon={<Receipt className="h-3.5 w-3.5" />}
           right={writable ? (
             <div className="flex gap-1.5">
               <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })}
                 className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
-                <Plus className="h-3 w-3" /> Purchase
+                <Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}
               </button>
               <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })}
                 className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
-                <Plus className="h-3 w-3" /> Service
+                <Plus className="h-3 w-3" /> {t('detail.expenses.addService')}
               </button>
             </div>
           ) : undefined}
         >
           {expenses.length === 0 ? (
-            <div className="text-[12px] text-gray-400 py-2 text-center">No expense records yet</div>
+            <div className="text-[12px] text-gray-400 py-2 text-center">{t('detail.expenses.noRecords')}</div>
           ) : (
-            expenses.map(t => (
-              <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+            expenses.map(txn => (
+              <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <div className="min-w-0">
-                  <div className="text-[12px] font-medium text-gray-800 truncate">{t.description || '—'}</div>
-                  <div className="text-[10px] text-gray-400">{t.transaction_date} · {TRANSACTION_TYPE_LABELS[t.transaction_type]}</div>
+                  <div className="text-[12px] font-medium text-gray-800 truncate">{txn.description || '—'}</div>
+                  <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
-                  <span className="text-[12px] font-bold text-gray-800">{fUSD(t.amount_usd ?? t.amount)}</span>
+                  <span className="text-[12px] font-bold text-gray-800">{fUSD(txn.amount_usd ?? txn.amount)}</span>
                   <span className={cn(
                     'text-[9px] px-2 py-0.5 rounded-full font-bold',
-                    t.payment_status === 'paid' ? 'bg-green-100 text-green-700'
-                    : t.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
+                    txn.payment_status === 'paid' ? 'bg-green-100 text-green-700'
+                    : txn.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
                     : 'bg-red-100 text-red-700'
-                  )}>{t.payment_status}</span>
+                  )}>{tc(`payStatus.${txn.payment_status}`)}</span>
                 </div>
               </div>
             ))
@@ -654,7 +657,7 @@ export function TradeFileDetailPage() {
 
         {/* ── Transport Plan ───────────────────────────────────────────── */}
         {['sale', 'delivery', 'completed'].includes(file.status) && (
-          <Section title="Transport Plan" icon={<Truck className="h-3.5 w-3.5" />}>
+          <Section title={t('detail.transport.title')} icon={<Truck className="h-3.5 w-3.5" />}>
             <TransportPlanSection file={file} writable={writable} />
           </Section>
         )}
@@ -671,10 +674,10 @@ export function TradeFileDetailPage() {
           {/* Back + status */}
           <div className="flex items-center justify-between pt-1">
             <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 transition-colors">
-              <ArrowLeft className="h-4 w-4" /> Back
+              <ArrowLeft className="h-4 w-4" /> {tc('btn.back')}
             </button>
             <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
-              {TRADE_FILE_STATUS_LABELS[file.status]}
+              {tc('status.' + file.status)}
             </span>
           </div>
 
@@ -700,12 +703,12 @@ export function TradeFileDetailPage() {
           {/* Primary action */}
           {writable && file.status === 'request' && (
             <button onClick={() => setSaleOpen(true)} className="w-full h-10 rounded-xl text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity" style={{ background: accent }}>
-              <TrendingUp className="h-3.5 w-3.5" /> Convert to Sale
+              <TrendingUp className="h-3.5 w-3.5" /> {t('detail.btn.convertToSale')}
             </button>
           )}
           {writable && file.status === 'sale' && (
             <button onClick={openDeliveryWithPacking} className="w-full h-10 rounded-xl text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity" style={{ background: accent }}>
-              <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? 'Edit Delivery' : '+ Delivery'}
+              <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? t('detail.btn.editDelivery') : t('detail.btn.addDelivery')}
             </button>
           )}
 
@@ -717,33 +720,33 @@ export function TradeFileDetailPage() {
         <div className="space-y-3 py-1 pb-6">
           {/* Sale Details */}
           {file.selling_price ? (
-            <Section title="Sale Details" icon={<TrendingUp className="h-3.5 w-3.5" />} accent
+            <Section title={t('detail.saleDetails.title')} icon={<TrendingUp className="h-3.5 w-3.5" />} accent
               right={writable ? (
                 <div className="flex items-center gap-2">
                   {file.eta && !['completed','cancelled'].includes(file.status) && (
                     <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
-                      <Bell className="h-3 w-3" /> Delay
+                      <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
                     </button>
                   )}
-                  <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>
+                  <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>
                 </div>
               ) : undefined}>
-              <KV label="Sale Price" value={`${fCurrency(file.selling_price)}/MT`} bold />
-              <KV label="Purchase" value={`${fCurrency(file.purchase_price)}/MT`} />
-              <KV label="Supplier" value={file.supplier?.name ?? '—'} />
-              <KV label="Incoterms" value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
-              {file.eta && <KV label="ETA" value={fDate(file.eta)} />}
+              <KV label={t('detail.saleDetails.salePrice')} value={`${fCurrency(file.selling_price)}/MT`} bold />
+              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
+              <KV label={t('detail.saleDetails.supplier')} value={file.supplier?.name ?? '—'} />
+              <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
+              {file.eta && <KV label={t('detail.saleDetails.eta')} value={fDate(file.eta)} />}
               {file.revised_eta && (
-                <KV label="Revised ETA" value={
+                <KV label={t('detail.saleDetails.revisedEta')} value={
                   <span className="flex items-center gap-1.5">
                     <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                     <span className="font-bold text-amber-600">{fDate(file.revised_eta)}</span>
                   </span>
                 } />
               )}
-              {file.delay_notes && <KV label="Delay Reason" value={file.delay_notes} />}
+              {file.delay_notes && <KV label={t('detail.saleDetails.delayReason')} value={file.delay_notes} />}
               {file.vessel_name && (
-              <KV label="Vessel" value={
+              <KV label={t('detail.saleDetails.vessel')} value={
                 <a
                   href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`}
                   target="_blank"
@@ -756,90 +759,90 @@ export function TradeFileDetailPage() {
                 </a>
               } />
             )}
-              {file.register_no && <KV label="Register" value={file.register_no} />}
+              {file.register_no && <KV label={t('detail.saleDetails.register')} value={file.register_no} />}
             </Section>
           ) : (
             <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-[12px] text-amber-700 font-medium">
-              No sale details entered yet
+              {t('detail.saleDetails.noSaleDetails')}
             </div>
           )}
 
           {/* Delivery */}
           {file.delivered_admt && (
-            <Section title="Delivery" icon={<Truck className="h-3.5 w-3.5" />}
-              right={writable ? (<button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>) : undefined}>
+            <Section title={t('detail.delivery.title')} icon={<Truck className="h-3.5 w-3.5" />}
+              right={writable ? (<button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>) : undefined}>
               <div className="grid grid-cols-2 gap-x-4">
-                <KV label="ADMT" value={fN(file.delivered_admt, 3)} bold />
-                <KV label="Gross (KG)" value={fN(file.gross_weight_kg)} />
-                <KV label="Packages" value={file.packages ?? '—'} />
-                <KV label="Arrival" value={fDate(file.arrival_date)} />
-                <KV label="B/L No" value={file.bl_number || '—'} />
-                <KV label="SEPTI" value={file.septi_ref || '—'} />
+                <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
+                <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
+                <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
+                <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
+                <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
+                <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
               </div>
             </Section>
           )}
 
           {/* Documents */}
           {((file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0) && (
-            <Section title="Documents" icon={<FileText className="h-3.5 w-3.5" />}>
+            <Section title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}>
               {file.proformas?.map((pi) => (
                 <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'}>
                   <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
-                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
-                  {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
-                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Delete?')) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                  {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                 </DocRow>
               ))}
               {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
                 <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
                   <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
-                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
+                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
                 </DocRow>
               ))}
               {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
                 <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
                   <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
-                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
-                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Delete?')) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                 </DocRow>
               ))}
               {file.packing_lists?.map((pl) => (
-                <DocRow key={pl.id} no={pl.packing_list_no} date={`${pl.packing_list_items?.length ?? 0} vehicles · ${fN(pl.total_admt, 3)} ADMT`} status={pl.doc_status ?? 'draft'}>
+                <DocRow key={pl.id} no={pl.packing_list_no} date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })} status={pl.doc_status ?? 'draft'}>
                   <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
-                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> Edit</button>)}
-                  {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> Print</button>)}
-                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                  {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                 </DocRow>
               ))}
             </Section>
           )}
 
           {/* Expenses */}
-          <Section title="Expenses" icon={<Receipt className="h-3.5 w-3.5" />}
+          <Section title={t('detail.expenses.title')} icon={<Receipt className="h-3.5 w-3.5" />}
             right={writable ? (
               <div className="flex gap-1.5">
-                <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> Purchase</button>
-                <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> Service</button>
+                <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
+                <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
               </div>
             ) : undefined}>
             {expenses.length === 0 ? (
-              <div className="text-[12px] text-gray-400 py-2 text-center">No expense records yet</div>
+              <div className="text-[12px] text-gray-400 py-2 text-center">{t('detail.expenses.noRecords')}</div>
             ) : (
-              expenses.map(t => (
-                <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              expenses.map(txn => (
+                <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                   <div className="min-w-0">
-                    <div className="text-[12px] font-medium text-gray-800 truncate">{t.description || '—'}</div>
-                    <div className="text-[10px] text-gray-400">{t.transaction_date} · {TRANSACTION_TYPE_LABELS[t.transaction_type]}</div>
+                    <div className="text-[12px] font-medium text-gray-800 truncate">{txn.description || '—'}</div>
+                    <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <span className="text-[12px] font-bold text-gray-800">{fUSD(t.amount_usd ?? t.amount)}</span>
+                    <span className="text-[12px] font-bold text-gray-800">{fUSD(txn.amount_usd ?? txn.amount)}</span>
                     <span className={cn('text-[9px] px-2 py-0.5 rounded-full font-bold',
-                      t.payment_status === 'paid' ? 'bg-green-100 text-green-700'
-                      : t.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
+                      txn.payment_status === 'paid' ? 'bg-green-100 text-green-700'
+                      : txn.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
                       : 'bg-red-100 text-red-700'
-                    )}>{t.payment_status}</span>
+                    )}>{tc(`payStatus.${txn.payment_status}`)}</span>
                   </div>
                 </div>
               ))
@@ -848,7 +851,7 @@ export function TradeFileDetailPage() {
 
           {/* Transport Plan */}
           {['sale', 'delivery', 'completed'].includes(file.status) && (
-            <Section title="Transport Plan" icon={<Truck className="h-3.5 w-3.5" />}>
+            <Section title={t('detail.transport.title')} icon={<Truck className="h-3.5 w-3.5" />}>
               <TransportPlanSection file={file} writable={writable} />
             </Section>
           )}
@@ -860,33 +863,33 @@ export function TradeFileDetailPage() {
         <>
           <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setDelayOpen(false)} />
           <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-5 max-w-sm mx-auto">
-            <div className="text-[15px] font-bold text-gray-900 mb-1">Note Delay</div>
+            <div className="text-[15px] font-bold text-gray-900 mb-1">{t('detail.delay.title')}</div>
             {file.eta && (
               <div className="text-[12px] text-gray-400 mb-4">
-                Original ETA: <span className="font-semibold text-gray-700">{fDate(file.eta)}</span>
+                {t('detail.delay.originalEta', { date: fDate(file.eta) })}
               </div>
             )}
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">New ETA</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('detail.delay.newEtaLabel')}</label>
             <input
               type="date"
               value={delayEta}
               onChange={e => setDelayEta(e.target.value)}
               className="w-full mt-1 mb-3 px-3 py-2.5 rounded-xl border border-gray-200 text-[13px] outline-none focus:border-blue-400"
             />
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Delay Reason</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('detail.delay.reasonLabel')}</label>
             <textarea
               value={delayNotes}
               onChange={e => setDelayNotes(e.target.value)}
               className="w-full mt-1 mb-4 px-3 py-2.5 rounded-xl border border-gray-200 text-[13px] resize-none outline-none focus:border-blue-400"
               rows={2}
-              placeholder="e.g. Vessel delayed at port of loading"
+              placeholder={t('detail.delay.placeholder')}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => setDelayOpen(false)}
                 className="flex-1 h-10 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600"
               >
-                Cancel
+                {tc('btn.cancel')}
               </button>
               <button
                 onClick={() => {
@@ -898,7 +901,7 @@ export function TradeFileDetailPage() {
                 className="flex-1 h-10 rounded-xl text-white text-[13px] font-semibold disabled:opacity-50"
                 style={{ background: accent }}
               >
-                Save Delay
+                {t('detail.delay.saveBtn')}
               </button>
             </div>
           </div>

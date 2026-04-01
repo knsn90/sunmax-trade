@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTransactions, useTransactionSummary, useDeleteTransaction } from '@/hooks/useTransactions';
 import { useSaleInvoices, useDeleteInvoice } from '@/hooks/useDocuments';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
@@ -23,14 +24,6 @@ import {
 } from 'lucide-react';
 
 type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash';
-
-const TABS: { key: AccTab; label: string }[] = [
-  { key: 'all',  label: 'All' },
-  { key: 'buy',  label: 'Purchases' },
-  { key: 'svc',  label: 'Services' },
-  { key: 'sale', label: 'Sale Invoices' },
-  { key: 'cash', label: 'Cash Flow' },
-];
 
 const TYPE_COLORS: Record<string, string> = {
   purchase_inv: '#f59e0b',
@@ -123,11 +116,21 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
 }
 
 export function AccountingPage() {
+  const { t } = useTranslation('accounting');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const writable = canWriteTransactions(profile?.role);
   const admin = isAdmin(profile?.role);
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+
+  const TABS: { key: AccTab; label: string }[] = [
+    { key: 'all',  label: t('tabs.all') },
+    { key: 'buy',  label: t('tabs.purchases') },
+    { key: 'svc',  label: t('tabs.services') },
+    { key: 'sale', label: t('tabs.saleInvoices') },
+    { key: 'cash', label: t('tabs.cashFlow') },
+  ];
 
   const [activeTab, setActiveTab] = useState<AccTab>('all');
   const [typeFilter, setTypeFilter] = useState('');
@@ -161,7 +164,7 @@ export function AccountingPage() {
   function openNew() { setEditingTxn(null); setTxnModalOpen(true); }
   function openEdit(txn: Transaction) { setEditingTxn(txn); setTxnModalOpen(true); }
   function handleDelete(id: string) {
-    if (window.confirm('Delete this transaction? This cannot be undone.')) deleteTxn.mutate(id);
+    if (window.confirm(t('confirm.deleteTransaction'))) deleteTxn.mutate(id);
   }
 
   const filteredTxns = useMemo(() => {
@@ -204,16 +207,16 @@ export function AccountingPage() {
         {/* ── KPI Row ──────────────────────────────────────────────────── */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-3 md:pt-0">
-            <KpiCard label="Receivable"  value={fUSD(summary.totalReceivable)} icon={<TrendingUp className="h-4 w-4"/>}   color="#0ea5e9" />
-            <KpiCard label="Payable"     value={fUSD(summary.totalPayable)}    icon={<TrendingDown className="h-4 w-4"/>} color="#ef4444" />
-            <KpiCard label="Revenue"     value={fUSD(summary.totalRevenue)}    icon={<BarChart2 className="h-4 w-4"/>}    color="#10b981" />
-            <KpiCard label="Costs"       value={fUSD(summary.totalCost)}       icon={<Wallet className="h-4 w-4"/>}       color="#f59e0b" />
+            <KpiCard label={t('kpi.receivable')}  value={fUSD(summary.totalReceivable)} icon={<TrendingUp className="h-4 w-4"/>}   color="#0ea5e9" />
+            <KpiCard label={t('kpi.payable')}     value={fUSD(summary.totalPayable)}    icon={<TrendingDown className="h-4 w-4"/>} color="#ef4444" />
+            <KpiCard label={t('kpi.revenue')}     value={fUSD(summary.totalRevenue)}    icon={<BarChart2 className="h-4 w-4"/>}    color="#10b981" />
+            <KpiCard label={t('kpi.costs')}       value={fUSD(summary.totalCost)}       icon={<Wallet className="h-4 w-4"/>}       color="#f59e0b" />
             <KpiCard
-              label="Profit / Loss"
+              label={t('kpi.profitLoss')}
               value={fUSD(profit)}
               icon={profit >= 0 ? <TrendingUp className="h-4 w-4"/> : <TrendingDown className="h-4 w-4"/>}
               color={profit >= 0 ? '#10b981' : '#ef4444'}
-              sub={profit >= 0 ? 'Profitable' : 'Loss'}
+              sub={profit >= 0 ? tc('status.profitable') : tc('status.loss')}
             />
           </div>
         )}
@@ -241,11 +244,11 @@ export function AccountingPage() {
           {activeTab !== 'sale' && (
             <div className="hidden md:flex items-center gap-2">
               <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-44" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-                <option value="">All Types</option>
+                <option value="">{t('filters.allTypes')}</option>
                 {Object.entries(TRANSACTION_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </NativeSelect>
               <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-40" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                <option value="">All Statuses</option>
+                <option value="">{t('filters.allStatuses')}</option>
                 {Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </NativeSelect>
             </div>
@@ -257,7 +260,7 @@ export function AccountingPage() {
               <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
               <input
                 className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-                placeholder="Search..."
+                placeholder={t('filters.search')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -279,11 +282,11 @@ export function AccountingPage() {
         {activeTab !== 'sale' && (
           <div className="flex md:hidden gap-2">
             <NativeSelect className="flex-1 h-9 rounded-xl border-gray-200 text-[12px]" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-              <option value="">All Types</option>
+              <option value="">{t('filters.allTypes')}</option>
               {Object.entries(TRANSACTION_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </NativeSelect>
             <NativeSelect className="flex-1 h-9 rounded-xl border-gray-200 text-[12px]" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">All Statuses</option>
+              <option value="">{t('filters.allStatuses')}</option>
               {Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </NativeSelect>
           </div>
@@ -297,7 +300,7 @@ export function AccountingPage() {
               {filteredSaleInvoices.length === 0 ? (
                 <div className="flex flex-col items-center py-14 text-gray-400">
                   <BarChart2 className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">No sale invoices yet</p>
+                  <p className="text-sm">{t('empty.noSaleInvoices')}</p>
                 </div>
               ) : filteredSaleInvoices.map(inv => (
                 <div key={inv.id} className="px-4 py-3 flex items-center gap-3">
@@ -328,7 +331,7 @@ export function AccountingPage() {
                       </button>
                     )}
                     {admin && (inv.doc_status ?? 'draft') !== 'approved' && (
-                      <button onClick={() => { if (window.confirm('Delete sale invoice?')) deleteInvoice.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                      <button onClick={() => { if (window.confirm(t('confirm.deleteSaleInvoice'))) deleteInvoice.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -351,7 +354,7 @@ export function AccountingPage() {
                 </thead>
                 <tbody>
                   {filteredSaleInvoices.length === 0 ? (
-                    <tr><td colSpan={5} className="py-14 text-center text-[13px] text-gray-400">No sale invoices yet</td></tr>
+                    <tr><td colSpan={5} className="py-14 text-center text-[13px] text-gray-400">{t('empty.noSaleInvoices')}</td></tr>
                   ) : filteredSaleInvoices.map(inv => (
                     <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                       <td className="px-4 py-3">
@@ -384,7 +387,7 @@ export function AccountingPage() {
                             </button>
                           )}
                           {admin && (inv.doc_status ?? 'draft') !== 'approved' && (
-                            <button onClick={() => { if (window.confirm('Delete?')) deleteInvoice.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                            <button onClick={() => { if (window.confirm(t('confirm.deleteLabel'))) deleteInvoice.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           )}
@@ -406,7 +409,7 @@ export function AccountingPage() {
               {filteredTxns.length === 0 ? (
                 <div className="flex flex-col items-center py-14 text-gray-400">
                   <BarChart2 className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">No transactions found</p>
+                  <p className="text-sm">{t('empty.noTransactions')}</p>
                 </div>
               ) : filteredTxns.map(t => (
                 <TxnCard
@@ -437,7 +440,7 @@ export function AccountingPage() {
                 </thead>
                 <tbody>
                   {filteredTxns.length === 0 ? (
-                    <tr><td colSpan={6} className="py-14 text-center text-[13px] text-gray-400">No transactions found</td></tr>
+                    <tr><td colSpan={6} className="py-14 text-center text-[13px] text-gray-400">{t('empty.noTransactions')}</td></tr>
                   ) : filteredTxns.map(t => {
                     const remaining = t.amount - (t.paid_amount ?? 0);
                     const partyName = t.customer?.name ?? t.supplier?.name ?? t.service_provider?.name ?? t.party_name ?? '—';

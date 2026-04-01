@@ -1,0 +1,65 @@
+{
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "welcome": "Welcome,"
+  },
+  "kpi": {
+    "activeFiles": "Active Files",
+    "totalProfit": "Total Profit",
+    "receivable": "Receivable",
+    "payable": "Payable",
+    "newThisMonth": "{{count}} new this month",
+    "completed": "{{count}} completed",
+    "fromCustomers": "From customers",
+    "toSuppliers": "To suppliers"
+  },
+  "widgets": {
+    "pipeline": "Pipeline",
+    "alerts": "Alerts",
+    "recentFiles": "Recent Files",
+    "delivery": "Delivery Performance",
+    "latestPrices": "Latest Prices",
+    "revenueChart": "Revenue & Cost · Last 6 Months",
+    "deliveryStatus": "Delivery Status",
+    "delays": "Delays",
+    "delayByFile": "Delay by File (days)"
+  },
+  "actions": {
+    "seeAll": "See all",
+    "allFiles": "All files",
+    "etaReport": "ETA Report",
+    "priceList": "Price List"
+  },
+  "alerts": {
+    "etaOverdue": "ETA Overdue",
+    "etaSoon": "ETA Soon",
+    "paymentPending": "Payment Pending",
+    "daysLate": "{{count}} day(s) late · {{customer}}",
+    "daysToEta": "{{count}} day(s) · {{customer}}",
+    "daysToEtaPayment": "{{count}} day(s) to ETA · {{customer}}"
+  },
+  "chart": {
+    "revenue": "Revenue",
+    "cost": "Cost",
+    "profit": "Profit"
+  },
+  "delivery": {
+    "onTime": "On Time",
+    "lateDelivery": "Late Delivery",
+    "overdue": "Overdue",
+    "pending": "Pending"
+  },
+  "prices": {
+    "expired": "Expired",
+    "until": "Until {{date}}"
+  },
+  "empty": {
+    "allClear": "All clear — no alerts",
+    "noFiles": "No files yet",
+    "noTrades": "No trades in progress",
+    "noPrices": "No price entries yet",
+    "noChartData": "No data yet"
+  }
+}

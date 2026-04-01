@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { transactionSchema, type TransactionFormData } from '@/types/forms';
@@ -52,6 +53,9 @@ function partyFromTransaction(t: Transaction): SelectedParty | null {
 export function TransactionModal({
   open, onOpenChange, transaction, defaultType, defaultTradeFileId,
 }: TransactionModalProps) {
+  const { t } = useTranslation('accounting');
+  const { t: tc } = useTranslation('common');
+
   const isEdit = !!transaction;
   const { data: files = [] } = useTradeFiles();
   const createTxn = useCreateTransaction();
@@ -206,10 +210,10 @@ export function TransactionModal({
   }
 
   const partyLabel: Record<string, string> = {
-    svc_inv: 'Service Provider',
-    purchase_inv: 'Supplier',
-    receipt: 'Customer',
-    payment: 'Payee',
+    svc_inv: t('transaction.modal.serviceProvider'),
+    purchase_inv: t('transaction.modal.supplier'),
+    receipt: t('transaction.modal.customer'),
+    payment: t('transaction.modal.payee'),
   };
 
   return (
@@ -217,7 +221,7 @@ export function TransactionModal({
       <DialogContent size="lg">
         <DialogHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <DialogTitle>{isEdit ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
+            <DialogTitle>{isEdit ? t('transaction.modal.titleEdit') : t('transaction.modal.titleNew')}</DialogTitle>
             <div className="flex gap-1.5 flex-shrink-0">
               <SmartFill mode="transaction" onResult={handleOcrResult} formName="Transaction" />
               {!isEdit && <OcrButton mode="transaction" onResult={handleOcrResult} />}
@@ -227,21 +231,21 @@ export function TransactionModal({
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <FormRow>
-            <FormGroup label="Transaction Type *" error={errors.transaction_type?.message}>
+            <FormGroup label={`${t('transaction.modal.type')} *`} error={errors.transaction_type?.message}>
               <NativeSelect {...register('transaction_type')}>
                 {Object.entries(TRANSACTION_TYPE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
               </NativeSelect>
             </FormGroup>
-            <FormGroup label="Date *" error={errors.transaction_date?.message}>
+            <FormGroup label={`${tc('form.date')} *`} error={errors.transaction_date?.message}>
               <Input type="date" {...register('transaction_date')} />
             </FormGroup>
           </FormRow>
 
-          <FormGroup label="Trade File (optional)" className="mb-2.5">
+          <FormGroup label={t('transaction.modal.tradeFile')} className="mb-2.5">
             <NativeSelect {...register('trade_file_id')}>
-              <option value="">— Select file —</option>
+              <option value="">{t('transaction.modal.tradeFileSelect')}</option>
               {files.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.file_no} – {f.customer?.name ?? ''}
@@ -251,10 +255,10 @@ export function TransactionModal({
           </FormGroup>
 
           {/* Unified party picker for all transaction types */}
-          <FormGroup label={partyLabel[txnType] ?? 'Party'} className="mb-2.5">
+          <FormGroup label={partyLabel[txnType] ?? t('transaction.modal.party')} className="mb-2.5">
             {ocrPartyHint && (
               <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-lg px-2.5 py-1.5 mb-1.5 text-xs">
-                <span>OCR detected: <strong>{ocrPartyHint}</strong> — please select below</span>
+                <span>{t('transaction.modal.ocrDetected')} <strong>{ocrPartyHint}</strong> {t('transaction.modal.ocrInstruction')}</span>
                 <button type="button" onClick={() => setOcrPartyHint(null)} className="text-muted-foreground hover:text-foreground ml-2">✕</button>
               </div>
             )}
@@ -262,65 +266,65 @@ export function TransactionModal({
               value={selectedParty}
               onChange={handlePartyChange}
               filter={partyFilter(txnType)}
-              placeholder={`Search ${(partyLabel[txnType] ?? 'party').toLowerCase()}…`}
+              placeholder={t('transaction.modal.partyPlaceholder', { party: (partyLabel[txnType] ?? t('transaction.modal.party')).toLowerCase() })}
             />
           </FormGroup>
 
           <FormRow>
-            <FormGroup label="Description *" error={errors.description?.message}>
-              <Input {...register('description')} placeholder="e.g. Mersin customs fee" />
+            <FormGroup label={`${t('transaction.modal.description')} *`} error={errors.description?.message}>
+              <Input {...register('description')} placeholder={t('transaction.modal.descriptionPlaceholder')} />
             </FormGroup>
-            <FormGroup label="Reference No.">
+            <FormGroup label={t('transaction.modal.referenceNo')}>
               <Input {...register('reference_no')} />
             </FormGroup>
           </FormRow>
 
           <FormRow cols={isTRY ? 3 : 2}>
-            <FormGroup label="Currency">
+            <FormGroup label={tc('form.currency')}>
               <NativeSelect {...register('currency')}>
                 <option value="USD">USD</option>
                 <option value="TRY">TRY</option>
               </NativeSelect>
             </FormGroup>
-            <FormGroup label="Amount *" error={errors.amount?.message}>
+            <FormGroup label={`${t('transaction.modal.amount')} *`} error={errors.amount?.message}>
               <Input type="number" step="0.01" {...register('amount')} />
             </FormGroup>
             {isTRY && (
-              <FormGroup label="USD/TRY Rate">
-                <Input type="number" step="0.01" {...register('exchange_rate')} placeholder="e.g. 32.5" />
+              <FormGroup label={t('transaction.modal.exchangeRate')}>
+                <Input type="number" step="0.01" {...register('exchange_rate')} placeholder={t('transaction.modal.exchangeRatePlaceholder')} />
               </FormGroup>
             )}
           </FormRow>
 
           {isTRY && (
             <div className="bg-brand-50 rounded-lg px-3 py-2 mb-2.5 text-xs">
-              USD equivalent: <strong className="text-brand-600">{fUSD(usdEquivalent)}</strong>
+              {t('transaction.modal.usdEquivalent')} <strong className="text-brand-600">{fUSD(usdEquivalent)}</strong>
             </div>
           )}
 
           <FormRow>
-            <FormGroup label="Paid Amount">
+            <FormGroup label={t('transaction.modal.paidAmount')}>
               <Input type="number" step="0.01" {...register('paid_amount')} />
             </FormGroup>
-            <FormGroup label="Payment Status">
+            <FormGroup label={t('transaction.modal.paymentStatus')}>
               <NativeSelect {...register('payment_status')}>
-                <option value="open">Open</option>
-                <option value="partial">Partially Paid</option>
-                <option value="paid">Fully Paid</option>
+                <option value="open">{t('transaction.modal.statusOpen')}</option>
+                <option value="partial">{t('transaction.modal.statusPartial')}</option>
+                <option value="paid">{t('transaction.modal.statusPaid')}</option>
               </NativeSelect>
             </FormGroup>
           </FormRow>
 
-          <FormGroup label="Notes" className="mb-2">
+          <FormGroup label={tc('form.notes')} className="mb-2">
             <Textarea rows={2} {...register('notes')} />
           </FormGroup>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc('btn.cancel')}
             </Button>
             <Button type="submit" disabled={createTxn.isPending || updateTxn.isPending}>
-              {isEdit ? 'Update' : 'Save Transaction'}
+              {isEdit ? t('transaction.modal.btnUpdate') : t('transaction.modal.btnSave')}
             </Button>
           </DialogFooter>
         </form>

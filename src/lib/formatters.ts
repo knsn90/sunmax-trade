@@ -1,5 +1,6 @@
 import type { CurrencyCode } from '@/types/enums';
 import { CURRENCY_SYMBOLS } from '@/types/enums';
+import i18n from '@/i18n';
 
 /**
  * Format a number with locale grouping.
@@ -48,7 +49,8 @@ export function fDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
   try {
     const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-GB', {
+    const lang = i18n.language?.slice(0, 2) ?? 'en';
+    return d.toLocaleDateString(lang, {
       day: '2-digit',
       month: 'short',
       year: 'numeric',

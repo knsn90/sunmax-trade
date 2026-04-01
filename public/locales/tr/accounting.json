@@ -1,0 +1,74 @@
+{
+  "title": "Muhasebe",
+  "tabs": {
+    "all": "Tümü",
+    "purchases": "Alımlar",
+    "services": "Hizmetler",
+    "saleInvoices": "Satış Faturaları",
+    "cashFlow": "Nakit Akışı"
+  },
+  "filters": {
+    "allTypes": "Tüm Türler",
+    "allStatuses": "Tüm Durumlar",
+    "search": "Ara…"
+  },
+  "buttons": {
+    "newTransaction": "Yeni İşlem"
+  },
+  "kpi": {
+    "receivable": "Alacak",
+    "payable": "Borç",
+    "revenue": "Gelir",
+    "costs": "Giderler",
+    "profitLoss": "Kâr / Zarar"
+  },
+  "table": {
+    "invoiceFile": "Fatura / Dosya",
+    "customerDate": "Müşteri / Tarih",
+    "admtUnitPrice": "ADMT / Birim Fiyat",
+    "totalStatus": "Toplam / Durum",
+    "typeDate": "Tür / Tarih",
+    "fileParty": "Dosya / Taraf",
+    "amountRemaining": "Tutar / Kalan"
+  },
+  "empty": {
+    "noSaleInvoices": "Henüz satış faturası yok",
+    "noTransactions": "İşlem bulunamadı"
+  },
+  "confirm": {
+    "deleteTransaction": "Bu işlemi silmek istiyor musunuz? Bu işlem geri alınamaz.",
+    "deleteSaleInvoice": "Satış faturası silinsin mi?",
+    "deleteLabel": "Sil?"
+  },
+  "transaction": {
+    "modal": {
+      "titleNew": "Yeni İşlem",
+      "titleEdit": "İşlemi Düzenle",
+      "type": "İşlem Türü",
+      "tradeFile": "Ticaret Dosyası (isteğe bağlı)",
+      "tradeFileSelect": "— Dosya seçin —",
+      "serviceProvider": "Hizmet Sağlayıcı",
+      "supplier": "Tedarikçi",
+      "customer": "Müşteri",
+      "payee": "Alacaklı",
+      "partyPlaceholder": "{{party}} ara…",
+      "descriptionPlaceholder": "örn. Mersin gümrük ücreti",
+      "referenceNo": "Referans No.",
+      "exchangeRate": "USD/TRY Kuru",
+      "exchangeRatePlaceholder": "örn. 32,5",
+      "usdEquivalent": "USD karşılığı:",
+      "paidAmount": "Ödenen Tutar",
+      "paymentStatus": "Ödeme Durumu",
+      "btnSave": "İşlemi Kaydet",
+      "btnUpdate": "Güncelle",
+      "ocrDetected": "OCR algılandı:",
+      "ocrInstruction": "— lütfen aşağıdan seçin",
+      "description": "Açıklama",
+      "amount": "Tutar",
+      "party": "Taraf",
+      "statusOpen": "Açık",
+      "statusPartial": "Kısmen Ödendi",
+      "statusPaid": "Tam Ödendi"
+    }
+  }
+}

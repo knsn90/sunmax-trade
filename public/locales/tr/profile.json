@@ -1,0 +1,51 @@
+{
+  "title": "Profil",
+  "sections": {
+    "personalInfo": "Kişisel Bilgiler",
+    "changePassword": "Şifre Değiştir",
+    "approvalPassword": "Belge Onay Şifresi"
+  },
+  "form": {
+    "fullName": "Ad Soyad",
+    "emailReadOnly": "E-posta değiştirilemez.",
+    "role": "Rol",
+    "currentPassword": "Mevcut Şifre",
+    "currentPasswordPlaceholder": "Mevcut şifrenizi girin",
+    "newPassword": "Yeni Şifre",
+    "newPasswordPlaceholder": "En az 6 karakter",
+    "confirmPassword": "Yeni Şifre (Tekrar)",
+    "confirmPasswordPlaceholder": "Yeni şifreyi tekrar girin",
+    "currentApprovalPassword": "Mevcut Onay Şifresi",
+    "currentApprovalPasswordPlaceholder": "Mevcut şifre",
+    "newApprovalPassword": "Yeni Onay Şifresi",
+    "newApprovalPasswordPlaceholder": "Yeni şifre",
+    "confirmApprovalPassword": "Yeni Onay Şifresi (Tekrar)",
+    "confirmApprovalPasswordPlaceholder": "Şifreyi tekrar girin"
+  },
+  "photo": {
+    "btnChange": "Fotoğraf Değiştir",
+    "hint": "JPG, PNG veya WebP — maks 2MB"
+  },
+  "buttons": {
+    "save": "Kaydet",
+    "changePassword": "Şifreyi Değiştir",
+    "changing": "Değiştiriliyor…",
+    "changeApprovalPassword": "Onay Şifresini Değiştir"
+  },
+  "approvalDesc": "Belgeleri onaylarken gereken şifre.",
+  "errors": {
+    "currentPasswordRequired": "Lütfen mevcut şifrenizi girin.",
+    "passwordLength": "Yeni şifre en az 6 karakter olmalıdır.",
+    "passwordMismatch": "Yeni şifreler eşleşmiyor.",
+    "incorrectPassword": "Mevcut şifre hatalı.",
+    "approvalPasswordIncorrect": "Mevcut onay şifresi hatalı.",
+    "approvalPasswordLength": "Yeni şifre en az 4 karakter olmalıdır.",
+    "approvalPasswordMismatch": "Şifreler eşleşmiyor."
+  },
+  "success": {
+    "photoUpdated": "Fotoğraf güncellendi.",
+    "nameUpdated": "Ad güncellendi.",
+    "passwordChanged": "Şifre başarıyla değiştirildi.",
+    "approvalPasswordChanged": "Onay şifresi değiştirildi."
+  }
+}

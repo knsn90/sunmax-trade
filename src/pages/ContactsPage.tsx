@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, type MutableRefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer,
   useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier,
@@ -26,12 +27,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 type Tab = 'customers' | 'suppliers' | 'service-providers';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'customers',         label: 'Customers' },
-  { key: 'suppliers',         label: 'Suppliers' },
-  { key: 'service-providers', label: 'Service Providers' },
-];
-
 const TAB_COLORS: Record<Tab, string> = {
   'customers':         '#0ea5e9',
   'suppliers':         '#f59e0b',
@@ -52,6 +47,8 @@ function ContactAvatar({ name, color }: { name: string; color: string }) {
 
 // ─── Customers Tab ─────────────────────────────────────────────────────────────
 function CustomersTab({ accent, search, openNewRef }: { accent: string; search: string; openNewRef: MutableRefObject<(() => void) | null> }) {
+  const { t } = useTranslation('contacts');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const adminRole = isAdmin(profile?.role);
@@ -111,7 +108,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {filtered.length === 0 ? (
-          <div className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No customers yet'}</div>
+          <div className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noCustomers')}</div>
         ) : filtered.map(c => (
           <div key={c.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
             <ContactAvatar name={c.name} color={color} />
@@ -122,7 +119,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
               </div>
               {(c.country || c.city) && <div className="text-xs text-gray-500 truncate">{[c.city, c.country].filter(Boolean).join(', ')}</div>}
               {(c.contact_email || c.contact_phone) && <div className="text-xs text-gray-400 truncate">{c.contact_email || c.contact_phone}</div>}
-              {c.payment_terms && <div className="text-[10px] text-gray-400 truncate">Terms: {c.payment_terms}</div>}
+              {c.payment_terms && <div className="text-[10px] text-gray-400 truncate">{tc('form.payment_terms')}: {c.payment_terms}</div>}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               {writable && (
@@ -131,7 +128,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
                 </button>
               )}
               {adminRole && (
-                <button onClick={() => { if (window.confirm('Remove this customer?')) remove.mutate(c.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <button onClick={() => { if (window.confirm(t('confirm.removeCustomer'))) remove.mutate(c.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -153,14 +150,14 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
           </colgroup>
           <thead>
             <tr className="border-b border-gray-100">
-              {['Code', 'Name', 'Country / City', 'Contact', 'Payment Terms', 'Actions'].map(h => (
+              {[tc('table.code'), tc('table.name'), t('table.countryCity'), t('table.contact'), t('table.paymentTerms'), tc('table.actions')].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No customers yet'}</td></tr>
+              <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noCustomers')}</td></tr>
             ) : filtered.map(c => (
               <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                 <td className="px-4 py-3 text-xs font-bold text-gray-400">{c.code}</td>
@@ -181,7 +178,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
                       </button>
                     )}
                     {adminRole && (
-                      <button onClick={() => { if (window.confirm('Remove?')) remove.mutate(c.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                      <button onClick={() => { if (window.confirm(t('confirm.removeLabel'))) remove.mutate(c.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -195,7 +192,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? 'Edit Customer' : 'New Customer'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? t('modal.editCustomer') : t('modal.newCustomer')}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <AIFormFill
               formType="new_customer"
@@ -203,26 +200,26 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
               placeholder='e.g. "XYZ Paper Co., Istanbul, tax no 1234567890, Net 60 payment, info@xyz.com"'
             />
             <FormRow>
-              <FormGroup label="Company Name *" error={errors.name?.message}><Input {...register('name')} /></FormGroup>
-              <FormGroup label="Tax ID / VAT"><Input {...register('tax_id')} placeholder="e.g. 1234567890" /></FormGroup>
+              <FormGroup label={`${t('form.companyName')} *`} error={errors.name?.message}><Input {...register('name')} /></FormGroup>
+              <FormGroup label={t('form.taxId')}><Input {...register('tax_id')} placeholder="e.g. 1234567890" /></FormGroup>
             </FormRow>
             <FormRow>
-              <FormGroup label="Country"><Input {...register('country')} /></FormGroup>
-              <FormGroup label="City"><Input {...register('city')} /></FormGroup>
+              <FormGroup label={tc('form.country')}><Input {...register('country')} /></FormGroup>
+              <FormGroup label={tc('form.city')}><Input {...register('city')} /></FormGroup>
             </FormRow>
-            <FormGroup label="Address" className="mb-2.5"><Input {...register('address')} /></FormGroup>
+            <FormGroup label={tc('form.address')} className="mb-2.5"><Input {...register('address')} /></FormGroup>
             <FormRow>
-              <FormGroup label="Email" error={errors.contact_email?.message}><Input type="email" {...register('contact_email')} /></FormGroup>
-              <FormGroup label="Phone"><Input {...register('contact_phone')} /></FormGroup>
+              <FormGroup label={tc('form.email')} error={errors.contact_email?.message}><Input type="email" {...register('contact_email')} /></FormGroup>
+              <FormGroup label={tc('form.phone')}><Input {...register('contact_phone')} /></FormGroup>
             </FormRow>
             <FormRow>
-              <FormGroup label="Website"><Input {...register('website')} placeholder="https://" /></FormGroup>
-              <FormGroup label="Payment Terms"><Input {...register('payment_terms')} placeholder="e.g. Net 30, L/C 90 days" /></FormGroup>
+              <FormGroup label={tc('form.website')}><Input {...register('website')} placeholder="https://" /></FormGroup>
+              <FormGroup label={tc('form.payment_terms')}><Input {...register('payment_terms')} placeholder="e.g. Net 30, L/C 90 days" /></FormGroup>
             </FormRow>
-            <FormGroup label="Notes" className="mb-2.5"><Textarea rows={2} {...register('notes')} /></FormGroup>
+            <FormGroup label={tc('form.notes')} className="mb-2.5"><Textarea rows={2} {...register('notes')} /></FormGroup>
             <DialogFooter>
-              <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={create.isPending || update.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>Save</button>
+              <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">{tc('btn.cancel')}</button>
+              <button type="submit" disabled={create.isPending || update.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>{tc('btn.save')}</button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -233,6 +230,8 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
 
 // ─── Suppliers Tab ─────────────────────────────────────────────────────────────
 function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: string; openNewRef: MutableRefObject<(() => void) | null> }) {
+  const { t } = useTranslation('contacts');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const adminRole = isAdmin(profile?.role);
@@ -294,7 +293,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {filtered.length === 0 ? (
-          <div className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No suppliers yet'}</div>
+          <div className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noSuppliers')}</div>
         ) : filtered.map(s => (
           <div key={s.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
             <ContactAvatar name={s.name} color={color} />
@@ -305,7 +304,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
               </div>
               {(s.country || s.city) && <div className="text-xs text-gray-500 truncate">{[s.city, s.country].filter(Boolean).join(', ')}</div>}
               {(s.email || s.phone) && <div className="text-xs text-gray-400 truncate">{s.email || s.phone}</div>}
-              {s.payment_terms && <div className="text-[10px] text-gray-400 truncate">Terms: {s.payment_terms}</div>}
+              {s.payment_terms && <div className="text-[10px] text-gray-400 truncate">{tc('form.payment_terms')}: {s.payment_terms}</div>}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               {writable && (
@@ -314,7 +313,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
                 </button>
               )}
               {adminRole && (
-                <button onClick={() => { if (window.confirm('Remove this supplier?')) remove.mutate(s.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <button onClick={() => { if (window.confirm(t('confirm.removeSupplier'))) remove.mutate(s.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -336,14 +335,14 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
           </colgroup>
           <thead>
             <tr className="border-b border-gray-100">
-              {['Code', 'Name', 'Country / City', 'Contact', 'Email / Phone', 'Actions'].map(h => (
+              {[tc('table.code'), tc('table.name'), t('table.countryCity'), t('table.contact'), t('table.emailPhone'), tc('table.actions')].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No suppliers yet'}</td></tr>
+              <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noSuppliers')}</td></tr>
             ) : filtered.map(s => (
               <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                 <td className="px-4 py-3 text-xs font-bold text-gray-400">{s.code}</td>
@@ -364,7 +363,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
                       </button>
                     )}
                     {adminRole && (
-                      <button onClick={() => { if (window.confirm('Remove?')) remove.mutate(s.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                      <button onClick={() => { if (window.confirm(t('confirm.removeLabel'))) remove.mutate(s.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -378,7 +377,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? 'Edit Supplier' : 'New Supplier'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? t('modal.editSupplier') : t('modal.newSupplier')}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <AIFormFill
               formType="new_supplier"
@@ -386,31 +385,31 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
               placeholder='e.g. "ABC Pulp Co., Canada, Vancouver, swift AAAABBCC, TT 30 days payment"'
             />
             <FormRow>
-              <FormGroup label="Company Name *" error={errors.name?.message}><Input {...register('name')} /></FormGroup>
-              <FormGroup label="Tax ID / VAT"><Input {...register('tax_id')} placeholder="e.g. 123456789" /></FormGroup>
+              <FormGroup label={`${t('form.companyName')} *`} error={errors.name?.message}><Input {...register('name')} /></FormGroup>
+              <FormGroup label={t('form.taxId')}><Input {...register('tax_id')} placeholder="e.g. 123456789" /></FormGroup>
             </FormRow>
             <FormRow>
-              <FormGroup label="Country"><Input {...register('country')} /></FormGroup>
-              <FormGroup label="City"><Input {...register('city')} /></FormGroup>
+              <FormGroup label={tc('form.country')}><Input {...register('country')} /></FormGroup>
+              <FormGroup label={tc('form.city')}><Input {...register('city')} /></FormGroup>
             </FormRow>
-            <FormGroup label="Address" className="mb-2.5"><Input {...register('address')} /></FormGroup>
+            <FormGroup label={tc('form.address')} className="mb-2.5"><Input {...register('address')} /></FormGroup>
             <FormRow>
-              <FormGroup label="Contact Person"><Input {...register('contact_name')} /></FormGroup>
-              <FormGroup label="Phone"><Input {...register('phone')} /></FormGroup>
-            </FormRow>
-            <FormRow>
-              <FormGroup label="Email" error={errors.email?.message}><Input type="email" {...register('email')} /></FormGroup>
-              <FormGroup label="Website"><Input {...register('website')} placeholder="https://" /></FormGroup>
+              <FormGroup label={t('form.contactPerson')}><Input {...register('contact_name')} /></FormGroup>
+              <FormGroup label={tc('form.phone')}><Input {...register('phone')} /></FormGroup>
             </FormRow>
             <FormRow>
-              <FormGroup label="Payment Terms"><Input {...register('payment_terms')} placeholder="e.g. TT 30 days, Net 60" /></FormGroup>
-              <FormGroup label="SWIFT / BIC"><Input {...register('swift_code')} placeholder="e.g. AAAABBCCXXX" /></FormGroup>
+              <FormGroup label={tc('form.email')} error={errors.email?.message}><Input type="email" {...register('email')} /></FormGroup>
+              <FormGroup label={tc('form.website')}><Input {...register('website')} placeholder="https://" /></FormGroup>
             </FormRow>
-            <FormGroup label="IBAN" className="mb-2.5"><Input {...register('iban')} placeholder="e.g. TR00 0000 0000 0000 0000 0000 00" /></FormGroup>
-            <FormGroup label="Notes" className="mb-2.5"><Textarea rows={2} {...register('notes')} /></FormGroup>
+            <FormRow>
+              <FormGroup label={tc('form.payment_terms')}><Input {...register('payment_terms')} placeholder="e.g. TT 30 days, Net 60" /></FormGroup>
+              <FormGroup label={t('form.swiftBic')}><Input {...register('swift_code')} placeholder="e.g. AAAABBCCXXX" /></FormGroup>
+            </FormRow>
+            <FormGroup label={t('form.iban')} className="mb-2.5"><Input {...register('iban')} placeholder="e.g. TR00 0000 0000 0000 0000 0000 00" /></FormGroup>
+            <FormGroup label={tc('form.notes')} className="mb-2.5"><Textarea rows={2} {...register('notes')} /></FormGroup>
             <DialogFooter>
-              <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={create.isPending || update.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>Save</button>
+              <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">{tc('btn.cancel')}</button>
+              <button type="submit" disabled={create.isPending || update.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>{tc('btn.save')}</button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -421,6 +420,8 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
 
 // ─── Service Providers Tab ─────────────────────────────────────────────────────
 function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; search: string; openNewRef: MutableRefObject<(() => void) | null> }) {
+  const { t } = useTranslation('contacts');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const adminRole = isAdmin(profile?.role);
@@ -481,7 +482,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
             !typeFilter ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          All
+          {tc('all')}
         </button>
         {typeOpts.map(([k, l]) => (
           <button
@@ -499,7 +500,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {filtered.length === 0 ? (
-          <div className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No service providers yet'}</div>
+          <div className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noServiceProviders')}</div>
         ) : filtered.map(sp => (
           <div key={sp.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
             <ContactAvatar name={sp.name} color={color} />
@@ -520,7 +521,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
                 </button>
               )}
               {adminRole && (
-                <button onClick={() => { if (window.confirm('Remove this service provider?')) remove.mutate(sp.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <button onClick={() => { if (window.confirm(t('confirm.removeServiceProvider'))) remove.mutate(sp.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -542,14 +543,14 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
           </colgroup>
           <thead>
             <tr className="border-b border-gray-100">
-              {['Name', 'Type', 'Country / City', 'Contact', 'Phone / Email', 'Actions'].map(h => (
+              {[tc('table.name'), tc('table.type'), t('table.countryCity'), t('table.contact'), t('table.phoneEmail'), tc('table.actions')].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? 'No results' : 'No service providers yet'}</td></tr>
+              <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noServiceProviders')}</td></tr>
             ) : filtered.map(sp => (
               <tr key={sp.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                 <td className="px-4 py-3">
@@ -574,7 +575,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
                       </button>
                     )}
                     {adminRole && (
-                      <button onClick={() => { if (window.confirm('Remove?')) remove.mutate(sp.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                      <button onClick={() => { if (window.confirm(t('confirm.removeLabel'))) remove.mutate(sp.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -588,7 +589,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? 'Edit Service Provider' : 'New Service Provider'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? t('modal.editServiceProvider') : t('modal.newServiceProvider')}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <AIFormFill
               formType="new_service_provider"
@@ -596,27 +597,27 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
               placeholder='e.g. "XYZ Customs Brokerage, Istanbul, customs services, info@xyz.com"'
             />
             <FormRow>
-              <FormGroup label="Name *" error={errors.name?.message}><Input {...register('name')} /></FormGroup>
-              <FormGroup label="Type *">
+              <FormGroup label={`${tc('table.name')} *`} error={errors.name?.message}><Input {...register('name')} /></FormGroup>
+              <FormGroup label={`${t('form.serviceType')} *`}>
                 <NativeSelect {...register('service_type')}>
                   {typeOpts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                 </NativeSelect>
               </FormGroup>
             </FormRow>
             <FormRow>
-              <FormGroup label="Country"><Input {...register('country')} /></FormGroup>
-              <FormGroup label="City"><Input {...register('city')} /></FormGroup>
+              <FormGroup label={tc('form.country')}><Input {...register('country')} /></FormGroup>
+              <FormGroup label={tc('form.city')}><Input {...register('city')} /></FormGroup>
             </FormRow>
-            <FormGroup label="Address" className="mb-2.5"><Input {...register('address')} /></FormGroup>
+            <FormGroup label={tc('form.address')} className="mb-2.5"><Input {...register('address')} /></FormGroup>
             <FormRow>
-              <FormGroup label="Contact Person"><Input {...register('contact_name')} /></FormGroup>
-              <FormGroup label="Phone"><Input {...register('phone')} /></FormGroup>
+              <FormGroup label={t('form.contactPerson')}><Input {...register('contact_name')} /></FormGroup>
+              <FormGroup label={tc('form.phone')}><Input {...register('phone')} /></FormGroup>
             </FormRow>
-            <FormGroup label="Email" className="mb-2.5" error={errors.email?.message}><Input type="email" {...register('email')} /></FormGroup>
-            <FormGroup label="Notes" className="mb-2.5"><Textarea rows={2} {...register('notes')} /></FormGroup>
+            <FormGroup label={tc('form.email')} className="mb-2.5" error={errors.email?.message}><Input type="email" {...register('email')} /></FormGroup>
+            <FormGroup label={tc('form.notes')} className="mb-2.5"><Textarea rows={2} {...register('notes')} /></FormGroup>
             <DialogFooter>
-              <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={create.isPending || update.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>Save</button>
+              <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">{tc('btn.cancel')}</button>
+              <button type="submit" disabled={create.isPending || update.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>{tc('btn.save')}</button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -627,6 +628,8 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export function ContactsPage() {
+  const { t } = useTranslation('contacts');
+  const { t: tc } = useTranslation('common');
   const [activeTab, setActiveTab] = useState<Tab>('customers');
   const [search, setSearch] = useState('');
   const openNewRef = useRef<(() => void) | null>(null);
@@ -634,6 +637,12 @@ export function ContactsPage() {
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
+
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'customers',         label: t('tabs.customers') },
+    { key: 'suppliers',         label: t('tabs.suppliers') },
+    { key: 'service-providers', label: t('tabs.serviceProviders') },
+  ];
 
   function handleTabChange(key: Tab) { setActiveTab(key); setSearch(''); }
 
@@ -663,7 +672,7 @@ export function ContactsPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search…"
+            placeholder={`${tc('btn.search')}…`}
             className="w-full pl-8 pr-2 h-8 rounded-xl border border-gray-200 bg-white text-[12px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-300 transition"
           />
         </div>

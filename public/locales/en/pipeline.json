@@ -1,0 +1,31 @@
+{
+  "title": "Pipeline",
+  "unknown": "Unknown",
+  "filters": {
+    "search": "Customer, file no, product…"
+  },
+  "buttons": {
+    "newFile": "+ New File",
+    "toSale": "To Sale",
+    "delivery": "+ Delivery",
+    "deliveryUpdate": "Delivery",
+    "invoice": "Invoice",
+    "pnl": "P&L"
+  },
+  "kanban": {
+    "request": "Request",
+    "sale": "Sale",
+    "delivery": "Delivery"
+  },
+  "empty": {
+    "noFiles": "No files",
+    "noRecords": "No records found"
+  },
+  "flags": {
+    "etaOverdue": "ETA Overdue",
+    "delayed": "Delayed"
+  },
+  "confirm": {
+    "deleteFile": "Delete this file?"
+  }
+}

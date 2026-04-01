@@ -1,0 +1,42 @@
+{
+  "title": "Products",
+  "manageCategories": "Manage Categories",
+  "noCategories": "No categories yet",
+  "newCategory": "New Category",
+  "categoryNamePlaceholder": "Category name…",
+  "search": "Search…",
+  "noResults": "No results",
+  "noProducts": "No products yet",
+  "manageCategoriesTooltip": "Manage categories",
+  "table": {
+    "code": "Code",
+    "name": "Name",
+    "category": "Category",
+    "unit": "Unit",
+    "hsCode": "HS Code",
+    "originSpecies": "Origin / Species",
+    "grade": "Grade"
+  },
+  "modal": {
+    "editProduct": "Edit Product",
+    "newProduct": "New Product",
+    "productName": "Product Name *",
+    "unit": "Unit",
+    "category": "Category",
+    "hsCode": "HS Code",
+    "hsCodePlaceholder": "e.g. 470321",
+    "originCountry": "Origin Country",
+    "originCountryPlaceholder": "e.g. Canada",
+    "speciesPulpType": "Species / Pulp Type",
+    "speciesPlaceholder": "e.g. NBSK, BHKP",
+    "grade": "Grade",
+    "gradePlaceholder": "e.g. Standard",
+    "description": "Description",
+    "descriptionPlaceholder": "Technical specs, certifications…",
+    "aiPlaceholder": "e.g. \"NBSK Pulp, Canadian origin, HS code 470321, ADMT unit\""
+  },
+  "confirm": {
+    "removeProduct": "Remove?",
+    "deleteCategory": "Delete \"{{name}}\"? Products in this category will be uncategorized."
+  }
+}

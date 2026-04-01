@@ -1,0 +1,42 @@
+{
+  "title": "Ürünler",
+  "manageCategories": "Kategorileri Yönet",
+  "noCategories": "Henüz kategori yok",
+  "newCategory": "Yeni Kategori",
+  "categoryNamePlaceholder": "Kategori adı…",
+  "search": "Ara…",
+  "noResults": "Sonuç bulunamadı",
+  "noProducts": "Henüz ürün yok",
+  "manageCategoriesTooltip": "Kategorileri yönet",
+  "table": {
+    "code": "Kod",
+    "name": "Ad",
+    "category": "Kategori",
+    "unit": "Birim",
+    "hsCode": "HS Kodu",
+    "originSpecies": "Menşei / Tür",
+    "grade": "Kalite"
+  },
+  "modal": {
+    "editProduct": "Ürünü Düzenle",
+    "newProduct": "Yeni Ürün",
+    "productName": "Ürün Adı *",
+    "unit": "Birim",
+    "category": "Kategori",
+    "hsCode": "HS Kodu",
+    "hsCodePlaceholder": "örn. 470321",
+    "originCountry": "Menşei Ülke",
+    "originCountryPlaceholder": "örn. Kanada",
+    "speciesPulpType": "Tür / Hamur Tipi",
+    "speciesPlaceholder": "örn. NBSK, BHKP",
+    "grade": "Kalite",
+    "gradePlaceholder": "örn. Standart",
+    "description": "Açıklama",
+    "descriptionPlaceholder": "Teknik özellikler, sertifikalar…",
+    "aiPlaceholder": "örn. \"NBSK Hamuru, Kanada menşeili, HS kodu 470321, ADMT birimi\""
+  },
+  "confirm": {
+    "removeProduct": "Kaldırılsın mı?",
+    "deleteCategory": "\"{{name}}\" silinsin mi? Bu kategorideki ürünler kategorisiz kalacak."
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "title": "Documents",
+  "tabs": {
+    "invoices": "Invoices",
+    "proformas": "Proformas",
+    "packingLists": "Packing Lists"
+  },
+  "search": {
+    "invoices": "Search invoices…",
+    "proformas": "Search proformas…",
+    "packingLists": "Search packing lists…"
+  },
+  "empty": {
+    "noInvoices": "No invoices found",
+    "noProformas": "No proformas found",
+    "noPackingLists": "No packing lists found"
+  },
+  "table": {
+    "invoiceNo": "Invoice No",
+    "fileNo": "File No",
+    "customer": "Customer",
+    "admt": "ADMT",
+    "unitPrice": "Unit Price",
+    "total": "Total",
+    "date": "Date",
+    "piNo": "PI No",
+    "quantity": "Quantity",
+    "plNo": "PL No",
+    "vehicles": "Vehicles",
+    "grossWeight": "Gross Weight"
+  },
+  "confirm": {
+    "delete": "Delete?",
+    "deleteInvoice": "Delete invoice?",
+    "deleteProforma": "Delete proforma?"
+  },
+  "invoice": {
+    "modal": {
+      "titleNewCommercial": "New Com-Invoice",
+      "titleEditCommercial": "Edit Com-Invoice",
+      "titleNewSale": "New Sale Invoice",
+      "titleEditSale": "Edit Sale Invoice",
+      "incoterms": "Incoterms",
+      "quantityAdmt": "Quantity (ADMT)",
+      "unitPrice": "Unit Price",
+      "freight": "Freight",
+      "subtotal": "Subtotal:",
+      "freightLabel": "Freight:",
+      "total": "TOTAL:",
+      "proformaNo": "Proforma No.",
+      "cbNo": "CB No.",
+      "insuranceNo": "Insurance No.",
+      "grossWeight": "Gross Weight (KG)",
+      "packingInfo": "Packing Info",
+      "packingPlaceholder": "e.g. 70 Reels",
+      "btnTemplate": "↓ Template",
+      "btnImportExcel": "↑ Import Excel",
+      "btnSave": "Save Invoice",
+      "btnUpdate": "Update",
+      "btnPrint": "🖨 Print / PDF",
+      "errorSaveFirst": "Save the invoice first to print it.",
+      "successImported": "Invoice data imported from Excel",
+      "errorParseFailed": "Could not parse file. Please use the Excel template."
+    }
+  }
+}

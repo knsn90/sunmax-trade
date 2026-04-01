@@ -1,0 +1,105 @@
+{
+  "title": "Tüm Dosyalar",
+  "buttons": {
+    "newFile": "+ Yeni Dosya"
+  },
+  "filters": {
+    "search": "Müşteri, dosya no, ürün…"
+  },
+  "table": {
+    "customerFileNo": "Müşteri / Dosya No",
+    "product": "Ürün",
+    "tonnage": "Tonaj"
+  },
+  "empty": {
+    "noRecords": "Kayıt bulunamadı"
+  },
+  "unknown": "Bilinmiyor",
+  "confirm": {
+    "deleteFile": "Bu dosyayı silmek istiyor musunuz?"
+  },
+  "detail": {
+    "tabs": {
+      "overview": "Genel Bakış",
+      "transport": "Nakliye",
+      "documents": "Belgeler",
+      "financials": "Finansal"
+    },
+    "fileNotFound": "Dosya bulunamadı",
+    "fileInfo": {
+      "date": "Tarih",
+      "tonnage": "Tonaj",
+      "salePrice": "Satış Fiyatı",
+      "delivered": "Teslim Edilen",
+      "ref": "Ref",
+      "notes": "Notlar",
+      "cancelReason": "İptal Nedeni"
+    },
+    "actions": {
+      "title": "İşlemler",
+      "editFile": "Dosyayı Düzenle",
+      "saleInvoice": "Satış Faturası",
+      "commercialInvoice": "Ticari Fatura",
+      "packingList": "Ambalaj Listesi",
+      "proformaInvoice": "Proforma Fatura",
+      "changeStatus": "Durum Değiştir"
+    },
+    "cancelModal": {
+      "title": "Dosyayı İptal Et",
+      "body": "Bu dosyayı iptal etmek için lütfen bir neden belirtin.",
+      "placeholder": "İptal nedeni...",
+      "confirmBtn": "İptali Onayla"
+    },
+    "btn": {
+      "convertToSale": "Satışa Dönüştür",
+      "editDelivery": "Teslimatı Düzenle",
+      "addDelivery": "+ Teslimat",
+      "actions": "İşlemler",
+      "delay": "Gecikme"
+    },
+    "saleDetails": {
+      "title": "Satış Detayları",
+      "noSaleDetails": "Henüz satış detayı girilmedi",
+      "salePrice": "Satış Fiyatı",
+      "purchase": "Alış",
+      "supplier": "Tedarikçi",
+      "incoterms": "Teslim Koşulları",
+      "eta": "Tahmini Varış",
+      "revisedEta": "Güncellenmiş Tahmini Varış",
+      "delayReason": "Gecikme Nedeni",
+      "vessel": "Gemi",
+      "register": "Sicil No"
+    },
+    "delivery": {
+      "title": "Teslimat",
+      "admt": "ADMT",
+      "grossKg": "Brüt (KG)",
+      "packages": "Paket Sayısı",
+      "arrival": "Varış",
+      "blNo": "Konşimento No",
+      "septi": "SEPTI"
+    },
+    "documents": {
+      "title": "Belgeler",
+      "vehicles": "{{count}} araç · {{admt}} ADMT"
+    },
+    "expenses": {
+      "title": "Giderler",
+      "addPurchase": "Satın Alma",
+      "addService": "Hizmet",
+      "noRecords": "Henüz gider kaydı yok"
+    },
+    "transport": {
+      "title": "Nakliye Planı"
+    },
+    "delay": {
+      "title": "Gecikme Notu",
+      "originalEta": "Orijinal Tahmini Varış: {{date}}",
+      "newEtaLabel": "Yeni Tahmini Varış",
+      "reasonLabel": "Gecikme Nedeni",
+      "placeholder": "örn. Gemi yükleme limanında gecikmeli",
+      "saveBtn": "Gecikmeyi Kaydet"
+    },
+    "statusConfirm": "Durum \"{{label}}\" olarak değiştirilsin mi?"
+  }
+}

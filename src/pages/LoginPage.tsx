@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
 import { loginSchema, type LoginFormData } from '@/types/forms';
 import { useAuth } from '@/hooks/useAuth';
 import { User, Lock } from 'lucide-react';
@@ -10,6 +11,7 @@ const REMEMBER_EMAIL_KEY = 'sunmax_remember_email';
 const REMEMBER_FLAG_KEY = 'sunmax_remember_me';
 
 export function LoginPage() {
+  const { t } = useTranslation('auth');
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
@@ -39,7 +41,7 @@ export function LoginPage() {
       }
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('login.error.generic'));
     }
   }
 
@@ -61,7 +63,7 @@ export function LoginPage() {
                 <User size={16} className="text-gray-400 shrink-0" />
                 <input
                   type="email"
-                  placeholder="Username"
+                  placeholder={t('login.usernamePlaceholder')}
                   autoComplete="email"
                   className="flex-1 bg-transparent text-sm text-gray-600 placeholder-gray-400 outline-none"
                   {...register('email')}
@@ -99,10 +101,10 @@ export function LoginPage() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded accent-red-500 cursor-pointer"
                 />
-                <span className="text-xs text-gray-400">Remember me</span>
+                <span className="text-xs text-gray-400">{t('login.rememberMe')}</span>
               </label>
               <span className="text-xs text-gray-400 italic cursor-pointer hover:text-gray-600">
-                Forgot Password?
+                {t('login.forgotPassword')}
               </span>
             </div>
 
@@ -119,7 +121,7 @@ export function LoginPage() {
               disabled={isSubmitting}
               className="w-full rounded-full bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white font-bold tracking-widest text-sm py-3 transition-colors"
             >
-              {isSubmitting ? 'Signing in…' : 'LOGIN'}
+              {isSubmitting ? t('login.submitting') : t('login.submit')}
             </button>
           </form>
         </div>

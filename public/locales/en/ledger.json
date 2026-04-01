@@ -1,0 +1,35 @@
+{
+  "title": "Journal Ledger",
+  "description": "Double-entry accounting records",
+  "stats": {
+    "posted": "posted",
+    "draft": "draft"
+  },
+  "filters": {
+    "allStatuses": "All statuses",
+    "hideZero": "Hide zero-amount"
+  },
+  "table": {
+    "entryNo": "Entry #",
+    "account": "Account",
+    "source": "Source",
+    "debit": "Debit",
+    "credit": "Credit",
+    "curr": "Curr",
+    "debitTry": "DR (TRY)",
+    "creditTry": "CR (TRY)",
+    "total": "TOTAL"
+  },
+  "lines": "lines",
+  "footer": "entries — click any row to expand lines",
+  "unbalanced": "UNBALANCED — TRY diff: {{diff}}",
+  "empty": {
+    "title": "No journal entries yet",
+    "hint": "Entries are created automatically when invoices or transactions are saved.",
+    "migrationHint": "Run migrations 018–025 in Supabase SQL Editor first."
+  },
+  "error": {
+    "loading": "Error loading journal entries",
+    "migration": "Make sure migrations 018–025 have been run in Supabase."
+  }
+}

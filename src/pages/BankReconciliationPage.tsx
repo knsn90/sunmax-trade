@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useBankTransactions, useBankReconciliationSummary,
   useUpdateBankTxnStatus, useCreateMatch,
@@ -21,6 +22,8 @@ function fN(n: number, d = 2) {
 // ─── Add Bank Transaction Modal ───────────────────────────────────────────────
 
 function AddBankTxnModal({ onClose, bankAccountId }: { onClose: () => void; bankAccountId: string }) {
+  const { t }  = useTranslation('bankRecon');
+  const { t: tc } = useTranslation('common');
   const { mutate, isPending } = useCreateBankTransaction();
   const [form, setForm] = useState({
     txn_date: new Date().toISOString().slice(0, 10),
@@ -49,31 +52,31 @@ function AddBankTxnModal({ onClose, bankAccountId }: { onClose: () => void; bank
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-5">
-          <h2 className="font-bold text-gray-900">Add Bank Transaction</h2>
+          <h2 className="font-bold text-gray-900">{t('modal.addTitle')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={submit} className="space-y-3">
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Date</label>
+            <label className="text-xs text-gray-500 mb-1 block">{tc('form.date')}</label>
             <input type="date" value={form.txn_date}
               onChange={e => setForm(f => ({ ...f, txn_date: e.target.value }))}
               className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none" required />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Description</label>
-            <input type="text" value={form.description} placeholder="Payment from customer..."
+            <label className="text-xs text-gray-500 mb-1 block">{t('modal.form.description')}</label>
+            <input type="text" value={form.description} placeholder={t('modal.form.descriptionPlaceholder')}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Amount (+ incoming, - outgoing)</label>
-              <input type="number" step="0.01" value={form.amount} placeholder="1000.00"
+              <label className="text-xs text-gray-500 mb-1 block">{t('modal.form.amount')}</label>
+              <input type="number" step="0.01" value={form.amount} placeholder={t('modal.form.amountPlaceholder')}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                 className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none" required />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Currency</label>
+              <label className="text-xs text-gray-500 mb-1 block">{tc('form.currency')}</label>
               <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
                 className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
                 <option>USD</option><option>EUR</option><option>TRY</option><option>GBP</option>
@@ -81,19 +84,19 @@ function AddBankTxnModal({ onClose, bankAccountId }: { onClose: () => void; bank
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Reference (optional)</label>
-            <input type="text" value={form.reference} placeholder="REF-001"
+            <label className="text-xs text-gray-500 mb-1 block">{t('modal.form.reference')}</label>
+            <input type="text" value={form.reference} placeholder={t('modal.form.referencePlaceholder')}
               onChange={e => setForm(f => ({ ...f, reference: e.target.value }))}
               className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none" />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
-              Cancel
+              {tc('btn.cancel')}
             </button>
             <button type="submit" disabled={isPending}
               className="flex-1 h-9 rounded-xl text-white text-sm font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
-              {isPending ? 'Saving…' : 'Add'}
+              {isPending ? t('modal.buttons.adding') : t('modal.buttons.add')}
             </button>
           </div>
         </form>
@@ -110,12 +113,13 @@ function MatchDialog({
   bankTxn: BankTransaction;
   onClose: () => void;
 }) {
+  const { t }  = useTranslation('bankRecon');
   const { data: transactions = [] } = useTransactions({ type: bankTxn.amount > 0 ? 'receipt' : 'payment' });
   const { mutate, isPending } = useCreateMatch();
   const [selectedTxnId, setSelectedTxnId] = useState('');
   const [diffNote, setDiffNote] = useState('');
 
-  const selected = transactions.find(t => t.id === selectedTxnId);
+  const selected = transactions.find(tx => tx.id === selectedTxnId);
   const diff = selected ? Math.abs(bankTxn.amount) - selected.amount : 0;
 
   function doMatch() {
@@ -126,17 +130,21 @@ function MatchDialog({
     );
   }
 
+  const selectLabel = bankTxn.amount > 0
+    ? t('modal.form.selectMatchingReceipt')
+    : t('modal.form.selectMatchingPayment');
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-bold text-gray-900">Match Bank Transaction</h2>
+          <h2 className="font-bold text-gray-900">{t('modal.matchTitle')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
 
         {/* Bank side */}
         <div className="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
-          <div className="text-xs text-gray-400 mb-1">Bank transaction</div>
+          <div className="text-xs text-gray-400 mb-1">{t('modal.form.bankTransaction')}</div>
           <div className="font-semibold text-gray-800">{bankTxn.description}</div>
           <div className="flex gap-4 mt-1 text-xs text-gray-500">
             <span>{fDate(bankTxn.txn_date)}</span>
@@ -148,22 +156,20 @@ function MatchDialog({
 
         {/* System transaction picker */}
         <div className="mb-3">
-          <label className="text-xs text-gray-500 mb-1 block">
-            Select matching {bankTxn.amount > 0 ? 'receipt' : 'payment'}
-          </label>
+          <label className="text-xs text-gray-500 mb-1 block">{selectLabel}</label>
           <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100">
             {transactions.length === 0 ? (
-              <p className="p-4 text-xs text-gray-400 text-center">No unmatched transactions</p>
+              <p className="p-4 text-xs text-gray-400 text-center">{t('empty.noUnmatched')}</p>
             ) : (
-              transactions.map(t => (
-                <label key={t.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
-                  <input type="radio" name="txn" value={t.id}
-                    checked={selectedTxnId === t.id}
-                    onChange={() => setSelectedTxnId(t.id)}
+              transactions.map(tx => (
+                <label key={tx.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
+                  <input type="radio" name="txn" value={tx.id}
+                    checked={selectedTxnId === tx.id}
+                    onChange={() => setSelectedTxnId(tx.id)}
                     className="accent-blue-600" />
                   <div className="flex-1 text-xs">
-                    <div className="font-medium text-gray-800">{t.party_name || t.description}</div>
-                    <div className="text-gray-400">{fDate(t.transaction_date)} · {fN(t.amount)} {t.currency}</div>
+                    <div className="font-medium text-gray-800">{tx.party_name || tx.description}</div>
+                    <div className="text-gray-400">{fDate(tx.transaction_date)} · {fN(tx.amount)} {tx.currency}</div>
                   </div>
                 </label>
               ))
@@ -174,8 +180,10 @@ function MatchDialog({
         {/* Difference note */}
         {Math.abs(diff) > 0.01 && (
           <div className="mb-3">
-            <div className="text-xs text-orange-600 mb-1">Difference: {fN(diff)} — add a note</div>
-            <input type="text" value={diffNote} placeholder="Bank fee, FX difference..."
+            <div className="text-xs text-orange-600 mb-1">
+              {t('modal.form.differenceNote', { amount: fN(diff) })}
+            </div>
+            <input type="text" value={diffNote} placeholder={t('modal.form.differencePlaceholder')}
               onChange={e => setDiffNote(e.target.value)}
               className="w-full h-8 px-3 text-xs border border-gray-200 rounded-xl focus:outline-none" />
           </div>
@@ -188,7 +196,7 @@ function MatchDialog({
           </button>
           <button onClick={doMatch} disabled={!selectedTxnId || isPending}
             className="flex-1 h-9 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
-            {isPending ? 'Matching…' : 'Create Match'}
+            {isPending ? t('modal.buttons.matching') : t('modal.buttons.createMatch')}
           </button>
         </div>
       </div>
@@ -205,6 +213,8 @@ function BankTxnRow({
   txn: BankTransaction;
   onMatch: (t: BankTransaction) => void;
 }) {
+  const { t }  = useTranslation('bankRecon');
+  const { t: tc } = useTranslation('common');
   const { mutate: updateStatus, isPending } = useUpdateBankTxnStatus();
 
   const isPositive = txn.amount > 0;
@@ -224,7 +234,7 @@ function BankTxnRow({
       </td>
       <td className="px-4 py-3">
         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusColors[txn.status]}`}>
-          {txn.status}
+          {tc(`status.${txn.status}`)}
         </span>
       </td>
       <td className="px-4 py-3">
@@ -235,14 +245,14 @@ function BankTxnRow({
                 onClick={() => onMatch(txn)}
                 className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-50"
               >
-                <Link2 className="w-3.5 h-3.5" /> Match
+                <Link2 className="w-3.5 h-3.5" /> {t('actions.match')}
               </button>
               <button
                 onClick={() => updateStatus({ id: txn.id, status: 'excluded' })}
                 disabled={isPending}
                 className="text-[11px] font-medium text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100"
               >
-                Exclude
+                {t('actions.exclude')}
               </button>
             </>
           )}
@@ -252,12 +262,12 @@ function BankTxnRow({
               disabled={isPending}
               className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100"
             >
-              <Unlink className="w-3.5 h-3.5" /> Restore
+              <Unlink className="w-3.5 h-3.5" /> {t('actions.restore')}
             </button>
           )}
           {txn.status === 'matched' && (
             <span className="flex items-center gap-1 text-[11px] text-green-600">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Matched
+              <CheckCircle2 className="w-3.5 h-3.5" /> {tc('status.matched')}
             </span>
           )}
         </div>
@@ -270,6 +280,8 @@ function BankTxnRow({
 
 export function BankReconciliationPage() {
   const { theme } = useTheme();
+  const { t }  = useTranslation('bankRecon');
+  const { t: tc } = useTranslation('common');
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -283,6 +295,20 @@ export function BankReconciliationPage() {
 
   const defaultBankAccount = bankAccounts[0]?.id ?? '';
 
+  const filterTabs: [string, string][] = [
+    ['',          t('filters.all')],
+    ['unmatched', t('filters.unmatched')],
+    ['matched',   t('filters.matched')],
+    ['excluded',  t('filters.excluded')],
+  ];
+
+  const kpiItems = summary ? [
+    { label: t('kpi.total'),     value: summary.total,     color: '#374151' },
+    { label: t('kpi.matched'),   value: summary.matched,   color: '#10b981' },
+    { label: t('kpi.unmatched'), value: summary.unmatched, color: '#f59e0b' },
+    { label: t('kpi.excluded'),  value: summary.excluded,  color: '#9ca3af' },
+  ] : [];
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -292,8 +318,8 @@ export function BankReconciliationPage() {
             <Building2 className="w-5 h-5" style={{ color: accent }} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Bank Reconciliation</h1>
-            <p className="text-xs text-gray-400">Match bank transactions to system records</p>
+            <h1 className="text-lg font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-xs text-gray-400">{t('description')}</p>
           </div>
         </div>
         <button
@@ -304,25 +330,20 @@ export function BankReconciliationPage() {
           className="flex items-center gap-2 px-4 h-9 rounded-xl text-white text-xs font-semibold"
           style={{ background: accent }}
         >
-          <Plus className="w-4 h-4" /> Add Bank Transaction
+          <Plus className="w-4 h-4" /> {t('buttons.addTransaction')}
         </button>
       </div>
 
       {/* Summary KPIs */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: 'Total',     value: summary.total,     color: '#374151' },
-            { label: 'Matched',   value: summary.matched,   color: '#10b981' },
-            { label: 'Unmatched', value: summary.unmatched, color: '#f59e0b' },
-            { label: 'Excluded',  value: summary.excluded,  color: '#9ca3af' },
-          ].map(k => (
+          {kpiItems.map(k => (
             <div key={k.label} className="bg-white rounded-2xl border border-gray-100 p-4">
               <div className="text-xs text-gray-400 mb-1">{k.label}</div>
               <div className="text-2xl font-bold" style={{ color: k.color }}>{k.value}</div>
-              {k.label === 'Matched' && summary.total > 0 && (
+              {k.label === t('kpi.matched') && summary.total > 0 && (
                 <div className="text-[10px] text-gray-400 mt-0.5">
-                  {Math.round(summary.matched / summary.total * 100)}% match rate
+                  {Math.round(summary.matched / summary.total * 100)}{t('kpi.matchRate')}
                 </div>
               )}
             </div>
@@ -332,7 +353,7 @@ export function BankReconciliationPage() {
 
       {/* Filter bar */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
-        {[['', 'All'], ['unmatched', 'Unmatched'], ['matched', 'Matched'], ['excluded', 'Excluded']].map(([v, l]) => (
+        {filterTabs.map(([v, l]) => (
           <button
             key={v}
             onClick={() => setStatusFilter(v)}
@@ -351,26 +372,26 @@ export function BankReconciliationPage() {
           <div className="flex justify-center py-16"><LoadingSpinner /></div>
         ) : error ? (
           <div className="p-8 text-center text-red-500 text-sm">
-            <p className="font-semibold mb-1">Error loading bank transactions</p>
+            <p className="font-semibold mb-1">{t('error.loading')}</p>
             <p className="text-xs text-gray-400">{(error as Error).message}</p>
-            <p className="text-xs text-orange-500 mt-2">Run migration 023 in Supabase first.</p>
+            <p className="text-xs text-orange-500 mt-2">{t('error.migration')}</p>
           </div>
         ) : bankTxns.length === 0 ? (
           <div className="p-12 text-center text-gray-400">
             <Building2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium">No bank transactions</p>
-            <p className="text-xs mt-1">Import your bank statement or add transactions manually.</p>
+            <p className="text-sm font-medium">{t('empty.title')}</p>
+            <p className="text-xs mt-1">{t('empty.hint')}</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                <th className="text-left px-4 py-3 text-xs font-semibold">Date</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold">Description</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold">Reference</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold">Amount</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold">Status</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold">Actions</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold">{tc('table.date')}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold">{tc('table.description')}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold">{t('table.reference')}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold">{tc('table.amount')}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold">{tc('table.status')}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold">{tc('table.actions')}</th>
               </tr>
             </thead>
             <tbody>

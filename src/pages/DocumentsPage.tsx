@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { canWrite, isAdmin } from '@/lib/permissions';
@@ -17,11 +18,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 type Tab = 'invoices' | 'proformas' | 'packing-lists';
 
-const TABS: { key: Tab; label: string; icon: typeof Receipt }[] = [
-  { key: 'invoices',      label: 'Invoices',      icon: Receipt },
-  { key: 'proformas',     label: 'Proformas',     icon: FileText },
-  { key: 'packing-lists', label: 'Packing Lists', icon: Package },
-];
+// Static icon map — labels are resolved via t() in the page component
+const TAB_ICONS: Record<Tab, typeof Receipt> = {
+  'invoices':      Receipt,
+  'proformas':     FileText,
+  'packing-lists': Package,
+};
 
 const TAB_COLORS: Record<Tab, string> = {
   'invoices':      '#0ea5e9',
@@ -31,7 +33,7 @@ const TAB_COLORS: Record<Tab, string> = {
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 function DocIcon({ tab, size = 'md' }: { tab: Tab; size?: 'sm' | 'md' }) {
-  const Icon = TABS.find(t => t.key === tab)!.icon;
+  const Icon = TAB_ICONS[tab];
   const color = TAB_COLORS[tab];
   const cls = size === 'md'
     ? 'w-10 h-10 rounded-xl flex items-center justify-center shrink-0'
@@ -54,6 +56,8 @@ function EmptyDocs({ message }: { message: string }) {
 
 // ─── Invoices Tab ─────────────────────────────────────────────────────────────
 function InvoicesTab({ accent, search }: { accent: string; search: string }) {
+  const { t } = useTranslation('documents');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -87,7 +91,7 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
     <>
       {/* Mobile cards */}
       <div className="md:hidden mx-0 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
-        {filtered.length === 0 ? <EmptyDocs message="No invoices found" /> : filtered.map(inv => (
+        {filtered.length === 0 ? <EmptyDocs message={t('empty.noInvoices')} /> : filtered.map(inv => (
           <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
             <DocIcon tab="invoices" />
             <div className="flex-1 min-w-0">
@@ -102,13 +106,13 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
               <span className="text-[10px] text-gray-400">{fDate(inv.invoice_date)}</span>
             </div>
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => handlePrint(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+              <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                 <Printer className="h-3.5 w-3.5" />
               </button>
-              {writable && <button onClick={() => openEdit(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+              {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                 <Pencil className="h-3.5 w-3.5" />
               </button>}
-              {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deleteInv.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+              {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>}
             </div>
@@ -121,14 +125,14 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              {['Invoice No', 'File No', 'Customer', 'ADMT', 'Unit Price', 'Total', 'Date', ''].map(h => (
+              {[t('table.invoiceNo'), t('table.fileNo'), t('table.customer'), t('table.admt'), t('table.unitPrice'), t('table.total'), t('table.date'), ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={8}><EmptyDocs message="No invoices found" /></td></tr>
+              <tr><td colSpan={8}><EmptyDocs message={t('empty.noInvoices')} /></td></tr>
             ) : filtered.map(inv => (
               <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                 <td className="px-4 py-3">
@@ -145,13 +149,13 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
                 <td className="px-4 py-3 text-[12px] text-gray-500">{fDate(inv.invoice_date)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handlePrint(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                    <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                       <Printer className="h-3.5 w-3.5" />
                     </button>
-                    {writable && <button onClick={() => openEdit(inv)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                    {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>}
-                    {adminRole && <button onClick={() => { if (window.confirm('Delete invoice?')) deleteInv.mutate(inv.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>}
                   </div>
@@ -169,6 +173,8 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
 
 // ─── Proformas Tab ────────────────────────────────────────────────────────────
 function ProformasTab({ accent, search }: { accent: string; search: string }) {
+  const { t } = useTranslation('documents');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -201,7 +207,7 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
     <>
       {/* Mobile */}
       <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
-        {filtered.length === 0 ? <EmptyDocs message="No proformas found" /> : filtered.map(pi => (
+        {filtered.length === 0 ? <EmptyDocs message={t('empty.noProformas')} /> : filtered.map(pi => (
           <div key={pi.id} className="flex items-center gap-3 px-4 py-3">
             <DocIcon tab="proformas" />
             <div className="flex-1 min-w-0">
@@ -216,13 +222,13 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
               <span className="text-[10px] text-gray-400">{fN(pi.quantity_admt, 3)} MT</span>
             </div>
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => handlePrint(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+              <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                 <Printer className="h-3.5 w-3.5" />
               </button>
-              {writable && <button onClick={() => openEdit(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+              {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                 <Pencil className="h-3.5 w-3.5" />
               </button>}
-              {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deletePI.mutate(pi.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+              {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>}
             </div>
@@ -235,14 +241,14 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              {['PI No', 'File No', 'Date', 'Quantity', 'Unit Price', 'Total', ''].map(h => (
+              {[t('table.piNo'), t('table.fileNo'), t('table.date'), t('table.quantity'), t('table.unitPrice'), t('table.total'), ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={7}><EmptyDocs message="No proformas found" /></td></tr>
+              <tr><td colSpan={7}><EmptyDocs message={t('empty.noProformas')} /></td></tr>
             ) : filtered.map(pi => (
               <tr key={pi.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                 <td className="px-4 py-3">
@@ -258,13 +264,13 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
                 <td className="px-4 py-3 text-[13px] font-bold" style={{ color: accent }}>{fCurrency(pi.total)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handlePrint(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                    <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                       <Printer className="h-3.5 w-3.5" />
                     </button>
-                    {writable && <button onClick={() => openEdit(pi)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                    {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>}
-                    {adminRole && <button onClick={() => { if (window.confirm('Delete proforma?')) deletePI.mutate(pi.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>}
                   </div>
@@ -282,6 +288,8 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
 
 // ─── Packing Lists Tab ────────────────────────────────────────────────────────
 function PackingListsTab({ accent: _accent, search }: { accent: string; search: string }) {
+  const { t } = useTranslation('documents');
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const { data: settings } = useSettings();
   const adminRole = isAdmin(profile?.role);
@@ -313,7 +321,7 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
     <>
       {/* Mobile */}
       <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
-        {filtered.length === 0 ? <EmptyDocs message="No packing lists found" /> : filtered.map(pl => (
+        {filtered.length === 0 ? <EmptyDocs message={t('empty.noPackingLists')} /> : filtered.map(pl => (
           <div key={pl.id} className="flex items-center gap-3 px-4 py-3">
             <DocIcon tab="packing-lists" />
             <div className="flex-1 min-w-0">
@@ -325,16 +333,16 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">
               <span className="text-[12px] font-semibold text-gray-700">{fN(pl.total_admt, 3)} MT</span>
-              <span className="text-[10px] text-gray-400">{pl.packing_list_items?.length ?? 0} vehicles</span>
+              <span className="text-[10px] text-gray-400">{pl.packing_list_items?.length ?? 0} {t('table.vehicles').toLowerCase()}</span>
             </div>
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => handlePrint(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+              <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                 <Printer className="h-3.5 w-3.5" />
               </button>
-              {writable && <button onClick={() => openEdit(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+              {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                 <Pencil className="h-3.5 w-3.5" />
               </button>}
-              {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+              {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>}
             </div>
@@ -347,14 +355,14 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              {['PL No', 'File No', 'Customer', 'Vehicles', 'ADMT', 'Gross Weight', ''].map(h => (
+              {[t('table.plNo'), t('table.fileNo'), t('table.customer'), t('table.vehicles'), t('table.admt'), t('table.grossWeight'), ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={7}><EmptyDocs message="No packing lists found" /></td></tr>
+              <tr><td colSpan={7}><EmptyDocs message={t('empty.noPackingLists')} /></td></tr>
             ) : filtered.map(pl => (
               <tr key={pl.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                 <td className="px-4 py-3">
@@ -370,13 +378,13 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
                 <td className="px-4 py-3 text-[12px] text-gray-600">{fN(pl.total_gross_kg, 0)} kg</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handlePrint(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                    <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                       <Printer className="h-3.5 w-3.5" />
                     </button>
-                    {writable && <button onClick={() => openEdit(pl)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                    {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>}
-                    {adminRole && <button onClick={() => { if (window.confirm('Delete?')) deletePL.mutate(pl.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>}
                   </div>
@@ -394,33 +402,40 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
 
 // ─── Documents Page ───────────────────────────────────────────────────────────
 export function DocumentsPage() {
+  const { t } = useTranslation('documents');
   const [activeTab, setActiveTab] = useState<Tab>('invoices');
   const [search, setSearch] = useState('');
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
+  const TABS: { key: Tab; label: string; icon: typeof Receipt }[] = [
+    { key: 'invoices',      label: t('tabs.invoices'),     icon: Receipt },
+    { key: 'proformas',     label: t('tabs.proformas'),    icon: FileText },
+    { key: 'packing-lists', label: t('tabs.packingLists'), icon: Package },
+  ];
+
   function handleTabChange(key: Tab) { setActiveTab(key); setSearch(''); }
 
-  const placeholder = activeTab === 'invoices' ? 'Search invoices...' : activeTab === 'proformas' ? 'Search proformas...' : 'Search packing lists...';
+  const searchKey = activeTab === 'invoices' ? 'invoices' : activeTab === 'proformas' ? 'proformas' : 'packingLists';
 
   return (
     <div>
       {/* Header row: tabs + search */}
       <div className="flex items-center gap-2 mb-4">
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none shrink-0">
-          {TABS.map(t => {
-            const Icon = t.icon;
-            const isActive = activeTab === t.key;
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
             return (
               <button
-                key={t.key}
-                onClick={() => handleTabChange(t.key)}
+                key={tab.key}
+                onClick={() => handleTabChange(tab.key)}
                 className={`shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
                   isActive ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
-                {t.label}
+                {tab.label}
               </button>
             );
           })}
@@ -430,7 +445,7 @@ export function DocumentsPage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
           <input
             className="w-full h-8 pl-8 pr-3 rounded-xl border border-gray-200 bg-white text-[12px] outline-none placeholder:text-gray-400 focus:border-blue-300"
-            placeholder={placeholder}
+            placeholder={t(`search.${searchKey}` as `search.${string}`)}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />

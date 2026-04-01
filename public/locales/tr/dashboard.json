@@ -1,0 +1,65 @@
+{
+  "greeting": {
+    "morning": "Günaydın",
+    "afternoon": "İyi günler",
+    "evening": "İyi akşamlar",
+    "welcome": "Hoş geldin,"
+  },
+  "kpi": {
+    "activeFiles": "Aktif Dosyalar",
+    "totalProfit": "Toplam Kâr",
+    "receivable": "Alacak",
+    "payable": "Borç",
+    "newThisMonth": "Bu ay {{count}} yeni",
+    "completed": "{{count}} tamamlandı",
+    "fromCustomers": "Müşterilerden",
+    "toSuppliers": "Tedarikçilere"
+  },
+  "widgets": {
+    "pipeline": "Süreç Takibi",
+    "alerts": "Uyarılar",
+    "recentFiles": "Son Dosyalar",
+    "delivery": "Teslimat Performansı",
+    "latestPrices": "Güncel Fiyatlar",
+    "revenueChart": "Gelir & Maliyet · Son 6 Ay",
+    "deliveryStatus": "Teslimat Durumu",
+    "delays": "Gecikmeler",
+    "delayByFile": "Dosyaya Göre Gecikme (gün)"
+  },
+  "actions": {
+    "seeAll": "Tümünü gör",
+    "allFiles": "Tüm dosyalar",
+    "etaReport": "ETA Raporu",
+    "priceList": "Fiyat Listesi"
+  },
+  "alerts": {
+    "etaOverdue": "ETA Geçti",
+    "etaSoon": "ETA Yaklaşıyor",
+    "paymentPending": "Ödeme Bekleniyor",
+    "daysLate": "{{count}} gün geç · {{customer}}",
+    "daysToEta": "{{count}} gün · {{customer}}",
+    "daysToEtaPayment": "ETA'ya {{count}} gün · {{customer}}"
+  },
+  "chart": {
+    "revenue": "Gelir",
+    "cost": "Maliyet",
+    "profit": "Kâr"
+  },
+  "delivery": {
+    "onTime": "Zamanında",
+    "lateDelivery": "Geç Teslimat",
+    "overdue": "Gecikmiş",
+    "pending": "Bekliyor"
+  },
+  "prices": {
+    "expired": "Süresi Doldu",
+    "until": "{{date}} tarihine kadar"
+  },
+  "empty": {
+    "allClear": "Her şey yolunda — uyarı yok",
+    "noFiles": "Henüz dosya yok",
+    "noTrades": "Devam eden işlem yok",
+    "noPrices": "Henüz fiyat girişi yok",
+    "noChartData": "Henüz veri yok"
+  }
+}
