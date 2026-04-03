@@ -66,7 +66,7 @@ export function StepCard({ step, onStart, onComplete, loading }: Props) {
       )}
 
       {loading ? (
-        <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 8 }} />
+        <ActivityIndicator size="small" color="#0F172A" style={{ marginTop: 8 }} />
       ) : (
         <View style={styles.actions}>
           {step.status === 'pending' && onStart && (
@@ -115,10 +115,10 @@ const styles = StyleSheet.create({
   approvalNoteText: { fontSize: 12, color: '#D97706', fontWeight: '600' },
   actions: { flexDirection: 'row', gap: 8, marginTop: 8 },
   btnStart: {
-    backgroundColor: '#EFF6FF', borderRadius: 8,
+    backgroundColor: '#F1F5F9', borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 7,
   },
-  btnStartText: { fontSize: 13, color: '#2563EB', fontWeight: '700' },
+  btnStartText: { fontSize: 13, color: '#0F172A', fontWeight: '700' },
   btnDone: {
     backgroundColor: '#ECFDF5', borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 7,

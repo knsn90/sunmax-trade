@@ -5,12 +5,53 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { WorkOrder, WorkOrderStatus } from '../types';
 import { STATUS_CONFIG, isOrderOverdue, getNextStatus } from '../constants';
 import { C } from '../../../core/theme/colors';
 import { F } from '../../../core/theme/typography';
+
+// ── Circular progress ────────────────────────────────────────────────────────
+
+const STATUS_PROGRESS: Record<WorkOrderStatus, number> = {
+  alindi:           10,
+  uretimde:         40,
+  kalite_kontrol:   70,
+  teslimata_hazir:  90,
+  teslim_edildi:   100,
+};
+
+function CircularProgress({ progress, size = 34, stroke = 3 }: { progress: number; size?: number; stroke?: number }) {
+  const r      = (size - stroke) / 2;
+  const circ   = 2 * Math.PI * r;
+  const offset = circ * (1 - Math.min(progress, 100) / 100);
+  const color  =
+    progress >= 100 ? '#10B981' :
+    progress >= 90  ? '#8B5CF6' :
+    progress >= 70  ? '#7C3AED' :
+    progress >= 40  ? '#4F46E5' : '#2563EB';
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke="#F1F5F9" strokeWidth={stroke} fill="none" />
+        <Circle
+          cx={size / 2} cy={size / 2} r={r}
+          stroke={color} strokeWidth={stroke} fill="none"
+          strokeDasharray={`${circ}`}
+          strokeDashoffset={`${offset}`}
+          strokeLinecap="round"
+          rotation="-90"
+          origin={`${size / 2},${size / 2}`}
+        />
+      </Svg>
+      <Text style={{ fontSize: 8, fontWeight: '700', color: '#6C6C70' }}>{progress}%</Text>
+    </View>
+  );
+}
 
 interface Props {
   orders: WorkOrder[];
@@ -59,57 +100,85 @@ function dateLabel(deliveryDate: string, status: WorkOrderStatus): { text: strin
 
 export function KanbanBoard({ orders, userGroup, onStatusAdvance }: Props) {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+
+  const BOARD_PAD = 12;
+  const COL_GAP   = 10;
+  const MIN_COL_W = 210;
+  const numCols   = COLUMNS.length;
+  const available = width - BOARD_PAD * 2 - COL_GAP * (numCols - 1);
+  const colWidth  = Math.max(MIN_COL_W, available / numCols);
+  const isWide    = available / numCols >= MIN_COL_W;
 
   const byStatus = COLUMNS.reduce<Record<WorkOrderStatus, WorkOrder[]>>(
     (acc, s) => { acc[s] = orders.filter((o) => o.status === s); return acc; },
     {} as Record<WorkOrderStatus, WorkOrder[]>
   );
 
+  const columnViews = COLUMNS.map((status) => {
+    const cfg = STATUS_CONFIG[status];
+    const col = byStatus[status];
+    return (
+      <View
+        key={status}
+        style={[
+          styles.column,
+          isWide ? { flex: 1 } : { width: colWidth },
+        ]}
+      >
+        {/* Column header */}
+        <View style={styles.colHeader}>
+          <Text style={styles.colTitle}>{cfg.label.toUpperCase()}</Text>
+          <View style={[styles.colCountBadge, { backgroundColor: cfg.bgColor }]}>
+            <Text style={[styles.colCount, { color: cfg.color }]}>{col.length}</Text>
+          </View>
+        </View>
+
+        {/* Thin colored divider */}
+        <View style={[styles.colDivider, { backgroundColor: cfg.color }]} />
+
+        {/* Cards */}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.colCards}
+          style={isWide ? styles.colScrollWide : undefined}
+        >
+          {col.length === 0 ? (
+            <View style={styles.emptyCol}>
+              <Text style={styles.emptyText}>Sipariş yok</Text>
+            </View>
+          ) : (
+            col.map((order) => (
+              <KanbanCard
+                key={order.id}
+                order={order}
+                userGroup={userGroup}
+                status={status}
+                onPress={() => router.push(`/${userGroup}/order/${order.id}` as any)}
+                onAdvance={onStatusAdvance ? () => onStatusAdvance(order) : undefined}
+              />
+            ))
+          )}
+        </ScrollView>
+      </View>
+    );
+  });
+
+  if (isWide) {
+    return (
+      <View style={[styles.boardWide, { padding: BOARD_PAD, gap: COL_GAP }]}>
+        {columnViews}
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.board}
+      contentContainerStyle={[styles.board, { padding: BOARD_PAD, gap: COL_GAP }]}
     >
-      {COLUMNS.map((status) => {
-        const cfg = STATUS_CONFIG[status];
-        const col = byStatus[status];
-        return (
-          <View key={status} style={styles.column}>
-
-            {/* Column header */}
-            <View style={styles.colHeader}>
-              <Text style={styles.colTitle}>{cfg.label.toUpperCase()}</Text>
-              <View style={[styles.colCountBadge, { backgroundColor: cfg.bgColor }]}>
-                <Text style={[styles.colCount, { color: cfg.color }]}>{col.length}</Text>
-              </View>
-            </View>
-
-            {/* Thin colored divider */}
-            <View style={[styles.colDivider, { backgroundColor: cfg.color }]} />
-
-            {/* Cards */}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.colCards}>
-              {col.length === 0 ? (
-                <View style={styles.emptyCol}>
-                  <Text style={styles.emptyText}>Sipariş yok</Text>
-                </View>
-              ) : (
-                col.map((order) => (
-                  <KanbanCard
-                    key={order.id}
-                    order={order}
-                    userGroup={userGroup}
-                    status={status}
-                    onPress={() => router.push(`/${userGroup}/order/${order.id}` as any)}
-                    onAdvance={onStatusAdvance ? () => onStatusAdvance(order) : undefined}
-                  />
-                ))
-              )}
-            </ScrollView>
-          </View>
-        );
-      })}
+      {columnViews}
     </ScrollView>
   );
 }
@@ -182,9 +251,12 @@ function KanbanCard({
             </Text>
           )}
         </View>
-        <Text style={[styles.dateText, { color: overdue ? '#EF4444' : dateColor }]}>
-          {dateText}
-        </Text>
+        <View style={styles.footerRight}>
+          <CircularProgress progress={STATUS_PROGRESS[order.status] ?? 0} />
+          <Text style={[styles.dateText, { color: overdue ? '#EF4444' : dateColor }]}>
+            {dateText}
+          </Text>
+        </View>
       </View>
 
       {/* Advance button */}
@@ -204,18 +276,25 @@ function KanbanCard({
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const COL_WIDTH = 210;
-
 const styles = StyleSheet.create({
+  // Narrow: horizontal scroll
   board: {
-    padding: 12,
-    gap: 10,
     alignItems: 'flex-start',
   },
 
+  // Wide: fills screen, no horizontal scroll
+  boardWide: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+
   column: {
-    width: COL_WIDTH,
     flexShrink: 0,
+  },
+
+  colScrollWide: {
+    flex: 1,
   },
 
   // Column header — centered uppercase
@@ -277,7 +356,7 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 3,
     borderWidth: 1,
-    borderColor: '#E8ECF2',
+    borderColor: '#F1F5F9',
   },
 
   topMeta: {
@@ -292,11 +371,11 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   orderNum: {
-    fontSize: 10,
-    fontFamily: F.medium,
-    fontWeight: '500',
-    color: C.textMuted,
-    letterSpacing: 0.2,
+    fontSize: 13,
+    fontFamily: F.bold,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    letterSpacing: -0.1,
   },
   urgentBadge: {
     backgroundColor: '#FEF2F2',
@@ -312,29 +391,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   statusLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: F.medium,
     fontWeight: '500',
   },
 
   workType: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: F.bold,
-    color: '#0F172A',
-    letterSpacing: -0.1,
-    lineHeight: 16,
+    fontSize: 11,
+    fontWeight: '400',
+    fontFamily: F.regular,
+    color: '#AEAEB2',
+    marginTop: 2,
   },
 
   doctorLine: {
-    fontSize: 11,
-    fontFamily: F.regular,
-    color: '#64748B',
+    fontSize: 13,
+    fontFamily: F.semibold,
+    fontWeight: '600',
+    color: '#1C1C1E',
   },
   patientLine: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: F.regular,
-    color: '#94A3B8',
+    color: '#AEAEB2',
+    marginTop: 2,
   },
 
   footer: {
@@ -348,6 +428,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
+  footerRight: {
+    alignItems: 'center',
+    gap: 2,
+  },
   avatar: {
     width: 22,
     height: 22,
@@ -356,20 +440,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     fontFamily: F.bold,
     color: '#FFFFFF',
   },
   teethCount: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: F.regular,
-    color: '#94A3B8',
+    color: '#AEAEB2',
   },
   dateText: {
-    fontSize: 10,
-    fontFamily: F.medium,
-    fontWeight: '500',
+    fontSize: 12,
+    fontFamily: F.semibold,
+    fontWeight: '600',
   },
 
   advanceBtn: {

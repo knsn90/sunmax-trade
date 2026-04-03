@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,18 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
-  Platform,
+  Modal,
   TextInput,
+  ActivityIndicator,
+  Platform,
+  Image,
 } from 'react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Feather from '@expo/vector-icons/Feather';
 import { useOrders } from '../../modules/orders/hooks/useOrders';
+import { supabase } from '../api/supabase';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -21,33 +26,36 @@ const C = {
   bg:            '#FFFFFF',
   surface:       '#FFFFFF',
   border:        '#F1F5F9',
-  borderMid:     '#E2E8F0',
-  textPrimary:   '#0F172A',
-  textSecondary: '#64748B',
-  textMuted:     '#94A3B8',
-  danger:        '#DC2626',
-  dangerBg:      '#FEF2F2',
-  navHover:      '#EFF6FF',
-  tooltipBg:     '#1E293B',
-  // keep old aliases used by other files
+  borderMid:     '#F1F5F9',
+  textPrimary:   '#1C1C1E',
+  textSecondary: '#6C6C70',
+  textMuted:     '#AEAEB2',
+  danger:        '#FF3B30',
+  dangerBg:      '#FFF1F0',
+  navHover:      '#F4F4F8',
+  // keep old aliases
   background:    '#FFFFFF',
-  statsBg:       '#F8FAFC',
-  logoutHover:   '#FEF2F2',
+  statsBg:       '#FAFAFA',
+  logoutHover:   '#FFF1F0',
 };
 
-const SIDEBAR_W = 224;
-const RIGHT_W   = 272;
+const SIDEBAR_W            = 228;
+const SIDEBAR_COLLAPSED_W  = 64;
+const RIGHT_W              = 272;
+const TOGGLE_W             = 32;
+
+const AUTO_HIDE_PATHS = ['/new-order', '/orders/new'];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface NavItem {
   label: string;
-  emoji: string;                   // fallback (still required for mobile tabs)
+  emoji: string;
   href: string;
   matchPrefix?: boolean;
   badge?: boolean;
-  iconName?: string;               // MaterialCommunityIcons name
-  iconSet?: 'ionicons' | 'mci';   // mci = MaterialCommunityIcons
-  subtitle?: string;               // shown in top header when this page is active
+  iconName?: string;
+  iconSet?: 'ionicons' | 'mci' | 'mdi' | string;
+  subtitle?: string;
 }
 
 interface Props {
@@ -60,19 +68,20 @@ function getInitials(name?: string | null) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function NavIcon({ item, active, color }: { item: NavItem; active: boolean; color: string }) {
-  const iconColor = active ? '#FFFFFF' : C.textMuted;
-  const size = 18;
+function NavIcon({ item, active, accentColor }: { item: NavItem; active: boolean; accentColor: string }) {
+  const iconColor = active ? accentColor : '#94A3B8';
   if (item.iconName) {
-    return <MaterialCommunityIcons name={item.iconName as any} size={size} color={iconColor} />;
+    return <Feather name={item.iconName as any} size={18} color={iconColor} />;
   }
-  return <Text style={[s.navEmoji, active && s.navEmojiActive]}>{item.emoji}</Text>;
+  return <Text style={{ fontSize: 17, opacity: active ? 1 : 0.45, width: 22, textAlign: 'center' }}>{item.emoji}</Text>;
 }
 
 // ─── Right panel ──────────────────────────────────────────────────────────────
-function RightPanel({ accentColor, profile }: {
+function RightPanel({ accentColor, profile, open, onToggle }: {
   accentColor: string;
   profile: any;
+  open: boolean;
+  onToggle: () => void;
 }) {
   const isManager    = profile?.user_type === 'lab' && profile?.role === 'manager';
   const isTechnician = profile?.user_type === 'lab' && profile?.role === 'technician';
@@ -89,9 +98,9 @@ function RightPanel({ accentColor, profile }: {
   const kk         = myOrders.filter((o: any) => o.status === 'kalite_kontrol').length;
 
   const stats = [
-    { label: 'Toplam',                          value: myOrders.length, alert: false },
-    { label: 'Üretimde',                        value: active,          alert: false },
-    { label: 'Geciken',                         value: overdue,         alert: overdue > 0 },
+    { label: 'Toplam',    value: myOrders.length, alert: false },
+    { label: 'Üretimde',  value: active,          alert: false },
+    { label: 'Geciken',   value: overdue,         alert: overdue > 0 },
     isManager
       ? { label: 'Atanmamış', value: unassigned, alert: unassigned > 0 }
       : { label: 'KK',        value: kk,         alert: false },
@@ -130,167 +139,356 @@ function RightPanel({ accentColor, profile }: {
   }
 
   return (
-    <View style={rp.panel}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={rp.scroll}>
+    <View style={[rp.panel, open ? rp.panelOpen : rp.panelClosed]}>
+      {/* Toggle strip */}
+      <TouchableOpacity onPress={onToggle} style={rp.toggleStrip} activeOpacity={0.7}>
+        <Feather
+          name={open ? 'chevron-right' : 'chevron-left' as any}
+          size={14}
+          color="#AEAEB2"
+        />
+        {!open && <Text style={rp.toggleHint}>{'İşler'}</Text>}
+      </TouchableOpacity>
 
-        {/* ── Profile ── */}
-        <View style={rp.profileRow}>
-          <View style={[rp.avatar, { backgroundColor: accentColor }]}>
-            <Text style={rp.avatarText}>{initials}</Text>
-          </View>
-          <View style={rp.profileMeta}>
-            <Text style={rp.profileName} numberOfLines={1}>{fullName}</Text>
-            <Text style={rp.roleLabel}>{roleLabel}</Text>
-          </View>
-        </View>
-
-        <View style={rp.divider} />
-
-        {/* ── Stats row ── */}
-        <View style={rp.statsRow}>
-          {stats.map((st, i) => (
-            <View key={st.label} style={[rp.statCell, i < stats.length - 1 && rp.statCellBorder]}>
-              <Text style={[rp.statValue, st.alert && rp.statValueAlert]}>{st.value}</Text>
-              <Text style={rp.statLabel}>{st.label}</Text>
+      {/* Content */}
+      {open && (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={rp.scroll} style={{ flex: 1 }}>
+          {/* Profile */}
+          <View style={rp.profileRow}>
+            <View style={[rp.avatar, { backgroundColor: accentColor }]}>
+              <Text style={rp.avatarText}>{initials}</Text>
             </View>
-          ))}
-        </View>
+            <View style={rp.profileMeta}>
+              <Text style={rp.profileName} numberOfLines={1}>{fullName}</Text>
+              <Text style={rp.roleLabel}>{roleLabel}</Text>
+            </View>
+          </View>
 
-        <View style={rp.divider} />
+          <View style={rp.divider} />
 
-        {/* ── Active orders ── */}
-        <Text style={rp.sectionTitle}>
-          {isTechnician ? 'İşlerim' : 'Aktif İşler'}
-        </Text>
-
-        {pending.length === 0 ? (
-          <Text style={rp.emptyText}>Aktif iş bulunmuyor</Text>
-        ) : (
-          pending.map((order: any, idx: number) => {
-            const { text, overdue: isOverdue } = daysUntil(order.delivery_date);
-            return (
-              <View key={order.id} style={[rp.orderRow, idx < pending.length - 1 && rp.orderRowBorder]}>
-                <View style={[rp.statusDot, { backgroundColor: STATUS_COLOR[order.status] ?? '#CBD5E1' }]} />
-                <View style={rp.orderInfo}>
-                  <Text style={rp.orderType} numberOfLines={1}>{order.work_type}</Text>
-                  <Text style={rp.orderNum}>{order.order_number}</Text>
-                </View>
-                <Text style={[rp.dateText, isOverdue && rp.dateTextAlert]}>{text}</Text>
+          {/* Stats */}
+          <View style={rp.statsRow}>
+            {stats.map((st, i) => (
+              <View key={st.label} style={[rp.statCell, i < stats.length - 1 && rp.statCellBorder]}>
+                <Text style={[rp.statValue, st.alert && rp.statValueAlert]}>{st.value}</Text>
+                <Text style={rp.statLabel}>{st.label}</Text>
               </View>
-            );
-          })
-        )}
+            ))}
+          </View>
 
-      </ScrollView>
+          <View style={rp.divider} />
+
+          {/* Active orders */}
+          <Text style={rp.sectionTitle}>
+            {isTechnician ? 'İşlerim' : 'Aktif İşler'}
+          </Text>
+
+          {pending.length === 0 ? (
+            <Text style={rp.emptyText}>Aktif iş bulunmuyor</Text>
+          ) : (
+            pending.map((order: any, idx: number) => {
+              const { text, overdue: isOverdue } = daysUntil(order.delivery_date);
+              return (
+                <View key={order.id} style={[rp.orderRow, idx < pending.length - 1 && rp.orderRowBorder]}>
+                  <View style={[rp.statusDot, { backgroundColor: STATUS_COLOR[order.status] ?? '#CBD5E1' }]} />
+                  <View style={rp.orderInfo}>
+                    <Text style={rp.orderType} numberOfLines={1}>{order.work_type}</Text>
+                    <Text style={rp.orderNum}>{order.order_number}</Text>
+                  </View>
+                  <Text style={[rp.dateText, isOverdue && rp.dateTextAlert]}>{text}</Text>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
 const rp = StyleSheet.create({
   panel: {
-    width: RIGHT_W,
     backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
     borderLeftWidth: 1,
     borderLeftColor: '#F1F5F9',
   },
-  scroll: {
+  panelOpen:   { width: RIGHT_W + TOGGLE_W },
+  panelClosed: { width: TOGGLE_W },
+  toggleStrip: {
+    width: TOGGLE_W,
+    alignItems: 'center',
     paddingTop: 20,
-    paddingBottom: 32,
-  },
-
-  // Profile
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    gap: 12,
-    marginBottom: 18,
-  },
-  avatar: {
-    width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  profileMeta: { flex: 1 },
-  profileName: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  roleLabel:   { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 18,
-  },
-
-  // Stats row (4 cells inline)
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 18,
-    marginBottom: 18,
-  },
-  statCell: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statCellBorder: {
+    gap: 10,
     borderRightWidth: 1,
     borderRightColor: '#F1F5F9',
   },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.5,
+  toggleHint: {
+    fontSize: 9, fontWeight: '700', color: '#AEAEB2',
+    letterSpacing: 1.2, textTransform: 'uppercase',
+    // @ts-ignore
+    writingMode: 'vertical-rl',
+    transform: [{ rotate: '180deg' }],
+    marginTop: 4,
   },
-  statValueAlert: {
-    color: '#DC2626',
-  },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: 2,
-  },
+  scroll: { paddingTop: 20, paddingBottom: 32 },
 
-  // Section title
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    paddingHorizontal: 18,
-    marginBottom: 4,
-  },
+  profileRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, gap: 12, marginBottom: 18 },
+  avatar:     { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  profileMeta: { flex: 1 },
+  profileName: { fontSize: 13, fontWeight: '700', color: '#1C1C1E' },
+  roleLabel:   { fontSize: 11, color: '#AEAEB2', marginTop: 1 },
 
-  // Order rows — flat list, no cards
-  orderRow: {
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginHorizontal: 18, marginBottom: 18 },
+
+  statsRow: { flexDirection: 'row', paddingHorizontal: 18, marginBottom: 18 },
+  statCell: { flex: 1, alignItems: 'center' },
+  statCellBorder: { borderRightWidth: 1, borderRightColor: '#F1F5F9' },
+  statValue: { fontSize: 22, fontWeight: '800', color: '#1C1C1E', letterSpacing: -0.5 },
+  statValueAlert: { color: '#FF3B30' },
+  statLabel: { fontSize: 9, fontWeight: '600', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 2 },
+
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 18, marginBottom: 6 },
+
+  orderRow:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 10, gap: 10 },
+  orderRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  statusDot: { width: 6, height: 6, borderRadius: 3, marginTop: 1 },
+  orderInfo: { flex: 1 },
+  orderType: { fontSize: 12, fontWeight: '600', color: '#1C1C1E' },
+  orderNum:  { fontSize: 10, color: '#AEAEB2', marginTop: 1 },
+  dateText:  { fontSize: 11, color: '#6C6C70', fontWeight: '500' },
+  dateTextAlert: { color: '#FF3B30', fontWeight: '700' },
+  emptyText: { fontSize: 12, color: '#AEAEB2', paddingHorizontal: 18, paddingTop: 8 },
+});
+
+// ─── Global Search ────────────────────────────────────────────────────────────
+type SRType = 'clinic' | 'doctor' | 'order' | 'user';
+interface SR {
+  id: string; type: SRType;
+  title: string; subtitle?: string;
+  icon: string; href: string;
+}
+const SR_META: Record<SRType, { label: string; color: string; bg: string }> = {
+  clinic: { label: 'Klinik',    color: '#2563EB', bg: '#EFF6FF' },
+  doctor: { label: 'Hekim',     color: '#7C3AED', bg: '#EDE9FE' },
+  order:  { label: 'Sipariş',   color: '#059669', bg: '#D1FAE5' },
+  user:   { label: 'Kullanıcı', color: '#D97706', bg: '#FEF3C7' },
+};
+
+function GlobalSearch({
+  visible, onClose, userType,
+}: {
+  visible: boolean; onClose: () => void; userType: string;
+}) {
+  const [query,   setQuery]   = useState('');
+  const [results, setResults] = useState<SR[]>([]);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const inputRef = useRef<TextInput>(null);
+  const isAdmin = userType === 'admin';
+
+  useEffect(() => {
+    if (!visible) { setQuery(''); setResults([]); }
+    else { setTimeout(() => inputRef.current?.focus(), 100); }
+  }, [visible]);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) { setResults([]); return; }
+    const timer = setTimeout(() => runSearch(q), 280);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  async function runSearch(q: string) {
+    setLoading(true);
+    const like = `%${q}%`;
+    const adminPrefix = '/(admin)';
+    const labPrefix   = '/(lab)';
+
+    const [c, d, o, u] = await Promise.all([
+      supabase.from('clinics').select('id,name,contact_person,category').or(`name.ilike.${like},contact_person.ilike.${like}`).limit(5),
+      supabase.from('doctors').select('id,full_name,specialty').ilike('full_name', like).limit(5),
+      supabase.from('work_orders').select('id,patient_name,work_type').ilike('patient_name', like).limit(5),
+      isAdmin
+        ? supabase.from('profiles').select('id,full_name,email').ilike('full_name', like).limit(4)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const out: SR[] = [];
+
+    (c.data ?? []).forEach(r => out.push({
+      id: r.id, type: 'clinic',
+      title: r.name,
+      subtitle: [r.category, r.contact_person].filter(Boolean).join(' · ') || undefined,
+      icon: 'briefcase',
+      href: isAdmin ? `${adminPrefix}/clinics` : `${labPrefix}/clinics`,
+    }));
+
+    (d.data ?? []).forEach(r => out.push({
+      id: r.id, type: 'doctor',
+      title: r.full_name,
+      subtitle: r.specialty ?? undefined,
+      icon: 'activity',
+      href: isAdmin ? `${adminPrefix}/clinics` : `${labPrefix}/clinics`,
+    }));
+
+    (o.data ?? []).forEach(r => out.push({
+      id: r.id, type: 'order',
+      title: r.patient_name ?? 'İsimsiz',
+      subtitle: r.work_type ?? undefined,
+      icon: 'file-text',
+      href: isAdmin ? `/admin/orders/${r.id}` : `${labPrefix}/all-orders`,
+    }));
+
+    ((u as any).data ?? []).forEach((r: any) => out.push({
+      id: r.id, type: 'user',
+      title: r.full_name ?? 'Kullanıcı',
+      subtitle: r.email ?? undefined,
+      icon: 'user',
+      href: `${adminPrefix}/users`,
+    }));
+
+    setResults(out);
+    setLoading(false);
+  }
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <TouchableOpacity style={gs.overlay} activeOpacity={1} onPress={onClose}>
+        <View style={gs.panel} onStartShouldSetResponder={() => true}>
+
+          {/* Input row */}
+          <View style={gs.inputRow}>
+            <Feather name="search" size={18} color="#AEAEB2" />
+            <TextInput
+              ref={inputRef}
+              style={gs.input}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Klinik, hekim, sipariş, kullanıcı ara..."
+              placeholderTextColor="#AEAEB2"
+              returnKeyType="search"
+              clearButtonMode="never"
+            />
+            {loading
+              ? <ActivityIndicator size="small" color="#AEAEB2" />
+              : query.length > 0
+                ? (
+                  <TouchableOpacity onPress={() => setQuery('')}>
+                    <Feather name="x-circle" size={17} color="#AEAEB2" />
+                  </TouchableOpacity>
+                ) : null
+            }
+          </View>
+
+          {/* Divider */}
+          <View style={gs.divider} />
+
+          {/* Results */}
+          {results.length > 0 ? (
+            <ScrollView style={gs.list} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {results.map(r => {
+                const meta = SR_META[r.type];
+                return (
+                  <TouchableOpacity
+                    key={`${r.type}-${r.id}`}
+                    style={gs.row}
+                    onPress={() => { router.push(r.href as any); onClose(); }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[gs.rowIcon, { backgroundColor: meta.bg }]}>
+                      <Feather name={r.icon as any} size={15} color={meta.color} />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={gs.rowTitle} numberOfLines={1}>{r.title}</Text>
+                      {r.subtitle ? <Text style={gs.rowSub} numberOfLines={1}>{r.subtitle}</Text> : null}
+                    </View>
+                    <View style={[gs.badge, { backgroundColor: meta.bg }]}>
+                      <Text style={[gs.badgeText, { color: meta.color }]}>{meta.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : query.trim().length > 0 && !loading ? (
+            <View style={gs.empty}>
+              <Feather name="search" size={32} color="#E5E7EB" />
+              <Text style={gs.emptyText}>Sonuç bulunamadı</Text>
+            </View>
+          ) : (
+            <View style={gs.empty}>
+              <Text style={gs.hintText}>Aramak istediğinizi yazın</Text>
+            </View>
+          )}
+
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+const gs = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.35)',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'web' ? 80 : 60,
+    paddingHorizontal: 24,
+  },
+  panel: {
+    width: '100%',
+    maxWidth: 600,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.18,
+    shadowRadius: 40,
+  },
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
   },
-  orderRowBorder: {
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1C1C1E',
+    outlineStyle: 'none',
+  } as any,
+  divider: { height: 1, backgroundColor: '#F1F5F9' },
+  list:    { maxHeight: 420 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
-  statusDot: { width: 6, height: 6, borderRadius: 3, marginTop: 1 },
-  orderInfo: { flex: 1 },
-  orderType: { fontSize: 12, fontWeight: '600', color: '#1E293B' },
-  orderNum:  { fontSize: 10, color: '#94A3B8', marginTop: 1 },
-  dateText:  { fontSize: 11, color: '#64748B', fontWeight: '500' },
-  dateTextAlert: { color: '#DC2626', fontWeight: '700' },
-
-  // Empty
-  emptyText: {
-    fontSize: 12,
-    color: '#94A3B8',
-    paddingHorizontal: 18,
-    paddingTop: 8,
+  rowIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
   },
+  rowTitle:  { fontSize: 14, fontWeight: '600', color: '#1C1C1E' },
+  rowSub:    { fontSize: 12, color: '#AEAEB2' },
+  badge: {
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  badgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
+  empty: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 32, gap: 8,
+  },
+  emptyText: { fontSize: 14, color: '#AEAEB2' },
+  hintText:  { fontSize: 13, color: '#AEAEB2', paddingBottom: 4 },
 });
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
@@ -300,14 +498,16 @@ export function DesktopShell({ navItems, accentColor = C.primary }: Props) {
   const { profile, signOut } = useAuthStore();
   const { width } = useWindowDimensions();
 
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [search, setSearch]   = useState('');
+  const [hovered,    setHovered]    = useState<string | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [navTooltip, setNavTooltip] = useState<{ label: string; y: number } | null>(null);
+  const isAutoHide = AUTO_HIDE_PATHS.some(p => pathname.startsWith(p));
+  const [rightOpen, setRightOpen] = useState(!isAutoHide);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   const initials  = getInitials(profile?.full_name);
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Kullanıcı';
-  const fullName  = profile?.full_name ?? 'Kullanıcı';
 
-  // expo-router strips route groups from pathname: '/(lab)/new-order' → '/new-order'
   const normalizeHref = (href: string) => href.replace(/^\/\([^)]+\)/, '') || '/';
 
   const isActive = (item: NavItem) => {
@@ -317,26 +517,28 @@ export function DesktopShell({ navItems, accentColor = C.primary }: Props) {
       : pathname === h || pathname === h + '/';
   };
 
-  // Right panel on all pages except dashboard
   const isDashboard = pathname === '/' || pathname === '';
   const showRight = width >= 1200 && !isDashboard;
 
-  // Current page label + subtitle for header
-  const activeItem   = navItems.find(n => isActive(n));
-  const activeLabel  = activeItem?.label    ?? 'Dashboard';
-  const activeSubtitle = activeItem?.subtitle ?? null;
+  const activeItem     = navItems.find(n => isActive(n));
+  const activeLabel    = activeItem?.label ?? 'Dashboard';
 
   return (
     <View style={s.shell}>
 
       {/* ── Sidebar ── */}
-      <View style={s.sidebar}>
+      <View style={[s.sidebar, sidebarCollapsed ? s.sidebarCollapsed : s.sidebarExpanded]}>
+
         {/* Logo */}
-        <View style={s.logoRow}>
-          <View style={[s.logoIcon, { backgroundColor: accentColor }]}>
-            <Text style={s.logoEmoji}>🦷</Text>
-          </View>
-          <Text style={[s.logoText, { color: accentColor }]}>DENTAL LAB</Text>
+        <View style={[s.logoRow, sidebarCollapsed && s.logoRowCollapsed]}>
+          <Image
+            source={require('../../assets/images/icon.png')}
+            style={s.logoImg}
+            resizeMode="contain"
+          />
+          {!sidebarCollapsed && (
+            <Text style={s.logoTitle}>Dental Lab</Text>
+          )}
         </View>
 
         {/* Nav items */}
@@ -349,75 +551,87 @@ export function DesktopShell({ navItems, accentColor = C.primary }: Props) {
                 key={item.href}
                 style={[
                   s.navItem,
-                  active && [s.navItemActive, { backgroundColor: accentColor }],
+                  sidebarCollapsed && s.navItemCollapsed,
+                  active && [s.navItemActive, { backgroundColor: accentColor + '14' }],
                   !active && hover && s.navItemHover,
                 ]}
                 onPress={() => router.push(item.href as any)}
                 // @ts-ignore
-                onMouseEnter={() => setHovered(item.href)}
-                onMouseLeave={() => setHovered(null)}
+                onMouseEnter={(e: any) => { setHovered(item.href); if (sidebarCollapsed) setNavTooltip({ label: item.label, y: e.nativeEvent.pageY }); }}
+                onMouseLeave={() => { setHovered(null); setNavTooltip(null); }}
                 accessibilityLabel={item.label}
               >
-                <NavIcon item={item} active={active} color={accentColor} />
-                <Text style={[s.navLabel, active && s.navLabelActive]}>{item.label}</Text>
-                {item.badge && (
-                  <View style={[s.navBadge, { backgroundColor: active ? '#fff' : accentColor }]} />
+                <NavIcon item={item} active={active} accentColor={accentColor} />
+                {!sidebarCollapsed && (
+                  <>
+                    <Text style={[s.navLabel, active && { color: accentColor, fontWeight: '600' }]}>{item.label}</Text>
+                    {item.badge && <View style={[s.navBadgeDot, { backgroundColor: active ? accentColor : C.danger }]} />}
+                  </>
                 )}
               </TouchableOpacity>
             );
           })}
+        </ScrollView>
+
+        {/* Bottom: logout + user + toggle */}
+        <View style={s.sidebarBottom}>
+          <View style={s.navDivider} />
 
           {/* Logout */}
           <TouchableOpacity
-            style={[s.navItem, hovered === '__out' && s.navItemLogout]}
+            style={[s.navItem, sidebarCollapsed && s.navItemCollapsed, hovered === '__out' && s.navItemLogout]}
             onPress={signOut}
             // @ts-ignore
-            onMouseEnter={() => setHovered('__out')}
-            onMouseLeave={() => setHovered(null)}
+            onMouseEnter={(e: any) => { setHovered('__out'); if (sidebarCollapsed) setNavTooltip({ label: 'Çıkış Yap', y: e.nativeEvent.pageY }); }}
+            onMouseLeave={() => { setHovered(null); setNavTooltip(null); }}
           >
-            <MaterialCommunityIcons name="logout" size={18} color={hovered === '__out' ? C.danger : C.textMuted} />
-            <Text style={[s.navLabel, hovered === '__out' && { color: C.danger }]}>Çıkış Yap</Text>
+            <Feather name="log-out" size={17} color={hovered === '__out' ? C.danger : '#94A3B8'} />
+            {!sidebarCollapsed && (
+              <Text style={[s.navLabel, hovered === '__out' && { color: C.danger }]}>Çıkış Yap</Text>
+            )}
           </TouchableOpacity>
-        </ScrollView>
 
-        {/* User card */}
-        <View style={s.userCard}>
-          <View style={[s.userAvatar, { backgroundColor: accentColor }]}>
-            <Text style={s.userAvatarText}>{initials}</Text>
+          {/* User row + toggle */}
+          <View style={[s.userCard, sidebarCollapsed && s.userCardCollapsed]}>
+            <View style={[s.userAvatar, { backgroundColor: accentColor }]}>
+              <Text style={s.userAvatarText}>{initials}</Text>
+            </View>
+            {!sidebarCollapsed && (
+              <View style={s.userInfo}>
+                <Text style={s.userName} numberOfLines={1}>{firstName}</Text>
+                <Text style={s.userRole} numberOfLines={1}>
+                  {(profile as any)?.role ?? (profile as any)?.user_type ?? 'Kullanıcı'}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={() => setSidebarCollapsed(v => !v)}
+              style={[s.sidebarToggle, sidebarCollapsed && s.sidebarToggleCollapsed]}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name={sidebarCollapsed ? 'chevron-right' : 'chevron-left' as any}
+                size={13}
+                color="#AEAEB2"
+              />
+            </TouchableOpacity>
           </View>
-          <View style={s.userInfo}>
-            <Text style={s.userName} numberOfLines={1}>{firstName}</Text>
-            <Text style={s.userRole} numberOfLines={1}>
-              {(profile as any)?.role ?? (profile as any)?.user_type ?? 'Kullanıcı'}
-            </Text>
-          </View>
-          <Text style={s.userChevron}>▾</Text>
         </View>
       </View>
 
       {/* ── Main ── */}
       <View style={s.main}>
-        {/* Top header */}
+        {/* Header bar — like Overpay: title left, icons + avatar right */}
         <View style={s.header}>
-          <View>
-            <Text style={s.headerTitle}>{activeLabel}</Text>
-            {activeSubtitle && (
-              <Text style={s.headerSubtitle}>{activeSubtitle}</Text>
-            )}
-          </View>
+          <Text style={s.headerTitle}>{activeLabel}</Text>
           <View style={s.headerRight}>
-            <View style={s.searchBar}>
-              <MaterialCommunityIcons name="magnify" size={14} color={C.textMuted} />
-              <TextInput
-                style={s.searchInput}
-                placeholder="Sipariş ara..."
-                placeholderTextColor={C.textMuted}
-                value={search}
-                onChangeText={setSearch}
-              />
-            </View>
-            <TouchableOpacity style={s.iconBtn}>
-              <MaterialCommunityIcons name="bell-outline" size={18} color={C.textSecondary} />
+            <TouchableOpacity style={s.headerIcon} onPress={() => setShowSearch(true)}>
+              <Feather name="search" size={18} color={C.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.headerIcon}>
+              <Feather name="bell" size={18} color={C.textSecondary} />
+              {/* Notification red dot */}
+              <View style={s.notifDot} />
             </TouchableOpacity>
           </View>
         </View>
@@ -428,12 +642,31 @@ export function DesktopShell({ navItems, accentColor = C.primary }: Props) {
         </View>
       </View>
 
+      {/* ── Global Search ── */}
+      <GlobalSearch
+        visible={showSearch}
+        onClose={() => setShowSearch(false)}
+        userType={(profile as any)?.user_type ?? 'admin'}
+      />
+
       {/* ── Right panel ── */}
       {showRight && (
         <RightPanel
           accentColor={accentColor}
           profile={profile}
+          open={rightOpen}
+          onToggle={() => setRightOpen(v => !v)}
         />
+      )}
+
+      {/* ── Collapsed sidebar tooltip (shell-level to avoid ScrollView clipping) ── */}
+      {sidebarCollapsed && navTooltip && (
+        <View
+          style={[s.tooltip, { top: navTooltip.y - 14 }]}
+          pointerEvents="none"
+        >
+          <Text style={s.tooltipText}>{navTooltip.label}</Text>
+        </View>
       )}
     </View>
   );
@@ -450,143 +683,201 @@ const s = StyleSheet.create({
   shell: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: C.bg,
+    backgroundColor: '#FFFFFF',
   },
 
-  /* Sidebar */
+  /* ── Sidebar ── */
   sidebar: {
-    width: SIDEBAR_W,
-    backgroundColor: C.surface,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'column',
     paddingTop: 20,
-    borderRightWidth: 1,
-    borderRightColor: C.border,
-    // @ts-ignore
-    boxShadow: '1px 0 6px rgba(0,0,0,0.04)',
-    zIndex: 20,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: '#E5E5EA',
+    zIndex: 100,
+    overflow: 'visible' as any,
   },
+  sidebarExpanded:  { width: SIDEBAR_W },
+  sidebarCollapsed: { width: SIDEBAR_COLLAPSED_W },
+
+  // Logo
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    marginBottom: 24,
+    paddingHorizontal: 14,
+    marginBottom: 20,
     gap: 10,
+    minHeight: 40,
   },
-  logoIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    alignItems: 'center',
+  logoRowCollapsed: {
     justifyContent: 'center',
+    paddingHorizontal: 0,
   },
-  logoEmoji: { fontSize: 17 },
-  logoText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
+  logoImg: { width: 36, height: 36, flexShrink: 0 },
+  logoTitle:  { fontSize: 13, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.3 },
+  logoSub:    { fontSize: 10, color: '#AEAEB2', marginTop: 1 },
 
-  navScroll: { flex: 1, paddingHorizontal: 10 },
+  // Nav
+  navScroll: { flex: 1, paddingHorizontal: 8 },
+  navDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E5E5EA',
+    marginHorizontal: 8,
+    marginBottom: 4,
+  },
 
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 2,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    marginBottom: 1,
     gap: 10,
+    minHeight: 40,
   },
-  navItemActive: {},   // backgroundColor set inline
-  navItemHover:  { backgroundColor: C.navHover },
-  navItemLogout: { backgroundColor: C.dangerBg },
+  navItemCollapsed: {
+    width: 44,
+    height: 44,
+    minHeight: 44,
+    alignSelf: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    marginBottom: 2,
+  },
+  navItemActive:  {},
+  navItemHover:   { backgroundColor: '#F2F2F7' },
+  navItemLogout:  { backgroundColor: '#FFF1F0' },
+  navLabel:       { flex: 1, fontSize: 13, fontWeight: '500', color: '#3C3C43', letterSpacing: -0.1 },
+  navLabelActive: { fontWeight: '600' },
+  navBadgeDot:    { width: 7, height: 7, borderRadius: 4 },
 
-  navEmoji:      { fontSize: 16, opacity: 0.4, width: 20, textAlign: 'center' },
-  navEmojiActive:{ opacity: 1 },
-  navLabel:      { flex: 1, fontSize: 13, fontWeight: '500', color: C.textSecondary },
-  navLabelActive:{ color: '#FFFFFF', fontWeight: '700' },
-  navBadge:      { width: 7, height: 7, borderRadius: 4 },
+  // Tooltip — appears to the right when collapsed
+  tooltip: {
+    // @ts-ignore
+    position: 'fixed',
+    left: SIDEBAR_COLLAPSED_W + 8,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 9999,
+    // @ts-ignore
+    boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+    // @ts-ignore
+    whiteSpace: 'nowrap',
+    // @ts-ignore
+    pointerEvents: 'none',
+  },
+  tooltipText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
 
+  // Bottom section
+  sidebarBottom: { paddingHorizontal: 8, paddingBottom: 14 },
+
+  // User card + toggle
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-    gap: 10,
+    paddingHorizontal: 6,
+    paddingTop: 10,
+    paddingBottom: 2,
+    gap: 8,
   },
-  userAvatar: {
-    width: 32, height: 32, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
+  userCardCollapsed: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    gap: 6,
   },
+  userAvatar:     { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   userAvatarText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  userInfo: { flex: 1 },
-  userName:  { fontSize: 13, fontWeight: '700', color: C.textPrimary },
-  userRole:  { fontSize: 11, color: C.textMuted, textTransform: 'capitalize' },
-  userChevron: { fontSize: 11, color: C.textMuted },
+  userInfo:       { flex: 1 },
+  userName:       { fontSize: 12, fontWeight: '600', color: '#1C1C1E' },
+  userRole:       { fontSize: 10, color: '#AEAEB2', textTransform: 'capitalize', marginTop: 1 },
+  sidebarToggle: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  sidebarToggleCollapsed: {
+    marginTop: 2,
+  },
 
-  /* Main */
+  /* ── Main ── */
   main: {
     flex: 1,
     flexDirection: 'column',
-    backgroundColor: C.bg,
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
 
-  /* Header */
+  /* ── Header bar ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    backgroundColor: C.surface,
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
-    // @ts-ignore
-    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+    borderBottomColor: '#F1F5F9',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
-    color: C.textPrimary,
+    color: '#1C1C1E',
     letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: C.textMuted,
-    marginTop: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
   },
-  searchBar: {
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notifDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  headerDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#F1F5F9',
+    marginHorizontal: 8,
+  },
+  headerProfile: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.bg,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: C.borderMid,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    width: 210,
     gap: 8,
+    paddingLeft: 4,
   },
-  searchInput: {
-    flex: 1, fontSize: 13, color: C.textPrimary,
-    // @ts-ignore
-    outlineStyle: 'none',
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  iconBtn: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: C.bg,
-    borderWidth: 1, borderColor: C.borderMid,
-  },
+  headerAvatarText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  headerName: { fontSize: 14, fontWeight: '600', color: '#1C1C1E' },
 
-  /* Page */
-  page: { flex: 1 },
+  /* ── Page ── */
+  page: { flex: 1, backgroundColor: '#FFFFFF' },
 });

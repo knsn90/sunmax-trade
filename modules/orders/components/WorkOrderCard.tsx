@@ -134,7 +134,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 5,
     borderWidth: 1,
-    borderColor: '#E8ECF2',
+    borderColor: '#F1F5F9',
+    // @ts-ignore
+    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
   },
 
   topMeta: {

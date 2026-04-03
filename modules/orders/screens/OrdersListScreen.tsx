@@ -12,6 +12,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -38,6 +39,15 @@ const STATUS_FILTERS: { value: WorkOrderStatus | 'all'; label: string }[] = [
 
 type ViewMode = 'kanban' | 'list';
 type MachineFilter = 'all' | 'milling' | '3d_printing';
+type SortBy = 'delivery_date' | 'created_at' | 'order_number' | 'is_urgent';
+type SortDir = 'asc' | 'desc';
+
+const SORT_OPTIONS: { value: SortBy; label: string; icon: string }[] = [
+  { value: 'delivery_date', label: 'Teslimat Tarihi', icon: 'calendar-clock' },
+  { value: 'created_at',    label: 'Oluşturma Tarihi', icon: 'calendar-plus' },
+  { value: 'order_number',  label: 'Sipariş No',       icon: 'pound' },
+  { value: 'is_urgent',     label: 'Aciliyet',         icon: 'lightning-bolt' },
+];
 
 export function OrdersListScreen() {
   const router = useRouter();
@@ -54,13 +64,39 @@ export function OrdersListScreen() {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Extra filters
+  // Applied filters
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [machineFilter, setMachineFilter] = useState<MachineFilter>('all');
   const [overdueOnly, setOverdueOnly] = useState(false);
-  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [sortBy, setSortBy] = useState<SortBy>('delivery_date');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
-  const activeFilterCount = [urgentOnly, machineFilter !== 'all', overdueOnly].filter(Boolean).length;
+  // Draft filters (popup)
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [draftUrgent,  setDraftUrgent]  = useState(false);
+  const [draftMachine, setDraftMachine] = useState<MachineFilter>('all');
+  const [draftOverdue, setDraftOverdue] = useState(false);
+  const [draftSortBy,  setDraftSortBy]  = useState<SortBy>('delivery_date');
+  const [draftSortDir, setDraftSortDir] = useState<SortDir>('asc');
+
+  const openFilterSheet = () => {
+    setDraftUrgent(urgentOnly);
+    setDraftMachine(machineFilter);
+    setDraftOverdue(overdueOnly);
+    setDraftSortBy(sortBy);
+    setDraftSortDir(sortDir);
+    setFilterSheetVisible(true);
+  };
+  const applyFilters = () => {
+    setUrgentOnly(draftUrgent);
+    setMachineFilter(draftMachine);
+    setOverdueOnly(draftOverdue);
+    setSortBy(draftSortBy);
+    setSortDir(draftSortDir);
+    setFilterSheetVisible(false);
+  };
+
+  const activeFilterCount = [urgentOnly, machineFilter !== 'all', overdueOnly, sortBy !== 'delivery_date' || sortDir !== 'asc'].filter(Boolean).length;
 
   // Assignment (mesul müdür only)
   const [assignTarget, setAssignTarget] = useState<WorkOrder | null>(null);
@@ -79,7 +115,7 @@ export function OrdersListScreen() {
   const today = new Date().toISOString().split('T')[0];
 
   const filtered = useMemo(() => {
-    return visibleOrders.filter((o) => {
+    const list = visibleOrders.filter((o) => {
       const matchStatus = statusFilter === 'all' || o.status === statusFilter;
       const searchLower = search.toLowerCase();
       const matchSearch =
@@ -93,7 +129,15 @@ export function OrdersListScreen() {
       const matchOverdue = !overdueOnly || (o.delivery_date < today && o.status !== 'teslim_edildi');
       return matchStatus && matchSearch && matchUrgent && matchMachine && matchOverdue;
     });
-  }, [visibleOrders, statusFilter, search, urgentOnly, machineFilter, overdueOnly, today]);
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'delivery_date') cmp = a.delivery_date.localeCompare(b.delivery_date);
+      else if (sortBy === 'created_at') cmp = a.created_at.localeCompare(b.created_at);
+      else if (sortBy === 'order_number') cmp = a.order_number.localeCompare(b.order_number);
+      else if (sortBy === 'is_urgent') cmp = (b.is_urgent ? 1 : 0) - (a.is_urgent ? 1 : 0);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [visibleOrders, statusFilter, search, urgentOnly, machineFilter, overdueOnly, today, sortBy, sortDir]);
 
   const unassignedAlindi = useMemo(
     () => orders.filter((o) => o.status === 'alindi' && !o.assigned_to),
@@ -137,6 +181,8 @@ export function OrdersListScreen() {
     setUrgentOnly(false);
     setMachineFilter('all');
     setOverdueOnly(false);
+    setSortBy('delivery_date');
+    setSortDir('asc');
   };
 
   const pendingCount = visibleOrders.filter(o => o.status === 'alindi').length;
@@ -146,24 +192,23 @@ export function OrdersListScreen() {
 
       {/* ── Unassigned Banner (manager only) ── */}
       {isManager && unassignedAlindi.length > 0 && (
-        <View style={s.unassignedBanner}>
+        <TouchableOpacity
+          style={s.unassignedBanner}
+          onPress={() => { setStatusFilter('alindi'); setViewMode('list'); }}
+          activeOpacity={0.7}
+        >
           <View style={s.bannerLeft}>
-            <View style={s.bannerIconWrap}>
-              <MaterialCommunityIcons name={'account-clock-outline' as any} size={16} color="#D97706" />
+            <View style={s.bannerCount}>
+              <Text style={s.bannerCountText}>{unassignedAlindi.length}</Text>
             </View>
             <Text style={s.bannerText} numberOfLines={1}>
-              <Text style={s.bannerCount}>{unassignedAlindi.length}</Text>
-              {' '}iş emri teknisyen bekliyor
+              iş emri teknisyen bekliyor
             </Text>
           </View>
-          <TouchableOpacity
-            style={s.bannerBtn}
-            onPress={() => { setStatusFilter('alindi'); setViewMode('list'); }}
-            activeOpacity={0.75}
-          >
-            <Text style={s.bannerBtnText}>Göster</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={s.bannerArrow}>
+            <MaterialCommunityIcons name={'chevron-right' as any} size={16} color="#2563EB" />
+          </View>
+        </TouchableOpacity>
       )}
 
       {/* ── Active filter chips ── */}
@@ -183,13 +228,13 @@ export function OrdersListScreen() {
               <MaterialCommunityIcons
                 name={machineFilter === 'milling' ? 'cog-outline' as any : 'printer-3d' as any}
                 size={12}
-                color="#1D4ED8"
+                color="#0F172A"
               />
-              <Text style={[s.activeChipText, { color: '#1D4ED8' }]}>
+              <Text style={[s.activeChipText, { color: '#0F172A' }]}>
                 {machineFilter === 'milling' ? 'Frezeleme' : '3D Baskı'}
               </Text>
               <TouchableOpacity onPress={() => setMachineFilter('all')}>
-                <MaterialCommunityIcons name={'close' as any} size={12} color="#1D4ED8" />
+                <MaterialCommunityIcons name={'close' as any} size={12} color="#0F172A" />
               </TouchableOpacity>
             </View>
           )}
@@ -281,23 +326,25 @@ export function OrdersListScreen() {
             />
           </TouchableOpacity>
 
-          {/* Filter */}
-          <TouchableOpacity
-            style={[s.iconBtn, activeFilterCount > 0 && s.iconBtnActive]}
-            onPress={() => setFilterSheetVisible(true)}
-            activeOpacity={0.75}
-          >
-            <MaterialCommunityIcons
-              name={'tune-variant' as any}
-              size={18}
-              color={activeFilterCount > 0 ? '#0F172A' : '#94A3B8'}
-            />
-            {activeFilterCount > 0 && (
-              <View style={s.filterBadge}>
-                <Text style={s.filterBadgeText}>{activeFilterCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* Filter — hidden in kanban mode */}
+          {viewMode !== 'kanban' && (
+            <TouchableOpacity
+              style={[s.iconBtn, activeFilterCount > 0 && s.iconBtnActive]}
+              onPress={openFilterSheet}
+              activeOpacity={0.75}
+            >
+              <MaterialCommunityIcons
+                name={'tune-variant' as any}
+                size={18}
+                color={activeFilterCount > 0 ? '#0F172A' : '#94A3B8'}
+              />
+              {activeFilterCount > 0 && (
+                <View style={s.filterBadge}>
+                  <Text style={s.filterBadgeText}>{activeFilterCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -336,23 +383,40 @@ export function OrdersListScreen() {
           onStatusAdvance={handleStatusAdvance}
         />
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={s.listContent}
-          renderItem={({ item }) => (
-            <WorkOrderCard
-              order={item}
-              onPress={() => router.push(`/(lab)/order/${item.id}`)}
-              showDoctor
-              onAssign={isManager && item.status === 'alindi' && !item.assigned_to
-                ? () => openAssignModal(item)
-                : undefined}
-            />
-          )}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={refetch} />}
-          ListEmptyComponent={<EmptyState search={search} hasFilters={activeFilterCount > 0} />}
-        />
+        <ScrollView
+          style={tbl.page}
+          contentContainerStyle={tbl.pageContent}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refetch} tintColor="#AEAEB2" />}
+          showsVerticalScrollIndicator={false}
+        >
+          {filtered.length === 0
+            ? <EmptyState search={search} hasFilters={activeFilterCount > 0} />
+            : (
+              <View style={tbl.card}>
+                {/* Table header */}
+                <View style={tbl.headerRow}>
+                  <Text style={[tbl.hCell, { flex: 2.2 }]}>İŞ EMRİ</Text>
+                  <Text style={[tbl.hCell, { flex: 1.6 }]}>İLERLEME</Text>
+                  <Text style={[tbl.hCell, { flex: 2 }]}>HEKİM / HASTA</Text>
+                  <Text style={[tbl.hCell, { flex: 1, textAlign: 'center' }]}>TESLİMAT</Text>
+                  <Text style={[tbl.hCell, { flex: 1.2, textAlign: 'right' }]}>DURUM</Text>
+                </View>
+
+                {filtered.map((item, idx) => (
+                  <OrderTableRow
+                    key={item.id}
+                    order={item}
+                    isLast={idx === filtered.length - 1}
+                    onPress={() => router.push(`/(lab)/order/${item.id}`)}
+                    onAssign={isManager && item.status === 'alindi' && !item.assigned_to
+                      ? () => openAssignModal(item)
+                      : undefined}
+                  />
+                ))}
+              </View>
+            )
+          }
+        </ScrollView>
       )}
 
       {/* ── Status Modal ── */}
@@ -365,108 +429,139 @@ export function OrdersListScreen() {
         />
       )}
 
-      {/* ── Filter Sheet ── */}
+      {/* ── Filter Popup ── */}
       <Modal
         visible={filterSheetVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setFilterSheetVisible(false)}
       >
-        <View style={s.modalOverlay}>
-          <View style={s.filterSheet}>
-            {/* Sheet header */}
-            <View style={s.sheetHandle} />
-            <View style={s.sheetHeader}>
-              <Text style={s.sheetTitle}>Filtrele</Text>
-              {activeFilterCount > 0 && (
-                <TouchableOpacity onPress={clearFilters}>
-                  <Text style={s.sheetClear}>Temizle</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+        <TouchableOpacity style={fp.backdrop} activeOpacity={1} onPress={() => setFilterSheetVisible(false)}>
+          <View style={fp.panel} onStartShouldSetResponder={() => true}>
 
-            {/* Acil */}
-            <Text style={s.sheetSectionLabel}>Öncelik</Text>
-            <View style={s.sheetOptions}>
-              <TouchableOpacity
-                style={[s.optionChip, !urgentOnly && s.optionChipActive]}
-                onPress={() => setUrgentOnly(false)}
-              >
-                <Text style={[s.optionChipText, !urgentOnly && s.optionChipTextActive]}>Tümü</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.optionChip, urgentOnly && s.optionChipUrgent]}
-                onPress={() => setUrgentOnly(true)}
-              >
-                <MaterialCommunityIcons
-                  name={'lightning-bolt' as any}
-                  size={13}
-                  color={urgentOnly ? '#92400E' : C.textMuted}
-                />
-                <Text style={[s.optionChipText, urgentOnly && s.optionChipTextUrgent]}>Sadece Acil</Text>
+            {/* Header */}
+            <View style={fp.header}>
+              <View style={fp.headerLeft}>
+                <MaterialCommunityIcons name={'tune-variant' as any} size={16} color="#0F172A" />
+                <Text style={fp.headerTitle}>Filtrele & Sırala</Text>
+                {(draftUrgent || draftMachine !== 'all' || draftOverdue || draftSortBy !== 'delivery_date' || draftSortDir !== 'asc') && (
+                  <View style={fp.countBadge}>
+                    <Text style={fp.countBadgeText}>
+                      {[draftUrgent, draftMachine !== 'all', draftOverdue, draftSortBy !== 'delivery_date' || draftSortDir !== 'asc'].filter(Boolean).length}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => {
+                setDraftUrgent(false); setDraftMachine('all'); setDraftOverdue(false);
+                setDraftSortBy('delivery_date'); setDraftSortDir('asc');
+              }}>
+                <Text style={fp.clearText}>Temizle</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Makine tipi */}
-            <Text style={s.sheetSectionLabel}>Makine Tipi</Text>
-            <View style={s.sheetOptions}>
-              {([
-                { value: 'all',          label: 'Tümü',      icon: null },
-                { value: 'milling',      label: 'Frezeleme', icon: 'cog-outline' },
-                { value: '3d_printing',  label: '3D Baskı',  icon: 'printer-3d' },
-              ] as const).map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[s.optionChip, machineFilter === opt.value && s.optionChipActive]}
-                  onPress={() => setMachineFilter(opt.value)}
-                >
-                  {opt.icon && (
-                    <MaterialCommunityIcons
-                      name={opt.icon as any}
-                      size={13}
-                      color={machineFilter === opt.value ? C.primary : C.textMuted}
-                    />
-                  )}
-                  <Text style={[s.optionChipText, machineFilter === opt.value && s.optionChipTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={fp.divider} />
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+
+              {/* Sıralama */}
+              <View style={fp.section}>
+                <Text style={fp.sectionLabel}>Sıralama</Text>
+                <View style={fp.chipRow}>
+                  {SORT_OPTIONS.map(opt => {
+                    const active = draftSortBy === opt.value;
+                    return (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[fp.chip, active && fp.chipActive]}
+                        onPress={() => setDraftSortBy(opt.value)}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialCommunityIcons name={opt.icon as any} size={12} color={active ? '#0F172A' : '#94A3B8'} />
+                        <Text style={[fp.chipText, active && fp.chipTextActive]}>{opt.label}</Text>
+                        {active && (
+                          <TouchableOpacity onPress={() => setDraftSortDir(d => d === 'asc' ? 'desc' : 'asc')} style={fp.dirBtn}>
+                            <MaterialCommunityIcons
+                              name={(draftSortDir === 'asc' ? 'arrow-up' : 'arrow-down') as any}
+                              size={12} color="#0F172A"
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={fp.divider} />
+
+              {/* Öncelik */}
+              <View style={fp.section}>
+                <Text style={fp.sectionLabel}>Öncelik</Text>
+                <View style={fp.chipRow}>
+                  <TouchableOpacity style={[fp.chip, !draftUrgent && fp.chipActive]} onPress={() => setDraftUrgent(false)} activeOpacity={0.7}>
+                    <Text style={[fp.chipText, !draftUrgent && fp.chipTextActive]}>Tümü</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[fp.chip, draftUrgent && fp.chipUrgent]} onPress={() => setDraftUrgent(true)} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name={'lightning-bolt' as any} size={12} color={draftUrgent ? '#92400E' : '#94A3B8'} />
+                    <Text style={[fp.chipText, draftUrgent && fp.chipTextUrgent]}>Sadece Acil</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={fp.divider} />
+
+              {/* Makine Tipi */}
+              <View style={fp.section}>
+                <Text style={fp.sectionLabel}>Makine Tipi</Text>
+                <View style={fp.chipRow}>
+                  {([
+                    { value: 'all',         label: 'Tümü',      icon: null },
+                    { value: 'milling',     label: 'Frezeleme', icon: 'cog-outline' },
+                    { value: '3d_printing', label: '3D Baskı',  icon: 'printer-3d' },
+                  ] as const).map(opt => {
+                    const active = draftMachine === opt.value;
+                    return (
+                      <TouchableOpacity key={opt.value} style={[fp.chip, active && fp.chipActive]} onPress={() => setDraftMachine(opt.value)} activeOpacity={0.7}>
+                        {opt.icon && <MaterialCommunityIcons name={opt.icon as any} size={12} color={active ? '#0F172A' : '#94A3B8'} />}
+                        <Text style={[fp.chipText, active && fp.chipTextActive]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={fp.divider} />
+
+              {/* Teslimat */}
+              <View style={fp.section}>
+                <Text style={fp.sectionLabel}>Teslimat</Text>
+                <View style={fp.chipRow}>
+                  <TouchableOpacity style={[fp.chip, !draftOverdue && fp.chipActive]} onPress={() => setDraftOverdue(false)} activeOpacity={0.7}>
+                    <Text style={[fp.chipText, !draftOverdue && fp.chipTextActive]}>Tümü</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[fp.chip, draftOverdue && fp.chipDanger]} onPress={() => setDraftOverdue(true)} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name={'clock-alert-outline' as any} size={12} color={draftOverdue ? '#DC2626' : '#94A3B8'} />
+                    <Text style={[fp.chipText, draftOverdue && fp.chipTextDanger]}>Sadece Geciken</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+            </ScrollView>
+
+            <View style={fp.divider} />
+
+            <View style={fp.footer}>
+              <TouchableOpacity style={fp.cancelBtn} onPress={() => setFilterSheetVisible(false)} activeOpacity={0.7}>
+                <Text style={fp.cancelText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={fp.applyBtn} onPress={applyFilters} activeOpacity={0.7}>
+                <Text style={fp.applyText}>Uygula</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Geciken */}
-            <Text style={s.sheetSectionLabel}>Teslimat</Text>
-            <View style={s.sheetOptions}>
-              <TouchableOpacity
-                style={[s.optionChip, !overdueOnly && s.optionChipActive]}
-                onPress={() => setOverdueOnly(false)}
-              >
-                <Text style={[s.optionChipText, !overdueOnly && s.optionChipTextActive]}>Tümü</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.optionChip, overdueOnly && s.optionChipDanger]}
-                onPress={() => setOverdueOnly(true)}
-              >
-                <MaterialCommunityIcons
-                  name={'clock-alert-outline' as any}
-                  size={13}
-                  color={overdueOnly ? '#DC2626' : C.textMuted}
-                />
-                <Text style={[s.optionChipText, overdueOnly && s.optionChipTextDanger]}>Sadece Geciken</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Apply */}
-            <TouchableOpacity
-              style={s.applyBtn}
-              onPress={() => setFilterSheetVisible(false)}
-            >
-              <Text style={s.applyBtnText}>
-                Uygula{activeFilterCount > 0 ? ` (${activeFilterCount} filtre)` : ''}
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Assign Modal (manager only) ── */}
@@ -525,6 +620,138 @@ export function OrdersListScreen() {
   );
 }
 
+// ─── Progress per status ──────────────────────────────────────────────────────
+const STATUS_PROGRESS: Record<string, number> = {
+  alindi: 10, uretimde: 40, kalite_kontrol: 70, teslimata_hazir: 90, teslim_edildi: 100,
+};
+
+// ─── Circular Progress ────────────────────────────────────────────────────────
+function CircularProgress({ progress, size = 46, stroke = 4.5 }: {
+  progress: number; size?: number; stroke?: number;
+}) {
+  const r   = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - Math.min(progress, 100) / 100);
+
+  const color =
+    progress >= 100 ? '#10B981' :
+    progress >= 90  ? '#6D28D9' :
+    progress >= 70  ? '#7C3AED' :
+    progress >= 40  ? '#4F46E5' :
+                      '#2563EB';
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' as any }}>
+        <Circle cx={size / 2} cy={size / 2} r={r}
+          stroke="#F1F5F9" strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={r}
+          stroke={color} strokeWidth={stroke} fill="none"
+          strokeDasharray={`${circ}`}
+          strokeDashoffset={`${offset}`}
+          strokeLinecap="round"
+          rotation="-90"
+          origin={`${size / 2},${size / 2}`}
+        />
+      </Svg>
+      <Text style={{ fontSize: 9, fontWeight: '700', color: '#6C6C70' }}>{progress}%</Text>
+    </View>
+  );
+}
+
+// ─── Order Table Row ──────────────────────────────────────────────────────────
+function OrderTableRow({
+  order, isLast, onPress, onAssign,
+}: {
+  order: WorkOrder; isLast: boolean;
+  onPress: () => void; onAssign?: () => void;
+}) {
+  const cfg      = STATUS_CONFIG[order.status];
+  const progress = STATUS_PROGRESS[order.status] ?? 0;
+  const doctorName = order.doctor?.full_name ?? '';
+  const clinicName = order.doctor?.clinic?.name ?? '';
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due   = new Date(order.delivery_date + 'T00:00:00');
+  const diff  = Math.ceil((due.getTime() - today.getTime()) / 86_400_000);
+  const isOverdue = order.status !== 'teslim_edildi' && diff < 0;
+
+  const dateText  = order.status === 'teslim_edildi' ? 'Teslim edildi'
+    : diff === 0  ? 'Bugün'
+    : diff === 1  ? 'Yarın'
+    : diff < 0    ? `${Math.abs(diff)}g gecikti`
+    : due.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  const dateColor = order.status === 'teslim_edildi' ? '#94A3B8'
+    : diff < 0    ? '#EF4444'
+    : diff <= 1   ? '#F59E0B'
+    : '#6C6C70';
+
+  // Initials avatar
+  const parts = doctorName.trim().split(/\s+/);
+  const initials = parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : doctorName.substring(0, 2).toUpperCase();
+  const PALETTE = ['#6C63FF', '#FF6B9D', '#00C9A7', '#F59E0B', '#3B82F6', '#EF4444'];
+  let h = 0;
+  for (let i = 0; i < doctorName.length; i++) h = (h * 31 + doctorName.charCodeAt(i)) & 0xff;
+  const avatarBg = doctorName ? PALETTE[h % PALETTE.length] : '#94A3B8';
+
+  return (
+    <TouchableOpacity
+      style={[tbl.row, !isLast && tbl.rowBorder, isOverdue && tbl.rowOverdue]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      {/* İş Emri */}
+      <View style={{ flex: 2.2, gap: 3 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {order.is_urgent && (
+            <MaterialCommunityIcons name={'lightning-bolt' as any} size={12} color="#F59E0B" />
+          )}
+          <Text style={tbl.orderNo} numberOfLines={1}>{order.order_number}</Text>
+        </View>
+        <Text style={tbl.workType} numberOfLines={1}>{order.work_type}</Text>
+      </View>
+
+      {/* İlerleme */}
+      <View style={{ flex: 1.8, alignItems: 'flex-start', paddingLeft: 4 }}>
+        <CircularProgress progress={isOverdue && order.status !== 'teslim_edildi'
+          ? progress : progress} size={46} stroke={4.5} />
+      </View>
+
+      {/* Hekim / Hasta */}
+      <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={[tbl.avatar, { backgroundColor: avatarBg }]}>
+          <Text style={tbl.avatarText}>{initials || '?'}</Text>
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={tbl.doctorName} numberOfLines={1}>{doctorName || '—'}</Text>
+          <Text style={tbl.clinicName} numberOfLines={1}>{clinicName || (order.patient_name ?? '—')}</Text>
+        </View>
+      </View>
+
+      {/* Teslimat */}
+      <View style={{ flex: 1, alignItems: 'center' }}>
+        <Text style={[tbl.dateText, { color: dateColor }]}>{dateText}</Text>
+        {onAssign && (
+          <TouchableOpacity style={tbl.assignBtn} onPress={(e) => { (e as any).stopPropagation?.(); onAssign(); }} activeOpacity={0.7}>
+            <Text style={tbl.assignBtnText}>Ata</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Durum */}
+      <View style={{ flex: 1.2, alignItems: 'flex-end' }}>
+        <View style={[tbl.statusBadge, { backgroundColor: cfg?.bgColor ?? '#F1F5F9' }]}>
+          <Text style={[tbl.statusText, { color: cfg?.color ?? '#6C6C70' }]} numberOfLines={1}>
+            {cfg?.label ?? order.status}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 function EmptyState({ search, hasFilters }: { search: string; hasFilters: boolean }) {
   const noResults = search || hasFilters;
   return (
@@ -551,7 +778,7 @@ function EmptyState({ search, hasFilters }: { search: string; hasFilters: boolea
 const s = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F0F2F7',
+    backgroundColor: '#FFFFFF',
   },
 
   // ── Header ──
@@ -562,7 +789,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 14,
-    backgroundColor: '#F0F2F7',
+    backgroundColor: '#FFFFFF',
   },
   headerLeft: { flex: 1 },
   title: {
@@ -588,7 +815,7 @@ const s = StyleSheet.create({
   tabRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     borderRadius: 100,
     padding: 3,
     gap: 2,
@@ -621,7 +848,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 6,
-    backgroundColor: '#F0F2F7',
+    backgroundColor: '#FFFFFF',
   },
   activeChip: {
     flexDirection: 'row',
@@ -660,7 +887,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 52,
-    backgroundColor: '#F0F2F7',
+    backgroundColor: '#FFFFFF',
   },
 
   // Fixed right actions — always same position
@@ -676,7 +903,7 @@ const s = StyleSheet.create({
   segControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     borderRadius: 8,
     padding: 2,
     gap: 1,
@@ -704,7 +931,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBtnActive: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
   },
 
   // ── Search (expandable below toolbar) ──
@@ -715,7 +942,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 8,
-    backgroundColor: '#F0F2F7',
+    backgroundColor: '#FFFFFF',
   },
   searchWrap: {
     flex: 1,
@@ -761,7 +988,7 @@ const s = StyleSheet.create({
   // ── Status tab bar — expandable pill ──
   statusTabsScroll: {
     flex: 1,
-    backgroundColor: '#F0F2F7',
+    backgroundColor: '#FFFFFF',
   },
   statusTabsContent: {
     paddingLeft: 16,
@@ -771,7 +998,7 @@ const s = StyleSheet.create({
   statusTabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     borderRadius: 100,
     padding: 3,
     gap: 2,
@@ -811,17 +1038,13 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
+    backgroundColor: 'rgba(37,99,235,0.06)',
     borderRadius: 14,
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 2,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    // @ts-ignore
-    boxShadow: '0 1px 4px rgba(217,119,6,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
   bannerLeft: {
     flexDirection: 'row',
@@ -829,38 +1052,31 @@ const s = StyleSheet.create({
     gap: 10,
     flex: 1,
   },
-  bannerIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: '#FEF3C7',
+  bannerCount: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  bannerCountText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   bannerText: {
     fontSize: 13,
-    fontFamily: F.medium,
     fontWeight: '500',
-    color: '#92400E',
+    color: '#1C1C1E',
     flex: 1,
   },
-  bannerCount: {
-    fontFamily: F.bold,
-    fontWeight: '700',
-    color: '#D97706',
-  },
-  bannerBtn: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 13,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  bannerBtnText: {
-    fontSize: 12,
-    fontFamily: F.semibold,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: 0.1,
+  bannerArrow: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // ── Assign button ──
@@ -921,116 +1137,6 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
-  },
-  filterSheet: {
-    backgroundColor: C.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 32,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: C.border,
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: F.bold,
-    color: C.textPrimary,
-  },
-  sheetClear: {
-    fontSize: 13,
-    fontFamily: F.medium,
-    color: C.primary,
-  },
-  sheetSectionLabel: {
-    fontSize: 12,
-    fontFamily: F.semibold,
-    fontWeight: '600',
-    color: C.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 10,
-  },
-  sheetOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  optionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    backgroundColor: C.surface,
-  },
-  optionChipActive: {
-    borderColor: C.primary,
-    backgroundColor: C.primaryBg,
-  },
-  optionChipUrgent: {
-    borderColor: '#FDE68A',
-    backgroundColor: '#FFFBEB',
-  },
-  optionChipDanger: {
-    borderColor: '#FECACA',
-    backgroundColor: '#FEF2F2',
-  },
-  optionChipText: {
-    fontSize: 13,
-    fontFamily: F.medium,
-    fontWeight: '500',
-    color: C.textSecondary,
-  },
-  optionChipTextActive: {
-    color: C.primary,
-    fontFamily: F.semibold,
-    fontWeight: '600',
-  },
-  optionChipTextUrgent: {
-    color: '#92400E',
-    fontFamily: F.semibold,
-    fontWeight: '600',
-  },
-  optionChipTextDanger: {
-    color: '#DC2626',
-    fontFamily: F.semibold,
-    fontWeight: '600',
-  },
-  applyBtn: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: C.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  applyBtnText: {
-    fontSize: 15,
-    fontFamily: F.bold,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 
   // ── Assign modal ──
@@ -1107,4 +1213,196 @@ const s = StyleSheet.create({
     color: C.textSecondary,
     marginTop: 2,
   },
+});
+
+// ─── Table Styles ─────────────────────────────────────────────────────────────
+const tbl = StyleSheet.create({
+  // Page background
+  page: { flex: 1, backgroundColor: '#FFFFFF' },
+  pageContent: { padding: 16, paddingBottom: 40 },
+
+  // Rounded card wrapping header + rows
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+
+  // Header row — sits inside the card, gets top-rounded corners from card
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    backgroundColor: '#F9F9FB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F1F5',
+  },
+  hCell: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#C7C7CC',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+
+  // Data row
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    minHeight: 64,
+  },
+  rowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  rowOverdue: {
+    backgroundColor: '#FFFCFC',
+  },
+
+  // Cells
+  orderNo: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    letterSpacing: -0.1,
+  },
+  workType: {
+    fontSize: 11,
+    color: '#AEAEB2',
+    fontWeight: '400',
+    marginTop: 2,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  avatarText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  doctorName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  clinicName: {
+    fontSize: 11,
+    color: '#AEAEB2',
+    marginTop: 2,
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  assignBtn: {
+    marginTop: 4,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'center',
+  },
+  assignBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+  statusBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+});
+
+// ─── Filter Popup Styles ──────────────────────────────────────────────────────
+const fp = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.25)',
+    alignItems: 'flex-end',
+    paddingTop: 116,
+    paddingRight: 16,
+  },
+  panel: {
+    width: 340,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  countBadge: {
+    backgroundColor: '#0F172A', borderRadius: 10,
+    minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
+  },
+  countBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
+  clearText: { fontSize: 13, fontWeight: '500', color: '#94A3B8' },
+  divider: { height: 1, backgroundColor: '#F1F5F9' },
+  section: { paddingHorizontal: 16, paddingVertical: 14 },
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700', color: '#94A3B8',
+    letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10,
+  },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 8, borderWidth: 1.5, borderColor: '#F1F5F9', backgroundColor: '#FAFAFA',
+  },
+  chipActive:  { borderColor: '#0F172A', backgroundColor: '#F1F5F9' },
+  chipUrgent:  { borderColor: '#FDE68A', backgroundColor: '#FFFBEB' },
+  chipDanger:  { borderColor: '#FECACA', backgroundColor: '#FEF2F2' },
+  chipText:    { fontSize: 13, fontWeight: '500', color: '#94A3B8' },
+  chipTextActive: { color: '#0F172A', fontWeight: '600' },
+  chipTextUrgent: { color: '#92400E', fontWeight: '600' },
+  chipTextDanger: { color: '#DC2626', fontWeight: '600' },
+  dirBtn: {
+    width: 18, height: 18, borderRadius: 4,
+    backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginLeft: 2,
+  },
+  footer: {
+    flexDirection: 'row', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  cancelBtn: {
+    flex: 1, paddingVertical: 11, borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#F1F5F9',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  cancelText: { fontSize: 14, fontWeight: '600', color: '#6C6C70' },
+  applyBtn: {
+    flex: 2, paddingVertical: 11, borderRadius: 10,
+    backgroundColor: '#2563EB',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  applyText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 });

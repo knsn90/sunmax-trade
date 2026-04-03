@@ -9,9 +9,9 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 }
 
 const DOCTOR_NAV = [
-  { label: 'İşlerim',     emoji: '📋', href: '/(doctor)',            iconName: 'file-document-outline', iconSet: 'mdi' as const },
-  { label: 'Yeni İş Emri', emoji: '➕', href: '/(doctor)/new-order', iconName: 'plus-circle-outline', iconSet: 'mdi' as const, subtitle: 'Formu adım adım doldurun' },
-  { label: 'Profil',      emoji: '👤', href: '/(doctor)/profile',   iconName: 'account-outline',        iconSet: 'mdi' as const },
+  { label: 'İşlerim',     emoji: '📋', href: '/(doctor)',            iconName: 'file-text',   iconSet: 'mdi' as const },
+  { label: 'Yeni İş Emri', emoji: '➕', href: '/(doctor)/new-order', iconName: 'plus-circle', iconSet: 'mdi' as const, subtitle: 'Formu adım adım doldurun' },
+  { label: 'Profil',      emoji: '👤', href: '/(doctor)/profile',   iconName: 'user',         iconSet: 'mdi' as const },
 ];
 
 export default function DoctorLayout() {

@@ -342,12 +342,12 @@ export function OrderDetailScreen() {
                   activeOpacity={0.75}
                 >
                   {s.icon === '__tooth__' ? (
-                    <ToothIcon size={18} color={active ? '#2563EB' : '#94A3B8'} />
+                    <ToothIcon size={18} color={active ? '#0F172A' : '#94A3B8'} />
                   ) : (
                     <MaterialCommunityIcons
                       name={s.icon as any}
                       size={18}
-                      color={active ? '#2563EB' : '#94A3B8'}
+                      color={active ? '#0F172A' : '#94A3B8'}
                     />
                   )}
                   <Text style={[styles.sectionLabel, active && styles.sectionLabelActive]}>
@@ -375,12 +375,12 @@ export function OrderDetailScreen() {
                     activeOpacity={0.75}
                   >
                     {s.icon === '__tooth__' ? (
-                      <ToothIcon size={15} color={active ? '#2563EB' : '#94A3B8'} />
+                      <ToothIcon size={15} color={active ? '#0F172A' : '#94A3B8'} />
                     ) : (
                       <MaterialCommunityIcons
                         name={s.icon as any}
                         size={15}
-                        color={active ? '#2563EB' : '#94A3B8'}
+                        color={active ? '#0F172A' : '#94A3B8'}
                       />
                     )}
                     <Text style={[styles.sectionTabLabel, active && styles.sectionTabLabelActive]}>
@@ -487,7 +487,7 @@ const qrs = StyleSheet.create({
   },
   title:    { fontSize: 16, fontWeight: '600', color: '#0F172A', marginBottom: 2 },
   subtitle: { fontSize: 12, color: '#64748B', marginBottom: 20 },
-  qrWrap:   { padding: 12, borderRadius: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0' },
+  qrWrap:   { padding: 12, borderRadius: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F1F5F9' },
   hint:     { fontSize: 12, color: '#475569', marginTop: 16, textAlign: 'center' },
   roleHint: { fontSize: 11, color: '#94A3B8', marginTop: 4, textAlign: 'center' },
   url:      { fontSize: 9, color: '#CBD5E1', marginTop: 10, textAlign: 'center' },
@@ -521,7 +521,7 @@ function ToothJobCard({ tooth, order, isActive, onPress, onAddFile }: {
     >
       {/* Header — tooth icon + number */}
       <View style={tcStyles.header}>
-        <ToothIcon size={15} color={isActive ? '#1D4ED8' : '#2563EB'} />
+        <ToothIcon size={15} color={isActive ? '#0F172A' : '#0F172A'} />
         <Text style={[tcStyles.toothNum, isActive && tcStyles.toothNumActive]}>{tooth}</Text>
         {isActive && (
           <View style={tcStyles.activePill}>
@@ -561,7 +561,7 @@ function ToothJobCard({ tooth, order, isActive, onPress, onAddFile }: {
           onPress={onAddFile}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name={'paperclip' as any} size={11} color={photosCount > 0 ? '#2563EB' : '#94A3B8'} />
+          <MaterialCommunityIcons name={'paperclip' as any} size={11} color={photosCount > 0 ? '#0F172A' : '#94A3B8'} />
           <Text style={[tcStyles.badgeText, photosCount > 0 && tcStyles.badgeTextActive]}>
             {photosCount > 0 ? `${photosCount} dosya` : 'Dosya ekle'}
           </Text>
@@ -584,14 +584,14 @@ const tcStyles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     padding: 12,
     gap: 8,
     marginBottom: 8,
   },
   cardActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#2563EB',
+    backgroundColor: '#F1F5F9',
+    borderColor: '#0F172A',
     borderWidth: 2,
   },
   header: {
@@ -600,10 +600,10 @@ const tcStyles = StyleSheet.create({
     gap: 6,
   },
   toothNum: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  toothNumActive: { color: '#1D4ED8' },
+  toothNumActive: { color: '#0F172A' },
   activePill: {
     marginLeft: 'auto' as any,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderRadius: 20,
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -611,14 +611,14 @@ const tcStyles = StyleSheet.create({
   activePillText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   chip: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F1F5F9',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#CBD5E1',
   },
-  chipText: { fontSize: 11, fontWeight: '600', color: '#2563EB' },
+  chipText: { fontSize: 11, fontWeight: '600', color: '#0F172A' },
   metaRow:  { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
@@ -637,15 +637,15 @@ const tcStyles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     backgroundColor: '#F8FAFC',
   },
   badgeFileActive: {
-    borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F1F5F9',
   },
   badgeText: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
-  badgeTextActive: { color: '#2563EB', fontWeight: '600' },
+  badgeTextActive: { color: '#0F172A', fontWeight: '600' },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -823,7 +823,7 @@ function FilesSection({
                 disabled={uploading}
                 activeOpacity={0.75}
               >
-                <ToothIcon size={12} color="#2563EB" />
+                <ToothIcon size={12} color="#0F172A" />
                 <Text style={fStyles.toothUploadNum}>{t}</Text>
               </TouchableOpacity>
             ))}
@@ -847,7 +847,7 @@ function FilesSection({
                   <Text style={fStyles.groupTitle}>📁 Genel Dosyalar</Text>
                 ) : (
                   <View style={fStyles.groupTitleRow}>
-                    <ToothIcon size={14} color="#2563EB" />
+                    <ToothIcon size={14} color="#0F172A" />
                     <Text style={fStyles.groupTitle}>Diş {group.key}</Text>
                   </View>
                 )}
@@ -895,10 +895,10 @@ const fStyles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F1F5F9',
   },
-  toothUploadNum: { fontSize: 12, fontWeight: '700', color: '#2563EB' },
+  toothUploadNum: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1029,8 +1029,8 @@ function AudioPlayer({ url, isMe }: { url: string; isMe: boolean }) {
     else         { audioRef.current.play();  setPlaying(true);  }
   };
 
-  const playBg   = isMe ? 'rgba(255,255,255,0.2)' : '#2563EB';
-  const barDone  = isMe ? '#FFFFFF'               : '#2563EB';
+  const playBg   = isMe ? 'rgba(255,255,255,0.2)' : '#0F172A';
+  const barDone  = isMe ? '#FFFFFF'               : '#0F172A';
   const barRest  = isMe ? 'rgba(255,255,255,0.35)' : '#CBD5E1';
   const timeCol  = isMe ? 'rgba(255,255,255,0.75)' : '#64748B';
 
@@ -1365,7 +1365,7 @@ function ChatSection({
                         : ('file-document-outline' as any)
                     }
                     size={48}
-                    color="#2563EB"
+                    color="#0F172A"
                   />
                   <Text style={cs.previewFileName} numberOfLines={2}>{pendingFile.name}</Text>
                   <Text style={cs.previewFileSize}>{fmtSize(pendingFile.size)}</Text>
@@ -1436,7 +1436,7 @@ function ChatSection({
                       activeOpacity={0.85}
                     >
                       <Text style={cs.attachItemLabel}>Fotoğraf</Text>
-                      <View style={[cs.attachIconCircle, { backgroundColor: '#2563EB' }]}>
+                      <View style={[cs.attachIconCircle, { backgroundColor: '#0F172A' }]}>
                         <MaterialCommunityIcons name={'image-outline' as any} size={22} color="#FFFFFF" />
                       </View>
                     </TouchableOpacity>
@@ -1478,7 +1478,7 @@ function ChatSection({
                 <MaterialCommunityIcons
                   name={attachMenuOpen ? ('close' as any) : ('paperclip' as any)}
                   size={20}
-                  color={attachMenuOpen ? '#2563EB' : uploading ? '#CBD5E1' : '#64748B'}
+                  color={attachMenuOpen ? '#0F172A' : uploading ? '#CBD5E1' : '#64748B'}
                 />
               </TouchableOpacity>
             </View>
@@ -1562,7 +1562,7 @@ const cs = StyleSheet.create({
 
   avatar: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
@@ -1577,7 +1577,7 @@ const cs = StyleSheet.create({
     gap: 4,
   },
   bubbleThem: { backgroundColor: '#F1F5F9', borderBottomLeftRadius: 4  },
-  bubbleMe:   { backgroundColor: '#2563EB', borderBottomRightRadius: 4 },
+  bubbleMe:   { backgroundColor: '#0F172A', borderBottomRightRadius: 4 },
   bubbleNote: { backgroundColor: '#EEF2FF', borderLeftWidth: 3, borderLeftColor: '#6366F1', maxWidth: '85%' },
 
   noteLabel:   { fontSize: 10, fontWeight: '700', color: '#6366F1', marginBottom: 2, letterSpacing: 0.2 },
@@ -1630,7 +1630,7 @@ const cs = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     paddingHorizontal: 14,
     paddingVertical: 0,
     fontSize: 14,
@@ -1638,7 +1638,7 @@ const cs = StyleSheet.create({
   },
   sendBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
@@ -1671,7 +1671,7 @@ const cs = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -1680,9 +1680,9 @@ const cs = StyleSheet.create({
 
   // Attach menu — WhatsApp vertical style
   toolBtnActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#CBD5E1',
   },
   // Full-area invisible backdrop to close menu on outside click
   attachBackdrop: {
@@ -1794,7 +1794,7 @@ const cs = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     // @ts-ignore
     outlineStyle: 'none',
   },
@@ -1818,7 +1818,7 @@ const cs = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
   },
   previewSendText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 });
@@ -1897,7 +1897,7 @@ const sectionStyles = StyleSheet.create({
   tableValue: { flex: 1, fontSize: 13, color: '#0F172A', fontWeight: '500' },
   filesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   addBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
@@ -1927,7 +1927,7 @@ const sectionStyles = StyleSheet.create({
   qrUrl:   { fontSize: 9, color: '#CBD5E1', marginTop: 4 },
   qrCodeWrap: {
     padding: 8, borderRadius: 10, backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: '#E2E8F0',
+    borderWidth: 1, borderColor: '#F1F5F9',
     alignItems: 'center', justifyContent: 'center',
   },
 });
@@ -1980,7 +1980,7 @@ const styles = StyleSheet.create({
   overdueTagText: { fontSize: 10, fontWeight: '700', color: '#EF4444', letterSpacing: 0.3 },
 
   btnAdvance: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F172A',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -2014,7 +2014,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     backgroundColor: '#FFFFFF',
     marginLeft: 4,
   },
@@ -2068,7 +2068,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 1px 3px rgba(15,23,42,0.12)',
   },
   sectionTabLabel: { fontSize: 12, fontWeight: '500', color: '#64748B' },
-  sectionTabLabelActive: { fontSize: 12, fontWeight: '700', color: '#2563EB' },
+  sectionTabLabelActive: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
 
   // ── Section navigation — desktop sidebar ──
   sectionSidebarDesktop: {
@@ -2089,10 +2089,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   sectionItemDesktopActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F1F5F9',
   },
   sectionLabel: { flex: 1, fontSize: 13, color: '#64748B', fontWeight: '500' },
-  sectionLabelActive: { color: '#2563EB', fontWeight: '700' },
+  sectionLabelActive: { color: '#0F172A', fontWeight: '700' },
 
   // ── Content ──
   contentArea: { flex: 1, backgroundColor: '#FFFFFF' },

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -80,13 +81,12 @@ export function LoginScreen() {
 
             {/* Brand */}
             <View style={styles.brand}>
-              <View style={styles.logoBox}>
-                <MaterialCommunityIcons name="stethoscope" size={24} color="#FFFFFF" />
-              </View>
-              <View>
-                <Text style={styles.appName}>Dental Lab</Text>
-                <Text style={styles.appSub}>Yönetim Sistemi</Text>
-              </View>
+              <Image
+                source={require('../../../assets/images/icon.png')}
+                style={styles.logoImg}
+                resizeMode="contain"
+              />
+              <Text style={styles.appName}>Dental Lab</Text>
             </View>
 
             {/* Heading */}
@@ -226,10 +226,7 @@ const styles = StyleSheet.create({
 
   // Brand
   brand: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 32 },
-  logoBox: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center',
-  },
+  logoImg: { width: 48, height: 48 },
   appName: { fontSize: 18, fontWeight: '800', fontFamily: F.bold, color: C.textPrimary, letterSpacing: -0.3 },
   appSub:  { fontSize: 11, fontFamily: F.regular, color: C.textMuted, marginTop: 2 },
 

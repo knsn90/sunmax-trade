@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web --clear",
-    "build:web": "expo export --platform web && node scripts/inject-fonts.js"
+    "build:web": "expo export --platform web && node scripts/inject-fonts.js",
+    "deploy": "vercel build --prod && vercel deploy --prebuilt --prod --yes"
   },
   "dependencies": {
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",

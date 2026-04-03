@@ -205,7 +205,7 @@ export function PendingApprovalsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: {
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
 
   avatar: {
     width: 48, height: 48, borderRadius: 14,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { fontSize: 20, fontWeight: '700', fontFamily: F.bold, color: C.primary },

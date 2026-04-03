@@ -23,7 +23,7 @@ const C = {
   bg:             '#F8FAFC',
   surface:        '#FFFFFF',
   border:         '#F1F5F9',
-  borderMid:      '#E2E8F0',
+  borderMid:      '#F1F5F9',
   textPrimary:    '#0F172A',
   textSecondary:  '#64748B',
   textMuted:      '#94A3B8',

@@ -68,8 +68,8 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, padding: 16 },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   progressLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  progressPct:   { fontSize: 13, fontWeight: '800', color: '#2563EB' },
-  progressBg:    { height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
-  progressFill:  { height: 8, backgroundColor: '#2563EB', borderRadius: 4 },
+  progressPct:   { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  progressBg:    { height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
+  progressFill:  { height: 8, backgroundColor: '#0F172A', borderRadius: 4 },
   progressSub:   { fontSize: 11, color: '#94A3B8', marginTop: 4 },
 });

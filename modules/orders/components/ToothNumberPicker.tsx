@@ -35,6 +35,10 @@ interface Props {
   onToothHover?: (fdi: number | null) => void;
   /** Short tooltip text per tooth (shown on hover as SVG overlay). */
   toothInfo?: Record<number, string>;
+  /** Per-tooth fill color override (confirmed teeth colored by work type). */
+  colorMap?: Record<number, string>;
+  /** Override the primary accent color (default: theme PRIMARY). */
+  accentColor?: string;
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -46,7 +50,10 @@ export function ToothNumberPicker({
   onToothPress,
   onToothHover,
   toothInfo,
+  colorMap,
+  accentColor,
 }: Props) {
+  const PRIMARY = accentColor ?? C.primary;
   const { width: screenWidth } = useWindowDimensions();
 
   const dW = containerWidth
@@ -97,33 +104,38 @@ export function ToothNumberPicker({
     const isSelected = selected.includes(fdi);
     const isActive   = fdi === activeTooth;
     const isHovered  = fdi === hoverTooth;
+    const confirmedColor = colorMap?.[fdi]; // color assigned when tooth is confirmed
 
-    // Fill: selected=blue, active(not selected)=light blue, hovered=very light gray, default=white
-    const fillColor = isSelected
-      ? C.primary
+    // Fill: confirmed=assigned color, selected=primary, active=light, hovered=very light, default=white
+    const fillColor = confirmedColor
+      ? confirmedColor
+      : isSelected
+      ? PRIMARY
       : isActive
-      ? '#DBEAFE'
+      ? '#F1F5F9'
       : isHovered
       ? '#F1F5F9'
       : '#FFFFFF';
 
-    // Stroke: active or hovered=blue, selected=blue, default=gray
-    const strokeColor = isSelected || isActive
-      ? C.primary
+    // Stroke: confirmed=assigned color (lighter if also active), selected/active=primary, default=gray
+    const strokeColor = confirmedColor
+      ? confirmedColor
+      : isSelected || isActive
+      ? PRIMARY
       : isHovered
       ? '#93C5FD'
       : '#94A3B8';
 
-    const strokeWidth = isActive && !isSelected ? SW_MAIN * 2.2 : SW_MAIN;
+    const strokeWidth = isActive && !isSelected && !confirmedColor ? SW_MAIN * 2.2 : SW_MAIN;
 
-    const detailColor = isSelected
+    const detailColor = (confirmedColor || isSelected)
       ? 'rgba(255,255,255,0.38)'
       : isActive
-      ? 'rgba(37,99,235,0.25)'
+      ? 'rgba(15,23,42,0.12)'
       : '#94A3B8';
 
-    const textColor = isSelected ? '#FFFFFF' : isActive ? '#1D4ED8' : '#475569';
-    const haloColor = isSelected ? C.primary : isActive ? '#DBEAFE' : '#FFFFFF';
+    const textColor = (confirmedColor || isSelected) ? '#FFFFFF' : isActive ? '#0F172A' : '#475569';
+    const haloColor = confirmedColor ?? (isSelected ? PRIMARY : isActive ? '#F1F5F9' : '#FFFFFF');
 
     const gProps: any = {
       onPress: () => handlePress(fdi),
@@ -266,13 +278,13 @@ export function ToothNumberPicker({
         <View style={{
           flexDirection: 'row', flexWrap: 'wrap',
           marginTop: 8, padding: 8,
-          backgroundColor: '#EFF6FF',
+          backgroundColor: '#F1F5F9',
           borderRadius: 10, alignSelf: 'stretch',
         }}>
           <Text style={{ fontSize: 11, color: '#64748B', fontFamily: F.medium }}>
             Seçili:{' '}
           </Text>
-          <Text style={{ fontSize: 11, color: C.primary, fontFamily: F.semibold, flex: 1 }}>
+          <Text style={{ fontSize: 11, color: PRIMARY, fontFamily: F.semibold, flex: 1 }}>
             {[...selected].sort((a, b) => a - b).join(', ')}
           </Text>
         </View>

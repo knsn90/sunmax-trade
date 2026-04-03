@@ -28,6 +28,7 @@ import { ClinicIcon } from '../../../core/ui/ClinicIcon';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuthStore } from '../../../core/store/authStore';
 import { createWorkOrder, addOrderItem } from '../api';
+import { supabase } from '../../../core/api/supabase';
 import { fetchClinics, fetchAllDoctors, createClinic, createDoctor } from '../../clinics/api';
 import { fetchLabServices } from '../../services/api';
 import { MachineType, PendingItem } from '../types';
@@ -35,6 +36,7 @@ import { Clinic, Doctor } from '../../clinics/types';
 import { LabService } from '../../services/types';
 import { ToothNumberPicker } from '../components/ToothNumberPicker';
 import { WORK_TYPES, ALL_SHADES, ORDER_TAGS, OP_CATEGORY, IMPLANT_SYSTEMS, ABUTMENT_TYPES, SCREW_TYPES, REMOVABLE_MATS, CROWN_MATERIALS, WORK_TYPE_TREE, WORK_TYPE_MAIN, deriveDepartment } from '../constants';
+import { TOOTH_PATHS, TOOTH_LABEL_POS } from '../assets/toothPaths';
 import { GEO_COUNTRIES, GEO_BY_LABEL } from '../data/geo';
 import { C } from '../../../core/theme/colors';
 import { F } from '../../../core/theme/typography';
@@ -77,6 +79,9 @@ interface ToothOp {
   screw: string;
   // removable
   material: string;
+  // pricing
+  price: number;
+  material_price: number;
 }
 
 interface FormData {
@@ -113,7 +118,7 @@ interface FormData {
 const BLANK_OP: Omit<ToothOp, 'tooth'> = {
   work_type: '', shade: '',
   implant_system: '', abutment: '', screw: '',
-  material: '',
+  material: '', price: 0, material_price: 0,
 };
 
 const INITIAL_FORM: FormData = {
@@ -149,7 +154,14 @@ const GENDERS = [
   { value: 'kadın', label: '♀ Kadın' },
 ];
 
-export function NewOrderScreen() {
+export function NewOrderScreen({ accentColor }: { accentColor?: string }) {
+  const P     = accentColor ?? C.primary;
+  const PBg   = accentColor ? '#F1F5F9' : C.primaryBg;
+  const PLight = accentColor ? '#1E293B' : C.primaryLight;
+  const styles = useMemo(() => makeStyles(P), [P]);
+  const fus    = useMemo(() => makeFusStyles(P), [P]);
+  const s2     = useMemo(() => makeS2Styles(P), [P]);
+
   const router = useRouter();
   const { profile } = useAuthStore();
   const { width } = useWindowDimensions();
@@ -220,25 +232,56 @@ export function NewOrderScreen() {
   // Chat modal
   const [chatModalVisible, setChatModalVisible] = useState(false);
 
+
   // Step 3 — confirmed teeth (shown in bottom list after "Listeye ekle")
   const [confirmedTeeth, setConfirmedTeeth] = useState<number[]>([]);
   const lastConfirmedOpRef = useRef<Omit<ToothOp, 'tooth'>>({ ...BLANK_OP });
+  const [opResetKey, setOpResetKey] = useState(0);
+
+  // Color palette for distinct work-type groups in tooth picker
+  const OP_COLOR_PALETTE = ['#2563EB','#059669','#D97706','#7C3AED','#DC2626','#0891B2','#DB2777','#65A30D'];
+
+  // Map each confirmed tooth to a color based on its work_type
+  const toothColorMap = useMemo<Record<number, string>>(() => {
+    const workTypeColor: Record<string, string> = {};
+    let idx = 0;
+    const map: Record<number, string> = {};
+    confirmedTeeth.forEach(t => {
+      const op = form.tooth_ops.find(o => o.tooth === t);
+      const key = (op?.work_type ?? '') || '__none__';
+      if (!workTypeColor[key]) {
+        workTypeColor[key] = OP_COLOR_PALETTE[idx % OP_COLOR_PALETTE.length];
+        idx++;
+      }
+      map[t] = workTypeColor[key];
+    });
+    return map;
+  }, [confirmedTeeth, form.tooth_ops]);
 
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
   const [services, setServices] = useState<LabService[]>([]);
   const [serviceSearch, setServiceSearch] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
+  const [materialPrices, setMaterialPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    Promise.all([fetchClinics(), fetchAllDoctors(), fetchLabServices()]).then(
-      ([clinicsRes, doctorsRes, servicesRes]) => {
-        setClinics((clinicsRes.data as Clinic[]) ?? []);
-        setAllDoctors((doctorsRes.data as Doctor[]) ?? []);
-        setServices((servicesRes.data as LabService[]) ?? []);
-        setDataLoading(false);
-      }
-    );
+    Promise.all([
+      fetchClinics(),
+      fetchAllDoctors(),
+      fetchLabServices(),
+      supabase.from('materials').select('name,price').eq('is_active', true),
+    ]).then(([clinicsRes, doctorsRes, servicesRes, matsRes]) => {
+      setClinics((clinicsRes.data as Clinic[]) ?? []);
+      setAllDoctors((doctorsRes.data as Doctor[]) ?? []);
+      setServices((servicesRes.data as LabService[]) ?? []);
+      const priceMap: Record<string, number> = {};
+      ((matsRes.data ?? []) as { name: string; price: number }[]).forEach(m => {
+        priceMap[m.name] = m.price;
+      });
+      setMaterialPrices(priceMap);
+      setDataLoading(false);
+    });
   }, []);
 
   const set = <K extends keyof FormData>(key: K) =>
@@ -348,12 +391,13 @@ export function NewOrderScreen() {
   const removeAttachment = (id: string) =>
     setForm(f => ({ ...f, attachments: f.attachments.filter(a => a.id !== id) }));
 
-  // Apply patch to every tooth in the current edit group (immutable — new object per tooth)
+  // Apply patch to every tooth in the current edit group — confirmed teeth are locked
   const updateToothOp = (patch: Partial<Omit<ToothOp, 'tooth'>>) => {
     setForm(f => ({
       ...f,
       tooth_ops: f.tooth_ops.map(o =>
-        selectedTeeth.includes(o.tooth) ? { ...o, ...patch } : o
+        selectedTeeth.includes(o.tooth) && !confirmedTeeth.includes(o.tooth)
+          ? { ...o, ...patch } : o
       ),
     }));
   };
@@ -453,34 +497,34 @@ export function NewOrderScreen() {
     const qrSvgHtml = (document.getElementById('dental-qr-container') as HTMLElement | null)
       ?.querySelector('svg')?.outerHTML ?? '';
 
-    // ── Dental arch SVG ──────────────────────────────────────────────────────
+    // ── Dental arch SVG — same tooth paths as Step 3 picker ─────────────────
     const ops = [...form.tooth_ops].sort((a, b) => a.tooth - b.tooth);
     const selNums = ops.map(o => o.tooth);
-    const lowerT = [38,37,36,35,34,33,32,31,41,42,43,44,45,46,47,48];
-    const upperT = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
-    const hasLower = selNums.some(t => t >= 31);
-    const archTeeth = hasLower ? lowerT : upperT;
+    const ALL_FDI = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,
+                     48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+    const VBX = -320, VBY = 200, VBW = 3720, VBH = 4380;
+    const SVG_W = 260;
+    const SVG_H = Math.round(SVG_W * VBH / VBW);
 
-    // Ellipse params — lower: opens upward (U-shape), upper: opens downward
-    const ECX = 80, ECY = 80, ERX = 68, ERY = 55;
-    const sa = hasLower ? 212 : 32;
-    const ea = hasLower ? 328 : 148;
-    const offY = hasLower ? 22 : 0;
+    const toothEls = ALL_FDI.map(fdi => {
+      const paths = TOOTH_PATHS[fdi];
+      const pos   = TOOTH_LABEL_POS[fdi];
+      if (!paths || !pos) return '';
+      const isSel  = selNums.includes(fdi);
+      const fill   = isSel ? '#1E293B' : '#F8FAFC';
+      const stroke = isSel ? '#0F172A' : '#CBD5E1';
+      const txtCol = isSel ? '#FFFFFF' : '#94A3B8';
+      const detail = paths.slice(1).map(d =>
+        `<path d="${d}" fill="none" stroke="${isSel ? 'rgba(255,255,255,0.35)' : '#CBD5E1'}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>`
+      ).join('');
+      return `<g>
+        <path d="${paths[0]}" fill="${fill}" stroke="${stroke}" stroke-width="20" stroke-linejoin="round" stroke-linecap="round"/>
+        ${detail}
+        <text x="${pos[0]}" y="${pos[1]}" font-size="130" font-weight="700" fill="${txtCol}" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">${fdi}</text>
+      </g>`;
+    }).join('');
 
-    const archPositions = archTeeth.map((fdi, i) => {
-      const t = i / (archTeeth.length - 1);
-      const a = (sa + t * (ea - sa)) * Math.PI / 180;
-      return { x: ECX + ERX * Math.cos(a), y: ECY + ERY * Math.sin(a) - offY, fdi, sel: selNums.includes(fdi) };
-    });
-
-    const toothEls = archPositions.map(p =>
-      `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="5.5" ry="4.2"
-        fill="${p.sel ? '#1a1a1a' : '#e8e8e8'}" stroke="${p.sel ? '#000' : '#ccc'}" stroke-width="0.8"/>`
-    ).join('');
-
-    const arcPts = archPositions.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    const archSVG = `<svg viewBox="0 0 160 40" width="148" height="37" style="display:block;overflow:visible">
-      <polyline points="${arcPts}" fill="none" stroke="#e0e0e0" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    const archSVG = `<svg viewBox="${VBX} ${VBY} ${VBW} ${VBH}" width="${SVG_W}" height="${SVG_H}" style="display:block;">
       ${toothEls}
     </svg>`;
 
@@ -524,8 +568,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .cr:last-child{border-bottom:none}
 .ci{width:16px;flex-shrink:0;display:flex;align-items:center}
 .cl{color:#777;flex:1;font-size:9.5px}.cv{font-weight:600;font-size:9.5px;text-align:right}
-.tb{display:flex;padding:8px 10px;gap:10px;align-items:flex-start}
-.tl{flex:1}
+.tb{display:flex;flex-direction:column;padding:8px 10px;gap:8px;align-items:flex-start}
+.tl{width:100%}
 .ti{display:flex;align-items:baseline;padding:4px 8px;border-bottom:1px solid #f5f5f5;gap:4px}
 .ti:last-child{border-bottom:none}
 .tn{font-weight:700;font-size:9.5px;white-space:nowrap;min-width:44px}
@@ -593,7 +637,7 @@ ${form.notes ? `<div class="card">
 
   if (dataLoading) return (
     <SafeAreaView style={styles.safe}>
-      <ActivityIndicator color={C.primary} style={{ flex: 1 }} />
+      <ActivityIndicator color={P} style={{ flex: 1 }} />
     </SafeAreaView>
   );
 
@@ -602,7 +646,7 @@ ${form.notes ? `<div class="card">
       <View style={[styles.outerWrap, isDesktop && styles.outerWrapDesktop]}>
 
         {/* ── Vertical step sidebar (desktop only) ── */}
-        {isDesktop && <StepSidebar currentStep={step} />}
+        {isDesktop && <StepSidebar currentStep={step} accentColor={P} />}
 
         {/* ── Main content column ── */}
         <View style={styles.mainCol}>
@@ -614,13 +658,14 @@ ${form.notes ? `<div class="card">
         selectedClinic={selectedClinic}
         currentStep={step}
         onOpenChat={() => setChatModalVisible(true)}
+        accentColor={P}
       />
 
       {/* Step 1 — Clinic & Patient */}
       {step === 1 && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {/* Clinic & Doctor */}
-          <SectionCard title="Klinik & diş hekimi" iconNode={<ClinicIcon size={14} color={stepAttempted[1] && errors.doctor_id ? '#EF4444' : C.primary} />} errorCount={stepAttempted[1] && errors.doctor_id ? 1 : 0}>
+          <SectionCard title="Klinik & diş hekimi" iconNode={<ClinicIcon size={14} color={stepAttempted[1] && errors.doctor_id ? '#EF4444' : P} />} errorCount={stepAttempted[1] && errors.doctor_id ? 1 : 0} accentColor={P}>
             <View style={styles.twoCol}>
               <SearchableDropdown
                 label="Klinik"
@@ -655,6 +700,7 @@ ${form.notes ? `<div class="card">
           {/* Patient info */}
           <SectionCard title="Hasta bilgileri" icon={'account-outline' as any}
             errorCount={stepAttempted[1] ? ['patient_first_name','patient_last_name','patient_gender','patient_dob','patient_id','patient_nationality'].filter(k => errors[k]).length : 0}
+            accentColor={P}
           >
 
             {/* Satır 1: Ad + Soyad */}
@@ -697,7 +743,7 @@ ${form.notes ? `<div class="card">
               />
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
-                  <Text style={{ fontSize: 13, color: fe('patient_gender') ? '#EF4444' : '#2563EB', fontWeight: '700', lineHeight: 16 }}>*</Text>
+                  <Text style={{ fontSize: 13, color: fe('patient_gender') ? '#EF4444' : '#0F172A', fontWeight: '700', lineHeight: 16 }}>*</Text>
                   <Text style={[styles.fieldLabel, { marginBottom: 0 }, fe('patient_gender') ? { color: '#EF4444' } : undefined]}>Cinsiyet</Text>
                 </View>
                 <View style={styles.chipRow}>
@@ -757,7 +803,7 @@ ${form.notes ? `<div class="card">
           {/* ── Split: Vaka detayları (sol) + Mesaj kutusu (sağ) ── */}
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'stretch' }}>
           <View style={{ flex: 1 }}>
-          <SectionCard title="Vaka detayları" icon={'tune-variant' as any} style={{ flex: 1, marginBottom: 0 }}>
+          <SectionCard title="Vaka detayları" icon={'tune-variant' as any} style={{ flex: 1, marginBottom: 0 }} accentColor={P}>
 
             {/* Acil vaka + Tasarım onayı — yan yana */}
             <View style={s2.toggleRow}>
@@ -768,14 +814,14 @@ ${form.notes ? `<div class="card">
                 onPress={() => set('is_urgent')(!form.is_urgent)}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name={'alarm' as any} size={14} color={form.is_urgent ? C.primary : '#94A3B8'} />
+                <MaterialCommunityIcons name={'alarm' as any} size={14} color={form.is_urgent ? P : '#94A3B8'} />
                 <View style={{ flex: 1 }}>
                   <Text style={[s2.toggleItemLabel, form.is_urgent && s2.toggleItemLabelActive]}>Acil vaka</Text>
                   <Text style={s2.toggleItemDesc}>Öncelikli, ek ücretlidir.</Text>
                 </View>
                 <Switch value={form.is_urgent} onValueChange={set('is_urgent')}
-                  trackColor={{ false: '#E2E8F0', true: '#BFDBFE' }}
-                  thumbColor={form.is_urgent ? C.primary : '#CBD5E1'} style={s2.rowSwitch} />
+                  trackColor={{ false: '#F1F5F9', true: '#CBD5E1' }}
+                  thumbColor={form.is_urgent ? P : '#CBD5E1'} style={s2.rowSwitch} />
               </TouchableOpacity>
 
               {/* Tasarım onayı */}
@@ -785,14 +831,14 @@ ${form.notes ? `<div class="card">
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name={'check-decagram-outline' as any} size={14}
-                  color={form.doctor_approval_required ? C.primary : '#94A3B8'} />
+                  color={form.doctor_approval_required ? P : '#94A3B8'} />
                 <View style={{ flex: 1 }}>
                   <Text style={[s2.toggleItemLabel, form.doctor_approval_required && s2.toggleItemLabelActive]}>Tasarım onayı</Text>
                   <Text style={s2.toggleItemDesc}>Diş hekimi onayı sonrası üretilir.</Text>
                 </View>
                 <Switch value={form.doctor_approval_required} onValueChange={set('doctor_approval_required')}
-                  trackColor={{ false: '#E2E8F0', true: '#BFDBFE' }}
-                  thumbColor={form.doctor_approval_required ? C.primary : '#CBD5E1'} style={s2.rowSwitch} />
+                  trackColor={{ false: '#F1F5F9', true: '#CBD5E1' }}
+                  thumbColor={form.doctor_approval_required ? P : '#CBD5E1'} style={s2.rowSwitch} />
               </TouchableOpacity>
 
             </View>
@@ -811,6 +857,7 @@ ${form.notes ? `<div class="card">
                 ]}
                 onSelect={(v) => set('measurement_type')(v as 'manual' | 'digital')}
                 error={fe('measurement_type')}
+                accentColor={P}
               />
               <InlineSelect
                 label="* Model tipi"
@@ -823,6 +870,7 @@ ${form.notes ? `<div class="card">
                 ]}
                 onSelect={(v) => set('model_type')(form.model_type === v ? '' : v)}
                 error={fe('model_type')}
+                accentColor={P}
               />
             </View>
 
@@ -836,6 +884,7 @@ ${form.notes ? `<div class="card">
                 onChange={set('delivery_date')}
                 minDate={new Date()}
                 error={fe('delivery_date')}
+                accentColor={P}
               />
               <InlineSelect
                 label="* Teslim yöntemi"
@@ -848,6 +897,7 @@ ${form.notes ? `<div class="card">
                 ]}
                 onSelect={(v) => set('delivery_method')(form.delivery_method === v ? '' : v as any)}
                 error={fe('delivery_method')}
+                accentColor={P}
               />
             </View>
 
@@ -860,9 +910,46 @@ ${form.notes ? `<div class="card">
               messages={form.chat_messages}
               onAdd={(msg) => set('chat_messages')([...form.chat_messages, msg])}
               onDelete={(id) => set('chat_messages')(form.chat_messages.filter(m => m.id !== id))}
+              accentColor={P}
             />
           </View>
           </View>{/* split row sonu */}
+
+          {/* ── Dosyalar ── */}
+          <SectionCard title="Dosyalar" icon={'paperclip' as any} accentColor={P}>
+
+            {/* ── VAKAYA AİT ── */}
+            <View style={fus.subHeader}>
+              <Text style={fus.subLabel}>VAKAYA AİT</Text>
+              <Text style={fus.subHint}>Tüm vakayı ilgilendiren dosyalar</Text>
+            </View>
+
+            {form.attachments.filter(a => a.scope === 'case').length === 0 ? (
+              <View style={fus.emptyRow}>
+                <Text style={fus.emptyText}>Henüz dosya eklenmedi</Text>
+              </View>
+            ) : (
+              form.attachments
+                .filter(a => a.scope === 'case')
+                .map(a => (
+                  <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} />
+                ))
+            )}
+            <TouchableOpacity style={fus.addBtn} onPress={() => openFilePicker('case')}>
+              <MaterialCommunityIcons name={'plus' as any} size={14} color={P} />
+              <Text style={[fus.addBtnText, { color: P }]}>Vakaya Dosya Ekle</Text>
+              <Text style={fus.addBtnHint}> · STL, foto, PDF</Text>
+            </TouchableOpacity>
+
+            {form.attachments.length > 0 && (
+              <View style={fus.totalRow}>
+                <MaterialCommunityIcons name={'paperclip' as any} size={12} color="#64748B" />
+                <Text style={fus.totalText}>
+                  Toplam {form.attachments.length} dosya
+                </Text>
+              </View>
+            )}
+          </SectionCard>
 
         </ScrollView>
       )}
@@ -880,6 +967,7 @@ ${form.notes ? `<div class="card">
                 title="Diş Seçimi"
                 icon={'tooth-outline' as any}
                 errorCount={stepAttempted[3] && errors.tooth_ops ? 1 : 0}
+                accentColor={P}
                 headerRight={
                   <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
                     {([
@@ -899,9 +987,9 @@ ${form.notes ? `<div class="card">
                           setSelectedTeeth([teeth[0]]);
                           setActiveTooth(teeth[0]);
                         }}
-                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#BFDBFE', backgroundColor: '#EFF6FF' }}
+                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#F1F5F9' }}
                       >
-                        <Text style={{ fontSize: 10, fontFamily: F.medium, color: C.primary }}>{label}</Text>
+                        <Text style={{ fontSize: 10, fontFamily: F.medium, color: P }}>{label}</Text>
                       </TouchableOpacity>
                     ))}
                     {form.tooth_ops.length > 0 && (
@@ -917,6 +1005,8 @@ ${form.notes ? `<div class="card">
               >
                 <ToothNumberPicker
                   selected={form.tooth_ops.map(o => o.tooth)}
+                  colorMap={toothColorMap}
+                  accentColor={P}
                   onChange={(newTeeth) => {
                     const prevTeeth = form.tooth_ops.map(o => o.tooth);
                     const added   = newTeeth.filter(t => !prevTeeth.includes(t));
@@ -928,15 +1018,16 @@ ${form.notes ? `<div class="card">
                     });
                     // Remove deselected teeth from confirmed list
                     if (removed.length > 0) setConfirmedTeeth(prev => prev.filter(t => !removed.includes(t)));
-                    // Yeni diş seçilince sadece o diş aktif olsun (bağımsız düzenleme)
-                    setSelectedTeeth(prev => {
-                      const next = prev.filter(t => !removed.includes(t));
-                      if (added.length > 0) return [added[added.length - 1]];
-                      return next;
-                    });
-                    if (added.length > 0) setActiveTooth(added[added.length - 1]);
-                    else if (activeTooth !== null && removed.includes(activeTooth)) {
-                      setActiveTooth(null);
+                    // Yeni diş seçilince gruba ekle (toplu düzenleme için birikimli seçim)
+                    const nextSelected = selectedTeeth.filter(t => !removed.includes(t));
+                    if (added.length > 0) {
+                      setSelectedTeeth([...nextSelected, ...added]);
+                      setActiveTooth(added[added.length - 1]);
+                    } else {
+                      setSelectedTeeth(nextSelected);
+                      if (activeTooth !== null && removed.includes(activeTooth)) {
+                        setActiveTooth(nextSelected.length > 0 ? nextSelected[nextSelected.length - 1] : null);
+                      }
                     }
                   }}
                   containerWidth={(width - (isDesktop ? 100 : 0)) / 2 - 64}
@@ -954,14 +1045,14 @@ ${form.notes ? `<div class="card">
                 const groupLabel = selectedTeeth.length > 1
                   ? `Dişler ${[...selectedTeeth].sort((a, b) => a - b).join(', ')} — Toplu Atama`
                   : validTooth ? `Diş ${validTooth} — Operasyon` : 'Operasyon Detayı';
-                const isAlreadyConfirmed = validTooth !== null && confirmedTeeth.includes(validTooth);
+                const isAlreadyConfirmed = selectedTeeth.length > 0 && selectedTeeth.every(t => confirmedTeeth.includes(t));
                 const hasLastOp = lastConfirmedOpRef.current.work_type !== '';
 
                 return (
-                  <SectionCard title={groupLabel} icon={'cog-outline' as any}>
+                  <SectionCard title={groupLabel} icon={'cog-outline' as any} accentColor={P}>
                     {!validTooth ? (
-                      <View style={{ paddingVertical: 48, alignItems: 'center', opacity: 0.45 }}>
-                        <Svg width={40} height={40} viewBox="0 0 48 48" fill="none">
+                      <View style={{ paddingVertical: 16, alignItems: 'center', opacity: 0.45 }}>
+                        <Svg width={28} height={28} viewBox="0 0 48 48" fill="none">
                           <SvgPath
                             fillRule="evenodd"
                             clipRule="evenodd"
@@ -969,16 +1060,18 @@ ${form.notes ? `<div class="card">
                             fill="#94A3B8"
                           />
                         </Svg>
-                        <Text style={{ marginTop: 10, color: '#64748B', fontSize: 13, fontFamily: F.medium, textAlign: 'center' }}>
-                          Önce çeneden{'\n'}bir diş seçin
+                        <Text style={{ marginTop: 6, color: '#64748B', fontSize: 12, fontFamily: F.medium, textAlign: 'center' }}>
+                          Önce bir diş seçin
                         </Text>
                       </View>
                     ) : (
                       <>
                         <WorkTypeSelector
+                          key={opResetKey}
                           op={op}
                           updateToothOp={updateToothOp}
                           selectedTeeth={selectedTeeth}
+                          accentColor={P}
                           onNightGuard={(jaw) => {
                             const upper = [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28];
                             const lower = [31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48];
@@ -1004,7 +1097,7 @@ ${form.notes ? `<div class="card">
                           {hasLastOp && !isAlreadyConfirmed && (
                             <TouchableOpacity
                               onPress={() => updateToothOp({ ...lastConfirmedOpRef.current })}
-                              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: '#F1F5F9', backgroundColor: '#F8FAFC' }}
                             >
                               <MaterialCommunityIcons name={'content-copy' as any} size={14} color="#64748B" />
                               <Text style={{ fontSize: 12, fontFamily: F.medium, color: '#64748B' }}>Önceki dişi kopyala</Text>
@@ -1020,13 +1113,17 @@ ${form.notes ? `<div class="card">
                               selectedTeeth.forEach(t => {
                                 setConfirmedTeeth(prev => prev.includes(t) ? prev : [...prev, t]);
                               });
+                              // Formu temizle — bir sonraki diş seçimi için
+                              setSelectedTeeth([]);
+                              setActiveTooth(null);
+                              setOpResetKey(k => k + 1);
                             }}
                             disabled={!op.work_type}
-                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 10, backgroundColor: op.work_type ? C.primary : '#E2E8F0' }}
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 10, backgroundColor: op.work_type ? P : '#F1F5F9' }}
                           >
                             <MaterialCommunityIcons name={isAlreadyConfirmed ? 'check-circle' : 'plus-circle-outline' as any} size={14} color={op.work_type ? '#fff' : '#94A3B8'} />
                             <Text style={{ fontSize: 12, fontFamily: F.semibold, color: op.work_type ? '#fff' : '#94A3B8' }}>
-                              {isAlreadyConfirmed ? 'Güncelle' : 'Listeye ekle'}
+                              {isAlreadyConfirmed ? 'Güncelle' : selectedTeeth.length > 1 ? `${selectedTeeth.length} diş ekle` : 'Listeye ekle'}
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1037,158 +1134,37 @@ ${form.notes ? `<div class="card">
               })()}
 
 
-            {/* ── Dosyalar ── */}
-          <SectionCard title="Dosyalar" icon={'paperclip' as any}>
-
-            {/* ── VAKAYA AİT ── */}
-            <View style={fus.subHeader}>
-              <Text style={fus.subLabel}>VAKAYA AİT</Text>
-              <Text style={fus.subHint}>Tüm vakayı ilgilendiren dosyalar</Text>
-            </View>
-
-            {form.attachments.filter(a => a.scope === 'case').length === 0 ? (
-              <View style={fus.emptyRow}>
-                <Text style={fus.emptyText}>Henüz dosya eklenmedi</Text>
-              </View>
-            ) : (
-              form.attachments
-                .filter(a => a.scope === 'case')
-                .map(a => (
-                  <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} />
-                ))
-            )}
-            <TouchableOpacity style={fus.addBtn} onPress={() => openFilePicker('case')}>
-              <MaterialCommunityIcons name={'plus' as any} size={14} color={C.primary} />
-              <Text style={fus.addBtnText}>Vakaya Dosya Ekle</Text>
-              <Text style={fus.addBtnHint}> · STL, foto, PDF</Text>
-            </TouchableOpacity>
-
-            <View style={fus.divider} />
-
-            {/* ── DİŞE AİT ── */}
-            <View style={fus.subHeader}>
-              <Text style={fus.subLabel}>DİŞE AİT</Text>
-              <Text style={fus.subHint}>Belirli bir dişe bağlı dosyalar</Text>
-            </View>
-
-            {form.tooth_ops.length === 0 ? (
-              <View style={fus.emptyRow}>
-                <Text style={fus.emptyText}>Önce çeneden diş seçin</Text>
-              </View>
-            ) : (
-              <>
-                {/* Tooth selector chips — çene grubu varsa tek chip */}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                  {groupToothOps(form.tooth_ops).map(group => {
-                    const jLabel = getJawLabel(group.ops.map(o => o.tooth));
-                    if (jLabel) {
-                      const groupTeeth = group.ops.map(o => o.tooth);
-                      const active = fileActiveTooth !== null && groupTeeth.includes(fileActiveTooth);
-                      const hasFiles = form.attachments.some(a => a.scope === 'tooth' && groupTeeth.includes(a.tooth ?? 0));
-                      return (
-                        <TouchableOpacity
-                          key={group.key}
-                          onPress={() => setFileActiveTooth(active ? null : groupTeeth[0])}
-                          style={[fus.toothChip, active && fus.toothChipActive, hasFiles && !active && fus.toothChipHasFiles]}
-                        >
-                          <Text style={[fus.toothChipText, active && fus.toothChipTextActive]}>{jLabel}</Text>
-                          {hasFiles && <View style={[fus.fileDot, active && fus.fileDotActive]} />}
-                        </TouchableOpacity>
-                      );
-                    }
-                    return group.ops.sort((a, b) => a.tooth - b.tooth).map(op => {
-                      const active = fileActiveTooth === op.tooth;
-                      const hasFiles = form.attachments.some(a => a.scope === 'tooth' && a.tooth === op.tooth);
-                      return (
-                        <TouchableOpacity
-                          key={op.tooth}
-                          onPress={() => setFileActiveTooth(active ? null : op.tooth)}
-                          style={[fus.toothChip, active && fus.toothChipActive, hasFiles && !active && fus.toothChipHasFiles]}
-                        >
-                          <Text style={[fus.toothChipText, active && fus.toothChipTextActive]}>{op.tooth}</Text>
-                          {hasFiles && <View style={[fus.fileDot, active && fus.fileDotActive]} />}
-                        </TouchableOpacity>
-                      );
-                    });
-                  })}
-                </View>
-
-                {fileActiveTooth !== null && (
-                  <>
-                    {form.attachments.filter(a => a.scope === 'tooth' && a.tooth === fileActiveTooth).length === 0 ? (
-                      <View style={fus.emptyRow}>
-                        <Text style={fus.emptyText}>Diş {fileActiveTooth} için dosya yok</Text>
-                      </View>
-                    ) : (
-                      form.attachments
-                        .filter(a => a.scope === 'tooth' && a.tooth === fileActiveTooth)
-                        .map(a => (
-                          <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} />
-                        ))
-                    )}
-                    <TouchableOpacity
-                      style={fus.addBtn}
-                      onPress={() => openFilePicker('tooth', fileActiveTooth)}
-                    >
-                      <MaterialCommunityIcons name={'plus' as any} size={14} color={C.primary} />
-                      <Text style={fus.addBtnText}>Diş {fileActiveTooth}'e Dosya Ekle</Text>
-                      <Text style={fus.addBtnHint}> · STL, foto, PDF</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {fileActiveTooth === null && (
-                  <View style={fus.emptyRow}>
-                    <Text style={fus.emptyText}>Dosya eklemek için bir diş seçin</Text>
-                  </View>
-                )}
-              </>
-            )}
-
-            {/* Total count */}
-            {form.attachments.length > 0 && (
-              <View style={fus.totalRow}>
-                <MaterialCommunityIcons name={'paperclip' as any} size={12} color="#64748B" />
-                <Text style={fus.totalText}>
-                  Toplam {form.attachments.length} dosya
-                  {form.attachments.filter(a => a.scope === 'case').length > 0 &&
-                    ` · ${form.attachments.filter(a => a.scope === 'case').length} vakaya ait`}
-                  {form.attachments.filter(a => a.scope === 'tooth').length > 0 &&
-                    ` · ${form.attachments.filter(a => a.scope === 'tooth').length} dişe ait`}
-                </Text>
-              </View>
-            )}
-          </SectionCard>
+            {/* İş listesi — operasyon kartının altında */}
+            {(() => {
+              const confirmed = [...form.tooth_ops].filter(o => confirmedTeeth.includes(o.tooth)).sort((a, b) => a.tooth - b.tooth);
+              return (
+                <SectionCard
+                  title={`İş listesi${confirmed.length > 0 ? ` (${confirmed.length} diş)` : ''}`}
+                  icon={'format-list-bulleted-square' as any}
+                  style={{ overflow: 'visible' } as any}
+                  accentColor={P}
+                >
+                  {confirmed.length === 0 ? (
+                    <View style={{ paddingVertical: 28, alignItems: 'center', gap: 6, opacity: 0.5 }}>
+                      <MaterialCommunityIcons name={'clipboard-list-outline' as any} size={28} color="#94A3B8" />
+                      <Text style={{ color: '#94A3B8', fontSize: 12, fontFamily: F.medium, textAlign: 'center' }}>
+                        Diş seçin, işlemleri doldurun ve "Listeye ekle" butonuna basın
+                      </Text>
+                    </View>
+                  ) : (
+                    <View>
+                      {confirmed.map(op => (
+                        <ToothOpRow key={op.tooth} op={op} onChange={(patch) => updateOneTooth(op.tooth, patch)} materialPrices={materialPrices} accentColor={P} />
+                      ))}
+                    </View>
+                  )}
+                </SectionCard>
+              );
+            })()}
 
             </View>{/* end right column */}
 
           </View>{/* end split row */}
-
-          {/* İş listesi — full width */}
-          {(() => {
-            const confirmed = [...form.tooth_ops].filter(o => confirmedTeeth.includes(o.tooth)).sort((a, b) => a.tooth - b.tooth);
-            return (
-              <SectionCard
-                title={`İş listesi${confirmed.length > 0 ? ` (${confirmed.length} diş)` : ''}`}
-                icon={'format-list-bulleted-square' as any}
-              >
-                {confirmed.length === 0 ? (
-                  <View style={{ paddingVertical: 28, alignItems: 'center', gap: 6, opacity: 0.5 }}>
-                    <MaterialCommunityIcons name={'clipboard-list-outline' as any} size={28} color="#94A3B8" />
-                    <Text style={{ color: '#94A3B8', fontSize: 12, fontFamily: F.medium, textAlign: 'center' }}>
-                      Diş seçin, işlemleri doldurun ve "Listeye ekle" butonuna basın
-                    </Text>
-                  </View>
-                ) : (
-                  <View>
-                    {confirmed.map(op => (
-                      <ToothOpRow key={op.tooth} op={op} onChange={(patch) => updateOneTooth(op.tooth, patch)} />
-                    ))}
-                  </View>
-                )}
-              </SectionCard>
-            );
-          })()}
 
         </ScrollView>
       )}
@@ -1204,11 +1180,11 @@ ${form.notes ? `<div class="card">
                 <TouchableOpacity onPress={printSummary} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 5,
                   paddingHorizontal: 12, paddingVertical: 6,
-                  backgroundColor: '#EFF6FF', borderRadius: 20,
-                  borderWidth: 1, borderColor: '#BFDBFE',
+                  backgroundColor: '#F1F5F9', borderRadius: 20,
+                  borderWidth: 1, borderColor: '#CBD5E1',
                 }}>
-                  <MaterialCommunityIcons name={'printer-outline' as any} size={14} color={C.primary} />
-                  <Text style={{ fontSize: 12, color: C.primary, fontFamily: F.medium }}>Çıktı Al</Text>
+                  <MaterialCommunityIcons name={'printer-outline' as any} size={14} color={P} />
+                  <Text style={{ fontSize: 12, color: P, fontFamily: F.medium }}>Çıktı Al</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1360,6 +1336,7 @@ ${form.notes ? `<div class="card">
           }
           setClinicModal({ visible: false, prefill: '' });
         }}
+        accentColor={P}
       />
 
       <DoctorAddModal
@@ -1382,6 +1359,7 @@ ${form.notes ? `<div class="card">
         onClinicAdded={(clinic) => {
           setClinics(prev => [...prev, clinic]);
         }}
+        accentColor={P}
       />
 
       {/* ── Chat popup modal ── */}
@@ -1395,7 +1373,7 @@ ${form.notes ? `<div class="card">
           <Pressable style={chatModal.sheet} onPress={(e: any) => e.stopPropagation()}>
             <View style={chatModal.header}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <MaterialCommunityIcons name={'forum' as any} size={18} color={C.primary} />
+                <MaterialCommunityIcons name={'forum' as any} size={18} color={P} />
                 <View>
                   <Text style={chatModal.headerTitle}>Mesaj kutusu</Text>
                   <Text style={chatModal.headerSub}>Bu vakaya özel notlar, sesli mesajlar ve dosyalar</Text>
@@ -1410,6 +1388,7 @@ ${form.notes ? `<div class="card">
               onAdd={(msg) => set('chat_messages')([...form.chat_messages, msg])}
               onDelete={(id) => set('chat_messages')(form.chat_messages.filter(m => m.id !== id))}
               hideHeader
+              accentColor={P}
             />
           </Pressable>
         </Pressable>
@@ -1467,17 +1446,17 @@ function formatBytes(bytes: number): string {
 function FileRow({ file, onRemove }: { file: AttachedFile; onRemove: () => void }) {
   const color = kindColor(file.kind);
   return (
-    <View style={fus.fileRow}>
-      <View style={[fus.fileIconWrap, { backgroundColor: color + '18' }]}>
+    <View style={_fusStatic.fileRow}>
+      <View style={[_fusStatic.fileIconWrap, { backgroundColor: color + '18' }]}>
         <MaterialCommunityIcons name={kindIcon(file.kind) as any} size={16} color={color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={fus.fileName} numberOfLines={1}>{file.name}</Text>
-        <Text style={fus.fileMeta}>
+        <Text style={_fusStatic.fileName} numberOfLines={1}>{file.name}</Text>
+        <Text style={_fusStatic.fileMeta}>
           {kindLabel(file.kind)}{file.size > 0 ? ` · ${formatBytes(file.size)}` : ''}
         </Text>
       </View>
-      <TouchableOpacity onPress={onRemove} style={fus.fileRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <TouchableOpacity onPress={onRemove} style={_fusStatic.fileRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <MaterialCommunityIcons name={'close' as any} size={14} color="#94A3B8" />
       </TouchableOpacity>
     </View>
@@ -1485,7 +1464,7 @@ function FileRow({ file, onRemove }: { file: AttachedFile; onRemove: () => void 
 }
 
 // ── File Upload Section styles ────────────────────────────────────────────────
-const fus = StyleSheet.create({
+const makeFusStyles = (P: string) => StyleSheet.create({
   subHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   subLabel:  { fontSize: 10, fontFamily: F.semibold, color: '#94A3B8', letterSpacing: 0.8 },
   subHint:   { fontSize: 11, fontFamily: F.regular,  color: '#CBD5E1' },
@@ -1499,12 +1478,12 @@ const fus = StyleSheet.create({
     paddingVertical: 8, paddingHorizontal: 12,
     borderRadius: 8, borderWidth: 1.5,
     borderStyle: 'dashed' as any,
-    borderColor: '#BFDBFE',
+    borderColor: '#CBD5E1',
     backgroundColor: '#F0F9FF',
     alignSelf: 'flex-start',
     marginBottom: 4,
   },
-  addBtnText: { fontSize: 12, fontFamily: F.semibold, color: C.primary },
+  addBtnText: { fontSize: 12, fontFamily: F.semibold, color: P },
   addBtnHint: { fontSize: 11, fontFamily: F.regular,  color: '#93C5FD' },
   divider:    { height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 },
   /* Tooth chips in file section */
@@ -1512,14 +1491,14 @@ const fus = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 10, paddingVertical: 5,
     borderRadius: 16, borderWidth: 1.5,
-    borderColor: '#E2E8F0', backgroundColor: '#F8FAFC',
+    borderColor: '#F1F5F9', backgroundColor: '#F8FAFC',
   },
-  toothChipActive:    { borderColor: C.primary, backgroundColor: C.primary },
-  toothChipHasFiles:  { borderColor: '#93C5FD', backgroundColor: '#EFF6FF' },
+  toothChipActive:    { borderColor: P, backgroundColor: P },
+  toothChipHasFiles:  { borderColor: '#93C5FD', backgroundColor: '#F1F5F9' },
   toothChipText:      { fontSize: 12, fontFamily: F.semibold, color: '#64748B' },
   toothChipTextActive:{ color: '#FFFFFF' },
   fileDot: {
-    width: 6, height: 6, borderRadius: 3, backgroundColor: C.primary,
+    width: 6, height: 6, borderRadius: 3, backgroundColor: P,
   },
   fileDotActive: { backgroundColor: 'rgba(255,255,255,0.75)' },
   /* File row */
@@ -1543,6 +1522,8 @@ const fus = StyleSheet.create({
   },
   totalText: { fontSize: 11, fontFamily: F.regular, color: '#64748B' },
 });
+// Static instance for FileRow (no P-dependent styles used there)
+const _fusStatic = makeFusStyles(C.primary);
 
 // ── Çene etiketi yardımcısı ──────────────────────────────────────
 const UPPER_TEETH = [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28];
@@ -1588,14 +1569,16 @@ interface SummaryPanelProps {
   selectedClinic: Clinic | undefined;
   currentStep: Step;
   onOpenChat?: () => void;
+  accentColor?: string;
 }
 
 
-function LiveSummaryPanel({ form, selectedDoctor, selectedClinic, currentStep, onOpenChat }: SummaryPanelProps) {
+function LiveSummaryPanel({ form, selectedDoctor, selectedClinic, currentStep, onOpenChat, accentColor }: SummaryPanelProps) {
+  const P = accentColor ?? C.primary;
+  const lsp = useMemo(() => makeLspStyles(P), [P]);
   const itemTotal = form.pending_items.reduce((s, i) => s + i.price * i.quantity, 0);
   const sortedOps = [...form.tooth_ops].sort((a, b) => a.tooth - b.tooth);
   const noOpCount = form.tooth_ops.filter(o => !o.work_type).length;
-
 
   return (
     <View style={lsp.panel}>
@@ -1668,7 +1651,7 @@ function LiveSummaryPanel({ form, selectedDoctor, selectedClinic, currentStep, o
             <View style={lsp.sep} />
             <View style={lsp.col}>
               <Text style={lsp.colLabel}>TOPLAM</Text>
-              <Text style={[lsp.colValue, { color: C.primary }]}>
+              <Text style={[lsp.colValue, lsp.colValuePrimary]}>
                 {itemTotal.toFixed(0)} TRY
               </Text>
             </View>
@@ -1705,12 +1688,12 @@ function LiveSummaryPanel({ form, selectedDoctor, selectedClinic, currentStep, o
 }
 
 // ── LiveSummaryPanel styles ───────────────────────────────────────────────────
-const lsp = StyleSheet.create({
+const makeLspStyles = (P: string) => StyleSheet.create({
   panel: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 4,
@@ -1740,6 +1723,7 @@ const lsp = StyleSheet.create({
   colValue: {
     fontSize: 13, fontFamily: F.medium, color: '#0F172A',
   },
+  colValuePrimary: { fontSize: 13, fontFamily: F.medium, color: P },
   colSub: {
     fontSize: 11, fontFamily: F.regular, color: '#64748B', marginTop: 2,
   },
@@ -1748,7 +1732,7 @@ const lsp = StyleSheet.create({
   },
   sep: {
     width: 1, alignSelf: 'stretch',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     marginVertical: 2,
   },
   /* Tooth pills */
@@ -1756,10 +1740,10 @@ const lsp = StyleSheet.create({
     paddingHorizontal: 5, paddingVertical: 1,
     borderRadius: 6, borderWidth: 1,
   },
-  toothPillFilled: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
-  toothPillEmpty:  { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
+  toothPillFilled: { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' },
+  toothPillEmpty:  { backgroundColor: '#F8FAFC', borderColor: '#F1F5F9' },
   toothPillText:   { fontSize: 10, fontFamily: F.semibold, color: '#94A3B8' },
-  toothPillTextFilled: { color: C.primary },
+  toothPillTextFilled: { color: P },
   /* Warning badge (in column) */
   warnBadge: {
     backgroundColor: '#FFFBEB', borderRadius: 10,
@@ -1792,7 +1776,7 @@ const lsp = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: C.primary,
+    backgroundColor: P,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
@@ -1804,7 +1788,7 @@ const lsp = StyleSheet.create({
 const chatModal = StyleSheet.create({
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' },
   sheet:       { width: '90%', maxWidth: 620, height: '78%', backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', flexDirection: 'column' },
-  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: '#FAFCFF' },
+  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', backgroundColor: '#FAFCFF' },
   headerTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', fontFamily: F.bold },
   headerSub:   { fontSize: 11, color: '#94A3B8', marginTop: 1 },
   closeBtn:    { padding: 4, borderRadius: 8 },
@@ -1822,14 +1806,17 @@ interface ClinicFormData {
 }
 
 function ClinicAddModal({
-  visible, prefillName, saving, onClose, onSave,
+  visible, prefillName, saving, onClose, onSave, accentColor,
 }: {
   visible: boolean;
   prefillName: string;
   saving: boolean;
   onClose: () => void;
   onSave: (data: { name: string; phone?: string; email?: string; address?: string; contact_person?: string; notes?: string }) => Promise<void>;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const cm = useMemo(() => makeCmStyles(P), [P]);
   const [form, setForm] = useState<ClinicFormData>({
     name: '', phone: '', email: '', address: '', contact_person: '', notes: '',
   });
@@ -1941,7 +1928,7 @@ function ClinicAddModal({
   );
 }
 
-const cm = StyleSheet.create({
+const makeCmStyles = (P: string) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.45)',
@@ -1980,7 +1967,7 @@ const cm = StyleSheet.create({
     marginBottom: 6, marginTop: 14, letterSpacing: 0.4, textTransform: 'none',
   },
   input: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10,
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#0F172A', backgroundColor: '#FFFFFF',
   },
@@ -1995,13 +1982,13 @@ const cm = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1, paddingVertical: 13, borderRadius: 12,
-    borderWidth: 1, borderColor: '#E2E8F0',
+    borderWidth: 1, borderColor: '#F1F5F9',
     alignItems: 'center',
   },
   cancelText: { fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#64748B' },
   saveBtn: {
     flex: 2, paddingVertical: 13, borderRadius: 12,
-    backgroundColor: C.primary, alignItems: 'center',
+    backgroundColor: P, alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.45 },
   saveText: { fontSize: 14, fontWeight: '500', fontFamily: F.medium, color: '#FFFFFF' },
@@ -2017,7 +2004,7 @@ interface DoctorFormData {
 }
 
 function DoctorAddModal({
-  visible, prefillName, clinicId, clinics, saving, onClose, onSave, onClinicAdded,
+  visible, prefillName, clinicId, clinics, saving, onClose, onSave, onClinicAdded, accentColor,
 }: {
   visible: boolean;
   prefillName: string;
@@ -2027,7 +2014,10 @@ function DoctorAddModal({
   onClose: () => void;
   onSave: (data: { full_name: string; clinic_id?: string | null; phone?: string; specialty?: string; notes?: string }) => Promise<void>;
   onClinicAdded?: (clinic: Clinic) => void;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const cm = useMemo(() => makeCmStyles(P), [P]);
   const [form, setForm] = useState<DoctorFormData>({
     full_name: '', phone: '', specialty: '', notes: '',
   });
@@ -2156,12 +2146,13 @@ function DoctorAddModal({
           }
           setNestedClinicModal({ visible: false, prefill: '' });
         }}
+        accentColor={P}
       />
     </>
   );
 }
 
-const dob = StyleSheet.create({
+const makeDobStyles = (P: string) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -2186,7 +2177,7 @@ const dob = StyleSheet.create({
   },
   toolbarTitle: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
   clearBtn: { fontSize: 15, color: '#8E8E93' },
-  doneBtn:  { fontSize: 15, fontWeight: '700', color: C.primary },
+  doneBtn:  { fontSize: 15, fontWeight: '700', color: P },
 });
 
 // ── InlinePicker ───────────────────────────────────────────────
@@ -2196,13 +2187,17 @@ function InlinePicker({
   onSelect,
   placeholder = '—',
   disabled = false,
+  accentColor,
 }: {
   value: string;
   options: { value: string; label: string }[];
   onSelect: (v: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const ip = useMemo(() => makeIpStyles(P), [P]);
   const [open, setOpen] = useState(false);
   const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<any>(null);
@@ -2254,10 +2249,10 @@ function InlinePicker({
   );
 }
 
-const ip = StyleSheet.create({
+const makeIpStyles = (P: string) => StyleSheet.create({
   btn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#F8FAFC', borderRadius: 7, borderWidth: 1, borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC', borderRadius: 7, borderWidth: 1, borderColor: '#F1F5F9',
     paddingHorizontal: 7, paddingVertical: 5, minWidth: 70,
   },
   btnDisabled: { opacity: 0.35 },
@@ -2265,20 +2260,22 @@ const ip = StyleSheet.create({
   placeholder: { color: '#CBD5E1' },
   drop: {
     position: 'fixed' as any, backgroundColor: '#fff', borderRadius: 10,
-    borderWidth: 1, borderColor: '#E2E8F0',
+    borderWidth: 1, borderColor: '#F1F5F9',
     shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
     zIndex: 9999, maxHeight: 260, overflow: 'scroll' as any,
   },
   opt: { paddingHorizontal: 12, paddingVertical: 8 },
-  optActive: { backgroundColor: '#EFF6FF' },
+  optActive: { backgroundColor: '#F1F5F9' },
   optText: { fontSize: 12, fontFamily: F.regular, color: '#334155' },
-  optTextActive: { fontFamily: F.semibold, color: C.primary },
+  optTextActive: { fontFamily: F.semibold, color: P },
   optClear: { paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   optClearText: { fontSize: 11, fontFamily: F.regular, color: '#94A3B8' },
 });
 
 // ── ToothOpRow ─────────────────────────────────────────────────
-function ToothOpRow({ op, onChange }: { op: ToothOp; onChange: (patch: Partial<Omit<ToothOp, 'tooth'>>) => void }) {
+function ToothOpRow({ op, onChange, materialPrices = {}, accentColor }: { op: ToothOp; onChange: (patch: Partial<Omit<ToothOp, 'tooth'>>) => void; materialPrices?: Record<string, number>; accentColor?: string }) {
+  const P = accentColor ?? C.primary;
+  const tor = useMemo(() => makeTorStyles(P), [P]);
   const derivedMainCat = WORK_TYPE_MAIN[op.work_type] ?? '';
   const [localMainCat, setLocalMainCat] = useState(derivedMainCat);
 
@@ -2311,7 +2308,12 @@ function ToothOpRow({ op, onChange }: { op: ToothOp; onChange: (patch: Partial<O
     : 'Alt tür';
 
   return (
-    <View style={tor.row}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={tor.rowScroll}
+      contentContainerStyle={tor.row}
+    >
       {/* Diş numarası rozeti */}
       <View style={tor.badge}>
         <Text style={tor.badgeNum}>{op.tooth}</Text>
@@ -2321,61 +2323,114 @@ function ToothOpRow({ op, onChange }: { op: ToothOp; onChange: (patch: Partial<O
       <InlinePicker
         value={activeCat}
         options={mainOpts}
-        onSelect={(v) => { setLocalMainCat(v); onChange({ work_type: '', shade: '', material: '', implant_system: '', abutment: '', screw: '' }); }}
+        onSelect={(v) => { setLocalMainCat(v); onChange({ work_type: '', shade: '', material: '', implant_system: '', abutment: '', screw: '', material_price: 0 }); }}
         placeholder="İş türü"
+        accentColor={P}
       />
 
       {/* Alt tür */}
       <InlinePicker
         value={op.work_type}
         options={subtypes}
-        onSelect={(v) => onChange({ work_type: v, shade: '', material: '', implant_system: '', abutment: '', screw: '' })}
+        onSelect={(v) => {
+          const autoPrice = materialPrices[v] ?? 0;
+          onChange({ work_type: v, shade: '', material: '', implant_system: '', abutment: '', screw: '', material_price: autoPrice });
+        }}
         placeholder={activeCat ? subLabel : '—'}
         disabled={!activeCat}
+        accentColor={P}
       />
 
       {/* İmplant'a özel alanlar */}
       {isImplant && hasWorkType && (
         <>
-          <InlinePicker value={op.implant_system} options={impOpts} onSelect={(v) => onChange({ implant_system: v })} placeholder="İmplant sistemi" />
-          <InlinePicker value={op.abutment} options={abutOpts} onSelect={(v) => onChange({ abutment: v })} placeholder="Abutment tipi" />
-          <InlinePicker value={op.screw} options={screwOpts} onSelect={(v) => onChange({ screw: v })} placeholder="Vida tipi" />
-          <InlinePicker value={op.shade} options={shadeOpts} onSelect={(v) => onChange({ shade: v })} placeholder="Renk" />
+          <InlinePicker value={op.implant_system} options={impOpts} onSelect={(v) => onChange({ implant_system: v })} placeholder="İmplant sistemi" accentColor={P} />
+          <InlinePicker value={op.abutment} options={abutOpts} onSelect={(v) => onChange({ abutment: v })} placeholder="Abutment tipi" accentColor={P} />
+          <InlinePicker value={op.screw} options={screwOpts} onSelect={(v) => onChange({ screw: v })} placeholder="Vida tipi" accentColor={P} />
+          <InlinePicker value={op.shade} options={shadeOpts} onSelect={(v) => onChange({ shade: v })} placeholder="Renk" accentColor={P} />
         </>
       )}
 
       {/* Kron / Köprü */}
       {(activeCat === 'Kron' || activeCat === 'Köprü') && hasWorkType && (
         <>
-          <InlinePicker value={op.material} options={crownMOpts} onSelect={(v) => onChange({ material: v })} placeholder="Materyal" />
-          <InlinePicker value={op.shade} options={shadeOpts} onSelect={(v) => onChange({ shade: v })} placeholder="Renk" />
+          <InlinePicker value={op.material} options={crownMOpts} onSelect={(v) => {
+            const autoPrice = materialPrices[v] ?? materialPrices[op.work_type] ?? op.material_price ?? 0;
+            onChange({ material: v, material_price: autoPrice });
+          }} placeholder="Materyal" accentColor={P} />
+          <InlinePicker value={op.shade} options={shadeOpts} onSelect={(v) => onChange({ shade: v })} placeholder="Renk" accentColor={P} />
         </>
       )}
 
       {/* Veneer / Diğer */}
       {(activeCat === 'Veneer' || activeCat === 'Diğer') && hasWorkType && (
-        <InlinePicker value={op.shade} options={shadeOpts} onSelect={(v) => onChange({ shade: v })} placeholder="Renk" />
+        <InlinePicker value={op.shade} options={shadeOpts} onSelect={(v) => onChange({ shade: v })} placeholder="Renk" accentColor={P} />
       )}
 
       {/* Protez */}
       {isProtez && hasWorkType && (
-        <InlinePicker value={op.material} options={removeMOpts} onSelect={(v) => onChange({ material: v })} placeholder="Materyal" />
+        <InlinePicker value={op.material} options={removeMOpts} onSelect={(v) => {
+          const autoPrice = materialPrices[v] ?? materialPrices[op.work_type] ?? op.material_price ?? 0;
+          onChange({ material: v, material_price: autoPrice });
+        }} placeholder="Materyal" accentColor={P} />
       )}
-    </View>
+
+      {/* Materyal ücreti */}
+      <View style={tor.priceBox}>
+        <TextInput
+          style={tor.priceInput}
+          value={(op.material_price ?? 0) > 0 ? String(op.material_price) : ''}
+          onChangeText={(t) => {
+            const n = parseFloat(t.replace(',', '.'));
+            onChange({ material_price: isNaN(n) ? 0 : n });
+          }}
+          keyboardType="decimal-pad"
+          placeholder="₺ Mat."
+          placeholderTextColor="#94A3B8"
+        />
+      </View>
+
+      {/* İşçilik ücreti */}
+      <View style={tor.priceBox}>
+        <TextInput
+          style={tor.priceInput}
+          value={op.price > 0 ? String(op.price) : ''}
+          onChangeText={(t) => {
+            const n = parseFloat(t.replace(',', '.'));
+            onChange({ price: isNaN(n) ? 0 : n });
+          }}
+          keyboardType="decimal-pad"
+          placeholder="₺ İşçilik"
+          placeholderTextColor="#94A3B8"
+        />
+      </View>
+    </ScrollView>
   );
 }
 
-const tor = StyleSheet.create({
+const makeTorStyles = (P: string) => StyleSheet.create({
+  rowScroll: {
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: '#F8FAFC',
+    paddingVertical: 7, paddingHorizontal: 4,
   },
   badge: {
     width: 36, height: 28, borderRadius: 8,
-    backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE',
+    backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1',
     alignItems: 'center', justifyContent: 'center',
   },
-  badgeNum: { fontSize: 12, fontFamily: F.bold, color: C.primary },
+  badgeNum: { fontSize: 12, fontFamily: F.bold, color: P },
+  priceBox: {
+    height: 30, minWidth: 80, borderRadius: 8,
+    borderWidth: 1, borderColor: '#F1F5F9', backgroundColor: '#F8FAFC',
+    justifyContent: 'center', paddingHorizontal: 8,
+  },
+  priceInput: {
+    fontSize: 12, fontFamily: F.medium, color: P,
+    outlineWidth: 0,
+  } as any,
 });
 
 // ── WorkTypeSelector ───────────────────────────────────────────
@@ -2385,12 +2440,17 @@ function WorkTypeSelector({
   updateToothOp,
   selectedTeeth,
   onNightGuard,
+  accentColor,
 }: {
   op: ToothOp;
   updateToothOp: (patch: Partial<Omit<ToothOp, 'tooth'>>) => void;
   selectedTeeth: number[];
   onNightGuard: (jaw: 'upper' | 'lower' | 'both') => void;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const wts = useMemo(() => makeWtsStyles(P), [P]);
+  const styles = useMemo(() => makeStyles(P), [P]);
   const derivedMain = op.work_type ? (WORK_TYPE_MAIN[op.work_type] ?? null) : null;
   const [pendingMain, setPendingMain]         = React.useState<string | null>(null);
   const [showNightGuard, setShowNightGuard]   = React.useState(false);
@@ -2485,7 +2545,7 @@ function WorkTypeSelector({
             activeOpacity={0.75}
           >
             <Text style={[wts.crumbChipText, !op.work_type && wts.crumbChipTextActive]}>{activeMain}</Text>
-            <MaterialCommunityIcons name={'chevron-down' as any} size={13} color={!op.work_type ? C.primary : '#94A3B8'} />
+            <MaterialCommunityIcons name={'chevron-down' as any} size={13} color={!op.work_type ? P : '#94A3B8'} />
           </TouchableOpacity>
 
           {/* Sub tip chip — sadece seçildiyse göster, tıklayınca sub seçime döner */}
@@ -2500,7 +2560,7 @@ function WorkTypeSelector({
                 <Text style={[wts.crumbChipText, wts.crumbChipTextActive]}>
                   {activeNode?.subtypes.find(s => s.value === op.work_type)?.label ?? op.work_type}
                 </Text>
-                <MaterialCommunityIcons name={'chevron-down' as any} size={13} color={C.primary} />
+                <MaterialCommunityIcons name={'chevron-down' as any} size={13} color={P} />
               </TouchableOpacity>
             </>
           )}
@@ -2659,7 +2719,7 @@ function WorkTypeSelector({
   );
 }
 
-const wts = StyleSheet.create({
+const makeWtsStyles = (P: string) => StyleSheet.create({
   favRow: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
     gap: 6, marginBottom: 12,
@@ -2675,7 +2735,7 @@ const wts = StyleSheet.create({
 
   jawBox: {
     marginBottom: 12, padding: 12,
-    borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0',
+    borderRadius: 10, borderWidth: 1, borderColor: '#F1F5F9',
     backgroundColor: '#F8FAFC',
   },
   jawRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
@@ -2683,9 +2743,9 @@ const wts = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
     borderWidth: 1.5, borderColor: '#DDE3ED', backgroundColor: '#FFFFFF',
   },
-  jawBtnSuggested: { borderColor: C.primary, backgroundColor: '#EFF6FF' },
+  jawBtnSuggested: { borderColor: P, backgroundColor: '#F1F5F9' },
   jawBtnText: { fontSize: 12, fontFamily: F.medium, color: '#64748B' },
-  jawBtnTextSuggested: { color: C.primary },
+  jawBtnTextSuggested: { color: P },
 
   crumbRow: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
@@ -2698,10 +2758,10 @@ const wts = StyleSheet.create({
     borderColor: '#DDE3ED', backgroundColor: '#FAFBFC',
   },
   crumbChipActive: {
-    borderColor: C.primary, backgroundColor: '#EFF6FF',
+    borderColor: P, backgroundColor: '#F1F5F9',
   },
   crumbChipText: { fontSize: 12, fontWeight: '400' as any, fontFamily: F.regular, color: '#64748B' },
-  crumbChipTextActive: { color: C.primary, fontWeight: '500' as any, fontFamily: F.medium },
+  crumbChipTextActive: { color: P, fontWeight: '500' as any, fontFamily: F.medium },
   crumbSep: { fontSize: 13, color: '#CBD5E1', marginHorizontal: 1 },
 
   mainRow: {
@@ -2732,7 +2792,9 @@ const wts = StyleSheet.create({
 
 // ── ChatBox ───────────────────────────────────────────────────────────────────
 
-function VoicePlayer({ uri, duration }: { uri: string; duration: number }) {
+function VoicePlayer({ uri, duration, accentColor }: { uri: string; duration: number; accentColor?: string }) {
+  const P  = accentColor ?? C.primary;
+  const cb = useMemo(() => makeCbStyles(P), [P]);
   const [playing, setPlaying]     = React.useState(false);
   const [pos, setPos]             = React.useState(0);
   const [elapsed, setElapsed]     = React.useState(0);
@@ -2772,7 +2834,9 @@ function VoicePlayer({ uri, duration }: { uri: string; duration: number }) {
 
 const fmtSize = (b: number) => b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
 
-function MessageBubble({ msg, onDelete }: { msg: ChatMessage; onDelete: () => void }) {
+function MessageBubble({ msg, onDelete, accentColor }: { msg: ChatMessage; onDelete: () => void; accentColor?: string }) {
+  const P  = accentColor ?? C.primary;
+  const cb = useMemo(() => makeCbStyles(P), [P]);
   const isSelf = true; // new order form — always self (right side, blue)
   const fmt = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -2785,7 +2849,7 @@ function MessageBubble({ msg, onDelete }: { msg: ChatMessage; onDelete: () => vo
           <Text style={[cb.bubbleTxt, !isSelf && cb.bubbleTxtLeft]}>{msg.text}</Text>
         )}
         {msg.type === 'voice' && msg.uri && (
-          <VoicePlayer uri={msg.uri} duration={msg.duration ?? 0} />
+          <VoicePlayer uri={msg.uri} duration={msg.duration ?? 0} accentColor={accentColor} />
         )}
         {msg.type === 'image' && msg.uri && (
           // @ts-ignore
@@ -2813,12 +2877,15 @@ function MessageBubble({ msg, onDelete }: { msg: ChatMessage; onDelete: () => vo
   );
 }
 
-function ChatBox({ messages, onAdd, onDelete, hideHeader }: {
+function ChatBox({ messages, onAdd, onDelete, hideHeader, accentColor }: {
   messages: ChatMessage[];
   onAdd: (msg: ChatMessage) => void;
   onDelete: (id: string) => void;
   hideHeader?: boolean;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const cb = useMemo(() => makeCbStyles(P), [P]);
   const [text, setText]               = React.useState('');
   const [recording, setRec]           = React.useState(false);
   const [elapsed, setElapsed]         = React.useState(0);
@@ -2903,7 +2970,7 @@ function ChatBox({ messages, onAdd, onDelete, hideHeader }: {
       {!hideHeader && (
       <View style={cb.header}>
         <View style={cb.headerIcon}>
-          <MaterialCommunityIcons name={'forum' as any} size={16} color={C.primary} />
+          <MaterialCommunityIcons name={'forum' as any} size={16} color={P} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={cb.headerTitle}>Mesaj kutusu</Text>
@@ -2929,7 +2996,7 @@ function ChatBox({ messages, onAdd, onDelete, hideHeader }: {
           </View>
         )}
         {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} onDelete={() => onDelete(msg.id)} />
+          <MessageBubble key={msg.id} msg={msg} onDelete={() => onDelete(msg.id)} accentColor={accentColor} />
         ))}
       </ScrollView>
 
@@ -2987,7 +3054,7 @@ function ChatBox({ messages, onAdd, onDelete, hideHeader }: {
                         : ('file-document-outline' as any)
                     }
                     size={48}
-                    color="#2563EB"
+                    color="#0F172A"
                   />
                   <Text style={cb.previewFileName} numberOfLines={2}>{pendingFile.name}</Text>
                   <Text style={cb.previewFileSize}>{fmtSize(pendingFile.size)}</Text>
@@ -3037,7 +3104,7 @@ function ChatBox({ messages, onAdd, onDelete, hideHeader }: {
                     activeOpacity={0.85}
                   >
                     <Text style={cb.attachItemLabel}>Fotoğraf</Text>
-                    <View style={[cb.attachIconCircle, { backgroundColor: '#2563EB' }]}>
+                    <View style={[cb.attachIconCircle, { backgroundColor: '#0F172A' }]}>
                       <MaterialCommunityIcons name={'image-outline' as any} size={22} color="#FFFFFF" />
                     </View>
                   </TouchableOpacity>
@@ -3076,7 +3143,7 @@ function ChatBox({ messages, onAdd, onDelete, hideHeader }: {
               <MaterialCommunityIcons
                 name={attachMenuOpen ? ('close' as any) : ('paperclip' as any)}
                 size={20}
-                color={attachMenuOpen ? '#2563EB' : '#94A3B8'}
+                color={attachMenuOpen ? '#0F172A' : '#94A3B8'}
               />
             </TouchableOpacity>
           </View>
@@ -3116,7 +3183,7 @@ function ChatBox({ messages, onAdd, onDelete, hideHeader }: {
   );
 }
 
-const cb = StyleSheet.create({
+const makeCbStyles = (P: string) => StyleSheet.create({
   // Container
   wrap: { borderRadius: 18, overflow: 'hidden', backgroundColor: '#FFFFFF', flex: 1,
           shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
@@ -3126,7 +3193,7 @@ const cb = StyleSheet.create({
   header:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16,
                   paddingVertical: 12, backgroundColor: '#fff',
                   borderBottomWidth: 1, borderBottomColor: '#F0F4F8' },
-  headerIcon:  { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EFF6FF',
+  headerIcon:  { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9',
                   alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 14, fontWeight: '700' as any, color: '#1E293B', marginBottom: 1 },
   headerSub:   { fontSize: 10, color: '#94A3B8', lineHeight: 14 },
@@ -3142,10 +3209,10 @@ const cb = StyleSheet.create({
   // Bubble — right side blue (sent), left side white (received)
   msgRow:      { alignItems: 'flex-end', marginBottom: 4 },
   msgRowLeft:  { alignItems: 'flex-start', marginBottom: 4 },
-  bubble:      { maxWidth: '78%', backgroundColor: C.primary,
+  bubble:      { maxWidth: '78%', backgroundColor: P,
                   borderRadius: 20, borderBottomRightRadius: 4,
                   paddingVertical: 10, paddingHorizontal: 14,
-                  shadowColor: C.primary, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+                  shadowColor: P, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
   bubbleLeft:  { backgroundColor: '#fff', borderBottomRightRadius: 20, borderBottomLeftRadius: 4,
                   shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   bubbleTxt:     { fontSize: 13, color: '#fff', lineHeight: 20 },
@@ -3183,14 +3250,14 @@ const cb = StyleSheet.create({
                paddingHorizontal: 12, paddingVertical: 10,
                borderTopWidth: 1, borderTopColor: '#F0F4F8', backgroundColor: '#fff' },
   flatBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  flatBtnActive: { backgroundColor: '#EFF6FF', borderRadius: 18 },
+  flatBtnActive: { backgroundColor: '#F1F5F9', borderRadius: 18 },
   textInput:   { flex: 1, fontSize: 13, color: '#1E293B', maxHeight: 90,
                   paddingHorizontal: 4, paddingVertical: 6,
                   // @ts-ignore
                   outlineStyle: 'none' },
-  micBtn:    { width: 44, height: 44, borderRadius: 22, backgroundColor: C.primary,
+  micBtn:    { width: 44, height: 44, borderRadius: 22, backgroundColor: P,
                 alignItems: 'center', justifyContent: 'center',
-                shadowColor: C.primary, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+                shadowColor: P, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
   micBtnRec: { backgroundColor: '#EF4444' },
 
   // Attach menu
@@ -3237,21 +3304,21 @@ const cb = StyleSheet.create({
   previewFileSize:{ fontSize: 12, color: '#94A3B8' },
   previewCaptionRow: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   previewCaption: { fontSize: 14, color: '#0F172A', paddingVertical: 8, paddingHorizontal: 12,
-                    backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0',
+                    backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: '#F1F5F9',
                     // @ts-ignore
                     outlineStyle: 'none' },
   previewActions: { flexDirection: 'row', gap: 10, padding: 16, justifyContent: 'flex-end' },
   previewCancelBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F1F5F9' },
   previewCancelTxt: { fontSize: 14, fontWeight: '600' as any, color: '#64748B' },
   previewSendBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6,
-                      paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#2563EB' },
+                      paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0F172A' },
   previewSendTxt:   { fontSize: 14, fontWeight: '700' as any, color: '#FFFFFF' },
 
   // legacy — keep to avoid ref errors
   circleBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F1F5F9',
                 alignItems: 'center', justifyContent: 'center' },
   circleBtnRec: { backgroundColor: '#FFF5F5' },
-  sendBtn:    { width: 34, height: 34, borderRadius: 17, backgroundColor: C.primary,
+  sendBtn:    { width: 34, height: 34, borderRadius: 17, backgroundColor: P,
                  alignItems: 'center', justifyContent: 'center' },
   sendBtnOff: { backgroundColor: '#CBD5E1' },
 });
@@ -3261,14 +3328,17 @@ const WAVE_BARS = [0.3,0.5,0.8,0.6,0.9,0.4,0.7,1.0,0.5,0.6,0.3,0.8,0.9,0.5,
                    0.7,0.4,1.0,0.6,0.8,0.3,0.5,0.9,0.6,0.4,0.7,0.5,0.8,0.4];
 
 function VoiceNotePill({
-  label, note, isPlaying, onPress, onDelete,
+  label, note, isPlaying, onPress, onDelete, accentColor,
 }: {
   label: string;
   note: { uri: string; duration: number };
   isPlaying: boolean;
   onPress: () => void;
   onDelete: () => void;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const vni = useMemo(() => makeVniStyles(P), [P]);
   const fmt = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
   return (
@@ -3286,12 +3356,15 @@ function VoiceNotePill({
 }
 
 function VoiceNoteInput({
-  notes, onAdd, onDelete,
+  notes, onAdd, onDelete, accentColor,
 }: {
   notes: { uri: string; duration: number }[];
   onAdd: (uri: string, dur: number) => void;
   onDelete: (index: number) => void;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const vni = useMemo(() => makeVniStyles(P), [P]);
   const [recording, setRecording] = React.useState(false);
   const [elapsed, setElapsed]     = React.useState(0);
   const [activeIdx, setActiveIdx] = React.useState<number | null>(null);
@@ -3373,6 +3446,7 @@ function VoiceNoteInput({
               isPlaying={activeIdx === i}
               onPress={() => toggleNote(i)}
               onDelete={() => { if (activeIdx === i) stopAudio(); onDelete(i); }}
+              accentColor={P}
             />
           ))}
         </View>
@@ -3408,7 +3482,7 @@ function VoiceNoteInput({
               {WAVE_BARS.map((h, i) => (
                 <View key={i} style={[vni.bar, {
                   height: Math.max(4, h * 26),
-                  backgroundColor: i / WAVE_BARS.length < playPos ? '#2563EB' : '#CBD5E1',
+                  backgroundColor: i / WAVE_BARS.length < playPos ? '#0F172A' : '#CBD5E1',
                 }]} />
               ))}
             </View>
@@ -3423,7 +3497,7 @@ function VoiceNoteInput({
   );
 }
 
-const vni = StyleSheet.create({
+const makeVniStyles = (P: string) => StyleSheet.create({
   wrap:     { marginTop: 8, marginRight: 6, marginBottom: 4 },
   row:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   notesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flex: 1 },
@@ -3431,22 +3505,22 @@ const vni = StyleSheet.create({
   // ── Note pill ──
   pill: { flexDirection: 'row', alignItems: 'center', gap: 5,
           paddingVertical: 4, paddingHorizontal: 8, borderRadius: 16,
-          backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
-  pillPlayBtn:       { width: 18, height: 18, borderRadius: 9, backgroundColor: C.primary,
+          backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1' },
+  pillPlayBtn:       { width: 18, height: 18, borderRadius: 9, backgroundColor: P,
                         alignItems: 'center', justifyContent: 'center' },
-  pillPlayBtnActive: { backgroundColor: '#1D4ED8' },
-  pillLabel:         { fontSize: 11, color: '#2563EB', fontWeight: '600' as any },
-  pillLabelActive:   { color: '#1D4ED8' },
+  pillPlayBtnActive: { backgroundColor: '#0F172A' },
+  pillLabel:         { fontSize: 11, color: '#0F172A', fontWeight: '600' as any },
+  pillLabelActive:   { color: '#0F172A' },
   pillDur:           { fontSize: 10, color: '#94A3B8' },
   pillDel:           { padding: 2 },
 
   // ── Record button ──
   recBtn: { flexDirection: 'row', alignItems: 'center', gap: 5,
             paddingVertical: 5, paddingHorizontal: 10, borderRadius: 20, borderWidth: 1,
-            borderColor: '#E2E8F0', borderStyle: 'dashed' as any,
+            borderColor: '#F1F5F9', borderStyle: 'dashed' as any,
             alignSelf: 'flex-end', backgroundColor: '#F8FAFC' },
   recBtnActive: { borderColor: '#FCA5A5', backgroundColor: '#FFF5F5', borderStyle: 'solid' as any },
-  micIcon:  { width: 20, height: 20, borderRadius: 10, backgroundColor: C.primary,
+  micIcon:  { width: 20, height: 20, borderRadius: 10, backgroundColor: P,
                alignItems: 'center', justifyContent: 'center' },
   stopIcon: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#EF4444',
                alignItems: 'center', justifyContent: 'center' },
@@ -3458,40 +3532,42 @@ const vni = StyleSheet.create({
   // ── Expanded waveform bubble ──
   bubble: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8,
             paddingVertical: 9, paddingHorizontal: 12, borderRadius: 18,
-            backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE',
+            backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1',
             alignSelf: 'flex-start', maxWidth: 320 },
-  playBtn:  { width: 32, height: 32, borderRadius: 16, backgroundColor: C.primary,
+  playBtn:  { width: 32, height: 32, borderRadius: 16, backgroundColor: P,
                alignItems: 'center', justifyContent: 'center' },
   waveWrap: { flex: 1, gap: 3 },
   barsRow:  { flexDirection: 'row', alignItems: 'center', gap: 2, height: 26 },
   bar:      { width: 3, borderRadius: 2, minHeight: 4 },
   timeRow:  { flexDirection: 'row', justifyContent: 'space-between' },
-  timeElapsed: { fontSize: 10, color: '#2563EB' },
+  timeElapsed: { fontSize: 10, color: '#0F172A' },
   timeDur:     { fontSize: 10, color: '#94A3B8' },
   delBtn:      { padding: 4 },
 });
 
-function SectionCard({ title, subtitle, icon, iconNode, children, errorCount, headerRight, style }: {
-  title: string; subtitle?: string; icon?: React.ComponentProps<typeof MaterialCommunityIcons>['name']; iconNode?: React.ReactNode; children: React.ReactNode; errorCount?: number; headerRight?: React.ReactNode; style?: any;
+function SectionCard({ title, subtitle, icon, iconNode, children, errorCount, headerRight, style, accentColor }: {
+  title: string; subtitle?: string; icon?: React.ComponentProps<typeof MaterialCommunityIcons>['name']; iconNode?: React.ReactNode; children: React.ReactNode; errorCount?: number; headerRight?: React.ReactNode; style?: any; accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const sc = _staticStyles;
   return (
-    <View style={[styles.sectionCard, errorCount ? styles.sectionCardError : undefined, style]}>
-      <View style={styles.sectionCardHeader}>
-        <View style={[styles.sectionCardTitleRow, { flex: 1 }]}>
+    <View style={[sc.sectionCard, errorCount ? sc.sectionCardError : undefined, style]}>
+      <View style={sc.sectionCardHeader}>
+        <View style={[sc.sectionCardTitleRow, { flex: 1 }]}>
           {(icon || iconNode) && (
-            <View style={styles.sectionCardIconWrap}>
-              {iconNode ?? <MaterialCommunityIcons name={icon!} size={14} color={errorCount ? '#EF4444' : C.primary} />}
+            <View style={sc.sectionCardIconWrap}>
+              {iconNode ?? <MaterialCommunityIcons name={icon!} size={14} color={errorCount ? '#EF4444' : P} />}
             </View>
           )}
-          <Text style={[styles.sectionCardTitle, errorCount ? { color: '#EF4444' } : undefined]}>{title}</Text>
+          <Text style={[sc.sectionCardTitle, errorCount ? { color: '#EF4444' } : undefined]}>{title}</Text>
           {!!errorCount && (
-            <View style={styles.sectionCardErrBadge}>
-              <Text style={styles.sectionCardErrBadgeText}>{errorCount}</Text>
+            <View style={sc.sectionCardErrBadge}>
+              <Text style={sc.sectionCardErrBadgeText}>{errorCount}</Text>
             </View>
           )}
           {headerRight && <View style={{ marginLeft: 'auto' }}>{headerRight}</View>}
         </View>
-        {subtitle && <Text style={styles.sectionCardSub}>{subtitle}</Text>}
+        {subtitle && <Text style={sc.sectionCardSub}>{subtitle}</Text>}
       </View>
       {children}
     </View>
@@ -3510,15 +3586,15 @@ function FieldError({ msg }: { msg?: string }) {
 
 function Field({ label, value, onChangeText, placeholder, multiline, flex, style, required, error }: any) {
   return (
-    <View style={[styles.fieldWrap, flex && { flex: 1 }]}>
+    <View style={[_staticStyles.fieldWrap, flex && { flex: 1 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
-        {required && <Text style={{ fontSize: 13, color: error ? '#EF4444' : '#2563EB', fontWeight: '700', lineHeight: 16 }}>*</Text>}
-        <Text style={[styles.fieldLabel, { marginBottom: 0 }, error && { color: '#EF4444' }]}>{label}</Text>
+        {required && <Text style={{ fontSize: 13, color: error ? '#EF4444' : '#0F172A', fontWeight: '700', lineHeight: 16 }}>*</Text>}
+        <Text style={[_staticStyles.fieldLabel, { marginBottom: 0 }, error && { color: '#EF4444' }]}>{label}</Text>
       </View>
       <TextInput
         style={[
-          styles.fieldInput,
-          multiline && styles.fieldInputMulti,
+          _staticStyles.fieldInput,
+          multiline && _staticStyles.fieldInputMulti,
           error && { borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.05)' },
           style,
         ]}
@@ -3584,8 +3660,8 @@ function WheelPickerColumn({
         <div style={{
           position: 'absolute', top: WHEEL_ITEM_H * 2, left: 6, right: 6,
           height: WHEEL_ITEM_H,
-          borderTop: '1.5px solid #E2E8F0',
-          borderBottom: '1.5px solid #E2E8F0',
+          borderTop: '1.5px solid #F1F5F9',
+          borderBottom: '1.5px solid #F1F5F9',
           pointerEvents: 'none', zIndex: 2,
         }} />
         {/* Fade gradient overlay */}
@@ -3644,10 +3720,10 @@ function WheelPickerColumn({
   return (
     <View style={{ width, height: WHEEL_H }}>
       <View style={{
-        position: 'absolute', top: WHEEL_ITEM_H * 2, left: 4, right: 4, height: 1, backgroundColor: '#E2E8F0',
+        position: 'absolute', top: WHEEL_ITEM_H * 2, left: 4, right: 4, height: 1, backgroundColor: '#F1F5F9',
       }} />
       <View style={{
-        position: 'absolute', top: WHEEL_ITEM_H * 3, left: 4, right: 4, height: 1, backgroundColor: '#E2E8F0',
+        position: 'absolute', top: WHEEL_ITEM_H * 3, left: 4, right: 4, height: 1, backgroundColor: '#F1F5F9',
       }} />
       <ScrollView
         ref={scrollRef}
@@ -3687,7 +3763,7 @@ function WheelPickerColumn({
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 function DateWheelPickerModal({
-  visible, value, onChange, onClose, minDate, maxDate, title, anchorPos,
+  visible, value, onChange, onClose, minDate, maxDate, title, anchorPos, accentColor,
 }: {
   visible: boolean;
   value: Date | null;
@@ -3697,7 +3773,10 @@ function DateWheelPickerModal({
   maxDate?: Date;
   title?: string;
   anchorPos?: { x: number; y: number; w: number; h: number };
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const dp = useMemo(() => makeDpStyles(P), [P]);
   const { width: SW, height: SH } = useWindowDimensions();
   const now = new Date();
   const minY = minDate ? minDate.getFullYear() : 1930;
@@ -3797,7 +3876,7 @@ function DateWheelPickerModal({
   );
 }
 
-const dp = StyleSheet.create({
+const makeDpStyles = (P: string) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -3813,7 +3892,7 @@ const dp = StyleSheet.create({
     shadowRadius: 20,
     elevation: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
   },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -3843,7 +3922,7 @@ const dp = StyleSheet.create({
   },
   submitBtn: {
     margin: 14,
-    backgroundColor: C.primary,
+    backgroundColor: P,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -3912,16 +3991,16 @@ function DateField({ label, value, onChange, minDate, maxDate, placeholder, flex
   };
 
   return (
-    <View style={[styles.fieldWrap, flex && { flex: 1 }]}>
+    <View style={[_staticStyles.fieldWrap, flex && { flex: 1 }]}>
       {label && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
-          {required && <Text style={{ fontSize: 13, color: error ? '#EF4444' : '#2563EB', fontWeight: '700', lineHeight: 16 }}>*</Text>}
-          <Text style={[styles.fieldLabel, { marginBottom: 0 }, error && { color: '#EF4444' }]}>{label}</Text>
+          {required && <Text style={{ fontSize: 13, color: error ? '#EF4444' : '#0F172A', fontWeight: '700', lineHeight: 16 }}>*</Text>}
+          <Text style={[_staticStyles.fieldLabel, { marginBottom: 0 }, error && { color: '#EF4444' }]}>{label}</Text>
         </View>
       )}
-      <View ref={fieldRef} style={[styles.dateInputRow, error && { borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.05)' }]}>
+      <View ref={fieldRef} style={[_staticStyles.dateInputRow, error && { borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.05)' }]}>
         <TextInput
-          style={styles.dateTextInput}
+          style={_staticStyles.dateTextInput}
           value={textValue}
           onChangeText={handleTextChange}
           placeholder={placeholder ?? 'GG.AA.YYYY'}
@@ -3929,7 +4008,7 @@ function DateField({ label, value, onChange, minDate, maxDate, placeholder, flex
           keyboardType="numeric"
           maxLength={10}
         />
-        <TouchableOpacity onPress={handleOpenPicker} style={styles.calIconBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleOpenPicker} style={_staticStyles.calIconBtn} activeOpacity={0.7}>
           <MaterialCommunityIcons name="calendar-outline" size={16} color="#64748B" />
         </TouchableOpacity>
       </View>
@@ -3949,8 +4028,8 @@ function DateField({ label, value, onChange, minDate, maxDate, placeholder, flex
 
 function SummaryGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.summaryGroup}>
-      <Text style={styles.summaryGroupTitle}>{title}</Text>
+    <View style={_staticStyles.summaryGroup}>
+      <Text style={_staticStyles.summaryGroupTitle}>{title}</Text>
       {children}
     </View>
   );
@@ -3958,23 +4037,26 @@ function SummaryGroup({ title, children }: { title: string; children: React.Reac
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
+    <View style={_staticStyles.summaryRow}>
+      <Text style={_staticStyles.summaryLabel}>{label}</Text>
+      <Text style={_staticStyles.summaryValue}>{value}</Text>
     </View>
   );
 }
 
 // ── InlineSelect ────────────────────────────────────────────────
 
-function InlineSelect({ label, icon, value, options, onSelect, error }: {
+function InlineSelect({ label, icon, value, options, onSelect, error, accentColor }: {
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   value: string;
   options: { value: string; label: string }[];
   onSelect: (v: string) => void;
   error?: string;
+  accentColor?: string;
 }) {
+  const P = accentColor ?? C.primary;
+  const isel = useMemo(() => makeIselStyles(P), [P]);
   const [open, setOpen] = useState(false);
   const [pos,  setPos]  = useState({ x: 0, y: 0, w: 0, h: 0 });
   const triggerRef = useRef<any>(null);
@@ -4029,7 +4111,7 @@ function InlineSelect({ label, icon, value, options, onSelect, error }: {
                   activeOpacity={0.7}
                 >
                   <Text style={[isel.optionText, active && isel.optionTextActive]}>{opt.label}</Text>
-                  {active && <MaterialCommunityIcons name="check" size={13} color={C.primary} />}
+                  {active && <MaterialCommunityIcons name="check" size={13} color={P} />}
                 </TouchableOpacity>
               );
             })}
@@ -4040,7 +4122,7 @@ function InlineSelect({ label, icon, value, options, onSelect, error }: {
   );
 }
 
-const isel = StyleSheet.create({
+const makeIselStyles = (P: string) => StyleSheet.create({
   /* Wrapper: flex:1 + overflow visible — sadece kendi kolonunu büyütür */
   wrap: { flex: 1 },
 
@@ -4048,24 +4130,24 @@ const isel = StyleSheet.create({
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     padding: 10, borderRadius: 10,
-    borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#F1F5F9', backgroundColor: '#FFFFFF',
   },
-  cardActive: { borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' },
-  cardOpen:   { borderColor: '#E2E8F0', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  cardActive: { borderColor: '#F1F5F9', backgroundColor: '#FFFFFF' },
+  cardOpen:   { borderColor: '#F1F5F9', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   cardError:  { borderColor: '#FCA5A5', backgroundColor: '#FFF5F5' },
 
   cardLabel:        { fontSize: 10, fontFamily: F.medium, color: '#94A3B8', letterSpacing: 0.3 },
   cardLabelError:   { color: '#EF4444' },
-  cardLabelActive:  { color: C.primary },
+  cardLabelActive:  { color: P },
   cardValue:        { fontSize: 13, fontFamily: F.medium, fontWeight: '500', color: '#0F172A', marginTop: 2 },
-  cardValueActive:  { color: C.primary },
+  cardValueActive:  { color: P },
   cardPlaceholder:  { color: '#CBD5E1', fontFamily: F.regular, fontWeight: '400' },
 
   /* Seçenek listesi — trigger'a yapışık görünür */
   list: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1, borderTopWidth: 0,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
     overflow: 'hidden',
     shadowColor: '#0F172A',
@@ -4079,19 +4161,22 @@ const isel = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 11,
   },
   optionBorder:     { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  optionActive:     { backgroundColor: '#EFF6FF' },
+  optionActive:     { backgroundColor: '#F1F5F9' },
   optionText:       { fontSize: 13, fontFamily: F.regular, color: '#334155' },
-  optionTextActive: { color: C.primary, fontFamily: F.medium },
+  optionTextActive: { color: P, fontFamily: F.medium },
 });
 
 // ── InlineDateSelect — same look as InlineSelect, opens date wheel ────────────
-function InlineDateSelect({ label, value, onChange, minDate, error }: {
+function InlineDateSelect({ label, value, onChange, minDate, error, accentColor }: {
   label: string;
   value: Date | null;
   onChange: (d: Date) => void;
   minDate?: Date;
   error?: string;
+  accentColor?: string;
 }) {
+  const P    = accentColor ?? C.primary;
+  const isel = useMemo(() => makeIselStyles(P), [P]);
   const [open, setOpen] = useState(false);
   const [pos,  setPos]  = useState({ x: 0, y: 0, w: 0, h: 0 });
   const triggerRef = useRef<any>(null);
@@ -4132,6 +4217,7 @@ function InlineDateSelect({ label, value, onChange, minDate, error }: {
         minDate={minDate}
         title={label}
         anchorPos={pos}
+        accentColor={P}
       />
     </View>
   );
@@ -4231,7 +4317,7 @@ function SearchableDropdown({
     return (
       <View style={[dd.wrap, { flex: 1 }]}>
         {label ? <Text style={dd.label}>{label}</Text> : null}
-        <View style={[dd.inputWrap, { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' }]}>
+        <View style={[dd.inputWrap, { backgroundColor: '#F1F5F9', borderColor: '#F1F5F9' }]}>
           <MaterialCommunityIcons name="lock-outline" size={14} color="#B0BAC9" />
           <Text style={[dd.input, { color: '#B0BAC9' } as any]} numberOfLines={1}>
             {disabledHint ?? placeholder}
@@ -4244,7 +4330,7 @@ function SearchableDropdown({
   return (
     <View ref={wrapRef} style={[dd.wrap, { flex: 1 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
-        {required && <Text style={{ fontSize: 13, color: error ? '#EF4444' : '#2563EB', fontWeight: '700', lineHeight: 16 }}>*</Text>}
+        {required && <Text style={{ fontSize: 13, color: error ? '#EF4444' : '#0F172A', fontWeight: '700', lineHeight: 16 }}>*</Text>}
         <Text style={[dd.label, { marginBottom: 0 }, error && { color: '#EF4444' }]}>{label}</Text>
       </View>
 
@@ -4305,7 +4391,7 @@ function SearchableDropdown({
                       <Text style={[dd.itemLabel, active && dd.itemLabelActive]}>{item.label}</Text>
                       {item.sublabel && <Text style={dd.itemSub}>{item.sublabel}</Text>}
                     </View>
-                    {active && <MaterialCommunityIcons name="check" size={16} color="#2563EB" />}
+                    {active && <MaterialCommunityIcons name="check" size={16} color="#0F172A" />}
                   </TouchableOpacity>
                 );
               })}
@@ -4314,7 +4400,7 @@ function SearchableDropdown({
             {showAdd && (
               <TouchableOpacity style={dd.addRow} onPress={handleAdd} disabled={adding}>
                 <View style={dd.addIcon}>
-                  <MaterialCommunityIcons name="plus" size={16} color="#2563EB" />
+                  <MaterialCommunityIcons name="plus" size={16} color="#0F172A" />
                 </View>
                 <Text style={dd.addText}>
                   {adding ? 'Ekleniyor...' : query.trim() ? `${addNewLabel ?? 'Ekle'}: "${query.trim()}"` : (addNewLabel ?? 'Yeni ekle')}
@@ -4335,11 +4421,11 @@ const dd = StyleSheet.create({
   /* Direct text input */
   inputWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10,
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11,
     backgroundColor: '#FFFFFF',
   },
-  inputWrapFocused: { borderColor: '#2563EB' },
+  inputWrapFocused: { borderColor: '#0F172A' },
   input: {
     flex: 1, fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#0F172A',
   },
@@ -4350,7 +4436,7 @@ const dd = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     overflow: 'hidden',
     // @ts-ignore
     boxShadow: '0 4px 16px rgba(15,23,42,0.10)',
@@ -4364,23 +4450,23 @@ const dd = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 13,
     borderBottomWidth: 1, borderBottomColor: '#F8FAFC', gap: 10,
   },
-  itemActive:      { backgroundColor: '#EFF6FF' },
+  itemActive:      { backgroundColor: '#F1F5F9' },
   itemLeft:        { flex: 1 },
   itemLabel:       { fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#0F172A' },
-  itemLabelActive: { color: '#2563EB', fontWeight: '500', fontFamily: F.medium },
+  itemLabelActive: { color: '#0F172A', fontWeight: '500', fontFamily: F.medium },
   itemSub:         { fontSize: 12, fontFamily: F.regular, color: '#94A3B8', marginTop: 1 },
 
   addRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 20, paddingVertical: 14,
-    borderTopWidth: 1, borderTopColor: '#E2E8F0',
+    borderTopWidth: 1, borderTopColor: '#F1F5F9',
     backgroundColor: '#F8FAFF',
   },
   addIcon: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center',
   },
-  addText: { fontSize: 14, fontWeight: '500', fontFamily: F.medium, color: '#2563EB' },
+  addText: { fontSize: 14, fontWeight: '500', fontFamily: F.medium, color: '#0F172A' },
 });
 
 // ── Step Sidebar (desktop) ──────────────────────────────────────
@@ -4392,7 +4478,9 @@ const STEP_DEFS = [
   { num: 4 as Step, label: 'Özet & gönder',     sub: 'Kontrol et ve kaydet',           icon: 'send-check-outline'        as any },
 ];
 
-function StepSidebar({ currentStep }: { currentStep: Step }) {
+function StepSidebar({ currentStep, accentColor }: { currentStep: Step; accentColor?: string }) {
+  const P = accentColor ?? C.primary;
+  const sb = useMemo(() => makeSbStyles(P), [P]);
   return (
     <View style={sb.sidebar}>
       <View style={sb.stepsWrap}>
@@ -4432,7 +4520,7 @@ function StepSidebar({ currentStep }: { currentStep: Step }) {
   );
 }
 
-const sb = StyleSheet.create({
+const makeSbStyles = (P: string) => StyleSheet.create({
   sidebar: {
     width: 100,
     backgroundColor: '#FFFFFF',
@@ -4461,10 +4549,10 @@ const sb = StyleSheet.create({
     width: 2,
     flex: 1,
     minHeight: 18,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     borderRadius: 1,
   },
-  lineDone: { backgroundColor: C.primary },
+  lineDone: { backgroundColor: P },
 
   // Ring — grey border, white fill, number inside
   ring: {
@@ -4473,14 +4561,14 @@ const sb = StyleSheet.create({
     borderWidth: 2, borderColor: '#CBD5E1',
     backgroundColor: '#FFFFFF',
   },
-  ringDone:   { borderColor: C.primary, backgroundColor: C.primary },
-  ringActive: { borderColor: C.primary, backgroundColor: '#FFFFFF' },
+  ringDone:   { borderColor: P, backgroundColor: P },
+  ringActive: { borderColor: P, backgroundColor: '#FFFFFF' },
 
   // Number label inside ring
   ringNum: {
     fontSize: 15, fontFamily: F.semibold, color: '#94A3B8',
   },
-  ringNumActive: { color: C.primary },
+  ringNumActive: { color: P },
 
   // Checkmark inside ring when done
   ringCheck: {
@@ -4495,7 +4583,7 @@ const sb = StyleSheet.create({
     color: '#94A3B8', textAlign: 'center',
   },
   stepLabelActive: { color: C.textPrimary, fontWeight: '600', fontFamily: F.semibold },
-  stepLabelDone:   { color: C.primary,     fontWeight: '500', fontFamily: F.medium },
+  stepLabelDone:   { color: P,     fontWeight: '500', fontFamily: F.medium },
   stepSub: {
     fontSize: 11, fontWeight: '400', fontFamily: F.regular,
     color: '#B0BAC9', textAlign: 'center', marginTop: 2, marginBottom: 4,
@@ -4505,7 +4593,7 @@ const sb = StyleSheet.create({
 
 // ── Styles ──────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (P: string) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFFFF' },
 
   /* Outer layout */
@@ -4527,12 +4615,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9', borderWidth: 1.5, borderColor: '#DDE3ED',
     alignItems: 'center', justifyContent: 'center',
   },
-  stepDotActive:  { backgroundColor: '#EFF6FF', borderWidth: 2, borderColor: C.primary },
-  stepDotCurrent: { backgroundColor: C.primary, borderColor: C.primary },
+  stepDotActive:  { backgroundColor: '#F1F5F9', borderWidth: 2, borderColor: P },
+  stepDotCurrent: { backgroundColor: P, borderColor: P },
   stepNum:       { fontSize: 11, fontWeight: '600', fontFamily: F.semibold, color: '#94A3B8' },
-  stepNumActive: { color: C.primary },
+  stepNumActive: { color: P },
   stepLine:       { width: 40, height: 2, backgroundColor: '#DDE3ED', marginHorizontal: 4 },
-  stepLineActive: { backgroundColor: C.primary },
+  stepLineActive: { backgroundColor: P },
   stepLabel: { fontSize: 13, color: '#64748B', fontWeight: '500', fontFamily: F.medium },
 
   /* Form content area — light background so cards pop */
@@ -4562,7 +4650,7 @@ const styles = StyleSheet.create({
   sectionCardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionCardIconWrap: {
     width: 28, height: 28, borderRadius: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center', justifyContent: 'center',
   },
   sectionCardTitle: { fontSize: 13, fontWeight: '600', fontFamily: F.semibold, color: '#1E293B', letterSpacing: 0.1 },
@@ -4583,23 +4671,23 @@ const styles = StyleSheet.create({
 
   /* Legacy clinic card selectors (unused but kept for type safety) */
   cardRow: { flexDirection: 'row', gap: 10, paddingVertical: 12 },
-  selectCard: { width: 148, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', alignItems: 'center', gap: 6 },
-  selectCardActive: { borderColor: C.primary, backgroundColor: '#EFF6FF' },
+  selectCard: { width: 148, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#F1F5F9', backgroundColor: '#FFFFFF', alignItems: 'center', gap: 6 },
+  selectCardActive: { borderColor: P, backgroundColor: '#F1F5F9' },
   selectCardEmoji: { fontSize: 22 },
   selectCardName: { fontSize: 12, fontWeight: '600', fontFamily: F.semibold, color: C.textPrimary, textAlign: 'center' },
-  selectCardNameActive: { color: C.primary },
+  selectCardNameActive: { color: P },
   selectCardSub: { fontSize: 11, fontFamily: F.regular, color: C.textMuted },
   emptyNote: { paddingVertical: 14, fontSize: 13, fontFamily: F.regular, color: C.textMuted, fontStyle: 'italic' },
   doctorGrid: { paddingVertical: 10, gap: 8 },
-  doctorCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', gap: 12 },
-  doctorCardActive: { borderColor: C.primary, backgroundColor: '#EFF6FF' },
-  doctorAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  doctorAvatarActive: { backgroundColor: C.primary },
+  doctorCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#F1F5F9', backgroundColor: '#FFFFFF', gap: 12 },
+  doctorCardActive: { borderColor: P, backgroundColor: '#F1F5F9' },
+  doctorAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  doctorAvatarActive: { backgroundColor: P },
   doctorAvatarText: { fontSize: 16, fontWeight: '600', fontFamily: F.semibold, color: '#FFFFFF' },
   doctorName: { fontSize: 14, fontWeight: '500', fontFamily: F.medium, color: C.textPrimary },
-  doctorNameActive: { color: C.primary },
+  doctorNameActive: { color: P },
   doctorClinic: { fontSize: 12, fontFamily: F.regular, color: C.textSecondary, marginTop: 1 },
-  checkMark: { fontSize: 16, color: C.primary, fontWeight: '600', fontFamily: F.semibold },
+  checkMark: { fontSize: 16, color: P, fontWeight: '600', fontFamily: F.semibold },
 
   /* Form fields */
   twoCol: { flexDirection: 'row', gap: 12, overflow: 'visible', marginBottom: 14 },
@@ -4610,7 +4698,7 @@ const styles = StyleSheet.create({
   },
   fieldSub: { fontSize: 11, fontFamily: F.regular, color: C.textMuted },
   fieldInput: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10,
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#0F172A', backgroundColor: '#FFFFFF',
     // @ts-ignore
@@ -4636,9 +4724,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
     borderWidth: 1.5, borderColor: '#DDE3ED', backgroundColor: '#FAFBFC',
   },
-  chipActive:     { borderColor: C.primary, backgroundColor: '#EFF6FF' },
+  chipActive:     { borderColor: P, backgroundColor: '#F1F5F9' },
   chipText:       { fontSize: 12, fontWeight: '400', fontFamily: F.regular, color: '#64748B' },
-  chipTextActive: { color: C.primary, fontWeight: '500', fontFamily: F.medium },
+  chipTextActive: { color: P, fontWeight: '500', fontFamily: F.medium },
   tagChipActive:     { borderColor: C.warning, backgroundColor: C.warningBg },
   tagChipTextActive: { color: C.warning, fontWeight: '500', fontFamily: F.medium },
 
@@ -4646,7 +4734,7 @@ const styles = StyleSheet.create({
   dateBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     marginBottom: 14, backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10,
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11,
   },
   dateBtnText: { fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#0F172A', flex: 1 },
@@ -4655,7 +4743,7 @@ const styles = StyleSheet.create({
   dateInputRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10,
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingLeft: 14, overflow: 'hidden',
   },
   dateTextInput: {
@@ -4665,24 +4753,24 @@ const styles = StyleSheet.create({
   } as any,
   calIconBtn: {
     paddingHorizontal: 12, paddingVertical: 11,
-    borderLeftWidth: 1, borderLeftColor: '#E2E8F0',
+    borderLeftWidth: 1, borderLeftColor: '#F1F5F9',
     backgroundColor: '#F8FAFC',
   },
 
   /* Shade + machine chips */
   shadeChip:       { borderWidth: 1, borderColor: '#DDE3ED', borderRadius: 8, paddingVertical: 7, paddingHorizontal: 11, backgroundColor: '#FAFBFC' },
-  shadeChipActive: { borderColor: C.primary, backgroundColor: '#EFF6FF' },
+  shadeChipActive: { borderColor: P, backgroundColor: '#F1F5F9' },
   shadeText:       { fontSize: 12, fontWeight: '400', fontFamily: F.regular, color: C.textSecondary },
-  shadeTextActive: { color: C.primary, fontFamily: F.medium },
+  shadeTextActive: { color: P, fontFamily: F.medium },
   machineRow: { flexDirection: 'row', gap: 10, paddingBottom: 14 },
   machineCard: {
     flex: 1, borderWidth: 1.5, borderColor: '#DDE3ED',
     borderRadius: 12, padding: 16, alignItems: 'center', backgroundColor: '#FAFBFC',
   },
-  machineCardActive: { borderColor: C.primary, backgroundColor: '#EFF6FF' },
+  machineCardActive: { borderColor: P, backgroundColor: '#F1F5F9' },
   machineEmoji:      { fontSize: 18, marginBottom: 6 },
   machineDesc:       { fontSize: 11, fontFamily: F.regular, color: C.textSecondary, textAlign: 'center' },
-  machineDescActive: { color: C.primary, fontFamily: F.medium },
+  machineDescActive: { color: P, fontFamily: F.medium },
 
   /* Step 2 layout */
   step2Container:        { flex: 1, backgroundColor: '#FFFFFF' },
@@ -4698,17 +4786,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
   catalogTitle:      { fontSize: 14, fontWeight: '600', fontFamily: F.semibold, color: '#0F172A' },
-  totalBadge:        { backgroundColor: C.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  totalBadge:        { backgroundColor: P, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   totalBadgeText:    { color: '#FFFFFF', fontSize: 11, fontWeight: '500', fontFamily: F.medium },
   pendingItems:      { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   pendingRow:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   pendingName:       { flex: 1, fontSize: 13, fontFamily: F.regular, color: C.textPrimary },
-  pendingPrice:      { fontSize: 13, fontWeight: '500', fontFamily: F.medium, color: C.primary },
+  pendingPrice:      { fontSize: 13, fontWeight: '500', fontFamily: F.medium, color: P },
   removeBtn:         { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' },
   removeBtnText:     { fontSize: 11, color: '#DC2626', fontWeight: '600', fontFamily: F.semibold },
-  pendingTotal:      { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#EFF6FF' },
-  pendingTotalLabel: { fontSize: 13, fontWeight: '500', fontFamily: F.medium, color: C.primary },
-  pendingTotalValue: { fontSize: 14, fontWeight: '600', fontFamily: F.semibold, color: C.primary },
+  pendingTotal:      { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#F1F5F9' },
+  pendingTotalLabel: { fontSize: 13, fontWeight: '500', fontFamily: F.medium, color: P },
+  pendingTotalValue: { fontSize: 14, fontWeight: '600', fontFamily: F.semibold, color: P },
   catalogSearch: {
     margin: 12, backgroundColor: '#FAFBFC', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11,
@@ -4726,17 +4814,17 @@ const styles = StyleSheet.create({
   },
   catalogItem:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', gap: 10 },
   addCircle:           { width: 26, height: 26, borderRadius: 13, backgroundColor: '#F0FDF4', borderWidth: 1.5, borderColor: '#86EFAC', alignItems: 'center', justifyContent: 'center' },
-  addCircleActive:     { backgroundColor: C.primary, borderColor: C.primary },
+  addCircleActive:     { backgroundColor: P, borderColor: P },
   addCircleText:       { fontSize: 14, color: '#16A34A', fontWeight: '600', fontFamily: F.semibold, lineHeight: 20 },
   addCircleTextActive: { color: '#FFFFFF' },
   catalogItemName:  { flex: 1, fontSize: 13, fontFamily: F.regular, color: C.textPrimary },
-  catalogItemPrice: { fontSize: 12, fontWeight: '500', fontFamily: F.medium, color: C.primary },
+  catalogItemPrice: { fontSize: 12, fontWeight: '500', fontFamily: F.medium, color: P },
 
   /* Step 3 summary */
   summaryCard: {
     marginHorizontal: 16, marginTop: 12, marginBottom: 4,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden',
+    borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden',
     shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   summaryTitle: {
@@ -4752,8 +4840,8 @@ const styles = StyleSheet.create({
   summaryLabel:      { fontSize: 13, fontWeight: '400', fontFamily: F.regular, color: C.textSecondary, flex: 1 },
   summaryValue:      { fontSize: 13, fontWeight: '500', fontFamily: F.medium, color: '#0F172A', flex: 2, textAlign: 'right' },
   summaryTotal:      { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, marginTop: 4 },
-  summaryTotalLabel: { fontSize: 14, fontWeight: '500', fontFamily: F.medium, color: C.primary },
-  summaryTotalValue: { fontSize: 16, fontWeight: '600', fontFamily: F.semibold, color: C.primary },
+  summaryTotalLabel: { fontSize: 14, fontWeight: '500', fontFamily: F.medium, color: P },
+  summaryTotalValue: { fontSize: 16, fontWeight: '600', fontFamily: F.semibold, color: P },
   noteText:          { fontSize: 13, fontFamily: F.regular, color: C.textPrimary, lineHeight: 20, paddingBottom: 8 },
 
   /* Navigation bar */
@@ -4776,8 +4864,8 @@ const styles = StyleSheet.create({
   backBtnText: { fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#64748B' },
   nextBtn: {
     paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12,
-    backgroundColor: C.primary,
-    shadowColor: C.primary,
+    backgroundColor: P,
+    shadowColor: P,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -4788,7 +4876,7 @@ const styles = StyleSheet.create({
 });
 
 // ── Step 2 styles ────────────────────────────────────────────────
-const s2 = StyleSheet.create({
+const makeS2Styles = (P: string) => StyleSheet.create({
   /* Acil + Onay yan yana togglelar */
   toggleRow: {
     flexDirection: 'row', gap: 8,
@@ -4796,14 +4884,14 @@ const s2 = StyleSheet.create({
   toggleItem: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
     padding: 10, borderRadius: 10,
-    borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#F1F5F9', backgroundColor: '#FFFFFF',
   },
   toggleItemUrgent:   { borderColor: '#FECACA', backgroundColor: '#FFF5F5' },
-  toggleItemApproval: { borderColor: '#BFDBFE', backgroundColor: '#EFF6FF' },
+  toggleItemApproval: { borderColor: '#CBD5E1', backgroundColor: '#F1F5F9' },
   toggleItemLabel: {
     fontSize: 10, fontFamily: F.medium, color: '#94A3B8', letterSpacing: 0.3,
   },
-  toggleItemLabelActive: { color: C.primary },
+  toggleItemLabelActive: { color: P },
   toggleItemDesc: {
     fontSize: 13, fontFamily: F.medium, fontWeight: '500', color: '#0F172A', marginTop: 2,
   },
@@ -4831,17 +4919,17 @@ const s2 = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0',
+    borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9',
     backgroundColor: '#F8FAFC',
   },
   chipActive: {
-    borderColor: C.primary, backgroundColor: '#EFF6FF',
+    borderColor: P, backgroundColor: '#F1F5F9',
   },
   chipText: {
     fontSize: 12, fontFamily: F.regular, color: '#64748B',
   },
   chipTextActive: {
-    color: C.primary, fontFamily: F.medium, fontWeight: '500',
+    color: P, fontFamily: F.medium, fontWeight: '500',
   },
 
   /* Teslim tarihi — dateBtn marginBottom'ı row içinde iptal */
@@ -4853,7 +4941,7 @@ const s2 = StyleSheet.create({
   },
   noteBox: {
     flex: 1, borderRadius: 10, borderWidth: 1,
-    borderColor: '#E2E8F0', overflow: 'hidden',
+    borderColor: '#F1F5F9', overflow: 'hidden',
   },
   noteBoxLab:     { borderColor: '#FCD34D' },
   noteBoxVisible: { borderColor: '#93C5FD' },
@@ -4862,10 +4950,10 @@ const s2 = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     height: 36, paddingHorizontal: 10,
     backgroundColor: '#F8FAFC',
-    borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
   noteHeaderLab:     { backgroundColor: '#FFFBEB', borderBottomColor: '#FCD34D' },
-  noteHeaderVisible: { backgroundColor: '#EFF6FF', borderBottomColor: '#93C5FD' },
+  noteHeaderVisible: { backgroundColor: '#F1F5F9', borderBottomColor: '#93C5FD' },
   noteHeaderText: {
     fontSize: 12, fontFamily: F.medium, fontWeight: '500', color: '#475569',
   },
@@ -4875,11 +4963,11 @@ const s2 = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 2,
     borderRadius: 8, backgroundColor: '#FEF3C7',
   },
-  noteVisBadgeOn: { backgroundColor: '#DBEAFE' },
+  noteVisBadgeOn: { backgroundColor: '#F1F5F9' },
   noteVisBadgeText: {
     fontSize: 10, fontFamily: F.medium, color: '#92400E',
   },
-  noteVisBadgeTextOn: { color: C.primary },
+  noteVisBadgeTextOn: { color: P },
 
   noteInput: {
     paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10,
@@ -4888,3 +4976,5 @@ const s2 = StyleSheet.create({
     textAlignVertical: 'top',
   },
 });
+// Static instance for helper components that don't receive accentColor (Field, DateField, etc.)
+const _staticStyles = makeStyles(C.primary);

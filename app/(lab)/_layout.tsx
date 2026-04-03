@@ -13,13 +13,13 @@ export default function LabLayout() {
   const isDesktop = useIsDesktop();
 
   const LAB_NAV = [
-    { label: 'Bugün',     emoji: '📅', href: '/(lab)',              iconName: 'home-outline',            iconSet: 'mdi' as const },
-    { label: 'Siparişler', emoji: '📋', href: '/(lab)/all-orders',   iconName: 'format-list-bulleted',    iconSet: 'mdi' as const },
-    { label: 'Yeni İş Emri', emoji: '➕', href: '/(lab)/new-order', iconName: 'plus-circle-outline',    iconSet: 'mdi' as const, subtitle: 'Formu adım adım doldurun' },
-    { label: 'Klinikler', emoji: '🏥', href: '/(lab)/clinics',     iconName: 'office-building-outline', iconSet: 'mdi' as const },
-    { label: 'Hizmetler', emoji: '💰', href: '/(lab)/lab-services', iconName: 'tag-outline',            iconSet: 'mdi' as const },
-    { label: 'Onaylar',   emoji: '✅', href: '/(lab)/approvals',   iconName: 'account-check-outline',   iconSet: 'mdi' as const, badge: pendingCount > 0 },
-    { label: 'Profil',    emoji: '👤', href: '/(lab)/profile',     iconName: 'account-outline',         iconSet: 'mdi' as const },
+    { label: 'Bugün',        emoji: '📅', href: '/(lab)',              iconName: 'home',         iconSet: 'mdi' as const },
+    { label: 'Siparişler',   emoji: '📋', href: '/(lab)/all-orders',   iconName: 'clipboard',    iconSet: 'mdi' as const, matchPrefix: true },
+    { label: 'Yeni İş Emri', emoji: '➕', href: '/(lab)/new-order',   iconName: 'plus-circle',  iconSet: 'mdi' as const, subtitle: 'Formu adım adım doldurun' },
+    { label: 'Klinikler & Hekimler', emoji: '🏥', href: '/(lab)/clinics', iconName: 'briefcase', iconSet: 'mdi' as const, matchPrefix: true },
+    { label: 'Hizmetler',    emoji: '💰', href: '/(lab)/lab-services', iconName: 'tag',          iconSet: 'mdi' as const, matchPrefix: true },
+    { label: 'Onaylar',      emoji: '✅', href: '/(lab)/approvals',   iconName: 'check-circle', iconSet: 'mdi' as const, badge: pendingCount > 0, matchPrefix: true },
+    { label: 'Profil',       emoji: '👤', href: '/(lab)/profile',     iconName: 'user',         iconSet: 'mdi' as const, matchPrefix: true },
   ];
 
   if (isDesktop) {
@@ -58,7 +58,7 @@ export default function LabLayout() {
       <Tabs.Screen name="profile" options={{ title: 'Profil', tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} /> }} />
       <Tabs.Screen
         name="order/[id]"
-        options={{ href: null }}
+        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
       />
     </Tabs>
   );
