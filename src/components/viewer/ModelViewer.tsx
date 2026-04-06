@@ -190,6 +190,7 @@ export function ModelViewer({
   const [loadedModels, setLoadedModels] = useState<DentalModel[]>([]);
   const [isDragOver,   setIsDragOver]   = useState(false);
   const [isLoading,    setIsLoading]    = useState(false);
+  const [webglError,   setWebglError]   = useState(false);
 
   // ── Scene initialisation ──────────────────────────────────────────────────
 
@@ -200,8 +201,22 @@ export function ModelViewer({
     const W = container.clientWidth;
     const H = container.clientHeight;
 
+    // Guard: some environments (SSR, low-end GPUs) don't support WebGL
+    const testCanvas = document.createElement('canvas');
+    const gl = testCanvas.getContext('webgl') ?? testCanvas.getContext('experimental-webgl');
+    if (!gl) {
+      setWebglError(true);
+      return;
+    }
+
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+    } catch {
+      setWebglError(true);
+      return;
+    }
     renderer.setSize(W, H);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
@@ -379,6 +394,22 @@ export function ModelViewer({
   }, []);
 
   // ─── Render ───────────────────────────────────────────────────────────────
+
+  // WebGL not available — show a graceful fallback instead of crashing
+  if (webglError) {
+    return (
+      <div style={styles.wrapper}>
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>⬡</div>
+          <p style={styles.emptyTitle}>3D görüntüleyici kullanılamıyor</p>
+          <p style={styles.emptySubtitle}>
+            Tarayıcınız WebGL desteklemiyor.{'\n'}
+            Dosya iş emri gönderildiğinde laboratuvara iletilecek.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.wrapper}>
