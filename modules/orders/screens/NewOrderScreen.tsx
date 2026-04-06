@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable,
-  TextInput, Switch, ActivityIndicator, Platform, useWindowDimensions,
+  TextInput, ActivityIndicator, Platform, useWindowDimensions,
   Modal, FlatList, Image,
 } from 'react-native';
 
@@ -40,6 +40,9 @@ import { TOOTH_PATHS, TOOTH_LABEL_POS } from '../assets/toothPaths';
 import { GEO_COUNTRIES, GEO_BY_LABEL } from '../data/geo';
 import { C } from '../../../core/theme/colors';
 import { F } from '../../../core/theme/typography';
+import { AppSwitch } from '../../../core/ui/AppSwitch';
+import { EkartorluIcon } from '../../../components/icons/EkartorluIcon';
+import { GulushIcon } from '../../../components/icons/GulushIcon';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -56,7 +59,7 @@ interface ChatMessage {
 }
 
 // ── Attached file model ──────────────────────────────────────────────────────
-type FileKind = 'photo' | 'stl' | 'pdf' | 'other';
+type FileKind = 'photo' | 'stl' | 'ply' | 'pdf' | 'other';
 
 interface AttachedFile {
   id: string;
@@ -358,6 +361,7 @@ export function NewOrderScreen({ accentColor }: { accentColor?: string }) {
 
   // ── File attachments ──────────────────────────────────────────────────────
   const [fileActiveTooth, setFileActiveTooth] = useState<number | null>(null);
+  const [previewFile, setPreviewFile] = useState<AttachedFile | null>(null);
 
   const openFilePicker = (scope: 'case' | 'tooth', tooth?: number) => {
     if (Platform.OS !== 'web') return;
@@ -365,7 +369,7 @@ export function NewOrderScreen({ accentColor }: { accentColor?: string }) {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
-    input.accept = '.stl,.pdf,image/*,.jpg,.jpeg,.png,.heic,.webp';
+    input.accept = '.stl,.ply,.pdf,image/*,.jpg,.jpeg,.png,.heic,.webp';
     input.onchange = (e: any) => {
       const files: FileList = e.target.files;
       if (!files || files.length === 0) return;
@@ -380,6 +384,42 @@ export function NewOrderScreen({ accentColor }: { accentColor?: string }) {
         tooth: scope === 'tooth' ? tooth : undefined,
       }));
       setForm(f => ({ ...f, attachments: [...f.attachments, ...newFiles] }));
+    };
+    // @ts-ignore
+    document.body.appendChild(input);
+    input.click();
+    // @ts-ignore
+    setTimeout(() => { try { document.body.removeChild(input); } catch {} }, 60_000);
+  };
+
+  // ── Specific photo picker (ekartörlü / gülüş) ─────────────────────────────
+  const openSpecificPhotoPicker = (photoLabel: string) => {
+    if (Platform.OS !== 'web') return;
+    // @ts-ignore
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,.jpg,.jpeg,.png,.heic,.webp';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const newFile: AttachedFile = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: `${photoLabel}.${ext}`,
+        // @ts-ignore
+        uri: URL.createObjectURL(file),
+        kind: 'photo',
+        size: file.size,
+        scope: 'case',
+      };
+      // Replace existing photo with same label if exists
+      setForm(f => ({
+        ...f,
+        attachments: [
+          ...f.attachments.filter(a => !a.name.startsWith(photoLabel)),
+          newFile,
+        ],
+      }));
     };
     // @ts-ignore
     document.body.appendChild(input);
@@ -819,9 +859,8 @@ ${form.notes ? `<div class="card">
                   <Text style={[s2.toggleItemLabel, form.is_urgent && s2.toggleItemLabelActive]}>Acil vaka</Text>
                   <Text style={s2.toggleItemDesc}>Öncelikli, ek ücretlidir.</Text>
                 </View>
-                <Switch value={form.is_urgent} onValueChange={set('is_urgent')}
-                  trackColor={{ false: '#F1F5F9', true: '#CBD5E1' }}
-                  thumbColor={form.is_urgent ? P : '#CBD5E1'} style={s2.rowSwitch} />
+                <AppSwitch value={form.is_urgent} onValueChange={set('is_urgent')}
+                  accentColor={P} style={s2.rowSwitch} />
               </TouchableOpacity>
 
               {/* Tasarım onayı */}
@@ -836,9 +875,8 @@ ${form.notes ? `<div class="card">
                   <Text style={[s2.toggleItemLabel, form.doctor_approval_required && s2.toggleItemLabelActive]}>Tasarım onayı</Text>
                   <Text style={s2.toggleItemDesc}>Diş hekimi onayı sonrası üretilir.</Text>
                 </View>
-                <Switch value={form.doctor_approval_required} onValueChange={set('doctor_approval_required')}
-                  trackColor={{ false: '#F1F5F9', true: '#CBD5E1' }}
-                  thumbColor={form.doctor_approval_required ? P : '#CBD5E1'} style={s2.rowSwitch} />
+                <AppSwitch value={form.doctor_approval_required} onValueChange={set('doctor_approval_required')}
+                  accentColor={P} style={s2.rowSwitch} />
               </TouchableOpacity>
 
             </View>
@@ -917,38 +955,128 @@ ${form.notes ? `<div class="card">
 
           {/* ── Dosyalar ── */}
           <SectionCard title="Dosyalar" icon={'paperclip' as any} accentColor={P}>
+            <View style={fus.twoCol}>
 
-            {/* ── VAKAYA AİT ── */}
-            <View style={fus.subHeader}>
-              <Text style={fus.subLabel}>VAKAYA AİT</Text>
-              <Text style={fus.subHint}>Tüm vakayı ilgilendiren dosyalar</Text>
+              {/* ── Sol: Yükleme alanı ── */}
+              <View style={fus.twoColLeft}>
+
+                {/* HASTA FOTOĞRAFLARI */}
+                <View style={fus.subHeader}>
+                  <Text style={fus.subLabel}>HASTA FOTOĞRAFLARI</Text>
+                  <Text style={fus.subHint}>Gülüş tasarımı için referans görseller</Text>
+                </View>
+
+                {(['Ekartörlü Resim', 'Gülüş Resmi'] as const).map((label) => {
+                  const existing = form.attachments.find(a => a.name.startsWith(label));
+                  return (
+                    <View key={label} style={fus.photoRow}>
+                      {/* Thumbnail or icon */}
+                      {existing ? (
+                        <TouchableOpacity
+                          style={fus.photoThumb}
+                          onPress={() => setPreviewFile(existing)}
+                          activeOpacity={0.85}
+                        >
+                          <Image source={{ uri: existing.uri }} style={fus.photoThumbImg} resizeMode="cover" />
+                          <View style={fus.photoThumbOverlay}>
+                            <MaterialCommunityIcons name={'eye-outline' as any} size={14} color="#FFFFFF" />
+                          </View>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={fus.photoIcon}>
+                          {label === 'Ekartörlü Resim'
+                            ? <EkartorluIcon size={28} color={P} />
+                            : <GulushIcon size={28} color={P} />
+                          }
+                        </View>
+                      )}
+                      {/* Label */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={fus.photoLabel}>{label}</Text>
+                        {existing && (
+                          <Text style={fus.photoFileName} numberOfLines={1}>{existing.name}</Text>
+                        )}
+                      </View>
+                      {/* Actions */}
+                      {existing ? (
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          <TouchableOpacity
+                            style={[fus.cameraBtn, { backgroundColor: P + '14' }]}
+                            onPress={() => openSpecificPhotoPicker(label)}
+                            activeOpacity={0.75}
+                          >
+                            <MaterialCommunityIcons name={'camera-outline' as any} size={16} color={P} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[fus.cameraBtn, { backgroundColor: '#FEE2E2' }]}
+                            onPress={() => removeAttachment(existing.id)}
+                            activeOpacity={0.75}
+                          >
+                            <MaterialCommunityIcons name={'close' as any} size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[fus.cameraBtn, { backgroundColor: P + '14' }]}
+                          onPress={() => openSpecificPhotoPicker(label)}
+                          activeOpacity={0.75}
+                        >
+                          <MaterialCommunityIcons name={'camera-outline' as any} size={16} color={P} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+
+                <View style={fus.sectionDivider} />
+
+                {/* DOSYA YÜKLEME */}
+                <View style={fus.subHeader}>
+                  <Text style={fus.subLabel}>DOSYA YÜKLEME</Text>
+                  <Text style={fus.subHint}>STL, PLY, PDF ve diğer dosyalar</Text>
+                </View>
+                <TouchableOpacity style={fus.addBtn} onPress={() => openFilePicker('case')}>
+                  <MaterialCommunityIcons name={'plus' as any} size={14} color={P} />
+                  <Text style={[fus.addBtnText, { color: P }]}>Vakaya Dosya Ekle</Text>
+                  <Text style={fus.addBtnHint}> · STL, PLY, PDF</Text>
+                </TouchableOpacity>
+
+              </View>
+
+              {/* Dikey ayırıcı */}
+              <View style={fus.twoColDivider} />
+
+              {/* ── Sağ: Dosya listesi & ön izleme ── */}
+              <View style={fus.twoColRight}>
+
+                <View style={fus.subHeader}>
+                  <Text style={fus.subLabel}>YÜKLENEN DOSYALAR</Text>
+                  <Text style={fus.subHint}>Tüm ekler ve ön izleme</Text>
+                </View>
+
+                {form.attachments.length === 0 ? (
+                  <View style={fus.emptyState}>
+                    <MaterialCommunityIcons name={'tray-outline' as any} size={28} color="#CBD5E1" />
+                    <Text style={fus.emptyStateText}>Henüz dosya eklenmedi</Text>
+                    <Text style={fus.emptyStateHint}>Sol taraftaki alanları kullanarak{'\n'}dosya ve fotoğraf ekleyebilirsiniz</Text>
+                  </View>
+                ) : (
+                  <>
+                    {form.attachments.map(a => (
+                      <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} onPreview={() => setPreviewFile(a)} />
+                    ))}
+                    <View style={fus.totalRow}>
+                      <MaterialCommunityIcons name={'paperclip' as any} size={12} color="#64748B" />
+                      <Text style={fus.totalText}>
+                        Toplam {form.attachments.length} dosya
+                      </Text>
+                    </View>
+                  </>
+                )}
+
+              </View>
+
             </View>
-
-            {form.attachments.filter(a => a.scope === 'case').length === 0 ? (
-              <View style={fus.emptyRow}>
-                <Text style={fus.emptyText}>Henüz dosya eklenmedi</Text>
-              </View>
-            ) : (
-              form.attachments
-                .filter(a => a.scope === 'case')
-                .map(a => (
-                  <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} />
-                ))
-            )}
-            <TouchableOpacity style={fus.addBtn} onPress={() => openFilePicker('case')}>
-              <MaterialCommunityIcons name={'plus' as any} size={14} color={P} />
-              <Text style={[fus.addBtnText, { color: P }]}>Vakaya Dosya Ekle</Text>
-              <Text style={fus.addBtnHint}> · STL, foto, PDF</Text>
-            </TouchableOpacity>
-
-            {form.attachments.length > 0 && (
-              <View style={fus.totalRow}>
-                <MaterialCommunityIcons name={'paperclip' as any} size={12} color="#64748B" />
-                <Text style={fus.totalText}>
-                  Toplam {form.attachments.length} dosya
-                </Text>
-              </View>
-            )}
           </SectionCard>
 
         </ScrollView>
@@ -1362,6 +1490,142 @@ ${form.notes ? `<div class="card">
         accentColor={P}
       />
 
+      {/* ── File Preview Modal ── */}
+      <Modal
+        visible={!!previewFile}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewFile(null)}
+      >
+        <Pressable style={fpv.overlay} onPress={() => setPreviewFile(null)}>
+          <Pressable style={fpv.card} onPress={(e: any) => e.stopPropagation()}>
+            {/* Header */}
+            <View style={fpv.header}>
+              <View style={fpv.headerLeft}>
+                <View style={[fpv.kindBadge, { backgroundColor: kindColor(previewFile?.kind ?? 'other') + '18' }]}>
+                  <MaterialCommunityIcons
+                    name={kindIcon(previewFile?.kind ?? 'other') as any}
+                    size={14}
+                    color={kindColor(previewFile?.kind ?? 'other')}
+                  />
+                </View>
+                <View>
+                  <Text style={fpv.title} numberOfLines={1}>{previewFile?.name ?? ''}</Text>
+                  <Text style={fpv.meta}>
+                    {kindLabel(previewFile?.kind ?? 'other')}
+                    {(previewFile?.size ?? 0) > 0 ? ` · ${formatBytes(previewFile!.size)}` : ''}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setPreviewFile(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <MaterialCommunityIcons name={'close' as any} size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content */}
+            {previewFile?.kind === 'photo' ? (
+              <Image
+                source={{ uri: previewFile.uri }}
+                style={fpv.image}
+                resizeMode="contain"
+              />
+            ) : (previewFile?.kind === 'stl' || previewFile?.kind === 'ply') ? (
+              <View style={fpv.fileInfo}>
+                <View style={fpv.fileIconBig}>
+                  <MaterialCommunityIcons
+                    name={previewFile.kind === 'ply' ? ('cube-scan' as any) : ('cube-outline' as any)}
+                    size={52}
+                    color={previewFile.kind === 'ply' ? '#06B6D4' : '#0EA5E9'}
+                  />
+                </View>
+                <Text style={fpv.fileInfoTitle}>
+                  {previewFile.kind === 'ply' ? 'PLY — 3D Nokta Bulutu' : 'STL — 3D Tarama Dosyası'}
+                </Text>
+                <Text style={fpv.fileInfoSub}>
+                  {previewFile.kind === 'ply' ? 'PLY' : 'STL'} dosyaları uygulama içinde görüntülenemiyor.{'\n'}
+                  Dosya iş emri gönderildiğinde laboratuvara iletilecek.
+                </Text>
+                <View style={fpv.fileInfoMeta}>
+                  <View style={fpv.fileMetaRow}>
+                    <MaterialCommunityIcons name={'file-outline' as any} size={13} color="#94A3B8" />
+                    <Text style={fpv.fileMetaText}>{previewFile.name}</Text>
+                  </View>
+                  {previewFile.size > 0 && (
+                    <View style={fpv.fileMetaRow}>
+                      <MaterialCommunityIcons name={'database-outline' as any} size={13} color="#94A3B8" />
+                      <Text style={fpv.fileMetaText}>{formatBytes(previewFile.size)}</Text>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={fpv.openBtn}
+                  onPress={() => {
+                    if (typeof window !== 'undefined' && previewFile.uri) {
+                      window.open(previewFile.uri, '_blank');
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name={'open-in-new' as any} size={14} color="#0EA5E9" />
+                  <Text style={fpv.openBtnText}>Yeni sekmede aç</Text>
+                </TouchableOpacity>
+              </View>
+            ) : previewFile?.kind === 'pdf' ? (
+              <View style={fpv.fileInfo}>
+                <View style={fpv.fileIconBig}>
+                  <MaterialCommunityIcons name={'file-pdf-box' as any} size={52} color="#EF4444" />
+                </View>
+                <Text style={fpv.fileInfoTitle}>PDF Belgesi</Text>
+                <View style={fpv.fileInfoMeta}>
+                  <View style={fpv.fileMetaRow}>
+                    <MaterialCommunityIcons name={'file-outline' as any} size={13} color="#94A3B8" />
+                    <Text style={fpv.fileMetaText}>{previewFile.name}</Text>
+                  </View>
+                  {previewFile.size > 0 && (
+                    <View style={fpv.fileMetaRow}>
+                      <MaterialCommunityIcons name={'database-outline' as any} size={13} color="#94A3B8" />
+                      <Text style={fpv.fileMetaText}>{formatBytes(previewFile.size)}</Text>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={[fpv.openBtn, { borderColor: '#EF4444' }]}
+                  onPress={() => {
+                    if (typeof window !== 'undefined' && previewFile.uri) {
+                      window.open(previewFile.uri, '_blank');
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name={'open-in-new' as any} size={14} color="#EF4444" />
+                  <Text style={[fpv.openBtnText, { color: '#EF4444' }]}>PDF'yi aç</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={fpv.fileInfo}>
+                <View style={fpv.fileIconBig}>
+                  <MaterialCommunityIcons name={'file-outline' as any} size={52} color="#64748B" />
+                </View>
+                <Text style={fpv.fileInfoTitle}>{previewFile?.name ?? 'Dosya'}</Text>
+                {(previewFile?.size ?? 0) > 0 && (
+                  <Text style={fpv.fileMetaText}>{formatBytes(previewFile!.size)}</Text>
+                )}
+                <TouchableOpacity
+                  style={fpv.openBtn}
+                  onPress={() => {
+                    if (typeof window !== 'undefined' && previewFile?.uri) {
+                      window.open(previewFile.uri, '_blank');
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name={'open-in-new' as any} size={14} color="#64748B" />
+                  <Text style={[fpv.openBtnText, { color: '#64748B' }]}>Yeni sekmede aç</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Chat popup modal ── */}
       <Modal
         visible={chatModalVisible}
@@ -1404,6 +1668,7 @@ function resolveFileKind(name: string): FileKind {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
   if (['jpg', 'jpeg', 'png', 'heic', 'webp', 'gif'].includes(ext)) return 'photo';
   if (ext === 'stl') return 'stl';
+  if (ext === 'ply') return 'ply';
   if (ext === 'pdf') return 'pdf';
   return 'other';
 }
@@ -1412,6 +1677,7 @@ function kindLabel(kind: FileKind): string {
   switch (kind) {
     case 'photo': return 'Fotoğraf';
     case 'stl':   return 'STL';
+    case 'ply':   return 'PLY';
     case 'pdf':   return 'PDF';
     default:      return 'Dosya';
   }
@@ -1421,6 +1687,7 @@ function kindIcon(kind: FileKind): string {
   switch (kind) {
     case 'photo': return 'image-outline';
     case 'stl':   return 'cube-outline';
+    case 'ply':   return 'cube-scan';
     case 'pdf':   return 'file-pdf-box';
     default:      return 'paperclip';
   }
@@ -1430,6 +1697,7 @@ function kindColor(kind: FileKind): string {
   switch (kind) {
     case 'photo': return '#8B5CF6';
     case 'stl':   return '#0EA5E9';
+    case 'ply':   return '#06B6D4';
     case 'pdf':   return '#EF4444';
     default:      return '#64748B';
   }
@@ -1443,19 +1711,35 @@ function formatBytes(bytes: number): string {
 
 // ── FileRow ──────────────────────────────────────────────────────────────────
 
-function FileRow({ file, onRemove }: { file: AttachedFile; onRemove: () => void }) {
+function FileRow({ file, onRemove, onPreview }: { file: AttachedFile; onRemove: () => void; onPreview?: () => void }) {
   const color = kindColor(file.kind);
   return (
     <View style={_fusStatic.fileRow}>
-      <View style={[_fusStatic.fileIconWrap, { backgroundColor: color + '18' }]}>
-        <MaterialCommunityIcons name={kindIcon(file.kind) as any} size={16} color={color} />
-      </View>
+      {/* Thumbnail for photos, icon for others */}
+      {file.kind === 'photo' && file.uri ? (
+        <TouchableOpacity onPress={onPreview} activeOpacity={0.85} style={_fusStatic.fileThumbWrap}>
+          <Image source={{ uri: file.uri }} style={_fusStatic.fileThumb} resizeMode="cover" />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          onPress={onPreview}
+          activeOpacity={onPreview ? 0.7 : 1}
+          style={[_fusStatic.fileIconWrap, { backgroundColor: color + '18' }]}
+        >
+          <MaterialCommunityIcons name={kindIcon(file.kind) as any} size={16} color={color} />
+        </TouchableOpacity>
+      )}
       <View style={{ flex: 1 }}>
         <Text style={_fusStatic.fileName} numberOfLines={1}>{file.name}</Text>
         <Text style={_fusStatic.fileMeta}>
           {kindLabel(file.kind)}{file.size > 0 ? ` · ${formatBytes(file.size)}` : ''}
         </Text>
       </View>
+      {onPreview && (
+        <TouchableOpacity onPress={onPreview} style={_fusStatic.filePreviewBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <MaterialCommunityIcons name={'eye-outline' as any} size={16} color="#64748B" />
+        </TouchableOpacity>
+      )}
       <TouchableOpacity onPress={onRemove} style={_fusStatic.fileRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <MaterialCommunityIcons name={'close' as any} size={14} color="#94A3B8" />
       </TouchableOpacity>
@@ -1465,9 +1749,65 @@ function FileRow({ file, onRemove }: { file: AttachedFile; onRemove: () => void 
 
 // ── File Upload Section styles ────────────────────────────────────────────────
 const makeFusStyles = (P: string) => StyleSheet.create({
+  /* Two-column layout */
+  twoCol: {
+    flexDirection: 'row', gap: 0, alignItems: 'flex-start',
+  },
+  twoColLeft: {
+    flex: 1, paddingRight: 16,
+  },
+  twoColDivider: {
+    width: 1, backgroundColor: '#F1F5F9', alignSelf: 'stretch',
+  },
+  twoColRight: {
+    flex: 1, paddingLeft: 16,
+  },
+  /* Empty state for right column */
+  emptyState: {
+    alignItems: 'center', paddingVertical: 32, gap: 6,
+  },
+  emptyStateText: {
+    fontSize: 13, fontFamily: F.medium, color: '#94A3B8',
+  },
+  emptyStateHint: {
+    fontSize: 11, fontFamily: F.regular, color: '#CBD5E1', textAlign: 'center',
+  },
+
   subHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   subLabel:  { fontSize: 10, fontFamily: F.semibold, color: '#94A3B8', letterSpacing: 0.8 },
   subHint:   { fontSize: 11, fontFamily: F.regular,  color: '#CBD5E1' },
+
+  /* Hasta fotoğrafı satırı */
+  photoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 0,
+    backgroundColor: '#FAFAFA', marginBottom: 8,
+  } as any,
+  photoIcon: {
+    width: 40, height: 40, borderRadius: 0,
+    backgroundColor: P + '10',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  photoThumb: {
+    width: 40, height: 40, borderRadius: 6,
+    overflow: 'hidden' as any, backgroundColor: '#F1F5F9',
+    flexShrink: 0, position: 'relative' as any,
+  },
+  photoThumbImg: { width: 40, height: 40 },
+  photoThumbOverlay: {
+    position: 'absolute' as any, bottom: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    width: 16, height: 16, borderTopLeftRadius: 4,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  photoLabel:    { fontSize: 13, fontFamily: F.semibold, color: '#0F172A' },
+  photoFileName: { fontSize: 11, fontFamily: F.regular,  color: '#059669', marginTop: 2 },
+  cameraBtn: {
+    width: 38, height: 38, borderRadius: 0,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sectionDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 },
   emptyRow:  {
     paddingVertical: 10, paddingHorizontal: 4,
     marginBottom: 8,
@@ -1511,9 +1851,15 @@ const makeFusStyles = (P: string) => StyleSheet.create({
     width: 32, height: 32, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
-  fileName:    { fontSize: 13, fontFamily: F.medium, color: '#1E293B' },
-  fileMeta:    { fontSize: 11, fontFamily: F.regular, color: '#94A3B8', marginTop: 1 },
-  fileRemove:  { padding: 4 },
+  fileThumbWrap: {
+    width: 32, height: 32, borderRadius: 6,
+    overflow: 'hidden', backgroundColor: '#F1F5F9',
+  },
+  fileThumb: { width: 32, height: 32 },
+  fileName:       { fontSize: 13, fontFamily: F.medium, color: '#1E293B' },
+  fileMeta:       { fontSize: 11, fontFamily: F.regular, color: '#94A3B8', marginTop: 1 },
+  filePreviewBtn: { padding: 4 },
+  fileRemove:     { padding: 4 },
   /* Total */
   totalRow: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -4624,25 +4970,25 @@ const makeStyles = (P: string) => StyleSheet.create({
   stepLabel: { fontSize: 13, color: '#64748B', fontWeight: '500', fontFamily: F.medium },
 
   /* Form content area — light background so cards pop */
-  content: { padding: 16, paddingBottom: 80, gap: 0 },
+  content: { padding: 20, paddingBottom: 80, gap: 16 },
 
   /* Section cards — real cards with shadow */
   sectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E9EEF4',
+    borderColor: '#F1F5F9',
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 0,
     padding: 20,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 1,
   },
   sectionCardHeader: {
-    paddingBottom: 14,
+    paddingBottom: 12,
     marginBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
@@ -4978,3 +5324,61 @@ const makeS2Styles = (P: string) => StyleSheet.create({
 });
 // Static instance for helper components that don't receive accentColor (Field, DateField, etc.)
 const _staticStyles = makeStyles(C.primary);
+
+// ── File Preview Modal styles ─────────────────────────────────────────────────
+const fpv = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.72)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  card: {
+    backgroundColor: '#FFFFFF', borderRadius: 20,
+    width: '100%', maxWidth: 560,
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
+  kindBadge: {
+    width: 32, height: 32, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  title: { fontSize: 13, fontWeight: '700', color: '#0F172A', fontFamily: F.bold },
+  meta:  { fontSize: 11, color: '#94A3B8', fontFamily: F.regular, marginTop: 1 },
+
+  /* Photo */
+  image: {
+    width: '100%', aspectRatio: 4 / 3,
+    backgroundColor: '#0F172A', maxHeight: 420,
+  },
+
+  /* Generic file info */
+  fileInfo: {
+    alignItems: 'center', padding: 32, gap: 10,
+  },
+  fileIconBig: {
+    width: 80, height: 80, borderRadius: 20,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fileInfoTitle: {
+    fontSize: 15, fontWeight: '700', fontFamily: F.bold, color: '#0F172A',
+  },
+  fileInfoSub: {
+    fontSize: 12, fontFamily: F.regular, color: '#94A3B8',
+    textAlign: 'center', lineHeight: 18, maxWidth: 320,
+  },
+  fileInfoMeta: { gap: 5, alignItems: 'center', marginTop: 4 },
+  fileMetaRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  fileMetaText: { fontSize: 12, fontFamily: F.regular, color: '#94A3B8' },
+
+  openBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 9, paddingHorizontal: 18,
+    borderRadius: 10, borderWidth: 1.5, borderColor: '#0EA5E9',
+    marginTop: 6,
+  },
+  openBtnText: { fontSize: 13, fontWeight: '600', fontFamily: F.semibold, color: '#0EA5E9' },
+});

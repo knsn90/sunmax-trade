@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAdminUsers, AdminUser } from '../../../modules/admin/users/hooks';
+import { AppSwitch } from '../../../core/ui/AppSwitch';
 
 const C = {
   primary: '#0F172A', primaryBg: '#F1F5F9',
@@ -82,11 +83,10 @@ function UserCard({ user, onToggleActive, onDetail }: UserCardProps) {
       <View style={styles.cardFooter}>
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>{user.is_active ? 'Aktif' : 'Pasif'}</Text>
-          <Switch
+          <AppSwitch
             value={user.is_active}
             onValueChange={onToggleActive}
-            trackColor={{ false: C.border, true: C.success }}
-            thumbColor={user.is_active ? '#FFFFFF' : '#FFFFFF'}
+            accentColor="#0F172A"
           />
         </View>
         <TouchableOpacity style={styles.detailButton} onPress={onDetail}>

@@ -1,7 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CaseStep, StepStatus } from '../types';
-import { STEP_ICONS } from '../../workflow/templates';
+import { STEP_ICONS, MANUAL_STEPS, DIGITAL_STEPS } from '../../workflow/templates';
+
+const STEP_LABELS: Record<string, string> = Object.fromEntries(
+  [...MANUAL_STEPS, ...DIGITAL_STEPS].map(s => [s.name, s.label])
+);
 
 interface Props {
   step: CaseStep;
@@ -39,7 +43,7 @@ export function StepCard({ step, onStart, onComplete, loading }: Props) {
         </View>
         <View style={styles.info}>
           <Text style={styles.order}>#{step.step_order}</Text>
-          <Text style={styles.name}>{step.step_name.replace(/_/g, ' ')}</Text>
+          <Text style={styles.name}>{STEP_LABELS[step.step_name] ?? step.step_name.replace(/_/g, ' ')}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: ss.bg }]}>
           <Text style={[styles.badgeText, { color: ss.color }]}>{ss.label}</Text>

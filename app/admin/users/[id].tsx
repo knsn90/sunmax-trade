@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAdminUserDetail } from '../../../modules/admin/users/hooks';
+import { AppSwitch } from '../../../core/ui/AppSwitch';
 
 const C = {
   primary: '#0F172A', primaryBg: '#F1F5F9',
@@ -125,11 +126,10 @@ export default function AdminUserDetailScreen() {
             </View>
             <View style={styles.activeToggleRow}>
               <Text style={styles.activeLabel}>{user.is_active ? 'Aktif' : 'Pasif'}</Text>
-              <Switch
+              <AppSwitch
                 value={user.is_active}
                 onValueChange={() => toggleActive(user.is_active)}
-                trackColor={{ false: C.border, true: C.success }}
-                thumbColor="#FFFFFF"
+                accentColor="#0F172A"
               />
             </View>
           </View>

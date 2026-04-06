@@ -33,6 +33,8 @@ import { C } from '../../../core/theme/colors';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { uploadChatAttachment } from '../chatApi';
 import { ToothIcon } from '../../../components/icons/ToothIcon';
+import { StepTimeline } from '../../production/components/StepTimeline';
+import { useCaseSteps } from '../../production/hooks/useCaseSteps';
 
 type Section = 'details' | 'steps' | 'prova' | 'vaka' | 'billing' | 'doctor' | 'files' | 'chat';
 
@@ -399,7 +401,7 @@ export function OrderDetailScreen() {
             <DetailsSection order={order} qrUrl={qrUrl} onAddFile={handleAddPhoto} />
           )}
           {activeSection === 'steps' && (
-            <StepsSection history={order.status_history ?? []} />
+            <StepsSection workOrderId={order.id} history={order.status_history ?? []} />
           )}
           {activeSection === 'prova' && (
             <ProvaSection workOrderId={order.id} />
@@ -744,14 +746,50 @@ function DetailsSection({ order, qrUrl, onAddFile }: {
   );
 }
 
-function StepsSection({ history }: { history: any[] }) {
+function StepsSection({ workOrderId, history }: { workOrderId: string; history: any[] }) {
+  const { steps, loading, refetch } = useCaseSteps(workOrderId);
+
   return (
-    <View>
-      <Text style={sectionStyles.heading}>Durum Geçmişi</Text>
-      <StatusTimeline history={history} />
+    <View style={{ gap: 20 }}>
+      {/* MES Production Steps */}
+      <View>
+        <Text style={sectionStyles.heading}>Üretim Adımları</Text>
+        {steps.length === 0 && !loading ? (
+          <View style={prodEmptyWrap}>
+            <Text style={prodEmptyText}>
+              Bu iş emri için üretim adımı bulunamadı.{'\n'}
+              İş emri oluşturulurken ölçüm tipi seçilmemişse adımlar oluşturulmamış olabilir.
+            </Text>
+          </View>
+        ) : (
+          <StepTimeline steps={steps} loading={loading} onRefresh={refetch} />
+        )}
+      </View>
+
+      {/* Status History */}
+      {history.length > 0 && (
+        <View>
+          <Text style={sectionStyles.heading}>Durum Geçmişi</Text>
+          <StatusTimeline history={history} />
+        </View>
+      )}
     </View>
   );
 }
+
+const prodEmptyWrap: import('react-native').ViewStyle = {
+  backgroundColor: '#F8FAFC',
+  borderRadius: 12,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: '#F1F5F9',
+};
+const prodEmptyText: import('react-native').TextStyle = {
+  fontSize: 13,
+  color: '#94A3B8',
+  textAlign: 'center',
+  lineHeight: 20,
+};
 
 function DoctorSection({ order }: { order: WorkOrder }) {
   const doc = order.doctor;

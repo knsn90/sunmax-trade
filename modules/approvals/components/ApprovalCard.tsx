@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Approval } from '../types';
 import { useApprove } from '../hooks/useApprove';
-import { STEP_ICONS } from '../../workflow/templates';
+import { STEP_ICONS, MANUAL_STEPS, DIGITAL_STEPS } from '../../workflow/templates';
+
+const STEP_LABELS: Record<string, string> = Object.fromEntries(
+  [...MANUAL_STEPS, ...DIGITAL_STEPS].map(s => [s.name, s.label])
+);
 
 interface Props {
   approval: Approval;
@@ -23,7 +27,7 @@ export function ApprovalCard({ approval, onResolved, canApprove = false }: Props
   const sc   = STATUS_CFG[approval.status];
   const icon = STEP_ICONS[approval.step_name] ?? '⏳';
 
-  const stepLabel = approval.step_name.replace(/_/g, ' ');
+  const stepLabel = STEP_LABELS[approval.step_name] ?? approval.step_name.replace(/_/g, ' ');
 
   const handleApprove = async () => {
     const ok = await approve(approval.id);

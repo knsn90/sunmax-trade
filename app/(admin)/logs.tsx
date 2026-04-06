@@ -160,62 +160,67 @@ export default function AdminLogsScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
 
-      {/* Toolbar */}
-      <View style={s.toolbar}>
-        {/* Pill tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabsScroll} contentContainerStyle={s.tabsContent}>
-          <View style={s.tabBar}>
-            {TABS.map(t => {
-              const active = tab === t.key;
-              return (
-                <TouchableOpacity key={t.key} style={[s.tabItem, active && s.tabItemActive]}
-                  onPress={() => setTab(t.key)} activeOpacity={0.75}>
-                  <Text style={[s.tabText, active && s.tabTextActive]}>{t.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
+      {/* Header (non-scrollable) */}
+      <View style={s.header}>
+
+        {/* Toolbar row */}
+        <View style={s.toolbarRow}>
+          <View style={s.toolbarTitle}>
+            <Text style={s.toolbarSub}>Sistem</Text>
+            <Text style={s.toolbarName}>Loglar</Text>
           </View>
-        </ScrollView>
-
-        {/* Right group */}
-        <View style={s.rightGroup}>
-          <TouchableOpacity
-            style={[s.iconBtn, (searchExpanded || search.length > 0) && s.iconBtnActive]}
-            onPress={() => setSearchExpanded(!searchExpanded)} activeOpacity={0.75}>
-            <Feather name="search" size={18} color={(searchExpanded || search.length > 0) ? '#0F172A' : '#94A3B8'} />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.iconBtn} onPress={() => loadLogs(true)} disabled={refreshing} activeOpacity={0.75}>
-            {refreshing
-              ? <ActivityIndicator size="small" color="#94A3B8" />
-              : <Feather name="refresh-cw" size={16} color="#94A3B8" />}
-          </TouchableOpacity>
+          <View style={s.rightGroup}>
+            <TouchableOpacity
+              style={[s.iconBtn, (searchExpanded || search.length > 0) && s.iconBtnActive]}
+              onPress={() => setSearchExpanded(!searchExpanded)} activeOpacity={0.75}>
+              <Feather name="search" size={18} color={(searchExpanded || search.length > 0) ? '#0F172A' : '#94A3B8'} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.iconBtn} onPress={() => loadLogs(true)} disabled={refreshing} activeOpacity={0.75}>
+              {refreshing
+                ? <ActivityIndicator size="small" color="#94A3B8" />
+                : <Feather name="refresh-cw" size={16} color="#94A3B8" />}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* Search */}
-      {(searchExpanded || search.length > 0) && (
-        <View style={s.searchRow}>
-          <View style={[s.searchWrap, searchFocused && s.searchWrapFocused]}>
-            <Feather name="search" size={16} color={searchFocused ? '#0F172A' : '#AEAEB2'} />
-            <TextInput
-              style={s.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              placeholder="İsim, aksiyon veya kayıt ara..."
-              placeholderTextColor="#AEAEB2"
-              returnKeyType="search"
-              autoFocus={searchExpanded && search.length === 0}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearch(''); setSearchExpanded(false); }}>
-                <Feather name="x-circle" size={15} color="#AEAEB2" />
+        {/* Pill tab bar */}
+        <View style={s.tabBar}>
+          {TABS.map(t => {
+            const active = tab === t.key;
+            return (
+              <TouchableOpacity key={t.key} style={[s.tabItem, active && s.tabItemActive]}
+                onPress={() => setTab(t.key)} activeOpacity={0.75}>
+                <Text style={[s.tabText, active && s.tabTextActive]}>{t.label}</Text>
               </TouchableOpacity>
-            )}
-          </View>
+            );
+          })}
         </View>
-      )}
+
+        {/* Search */}
+        {(searchExpanded || search.length > 0) && (
+          <View style={s.searchRow}>
+            <View style={[s.searchWrap, searchFocused && s.searchWrapFocused]}>
+              <Feather name="search" size={16} color={searchFocused ? '#0F172A' : '#AEAEB2'} />
+              <TextInput
+                style={s.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                placeholder="İsim, aksiyon veya kayıt ara..."
+                placeholderTextColor="#AEAEB2"
+                returnKeyType="search"
+                autoFocus={searchExpanded && search.length === 0}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearch(''); setSearchExpanded(false); }}>
+                  <Feather name="x-circle" size={15} color="#AEAEB2" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
 
       {/* Content */}
       {loading ? (
@@ -258,12 +263,17 @@ export default function AdminLogsScreen() {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe:   { flex: 1, backgroundColor: '#FFFFFF' },
+  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
 
-  toolbar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  tabsScroll:  { flex: 1 },
-  tabsContent: { alignItems: 'center', paddingRight: 8 },
-  tabBar:      { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 100, padding: 3, gap: 2 },
+  // Toolbar
+  toolbarRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  toolbarTitle: { flex: 1 },
+  toolbarSub:   { fontSize: 10, fontWeight: '600' as any, color: '#94A3B8', letterSpacing: 0.8, marginBottom: 2 },
+  toolbarName:  { fontSize: 22, fontWeight: '800' as any, color: '#0F172A', letterSpacing: -0.5 },
+
+  // Tab bar
+  tabBar:        { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' as any, backgroundColor: '#F1F5F9', borderRadius: 100, padding: 3, gap: 2 },
   tabItem:       { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100 },
   tabItemActive: { backgroundColor: '#FFFFFF', boxShadow: '0 1px 6px rgba(15,23,42,0.12)' } as any,
   tabText:       { fontSize: 13, fontWeight: '500' as any, color: '#94A3B8' },
@@ -273,13 +283,13 @@ const s = StyleSheet.create({
   iconBtn:       { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   iconBtnActive: { backgroundColor: '#F1F5F9' },
 
-  searchRow:        { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 2 },
-  searchWrap:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', paddingHorizontal: 12, height: 42 },
+  searchRow:        { marginTop: 10 },
+  searchWrap:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', paddingHorizontal: 12, height: 42 },
   searchWrapFocused:{ borderColor: '#CBD5E1' },
   searchInput:      { flex: 1, fontSize: 14, color: '#1C1C1E', height: 42, outlineStyle: 'none' } as any,
 
   scroll:        { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 24, paddingBottom: 60 },
 
   card: {
     backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9',

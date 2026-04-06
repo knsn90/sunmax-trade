@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Switch, Modal, TextInput,
+  ActivityIndicator, Modal, TextInput,
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ClinicIcon } from '../../../core/ui/ClinicIcon';
+import { AppSwitch } from '../../../core/ui/AppSwitch';
 import { supabase } from '../../../core/api/supabase';
 import { fetchClinics, createClinic, updateClinic, createDoctor, updateDoctor } from '../api';
 import { ILLER, ILCELER } from '../data/turkey';
@@ -345,11 +346,10 @@ export default function ClinicsScreen({ accentColor = '#0F172A' }: Props) {
                       </Text>
                       {/* DURUM */}
                       <View style={[tbl.col, { flex: 0.9, justifyContent: 'center' }]}>
-                        <Switch
+                        <AppSwitch
                           value={d.is_active}
                           onValueChange={() => handleToggleDoctor(d)}
-                          trackColor={{ false: '#F1F5F9', true: '#D1D5DB' }}
-                          thumbColor={d.is_active ? accentColor : '#AEAEB2'}
+                          accentColor={accentColor}
                         />
                       </View>
                       {/* ACTIONS */}
@@ -663,11 +663,10 @@ function ClinicRow({
               <Text style={tbl.addDoctorText}>Bu kliniğe hekim ekle</Text>
             </TouchableOpacity>
             <View style={{ flex: 1 }} />
-            <Switch
+            <AppSwitch
               value={clinic.is_active}
               onValueChange={onToggleClinic}
-              trackColor={{ false: '#F1F5F9', true: '#D1D5DB' }}
-              thumbColor={clinic.is_active ? accentColor : '#AEAEB2'}
+              accentColor={accentColor}
             />
             <Text style={tbl.activeLabel}>{clinic.is_active ? 'Aktif' : 'Pasif'}</Text>
           </View>
@@ -699,11 +698,10 @@ function DoctorRow({
           </Text>
         ) : null}
       </View>
-      <Switch
+      <AppSwitch
         value={doctor.is_active}
         onValueChange={onToggle}
-        trackColor={{ false: '#F1F5F9', true: '#D1D5DB' }}
-        thumbColor={doctor.is_active ? accentColor : '#AEAEB2'}
+        accentColor={accentColor}
       />
       <TouchableOpacity style={dr.iconBtn} onPress={onEdit} activeOpacity={0.7}>
         <Feather name="edit-2" size={14} color="#6C6C70" />
@@ -1034,9 +1032,8 @@ function ClinicModal({
             <View style={m.sectionCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={m.fieldLabel}>Aktif</Text>
-                <Switch value={form.is_active} onValueChange={v => set('is_active', v)}
-                  trackColor={{ false: '#E5E7EB', true: accentColor + '60' }}
-                  thumbColor={form.is_active ? accentColor : '#FFFFFF'} />
+                <AppSwitch value={form.is_active} onValueChange={v => set('is_active', v)}
+                  accentColor={accentColor} />
               </View>
             </View>
 
@@ -1156,9 +1153,8 @@ function DoctorModal({
               </Field>
               <View style={dm.toggleRow}>
                 <Text style={dm.fieldLabel}>Aktif</Text>
-                <Switch value={form.is_active} onValueChange={v => set('is_active', v)}
-                  trackColor={{ false: '#F1F5F9', true: accentColor + '60' }}
-                  thumbColor={form.is_active ? accentColor : '#FFFFFF'} />
+                <AppSwitch value={form.is_active} onValueChange={v => set('is_active', v)}
+                  accentColor={accentColor} />
               </View>
             </View>
             {error ? <ErrorBox msg={error} /> : null}

@@ -156,7 +156,9 @@ function RightPanel({ accentColor, profile, open, onToggle }: {
           {/* Profile */}
           <View style={rp.profileRow}>
             <View style={[rp.avatar, { backgroundColor: accentColor }]}>
-              <Text style={rp.avatarText}>{initials}</Text>
+              {profile?.avatar_url
+                ? <Image source={{ uri: profile.avatar_url }} style={rp.avatarImg} />
+                : <Text style={rp.avatarText}>{initials}</Text>}
             </View>
             <View style={rp.profileMeta}>
               <Text style={rp.profileName} numberOfLines={1}>{fullName}</Text>
@@ -234,7 +236,8 @@ const rp = StyleSheet.create({
   scroll: { paddingTop: 20, paddingBottom: 32 },
 
   profileRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, gap: 12, marginBottom: 18 },
-  avatar:     { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  avatar:     { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImg:  { width: 38, height: 38, borderRadius: 19 },
   avatarText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   profileMeta: { flex: 1 },
   profileName: { fontSize: 13, fontWeight: '700', color: '#1C1C1E' },
@@ -594,7 +597,9 @@ export function DesktopShell({ navItems, accentColor = C.primary }: Props) {
           {/* User row + toggle */}
           <View style={[s.userCard, sidebarCollapsed && s.userCardCollapsed]}>
             <View style={[s.userAvatar, { backgroundColor: accentColor }]}>
-              <Text style={s.userAvatarText}>{initials}</Text>
+              {(profile as any)?.avatar_url
+                ? <Image source={{ uri: (profile as any).avatar_url }} style={s.userAvatarImg} />
+                : <Text style={s.userAvatarText}>{initials}</Text>}
             </View>
             {!sidebarCollapsed && (
               <View style={s.userInfo}>
@@ -789,7 +794,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 0,
     gap: 6,
   },
-  userAvatar:     { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  userAvatar:     { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' },
+  userAvatarImg:  { width: 30, height: 30, borderRadius: 15 },
   userAvatarText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   userInfo:       { flex: 1 },
   userName:       { fontSize: 12, fontWeight: '600', color: '#1C1C1E' },

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Modal, ActivityIndicator, Switch,
+  TextInput, Modal, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
 import { fetchAllLabServices, createLabService, updateLabService } from '../api';
 import { LabService } from '../types';
 import { C } from '../../../core/theme/colors';
+import { AppSwitch } from '../../../core/ui/AppSwitch';
 
 const CATEGORIES = ['Sabit Protez', 'Hareketli Protez', 'İmplant', 'Ortodonti', 'CAD/CAM', 'Seramik', 'Diğer'];
 
@@ -249,9 +250,8 @@ function ServiceRow({ service: s, onEdit, onToggle }: { service: LabService; onE
         <TouchableOpacity style={styles.editBtn} onPress={() => onEdit(s)}>
           <Text style={styles.editBtnText}>Düzenle</Text>
         </TouchableOpacity>
-        <Switch value={s.is_active} onValueChange={() => onToggle(s)}
-          trackColor={{ false: C.border, true: C.primaryBg }}
-          thumbColor={s.is_active ? C.primary : C.textMuted} />
+        <AppSwitch value={s.is_active} onValueChange={() => onToggle(s)}
+          accentColor={C.primary} />
       </View>
     </View>
   );

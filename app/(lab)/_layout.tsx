@@ -2,14 +2,15 @@ import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { C as Colors } from '../../core/theme/colors';
 import { DesktopShell, useIsDesktop } from '../../core/layout/DesktopShell';
-import { usePendingApprovals } from '../../core/hooks/usePendingApprovals';
+import { usePendingApprovals as useDesignPending } from '../../modules/approvals/hooks/usePendingApprovals';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return <Text style={{ fontSize: focused ? 24 : 22, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>;
 }
 
 export default function LabLayout() {
-  const pendingCount = usePendingApprovals();
+  const { approvals: pendingDesign } = useDesignPending();
+  const pendingCount = pendingDesign.length;
   const isDesktop = useIsDesktop();
 
   const LAB_NAV = [

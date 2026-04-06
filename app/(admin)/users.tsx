@@ -6,17 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Switch,
   Modal,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { ClinicIcon } from '../../core/ui/ClinicIcon';
+import { AppSwitch } from '../../core/ui/AppSwitch';
 import { supabase } from '../../lib/supabase';
 const P = '#0F172A';
 const ERR = '#FF3B30';
@@ -103,42 +103,33 @@ export default function AdminUsersScreen() {
     { key: 'doctor' as FilterType, label: 'Hekim' },
   ];
 
-  const typeBadge = (user_type: string) =>
-    user_type === 'admin'  ? { bg: '#FEF3C7', text: '#92400E', label: 'Admin'  } :
-    user_type === 'doctor' ? { bg: '#DBEAFE', text: '#1D4ED8', label: 'Hekim'  } :
-                             { bg: '#DCFCE7', text: '#166534', label: 'Lab'     };
+  const typeBadge = (profile: Profile) =>
+    profile.user_type === 'admin'   ? { bg: '#0F172A', text: '#FFFFFF', label: 'Admin',     avatarBg: '#1E293B', avatarText: '#FFFFFF' } :
+    profile.user_type === 'doctor'  ? { bg: '#DBEAFE', text: '#1D4ED8', label: 'Hekim',     avatarBg: '#EFF6FF', avatarText: '#2563EB' } :
+    profile.role      === 'manager' ? { bg: '#EFF6FF', text: '#2563EB', label: 'Müdür',     avatarBg: '#EFF6FF', avatarText: '#2563EB' } :
+                                      { bg: '#F1F5F9', text: '#475569', label: 'Teknisyen', avatarBg: '#F1F5F9', avatarText: '#475569' };
 
-  const roleLabel = (role?: string | null) =>
-    role === 'manager' ? 'Mesul Müdür' : role === 'technician' ? 'Teknisyen' : null;
+  const getSwitchColor = (profile: Profile) =>
+    profile.role === 'manager' ? '#2563EB' : '#0F172A';
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-        {/* Toolbar row */}
+        {/* Toolbar: compact title + actions */}
         <View style={styles.toolbarRow}>
-          {/* Type tabs */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-            <View style={styles.tabBar}>
-              {TYPE_TABS.map(tab => {
-                const active = typeFilter === tab.key;
-                return (
-                  <TouchableOpacity key={tab.key} style={[styles.tabItem, active && styles.tabItemActive]}
-                    onPress={() => setTypeFilter(tab.key)} activeOpacity={0.75}>
-                    <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
-
-          {/* Right group */}
+          <View style={styles.toolbarTitle}>
+            <Text style={styles.toolbarSub}>Ağ Yönetimi</Text>
+            <Text style={styles.toolbarName}>Kullanıcılar</Text>
+          </View>
           <View style={styles.rightGroup}>
-            <TouchableOpacity style={[styles.iconBtn, (searchExpanded || search.length > 0) && styles.iconBtnActive]}
+            <TouchableOpacity
+              style={[styles.iconBtn, (searchExpanded || search.length > 0) && styles.iconBtnActive]}
               onPress={() => setSearchExpanded(!searchExpanded)} activeOpacity={0.75}>
               <Feather name="search" size={18} color={(searchExpanded || search.length > 0) ? '#0F172A' : '#94A3B8'} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.iconBtn, activeFilterCount > 0 && styles.iconBtnActive]}
+            <TouchableOpacity
+              style={[styles.iconBtn, activeFilterCount > 0 && styles.iconBtnActive]}
               onPress={() => { setDraftStatus(statusFilter); setShowFilter(true); }} activeOpacity={0.75}>
               <MaterialCommunityIcons name={'tune-variant' as any} size={18} color={activeFilterCount > 0 ? '#0F172A' : '#94A3B8'} />
               {activeFilterCount > 0 && (
@@ -150,6 +141,26 @@ export default function AdminUsersScreen() {
               <Text style={styles.addBtnText}>Kullanıcı Ekle</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Segmented tab bar */}
+        <View style={styles.tabBar}>
+          {TYPE_TABS.map(tab => {
+            const active = typeFilter === tab.key;
+            const count  = tab.key === 'all'
+              ? profiles.length
+              : profiles.filter(p => p.user_type === tab.key).length;
+            return (
+              <TouchableOpacity key={tab.key}
+                style={[styles.tabItem, active && styles.tabItemActive]}
+                onPress={() => setTypeFilter(tab.key)} activeOpacity={0.8}>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                  {tab.label}
+                  {count > 0 ? `  ${count}` : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Expandable search */}
@@ -177,6 +188,7 @@ export default function AdminUsersScreen() {
           </View>
         )}
 
+        {/* User cards */}
         {loading ? (
           <ActivityIndicator size="large" color={P} style={{ marginTop: 60 }} />
         ) : filtered.length === 0 ? (
@@ -186,70 +198,45 @@ export default function AdminUsersScreen() {
             {q && <Text style={styles.emptySub}>"{q}" ile eşleşen kullanıcı yok</Text>}
           </View>
         ) : (
-          <View style={tbl.card}>
-            {/* Table header */}
-            <View style={tbl.headerRow}>
-              <Text style={[tbl.hCell, { flex: 2.5 }]}>KULLANICI</Text>
-              <Text style={[tbl.hCell, { flex: 1.0 }]}>TİP</Text>
-              <Text style={[tbl.hCell, { flex: 1.3 }]}>ROL</Text>
-              <Text style={[tbl.hCell, { flex: 2.2 }]}>E-POSTA</Text>
-              <Text style={[tbl.hCell, { flex: 0.9, textAlign: 'center' }]}>DURUM</Text>
-              <View style={{ width: 76 }} />
-            </View>
-            {filtered.map((profile, idx) => {
-              const badge = typeBadge(profile.user_type);
-              const rl    = roleLabel(profile.role);
+          <View style={styles.cardList}>
+            {filtered.map((profile) => {
+              const badge = typeBadge(profile);
+              const switchColor = getSwitchColor(profile);
               return (
-                <View key={profile.id} style={[tbl.row, !profile.is_active && tbl.rowInactive, idx < filtered.length - 1 && tbl.rowBorder]}>
-                  {/* KULLANICI */}
-                  <View style={[tbl.col, { flex: 2.5, gap: 10 }]}>
-                    <View style={[tbl.catDot, { backgroundColor: '#F1F5F9' }]}>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: P }}>
-                        {profile.full_name?.charAt(0).toUpperCase() ?? '?'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={tbl.name} numberOfLines={1}>{profile.full_name}</Text>
-                      {!profile.is_active && (
-                        <View style={[tbl.inactivePill, { marginTop: 2, alignSelf: 'flex-start' }]}>
-                          <Text style={tbl.inactivePillText}>PASİF</Text>
-                        </View>
-                      )}
-                    </View>
+                <View key={profile.id} style={[styles.card, !profile.is_active && styles.cardInactive]}>
+                  {/* Avatar */}
+                  <View style={[styles.avatar, { backgroundColor: badge.avatarBg }]}>
+                    {(profile as any).avatar_url
+                      ? <Image source={{ uri: (profile as any).avatar_url }} style={styles.avatarImg} />
+                      : <Text style={[styles.avatarText, { color: badge.avatarText }]}>
+                          {profile.full_name?.charAt(0).toUpperCase() ?? '?'}
+                        </Text>}
                   </View>
-                  {/* TİP */}
-                  <View style={[tbl.col, { flex: 1.0 }]}>
-                    <View style={[tbl.badge, { backgroundColor: badge.bg }]}>
-                      <Text style={[tbl.badgeText, { color: badge.text }]}>{badge.label}</Text>
+                  {/* Info */}
+                  <View style={styles.cardInfo}>
+                    <View style={styles.cardNameRow}>
+                      <Text style={styles.cardName} numberOfLines={1}>{profile.full_name}</Text>
+                      <View style={[styles.typeBadge, { backgroundColor: badge.bg }]}>
+                        <Text style={[styles.typeBadgeText, { color: badge.text }]}>{badge.label}</Text>
+                      </View>
                     </View>
+                    <Text style={styles.cardEmail} numberOfLines={1}>{profile.email ?? '—'}</Text>
                   </View>
-                  {/* ROL */}
-                  <Text style={[rl ? tbl.cell : tbl.cellMuted, { flex: 1.3 }]} numberOfLines={1}>
-                    {rl ?? '—'}
-                  </Text>
-                  {/* E-POSTA */}
-                  <Text style={[tbl.cellMuted, { flex: 2.2, fontSize: 12 }]} numberOfLines={1}>
-                    {profile.email ?? '—'}
-                  </Text>
-                  {/* DURUM */}
-                  <View style={[tbl.col, { flex: 0.9, justifyContent: 'center' }]}>
+                  {/* Right */}
+                  <View style={styles.cardRight}>
                     {updatingId === profile.id ? (
                       <ActivityIndicator size="small" color={P} />
                     ) : (
-                      <Switch
+                      <AppSwitch
                         value={profile.is_active ?? true}
                         onValueChange={() => handleToggleActive(profile)}
-                        trackColor={{ false: '#F1F5F9', true: '#D1D5DB' }}
-                        thumbColor={profile.is_active ? P : '#AEAEB2'}
+                        accentColor={switchColor}
                       />
                     )}
-                  </View>
-                  {/* ACTIONS */}
-                  <View style={tbl.actions}>
-                    <TouchableOpacity style={tbl.iconBtn} onPress={() => setEditingProfile(profile)} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => setEditingProfile(profile)} activeOpacity={0.7}>
                       <Feather name="edit-2" size={14} color="#6C6C70" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={tbl.iconBtn} onPress={() => handleDeleteUser(profile)} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => handleDeleteUser(profile)} activeOpacity={0.7}>
                       <Feather name="trash-2" size={14} color={ERR} />
                     </TouchableOpacity>
                   </View>
@@ -419,8 +406,8 @@ function EditUserModal({
                 </Text>
               )}
             </View>
-            <TouchableOpacity onPress={onClose}>
-              <MaterialCommunityIcons name="close" size={22} color={'#6C6C70'} />
+            <TouchableOpacity onPress={onClose} style={m.closeBtn}>
+              <Feather name="x" size={16} color="#0F172A" />
             </TouchableOpacity>
           </View>
 
@@ -504,11 +491,10 @@ function EditUserModal({
                   {isActive ? 'Kullanıcı giriş yapabilir' : 'Kullanıcı giriş yapamaz'}
                 </Text>
               </View>
-              <Switch
+              <AppSwitch
                 value={isActive}
                 onValueChange={setIsActive}
-                trackColor={{ false: '#F1F5F9', true: '#D1D5DB' }}
-                thumbColor={isActive ? '#0F172A' : '#AEAEB2'}
+                accentColor={P}
               />
             </View>
 
@@ -692,63 +678,64 @@ function AddUserModal({
 
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: '#FFFFFF' },
-  container: { padding: 20, paddingBottom: 60 },
+  container: { padding: 24, paddingBottom: 60 },
 
-  toolbarRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  tabsScroll: { flex: 1 },
-  tabsContent: { alignItems: 'center', paddingRight: 8 },
-  tabBar: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F1F5F9', borderRadius: 100, padding: 3, gap: 2,
-  },
+  // Toolbar
+  toolbarRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  toolbarTitle: { flex: 1 },
+  toolbarSub:   { fontSize: 10, fontWeight: '600', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 2 },
+  toolbarName:  { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+
+  // Segmented tab bar — matches ClinicsScreen pill style
+  tabBar:        { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#F1F5F9', borderRadius: 100, padding: 3, marginBottom: 14, gap: 2 },
   tabItem:       { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100 },
   tabItemActive: { backgroundColor: '#FFFFFF', boxShadow: '0 1px 6px rgba(15,23,42,0.12)' } as any,
   tabText:       { fontSize: 13, fontWeight: '500', color: '#94A3B8' },
   tabTextActive: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
 
-  rightGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // Icon buttons
+  rightGroup:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
   iconBtn:       { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   iconBtnActive: { backgroundColor: '#F1F5F9' },
   filterBadge:     { position: 'absolute', top: 4, right: 4, width: 14, height: 14, borderRadius: 7, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
   filterBadgeText: { fontSize: 8, fontWeight: '700', color: '#FFFFFF' },
-  addBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: P, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10 },
+
+  // Add button
+  addBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: P, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 100 },
   addBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
 
-  searchRow:        { marginBottom: 12 },
-  searchWrap:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', paddingHorizontal: 12, height: 42 },
-  searchWrapFocused:{ borderColor: '#CBD5E1' },
-  searchInput:      { flex: 1, fontSize: 14, color: '#1C1C1E', height: 42, outlineStyle: 'none' } as any,
+  // Search
+  searchRow:         { marginBottom: 12 },
+  searchWrap:        { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', paddingHorizontal: 12, height: 42 },
+  searchWrapFocused: { borderColor: '#CBD5E1' },
+  searchInput:       { flex: 1, fontSize: 14, color: '#1C1C1E', height: 42, outlineStyle: 'none' } as any,
 
+  // User cards
+  cardList:    { gap: 10 },
+  card:        {
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
+  } as any,
+  cardInactive: { opacity: 0.5 },
+  avatar:       { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' },
+  avatarImg:    { width: 48, height: 48, borderRadius: 14 },
+  avatarText:   { fontSize: 18, fontWeight: '800' },
+  cardInfo:     { flex: 1, gap: 4 },
+  cardNameRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  cardName:     { fontSize: 15, fontWeight: '700', color: '#0F172A', letterSpacing: -0.3 },
+  cardEmail:    { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  typeBadge:    { borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+  typeBadgeText:{ fontSize: 9, fontWeight: '800', letterSpacing: 0.4 },
+  cardRight:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  actionBtn:    { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+
+  // Empty
   empty:      { alignItems: 'center', paddingTop: 60, gap: 10 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: '#1C1C1E' },
   emptySub:   { fontSize: 13, color: '#AEAEB2' },
-});
-
-const tbl = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9',
-    overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-  } as any,
-  headerRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: '#F8FAFC', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-  },
-  hCell:     { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.6, textTransform: 'uppercase' },
-  row:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, minHeight: 52 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-  rowInactive: { opacity: 0.6 },
-  col:       { flexDirection: 'row', alignItems: 'center' },
-  catDot:    { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  name:      { fontSize: 13, fontWeight: '600', color: '#1C1C1E', letterSpacing: -0.1 },
-  cell:      { fontSize: 13, color: '#374151', fontWeight: '500' },
-  cellMuted: { fontSize: 12, color: '#94A3B8' },
-  badge:     { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3, alignSelf: 'flex-start' },
-  badgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
-  inactivePill:     { backgroundColor: '#FEF2F2', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
-  inactivePillText: { fontSize: 9, fontWeight: '800', color: ERR, letterSpacing: 0.5 },
-  actions:   { width: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 2 },
-  iconBtn:   { width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
 });
 
 const fp = StyleSheet.create({
@@ -773,32 +760,36 @@ const fp = StyleSheet.create({
 
 const m = StyleSheet.create({
   overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.4)',
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   popup: {
     backgroundColor: '#FFFFFF', borderRadius: 16,
-    width: '100%', maxWidth: 520, maxHeight: '90%', overflow: 'hidden',
-  },
+    width: '100%', maxWidth: 520, maxHeight: '92%', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.15, shadowRadius: 48,
+  } as any,
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 24, paddingTop: 22, paddingBottom: 18,
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
-  title:    { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-  subtitle: { fontSize: 12, color: '#AEAEB2', marginTop: 2 },
+  title:    { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  subtitle: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
   body: { padding: 20 },
 
   sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: '#9CA3AF',
-    letterSpacing: 0.5, textTransform: 'none', marginBottom: 10, marginTop: 4,
+    fontSize: 11, fontWeight: '600', color: '#64748B',
+    letterSpacing: 0.5, marginBottom: 10, marginTop: 4,
   },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  fieldLabel: { fontSize: 11, fontWeight: '500', color: '#64748B', marginBottom: 7, letterSpacing: 0.5 },
   input: {
-    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10,
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#0F172A',
-    backgroundColor: '#FAFAFA', marginBottom: 14,
-  },
+    backgroundColor: '#FFFFFF', marginBottom: 14, outlineStyle: 'none',
+  } as any,
 
+  closeBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   roleGrid: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   roleRow:  { flexDirection: 'row', gap: 8, marginBottom: 20 },
   roleCard: {

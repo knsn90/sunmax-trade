@@ -20,10 +20,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Switch,
+  TextInput, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
+import { AppSwitch } from '../../../core/ui/AppSwitch';
 import { WORK_TYPE_TREE, CROWN_MATERIALS, REMOVABLE_MATS } from '../../../modules/orders/constants';
 
 // ── Colours ──────────────────────────────────────────────────────────────────
@@ -107,11 +108,10 @@ function MaterialRow({
       </View>
 
       {/* Active toggle */}
-      <Switch
+      <AppSwitch
         value={item.is_active}
         onValueChange={(v) => onToggle(item.id, v)}
-        trackColor={{ false: C.border, true: C.accentBg }}
-        thumbColor={item.is_active ? C.accent : '#CBD5E1'}
+        accentColor="#0F172A"
       />
 
       {/* Delete */}
