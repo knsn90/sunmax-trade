@@ -43,6 +43,7 @@ import { F } from '../../../core/theme/typography';
 import { AppSwitch } from '../../../core/ui/AppSwitch';
 import { EkartorluIcon } from '../../../components/icons/EkartorluIcon';
 import { GulushIcon } from '../../../components/icons/GulushIcon';
+import { ModelViewer } from '../../../src/components/viewer/ModelViewer';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -1530,44 +1531,15 @@ ${form.notes ? `<div class="card">
                 resizeMode="contain"
               />
             ) : (previewFile?.kind === 'stl' || previewFile?.kind === 'ply') ? (
-              <View style={fpv.fileInfo}>
-                <View style={fpv.fileIconBig}>
-                  <MaterialCommunityIcons
-                    name={previewFile.kind === 'ply' ? ('cube-scan' as any) : ('cube-outline' as any)}
-                    size={52}
-                    color={previewFile.kind === 'ply' ? '#06B6D4' : '#0EA5E9'}
-                  />
-                </View>
-                <Text style={fpv.fileInfoTitle}>
-                  {previewFile.kind === 'ply' ? 'PLY — 3D Nokta Bulutu' : 'STL — 3D Tarama Dosyası'}
-                </Text>
-                <Text style={fpv.fileInfoSub}>
-                  {previewFile.kind === 'ply' ? 'PLY' : 'STL'} dosyaları uygulama içinde görüntülenemiyor.{'\n'}
-                  Dosya iş emri gönderildiğinde laboratuvara iletilecek.
-                </Text>
-                <View style={fpv.fileInfoMeta}>
-                  <View style={fpv.fileMetaRow}>
-                    <MaterialCommunityIcons name={'file-outline' as any} size={13} color="#94A3B8" />
-                    <Text style={fpv.fileMetaText}>{previewFile.name}</Text>
-                  </View>
-                  {previewFile.size > 0 && (
-                    <View style={fpv.fileMetaRow}>
-                      <MaterialCommunityIcons name={'database-outline' as any} size={13} color="#94A3B8" />
-                      <Text style={fpv.fileMetaText}>{formatBytes(previewFile.size)}</Text>
-                    </View>
-                  )}
-                </View>
-                <TouchableOpacity
-                  style={fpv.openBtn}
-                  onPress={() => {
-                    if (typeof window !== 'undefined' && previewFile.uri) {
-                      window.open(previewFile.uri, '_blank');
-                    }
-                  }}
-                >
-                  <MaterialCommunityIcons name={'open-in-new' as any} size={14} color="#0EA5E9" />
-                  <Text style={fpv.openBtnText}>Yeni sekmede aç</Text>
-                </TouchableOpacity>
+              <View style={fpv.viewerWrap}>
+                <ModelViewer
+                  initialModels={previewFile ? [{
+                    id: previewFile.id,
+                    label: previewFile.name,
+                    color: previewFile.kind === 'ply' ? '#b0d4e8' : '#e8d5c4',
+                    url: previewFile.uri,
+                  }] : []}
+                />
               </View>
             ) : previewFile?.kind === 'pdf' ? (
               <View style={fpv.fileInfo}>
@@ -5333,7 +5305,7 @@ const fpv = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF', borderRadius: 20,
-    width: '100%', maxWidth: 560,
+    width: '100%', maxWidth: 600,
     overflow: 'hidden',
   },
   header: {
@@ -5352,6 +5324,11 @@ const fpv = StyleSheet.create({
   image: {
     width: '100%', aspectRatio: 4 / 3,
     backgroundColor: '#0F172A', maxHeight: 420,
+  },
+
+  /* 3D model viewer */
+  viewerWrap: {
+    width: '100%', height: 480,
   },
 
   /* Generic file info */
