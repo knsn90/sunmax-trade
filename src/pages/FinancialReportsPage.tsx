@@ -5,8 +5,9 @@ import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PnlReportTab, AccountStatementTab, CustomerReportTab } from '@/pages/ReportsPage';
 import { FinancialReportsTab } from '@/components/accounting/FinancialReportsTab';
+import { FxReportTab } from '@/components/accounting/FxReportTab';
 
-type FinTab = 'trade_pnl' | 'cari' | 'customer_report' | 'kasa_banka';
+type FinTab = 'trade_pnl' | 'cari' | 'customer_report' | 'kasa_banka' | 'kur_farki';
 
 export function FinancialReportsPage() {
   const { theme } = useTheme();
@@ -20,6 +21,7 @@ export function FinancialReportsPage() {
     { key: 'cari',            label: 'Hesap Ekstresi' },
     { key: 'customer_report', label: 'Müşteri Raporu' },
     { key: 'kasa_banka',      label: 'Kasa ve Banka' },
+    { key: 'kur_farki',       label: 'Kur Farkı' },
   ];
 
   return (
@@ -57,6 +59,7 @@ export function FinancialReportsPage() {
       {activeTab === 'cari'            && <AccountStatementTab />}
       {activeTab === 'customer_report' && <CustomerReportTab />}
       {activeTab === 'kasa_banka'      && <FinancialReportsTab />}
+      {activeTab === 'kur_farki'       && <FxReportTab />}
     </div>
   );
 }

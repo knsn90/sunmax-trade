@@ -275,7 +275,13 @@ function SalesReportTab() {
 
 export function PnlReportTab() {
   const { t } = useTranslation('reports');
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { data: files = [] } = useTradeFiles();
+
+  // ── Görünüm: tek dosya detayı veya tüm dosyalar özeti ──────────────────
+  const [viewMode, setViewMode] = useState<'ozet' | 'tek'>('ozet');
+  const [sortBy, setSortBy]     = useState<'profit' | 'margin' | 'revenue'>('profit');
   const [selectedFileId, setSelectedFileId] = useState('');
 
   const { data: txns = [] } = useTransactions(
@@ -287,19 +293,76 @@ export function PnlReportTab() {
     [files, selectedFileId],
   );
 
+  // ── Tek dosya P&L ───────────────────────────────────────────────────────
   const pnl = useMemo(() => {
     if (!selectedFile) return null;
-    const qty = selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0;
+    const qty     = selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0;
     const revenue = (selectedFile.selling_price ?? 0) * qty;
-    const costs = txns
+    const txnCosts = txns
       .filter((t) => ['purchase_inv', 'svc_inv'].includes(t.transaction_type))
       .reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
-    const profit = revenue - costs;
-    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-    return { revenue, costs, profit, margin };
+    const freight = selectedFile.freight_cost ?? 0;
+    const costs   = txnCosts + freight;
+    const profit  = revenue - costs;
+    const margin  = revenue > 0 ? (profit / revenue) * 100 : 0;
+    return { revenue, txnCosts, freight, costs, profit, margin };
   }, [txns, selectedFile]);
 
   const costRows = txns.filter((t) => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
+
+  // ── Tüm dosyalar özeti — pnl_data veya tahmini ─────────────────────────
+  const allFilesRows = useMemo(() => {
+    return files
+      .map(f => {
+        // pnl_data varsa kullan, yoksa tahmini hesapla
+        if (f.pnl_data) {
+          return {
+            file: f,
+            revenue:  f.pnl_data.revenue,
+            costs:    f.pnl_data.totalCost,
+            profit:   f.pnl_data.netProfit,
+            margin:   f.pnl_data.margin,
+            currency: f.pnl_data.curr || f.sale_currency || f.currency,
+            hasData:  true,
+          };
+        }
+        // Tahmini: sadece file alanlarından
+        const qty     = f.delivered_admt ?? f.tonnage_mt ?? 0;
+        const revenue = (f.selling_price ?? 0) * qty;
+        const costs   = (f.purchase_price ?? 0) * qty + (f.freight_cost ?? 0);
+        const profit  = revenue - costs;
+        const margin  = revenue > 0 ? (profit / revenue) * 100 : 0;
+        return {
+          file: f,
+          revenue, costs, profit, margin,
+          currency: f.sale_currency || f.currency,
+          hasData: revenue > 0 || costs > 0,
+        };
+      })
+      .filter(r => r.hasData)
+      .sort((a, b) => {
+        if (sortBy === 'margin')  return b.margin - a.margin;
+        if (sortBy === 'revenue') return b.revenue - a.revenue;
+        return b.profit - a.profit;
+      });
+  }, [files, sortBy]);
+
+  // ── Ürün bazında özet ───────────────────────────────────────────────────
+  const byProduct = useMemo(() => {
+    const map: Record<string, { revenue: number; profit: number; count: number }> = {};
+    for (const r of allFilesRows) {
+      const key = r.file.product?.name ?? 'Diğer';
+      if (!map[key]) map[key] = { revenue: 0, profit: 0, count: 0 };
+      map[key].revenue += r.revenue;
+      map[key].profit  += r.profit;
+      map[key].count++;
+    }
+    return Object.entries(map).sort((a, b) => b[1].profit - a[1].profit);
+  }, [allFilesRows]);
+
+  const totalRevenue = allFilesRows.reduce((s, r) => s + r.revenue, 0);
+  const totalProfit  = allFilesRows.reduce((s, r) => s + r.profit, 0);
+  const avgMargin    = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
   function col(v: number) { return v >= 0 ? '#10b981' : '#ef4444'; }
 
@@ -308,100 +371,288 @@ export function PnlReportTab() {
     const rows = costRows.map((txn) =>
       `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:4px 8px;color:#555;padding-left:20px">— ${txn.description}</td><td style="padding:4px 8px;text-align:right">(${fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td></tr>`
     ).join('');
+    const freightRow = pnl.freight > 0
+      ? `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:4px 8px;color:#555;padding-left:20px">— Navlun / Freight</td><td style="padding:4px 8px;text-align:right">(${fUSD(pnl.freight)})</td></tr>`
+      : '';
     const html = `
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:20px;font-weight:300;color:#374151">${t('tabs.pnl')}</div>
         <div style="font-size:12px;color:#555;margin-top:4px">${selectedFile.file_no} — ${selectedFile.customer?.name ?? ''}</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;text-align:center">
-        ${[{l:t('pnl.revenue'),v:fUSD(pnl.revenue),c:'#1e40af'},{l:t('pnl.cost'),v:fUSD(pnl.costs),c:'#374151'},{l:t('pnl.net_profit'),v:fUSD(pnl.profit),c:col(pnl.profit)},{l:t('pnl.margin'),v:pnl.margin.toFixed(2)+'%',c:col(pnl.profit)}]
+        ${[{l:'Hasılat',v:fUSD(pnl.revenue),c:'#1e40af'},{l:'Toplam Maliyet',v:fUSD(pnl.costs),c:'#374151'},{l:'Net Kar',v:fUSD(pnl.profit),c:col(pnl.profit)},{l:'Kar Marjı',v:pnl.margin.toFixed(2)+'%',c:col(pnl.profit)}]
           .map(card=>`<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px"><div style="font-size:9px;color:#666;text-transform:uppercase;margin-bottom:4px">${card.l}</div><div style="font-size:16px;font-weight:700;color:${card.c}">${card.v}</div></div>`).join('')}
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px;color:#555">${t('pnl.revenue')} (${fN(selectedFile.delivered_admt??selectedFile.tonnage_mt??0,3)} ADMT × ${selectedFile.selling_price?fCurrency(selectedFile.selling_price):'—'})</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e40af">${fUSD(pnl.revenue)}</td></tr>
-        ${rows}
-        <tr style="border-top:2px solid #374151"><td style="padding:8px;font-weight:700;font-size:13px">${t('pnl.net_profit')}</td><td style="padding:8px;text-align:right;font-weight:800;font-size:13px;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</td></tr>
+        <tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px;color:#555">Hasılat (${fN(selectedFile.delivered_admt??selectedFile.tonnage_mt??0,3)} MT × ${selectedFile.selling_price?fCurrency(selectedFile.selling_price):'—'})</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e40af">${fUSD(pnl.revenue)}</td></tr>
+        ${rows}${freightRow}
+        <tr style="border-top:2px solid #374151"><td style="padding:8px;font-weight:700;font-size:13px">Net Kar</td><td style="padding:8px;text-align:right;font-weight:800;font-size:13px;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</td></tr>
       </table>`;
-    openPrint(html, `${t('tabs.pnl')} ${selectedFile.file_no}`);
+    openPrint(html, `Kar/Zarar — ${selectedFile.file_no}`);
   }
 
   return (
-    <div>
-      <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
-        <div className="flex gap-3 items-center flex-wrap">
-          <NativeSelect
-            value={selectedFileId}
-            onChange={(e) => setSelectedFileId(e.target.value)}
-            className="min-w-[300px]"
+    <div className="space-y-4">
+
+      {/* ── Görünüm seçici ──────────────────────────────────────────────── */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
+        {([
+          { key: 'ozet', label: 'Tüm Dosyalar Özeti' },
+          { key: 'tek',  label: 'Dosya Detayı' },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setViewMode(tab.key)}
+            className={`px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+              viewMode === tab.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
-            <option value="">{t('pnl.select_file')}</option>
-            {files.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.file_no} — {f.customer?.name ?? ''} ({f.status})
-              </option>
-            ))}
-          </NativeSelect>
-          {selectedFile && pnl && (
-            <button
-              onClick={printPnl}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-            >
-              {t('pnl.print_pdf')}
-            </button>
-          )}
-        </div>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {selectedFile && !selectedFile.selling_price && (
-        <div className="text-center py-8 text-gray-400 text-sm">{t('pnl.no_selling_price')}</div>
-      )}
-
-      {selectedFile && pnl && (
+      {/* ══ ÖZET MODU ═══════════════════════════════════════════════════ */}
+      {viewMode === 'ozet' && (
         <>
-          {/* P&L Summary */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          {/* KPI kartlar */}
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { label: t('pnl.revenue'), value: fUSD(pnl.revenue), color: '#1e40af' },
-              { label: t('pnl.cost'), value: fUSD(pnl.costs), color: '#374151' },
-              { label: t('pnl.net_profit'), value: fUSD(pnl.profit), color: col(pnl.profit) },
-              { label: t('pnl.margin'), value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
-            ].map((card) => (
-              <div key={card.label} className="bg-white rounded-2xl shadow-sm p-4 text-center">
+              { label: 'Toplam Hasılat',  value: fUSD(totalRevenue), color: '#1e40af' },
+              { label: 'Toplam Net Kar',  value: fUSD(totalProfit),  color: col(totalProfit) },
+              { label: 'Ort. Kar Marjı',  value: avgMargin.toFixed(1) + '%', color: col(totalProfit) },
+            ].map(card => (
+              <div key={card.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
                 <div className="text-xl font-black" style={{ color: card.color }}>{card.value}</div>
               </div>
             ))}
           </div>
 
-          {/* P&L Detail */}
-          <div className="bg-white rounded-2xl shadow-sm p-5 mb-5">
-            <div className="text-sm font-bold text-gray-800 mb-4">
-              {t('pnl.detail_title', { fileNo: selectedFile.file_no })}
+          {/* Ürün kategorisi özeti */}
+          {byProduct.length > 1 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Ürün Bazında Karlılık</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {byProduct.map(([product, data]) => {
+                  const margin = data.revenue > 0 ? (data.profit / data.revenue) * 100 : 0;
+                  const barW   = totalRevenue > 0 ? (data.revenue / totalRevenue) * 100 : 0;
+                  return (
+                    <div key={product} className="px-5 py-3 flex items-center gap-4">
+                      <div className="w-28 shrink-0">
+                        <div className="text-[12px] font-semibold text-gray-800 truncate">{product}</div>
+                        <div className="text-[10px] text-gray-400">{data.count} dosya</div>
+                      </div>
+                      {/* Bar */}
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${barW}%`, background: accent }} />
+                      </div>
+                      <div className="w-28 text-right shrink-0">
+                        <div className="text-[12px] font-semibold text-gray-800">{fUSD(data.revenue)}</div>
+                        <div className="text-[10px]" style={{ color: col(data.profit) }}>
+                          {fUSD(data.profit)} · %{margin.toFixed(1)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <table className="w-full text-xs">
-              <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="py-1.5 text-gray-500">{t('pnl.revenue')} ({fN(selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0, 3)} ADMT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'})</td>
-                  <td className="py-1.5 text-right font-semibold text-blue-700">{fUSD(pnl.revenue)}</td>
-                </tr>
-                {costRows.map((txn) => (
-                  <tr key={txn.id} className="border-b border-gray-100">
-                    <td className="py-1.5 text-gray-500 pl-3">— {txn.description}</td>
-                    <td className="py-1.5 text-right text-gray-700">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td>
+          )}
+
+          {/* Dosya tablosu */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                Dosya Bazında Kar/Zarar ({allFilesRows.length} dosya)
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-400">Sırala:</span>
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                  className="text-[11px] border border-gray-200 rounded-lg px-2 h-7 bg-white outline-none"
+                >
+                  <option value="profit">Net Kar</option>
+                  <option value="margin">Kar Marjı</option>
+                  <option value="revenue">Hasılat</option>
+                </select>
+              </div>
+            </div>
+            {allFilesRows.length === 0 ? (
+              <div className="py-14 text-center text-sm text-gray-400">Hesaplanmış P&L verisi bulunamadı</div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Dosya / Müşteri</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Ürün</th>
+                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Hasılat</th>
+                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Maliyet</th>
+                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Net Kar</th>
+                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Marj %</th>
+                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Durum</th>
+                    <th className="px-4 py-2.5 w-20" />
                   </tr>
-                ))}
-                <tr className="border-t-2 border-gray-700">
-                  <td className="py-2 font-bold text-sm">{t('pnl.net_profit')}</td>
-                  <td className="py-2 text-right font-bold text-sm" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {allFilesRows.map((row, i) => (
+                    <tr key={row.file.id} className={`hover:bg-gray-50/60 transition-colors ${i % 2 === 1 ? 'bg-gray-50/30' : ''}`}>
+                      <td className="px-4 py-3">
+                        <div className="text-[12px] font-bold font-mono text-gray-800">{row.file.file_no}</div>
+                        <div className="text-[10px] text-gray-400">{row.file.customer?.name ?? '—'}</div>
+                      </td>
+                      <td className="px-4 py-3 text-[11px] text-gray-600 truncate max-w-[120px]">
+                        {row.file.product?.name ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-[12px] font-semibold text-blue-700 tabular-nums">
+                        {fUSD(row.revenue)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-[12px] text-gray-600 tabular-nums">
+                        ({fUSD(row.costs)})
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-[13px] font-black tabular-nums" style={{ color: col(row.profit) }}>
+                          {fUSD(row.profit)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                          row.margin >= 10 ? 'bg-green-100 text-green-700'
+                          : row.margin >= 0  ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-600'
+                        }`}>
+                          %{row.margin.toFixed(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                          {row.file.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => { setSelectedFileId(row.file.id); setViewMode('tek'); }}
+                          className="text-[11px] font-semibold hover:underline"
+                          style={{ color: accent }}
+                        >
+                          Detay →
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-200 bg-gray-50">
+                    <td colSpan={2} className="px-4 py-2.5 text-[11px] font-bold text-gray-600">TOPLAM</td>
+                    <td className="px-4 py-2.5 text-right text-[12px] font-black text-blue-700 tabular-nums">{fUSD(totalRevenue)}</td>
+                    <td className="px-4 py-2.5 text-right text-[12px] font-bold text-gray-600 tabular-nums">
+                      ({fUSD(allFilesRows.reduce((s, r) => s + r.costs, 0))})
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-[13px] font-black tabular-nums" style={{ color: col(totalProfit) }}>
+                      {fUSD(totalProfit)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-[12px] font-black" style={{ color: col(totalProfit) }}>
+                      %{avgMargin.toFixed(1)}
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              </table>
+            )}
           </div>
         </>
       )}
 
-      {!selectedFileId && (
-        <div className="text-center py-12 text-gray-400 text-sm">{t('pnl.select_prompt')}</div>
+      {/* ══ TEK DOSYA DETAYI ════════════════════════════════════════════ */}
+      {viewMode === 'tek' && (
+        <>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="flex gap-3 items-center flex-wrap">
+              <NativeSelect
+                value={selectedFileId}
+                onChange={(e) => setSelectedFileId(e.target.value)}
+                className="min-w-[300px]"
+              >
+                <option value="">{t('pnl.select_file')}</option>
+                {files.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.file_no} — {f.customer?.name ?? ''} ({f.status})
+                  </option>
+                ))}
+              </NativeSelect>
+              {selectedFile && pnl && (
+                <button
+                  onClick={printPnl}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  {t('pnl.print_pdf')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {selectedFile && !selectedFile.selling_price && (
+            <div className="text-center py-8 text-gray-400 text-sm">{t('pnl.no_selling_price')}</div>
+          )}
+
+          {selectedFile && pnl && (
+            <>
+              <div className="grid grid-cols-4 gap-4">
+                {[
+                  { label: t('pnl.revenue'),    value: fUSD(pnl.revenue), color: '#1e40af' },
+                  { label: t('pnl.cost'),        value: fUSD(pnl.costs),  color: '#374151' },
+                  { label: t('pnl.net_profit'),  value: fUSD(pnl.profit), color: col(pnl.profit) },
+                  { label: t('pnl.margin'),      value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
+                ].map((card) => (
+                  <div key={card.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
+                    <div className="text-xl font-black" style={{ color: card.color }}>{card.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-4">
+                  {t('pnl.detail_title', { fileNo: selectedFile.file_no })}
+                </div>
+                <table className="w-full text-xs">
+                  <tbody>
+                    <tr className="border-b border-gray-100">
+                      <td className="py-2 text-gray-500">
+                        {t('pnl.revenue')} ({fN(selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0, 3)} MT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'})
+                      </td>
+                      <td className="py-2 text-right font-semibold text-blue-700">{fUSD(pnl.revenue)}</td>
+                    </tr>
+                    {costRows.map((txn) => (
+                      <tr key={txn.id} className="border-b border-gray-100">
+                        <td className="py-1.5 text-gray-500 pl-3">— {txn.description}</td>
+                        <td className="py-1.5 text-right text-gray-700">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td>
+                      </tr>
+                    ))}
+                    {pnl.freight > 0 && (
+                      <tr className="border-b border-gray-100">
+                        <td className="py-1.5 text-gray-500 pl-3">— Navlun / Freight</td>
+                        <td className="py-1.5 text-right text-gray-700">({fUSD(pnl.freight)})</td>
+                      </tr>
+                    )}
+                    <tr className="border-t-2 border-gray-700">
+                      <td className="py-2 font-bold text-sm">{t('pnl.net_profit')}</td>
+                      <td className="py-2 text-right font-bold text-sm" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {!selectedFileId && (
+            <div className="text-center py-12 text-gray-400 text-sm">{t('pnl.select_prompt')}</div>
+          )}
+        </>
       )}
     </div>
   );
