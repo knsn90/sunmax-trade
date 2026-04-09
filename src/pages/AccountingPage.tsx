@@ -744,7 +744,14 @@ export function AccountingPage() {
                           <div className="text-[10px] text-gray-400 pl-2.5 mt-0.5 truncate">{tc('txType.' + txn.transaction_type)}</div>
                         </td>
                         {/* Entity */}
-                        <td className="px-3 py-3 text-[12px] text-gray-700 truncate">{partyName}</td>
+                        <td className="px-3 py-3">
+                          <div className="text-[12px] text-gray-700 truncate">{partyName}</div>
+                          {txn.creator?.full_name && (
+                            <div className="text-[10px] text-gray-400 truncate mt-0.5">
+                              ↳ {txn.creator.full_name}
+                            </div>
+                          )}
+                        </td>
                         {/* Description — hidden on md, visible on lg */}
                         <td className="hidden lg:table-cell px-3 py-3 text-[11px] text-gray-500 truncate">{txn.description || '—'}</td>
                         {/* Borç */}

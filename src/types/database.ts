@@ -216,6 +216,7 @@ export interface TradeFile extends Timestamps {
   customer?: Customer;
   product?: Product;
   supplier?: Supplier;
+  creator?: Pick<Profile, 'id' | 'full_name'> | null;
   invoices?: Invoice[];
   packing_lists?: PackingList[];
   proformas?: Proforma[];
@@ -419,6 +420,7 @@ export interface Transaction extends Timestamps {
   service_provider?: ServiceProvider;
   kasa?: Kasa;
   bank_account?: BankAccount;
+  creator?: Pick<Profile, 'id' | 'full_name'> | null;
 }
 
 // ─── System ─────────────────────────────────────────────────────────────────

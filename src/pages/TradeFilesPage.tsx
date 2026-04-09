@@ -174,6 +174,9 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
           {file.selling_price && (
             <span className="text-[10px] text-gray-400">· {fCurrency(file.selling_price)}/MT</span>
           )}
+          {file.creator?.full_name && (
+            <span className="text-[10px] text-gray-400">· {file.creator.full_name}</span>
+          )}
         </div>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
@@ -208,6 +211,9 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
           <div className="min-w-0">
             <div className="text-[13px] font-semibold text-gray-900 truncate">{custName}</div>
             <div className="text-[10px] font-mono text-gray-400 truncate">{file.file_no}</div>
+            {file.creator?.full_name && (
+              <div className="text-[10px] text-gray-400 truncate">↳ {file.creator.full_name}</div>
+            )}
           </div>
         </div>
       </td>

@@ -12,7 +12,8 @@ const FILE_SELECT = `
   *,
   customer:customers!customer_id(*),
   product:products!product_id(*),
-  supplier:suppliers!supplier_id(*)
+  supplier:suppliers!supplier_id(*),
+  creator:profiles!created_by(id,full_name)
 `;
 
 // Used for detail page — includes sub-documents
