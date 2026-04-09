@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
-import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight } from 'lucide-react';
+import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight, Plus, ChevronUp } from 'lucide-react';
 
 const TR_BANKS = [
   '— Seçin —',
@@ -117,6 +117,7 @@ export function TransactionModal({
 
   // ── Banka Havalesi: kaynak tipi (havale mi, nakit kaynaklı mı?) ──────────
   const [bankSource, setBankSource] = useState<'havale' | 'nakit'>('havale');
+  const [masrafOpen, setMasrafOpen] = useState(false);
 
   // ── İç Transfer: from / to account selectors ─────────────────────────────
   const [itFromType, setItFromType] = useState<'kasa' | 'bank'>('kasa');
@@ -162,8 +163,9 @@ export function TransactionModal({
   // ── Populate form when modal opens ───────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-    // Reset İç Transfer state
+    // Reset states
     setBankSource('havale');
+    setMasrafOpen(!!transaction && (transaction.masraf_tutar ?? 0) > 0);
     setItFromType('kasa'); setItFromId('');
     setItToType('bank');   setItToId('');
     if (transaction) {
@@ -812,48 +814,81 @@ export function TransactionModal({
             </>
           )}
 
-          {/* ── Masraf / Komisyon ────────────────────────────────────────── */}
+          {/* ── Masraf / Komisyon (collapsible) ──────────────────────────── */}
           {txnType !== 'ic_transfer' && (
-            <div className="mb-2.5 border border-dashed border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50/40">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                Masraf / Komisyon <span className="font-normal normal-case tracking-normal">(opsiyonel)</span>
-              </p>
-              <FormRow cols={2}>
-                <FormGroup label="Masraf Türü">
-                  <NativeSelect {...register('masraf_turu')}>
-                    <option value="">— Yok —</option>
-                    <option value="Havale Masrafı">Havale Masrafı</option>
-                    <option value="Banka Komisyonu">Banka Komisyonu</option>
-                    <option value="Sarraf Masrafı">Sarraf Masrafı</option>
-                    <option value="Swift Masrafı">Swift Masrafı</option>
-                    <option value="Diğer">Diğer</option>
-                  </NativeSelect>
-                </FormGroup>
-                <FormGroup label="Para Birimi">
-                  <NativeSelect {...register('masraf_currency')}>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="TRY">TRY</option>
-                    <option value="AED">AED</option>
-                    <option value="GBP">GBP</option>
-                  </NativeSelect>
-                </FormGroup>
-              </FormRow>
-              <FormRow cols={isMasrafNonUSD ? 3 : 2}>
-                <FormGroup label="Tutar">
-                  <Input type="number" step="0.01" min="0" {...register('masraf_tutar')} placeholder="0.00" />
-                </FormGroup>
-                {isMasrafNonUSD && (
-                  <FormGroup label={`Kur (1 USD = ? ${masrafCurrency})`}>
-                    <Input type="number" step="0.0001" min="0" {...register('masraf_rate')} placeholder="örn. 32.50" />
-                  </FormGroup>
-                )}
-                <FormGroup label="USD Karşılığı">
-                  <div className="flex items-center h-9 px-3 rounded-xl bg-orange-50 border border-orange-100 text-[12px] font-bold text-orange-700 tabular-nums">
-                    {masrafUsd > 0 ? `$${masrafUsd.toFixed(2)}` : <span className="text-gray-400 font-normal">—</span>}
+            <div className="mb-2.5">
+              {!masrafOpen ? (
+                /* Kapalı: küçük "+ Masraf / Komisyon Ekle" butonu */
+                <button
+                  type="button"
+                  onClick={() => setMasrafOpen(true)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-gray-200 text-[11px] font-semibold text-gray-400 hover:text-gray-600 hover:border-gray-300 hover:bg-gray-50/60 transition-all"
+                >
+                  <Plus className="h-3 w-3" />
+                  Masraf / Komisyon Ekle
+                </button>
+              ) : (
+                /* Açık: tam masraf formu */
+                <div className="border border-orange-200 rounded-xl bg-orange-50/30 overflow-hidden">
+                  {/* Header / kapat */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMasrafOpen(false);
+                      setValue('masraf_turu', '');
+                      setValue('masraf_tutar', 0);
+                      setValue('masraf_currency', 'USD');
+                      setValue('masraf_rate', 1);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-orange-50 transition-colors"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-orange-600">
+                      Masraf / Komisyon
+                    </span>
+                    <ChevronUp className="h-3.5 w-3.5 text-orange-400" />
+                  </button>
+                  <div className="px-3 pb-3 space-y-2 border-t border-orange-100">
+                    <div className="pt-2">
+                      <FormRow cols={2}>
+                        <FormGroup label="Masraf Türü">
+                          <NativeSelect {...register('masraf_turu')}>
+                            <option value="">— Seçin —</option>
+                            <option value="Havale Masrafı">Havale Masrafı</option>
+                            <option value="Banka Komisyonu">Banka Komisyonu</option>
+                            <option value="Sarraf Masrafı">Sarraf Masrafı</option>
+                            <option value="Swift Masrafı">Swift Masrafı</option>
+                            <option value="Diğer">Diğer</option>
+                          </NativeSelect>
+                        </FormGroup>
+                        <FormGroup label="Para Birimi">
+                          <NativeSelect {...register('masraf_currency')}>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="TRY">TRY</option>
+                            <option value="AED">AED</option>
+                            <option value="GBP">GBP</option>
+                          </NativeSelect>
+                        </FormGroup>
+                      </FormRow>
+                      <FormRow cols={isMasrafNonUSD ? 3 : 2}>
+                        <FormGroup label="Tutar">
+                          <Input type="number" step="0.01" min="0" {...register('masraf_tutar')} placeholder="0.00" />
+                        </FormGroup>
+                        {isMasrafNonUSD && (
+                          <FormGroup label={`Kur (1 USD = ? ${masrafCurrency})`}>
+                            <Input type="number" step="0.0001" min="0" {...register('masraf_rate')} placeholder="örn. 32.50" />
+                          </FormGroup>
+                        )}
+                        <FormGroup label="USD Karşılığı">
+                          <div className="flex items-center h-9 px-3 rounded-xl bg-orange-100 border border-orange-200 text-[12px] font-bold text-orange-700 tabular-nums">
+                            {masrafUsd > 0 ? `$${masrafUsd.toFixed(2)}` : <span className="text-gray-400 font-normal">—</span>}
+                          </div>
+                        </FormGroup>
+                      </FormRow>
+                    </div>
                   </div>
-                </FormGroup>
-              </FormRow>
+                </div>
+              )}
             </div>
           )}
 
