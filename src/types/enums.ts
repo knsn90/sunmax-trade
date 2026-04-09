@@ -10,7 +10,7 @@ export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 export const PAYMENT_STATUSES = ['open', 'partial', 'paid'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const CURRENCY_CODES = ['USD', 'EUR', 'TRY', 'AED'] as const;
+export const CURRENCY_CODES = ['USD', 'EUR', 'TRY', 'AED', 'GBP'] as const;
 export type CurrencyCode = (typeof CURRENCY_CODES)[number];
 
 export const TRANSPORT_MODES = ['truck', 'railway', 'sea'] as const;
@@ -81,6 +81,7 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   EUR: '€',
   TRY: '₺',
   AED: 'AED',
+  GBP: '£',
 };
 
 // ─── Page Permissions ────────────────────────────────────────────────────────
