@@ -7,6 +7,7 @@ export function useTransactions(filters?: TransactionFilters) {
   return useQuery({
     queryKey: ['transactions', filters],
     queryFn: () => transactionService.list(filters),
+    retry: false,
   });
 }
 

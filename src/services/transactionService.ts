@@ -10,8 +10,7 @@ const TXN_SELECT = `
   customer:customers!customer_id(name),
   supplier:suppliers!supplier_id(name),
   service_provider:service_providers!service_provider_id(name),
-  kasa:kasalar(id,name,currency),
-  bank_account:bank_accounts(id,bank_name,account_name,iban_usd,iban_eur,swift_bic)
+  kasa:kasalar(id,name,currency)
 `;
 
 export interface TransactionFilters {

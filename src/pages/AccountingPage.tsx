@@ -325,7 +325,9 @@ export function AccountingPage() {
     }
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading = no cached data + fetching. isFetching = any in-flight fetch.
+  // Only block on true first-load (no data at all). Refetch happens in background.
+  if (isLoading && !txns.length) return <LoadingSpinner />;
 
   const profit = (summary?.totalRevenue ?? 0) - (summary?.totalCost ?? 0);
 
