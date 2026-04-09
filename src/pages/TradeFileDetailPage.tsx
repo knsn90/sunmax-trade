@@ -398,8 +398,6 @@ export function TradeFileDetailPage() {
         />
         {isSaleOrDel && (
           <>
-            <ActionItem icon={<Receipt className="h-4 w-4" />} label={t('detail.actions.saleInvoice')}
-              onClick={() => { setActionsOpen(false); const e = file.invoices?.find(i => i.invoice_type === 'sale') ?? null; setEditSaleInvoice(e); setSaleInvoiceOpen(true); }} />
             <ActionItem icon={<Receipt className="h-4 w-4" />} label={t('detail.actions.commercialInvoice')}
               onClick={() => { setActionsOpen(false); setEditInvoice(null); setInvoiceOpen(true); }} />
             <ActionItem icon={<Package className="h-4 w-4" />} label={t('detail.actions.packingList')}
@@ -943,12 +941,6 @@ export function TradeFileDetailPage() {
                 </button>
                 {isSaleOrDel && writable && (
                   <>
-                    <button onClick={() => { const e = file.invoices?.find(i => i.invoice_type === 'sale') ?? null; setEditSaleInvoice(e); setSaleInvoiceOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
-                      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
-                        <Receipt className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
-                      </div>
-                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.saleInvoice')}</span>
-                    </button>
                     <button onClick={() => { setEditInvoice(null); setInvoiceOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
                       <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
                         <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
