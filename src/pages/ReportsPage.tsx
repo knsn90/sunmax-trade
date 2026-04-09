@@ -1961,17 +1961,23 @@ export function CustomerReportTab() {
     [rawTxns],
   );
 
-  // Table 2: Yalnızca satış faturası oluşturulmuş ticaret dosyaları
+  // Table 2: Satış fiyatı olan VE (fatura kesilmiş VEYA 'sale'/'delivery'/'completed' statüsünde) dosyalar
+  // invoicedFileIds bağımlılığını kaldırıp status kontrolüne geçiyoruz — muhasebe kaydı olmadan da dosya görünsün
   const customerFiles = useMemo(
-    () => allFiles.filter((f) => f.customer_id === customerId && f.selling_price && invoicedFileIds.has(f.id)),
+    () => allFiles.filter(
+      (f) => f.customer_id === customerId &&
+             (f.selling_price ?? 0) > 0 &&
+             (invoicedFileIds.has(f.id) || ['sale', 'delivery', 'completed'].includes(f.status)),
+    ),
     [allFiles, customerId, invoicedFileIds],
   );
 
   // Table 3: Ön ödemeler — faturası kesilmiş dosyalara ait olanlar hariç
+  // party_type NULL olabiliyor (advance tipi typeToParty haritasında yoktu); tedarikçi avanslarını hariç tut
   const advances = useMemo(
     () => filteredTxns.filter(
       (t) => t.transaction_type === 'advance' &&
-             t.party_type === 'customer' &&
+             t.party_type !== 'supplier' &&
              !invoicedFileIds.has(t.trade_file_id ?? ''),
     ),
     [filteredTxns, invoicedFileIds],

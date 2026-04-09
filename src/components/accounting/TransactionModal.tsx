@@ -80,8 +80,8 @@ function isMoneyIn(txnType: string, partyType: string): boolean {
 function partyFilter(txnType: string): EntityKind | 'all' {
   if (txnType === 'svc_inv') return 'service_provider';
   if (txnType === 'purchase_inv') return 'supplier';
-  if (txnType === 'receipt') return 'customer';
-  return 'all'; // payment — any entity type
+  if (txnType === 'receipt' || txnType === 'sale_inv') return 'customer';
+  return 'all'; // advance / payment — any entity type
 }
 
 /** Build SelectedParty from an existing Transaction's joined data */
@@ -340,6 +340,8 @@ export function TransactionModal({
       svc_inv: 'service_provider',
       purchase_inv: 'supplier',
       receipt: 'customer',
+      sale_inv: 'customer',
+      advance: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'customer',
       payment: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'other',
     };
     data.party_type = typeToParty[data.transaction_type];
