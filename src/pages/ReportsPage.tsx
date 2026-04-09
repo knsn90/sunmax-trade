@@ -740,6 +740,7 @@ export function AccountStatementTab() {
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
+  const { data: settings } = useSettings();
   const { data: customers = [], isLoading: loadingC, error: errC } = useCustomers();
   const { data: suppliers = [], isLoading: loadingS, error: errS } = useSuppliers();
   const { data: serviceProviders = [], isLoading: loadingSP, error: errSP } = useServiceProviders();
@@ -850,7 +851,7 @@ export function AccountStatementTab() {
     // Dominant currency in this statement
     const currCounts: Record<string, number> = {};
     txnsWithBalance.forEach((t) => { if (t.currency) currCounts[t.currency] = (currCounts[t.currency] ?? 0) + 1; });
-    const mainCurrency = Object.entries(currCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'USD';
+    void currCounts; // dominant currency now shown per-row — suppressed unused warning
 
     const periodLabel = (dateFrom || dateTo)
       ? `${dateFrom ? fDate(dateFrom) : '…'}  –  ${dateTo ? fDate(dateTo) : '…'}`
@@ -875,75 +876,134 @@ export function AccountStatementTab() {
     };
     const TYPE_LABEL = printLang === 'fa' ? TYPE_FA : printLang === 'en' ? TYPE_EN : TYPE_TR;
 
-    const rows = txnsWithBalance.map((txn, i) => `
-      <tr style="border-bottom:1px solid #e8e8e8;background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
-        <td style="padding:4px 7px;white-space:nowrap">${fDate(txn.transaction_date)}</td>
-        <td style="padding:4px 7px">${TYPE_LABEL[txn.transaction_type] ?? txn.transaction_type}</td>
-        <td style="padding:4px 7px;font-family:monospace">${txn.reference_no || ''}</td>
-        <td style="padding:4px 7px">${txn.description || ''}</td>
-        <td style="padding:4px 7px;text-align:right;color:#b91c1c">${txn.isDebit  ? fN(txn.amt) : ''}</td>
-        <td style="padding:4px 7px;text-align:right;color:#065f46">${!txn.isDebit ? fN(txn.amt) : ''}</td>
-        <td style="padding:4px 7px;text-align:right;font-weight:700">${fN(Math.abs(txn.balance))}${balSuffix(txn.balance)}</td>
-      </tr>`).join('');
+    const companyName = settings?.company_name || 'SUNMAX TRADE';
+    const today = fDate(new Date().toISOString().slice(0, 10));
+
+    const rows = txnsWithBalance.map((txn, i) => {
+      const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
+      const origAmt = txn.currency !== 'USD'
+        ? `<div style="font-size:9px;color:#94a3b8;margin-top:1px">${fCurrency(txn.amount, txn.currency)}</div>` : '';
+      return `
+      <tr style="border-bottom:1px solid #e2e8f0;background:${bg}">
+        <td style="padding:5px 8px;white-space:nowrap;color:#475569;font-size:10px">${fDate(txn.transaction_date)}</td>
+        <td style="padding:5px 8px;color:#334155;font-size:10px">${TYPE_LABEL[txn.transaction_type] ?? txn.transaction_type}</td>
+        <td style="padding:5px 8px;font-family:monospace;color:#64748b;font-size:9.5px">${txn.reference_no || '—'}</td>
+        <td style="padding:5px 8px;color:#334155;font-size:10px;max-width:160px">${txn.description || '—'}</td>
+        <td style="padding:5px 8px;text-align:center">
+          <span style="font-size:10px;font-weight:700;color:#1e293b">${txn.currency}</span>
+          ${origAmt}
+        </td>
+        <td style="padding:5px 8px;text-align:right;color:#b91c1c;font-weight:600;font-size:10px">${txn.isDebit  ? fUSD(txn.amt) : ''}</td>
+        <td style="padding:5px 8px;text-align:right;color:#065f46;font-weight:600;font-size:10px">${!txn.isDebit ? fUSD(txn.amt) : ''}</td>
+        <td style="padding:5px 8px;text-align:right;font-weight:700;font-size:10px;color:${txn.balance > 0 ? '#92400e' : txn.balance < 0 ? '#065f46' : '#94a3b8'}">${fUSD(Math.abs(txn.balance))}${balSuffix(txn.balance)}</td>
+      </tr>`;
+    }).join('');
 
     const fontLink = L.font ? `<link rel="stylesheet" href="${L.font}">` : '';
-    const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:${ff};font-size:11px;background:#888;padding:20px;color:#111;direction:${L.dir}}.page{background:#fff;width:210mm;margin:0 auto;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.4)}.np{text-align:center;margin-bottom:14px}@media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;width:100%;padding:10mm;margin:0}}`;
-    const printBar = `<div class="np"><button onclick="window.print()" style="background:#1e40af;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #ccc;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer">✕</button></div>`;
+    const css = `
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:${ff};font-size:11px;background:#e2e8f0;padding:24px;color:#111;direction:${L.dir}}
+      .page{background:#fff;width:210mm;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+      .header{background:#1e293b;padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-end}
+      .header-left .co{font-size:10px;font-weight:700;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:4px}
+      .header-left .title{font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+      .header-right{text-align:right}
+      .header-right .entity-label{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:2px}
+      .header-right .entity-name{font-size:14px;font-weight:700;color:#f1f5f9}
+      .kpi-row{display:flex;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+      .kpi{flex:1;padding:12px 18px;border-right:1px solid #e2e8f0}
+      .kpi:last-child{border-right:none}
+      .kpi-label{font-size:8.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:4px}
+      .kpi-value{font-size:15px;font-weight:800}
+      .kpi-debit .kpi-value{color:#b91c1c}
+      .kpi-credit .kpi-value{color:#065f46}
+      .kpi-net .kpi-value{color:#1e293b}
+      .meta{padding:10px 22px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;gap:24px;align-items:center}
+      .meta-item{font-size:9.5px;color:#64748b}
+      .meta-item strong{color:#1e293b;font-weight:700}
+      .table-wrap{padding:0}
+      table{width:100%;border-collapse:collapse}
+      thead tr{background:#f1f5f9;border-bottom:2px solid #cbd5e1}
+      th{padding:6px 8px;font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748b;white-space:nowrap}
+      .th-r{text-align:right}
+      .th-c{text-align:center}
+      tfoot tr{background:#f8fafc;border-top:2px solid #cbd5e1}
+      tfoot td{padding:7px 8px;font-size:10px;font-weight:700}
+      .np{text-align:center;margin-bottom:18px}
+      .footer{padding:10px 22px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
+      .footer-text{font-size:8.5px;color:#94a3b8}
+      @media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;border-radius:0;width:100%;margin:0}}`;
 
-    const LBL = 'color:#555;padding:3px 0;width:130px';
-    const SEP = 'color:#555;padding:3px 4px;width:12px';
-    const VAL = 'color:#111;font-weight:700;padding:3px 0';
+    const printBar = `<div class="np"><button onclick="window.print()" style="background:#dc2626;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f1f5f9;color:#374151;border:1px solid #cbd5e1;padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer">✕</button></div>`;
+
+    const netColor = netBakiye > 0 ? '#92400e' : netBakiye < 0 ? '#065f46' : '#64748b';
 
     const html = `
-      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">
-        <tr>
-          <td style="${LBL}">${L.entity}</td>
-          <td style="${SEP}">:</td>
-          <td style="${VAL}">${entityName}</td>
-          <td style="text-align:right;color:#555">${L.openingBalance} :</td>
-          <td style="text-align:right;font-weight:700;width:90px">0,00</td>
-        </tr>
-        <tr>
-          <td style="${LBL}">${L.currency}</td>
-          <td style="${SEP}">:</td>
-          <td style="color:#111;padding:3px 0">${mainCurrency}</td>
-        </tr>
-        <tr>
-          <td style="${LBL}">${L.period}</td>
-          <td style="${SEP}">:</td>
-          <td style="color:#111;padding:3px 0">${periodLabel}</td>
-        </tr>
-      </table>
-      <hr style="border:none;border-top:1px solid #aaa;margin:8px 0 10px">
-      <table style="width:100%;border-collapse:collapse;font-size:10px">
-        <thead>
-          <tr style="border-bottom:1px solid #999;background:#f2f2f2">
-            <th style="padding:5px 7px;text-align:left;white-space:nowrap">${L.date}</th>
-            <th style="padding:5px 7px;text-align:left">${L.type}</th>
-            <th style="padding:5px 7px;text-align:left">${L.ref}</th>
-            <th style="padding:5px 7px;text-align:left">${L.desc}</th>
-            <th style="padding:5px 7px;text-align:right">${L.debit}</th>
-            <th style="padding:5px 7px;text-align:right">${L.credit}</th>
-            <th style="padding:5px 7px;text-align:right">${L.balance}</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-        <tfoot>
-          <tr style="border-top:2px solid #555">
-            <td colspan="2" style="padding:6px 7px;font-size:10px;color:#555">
-              ${L.recordCount} : ${txnsWithBalance.length}
-            </td>
-            <td colspan="2" style="padding:6px 7px;text-align:right;font-weight:700;font-size:11px">
-              ${L.grandTotal} :
-            </td>
-            <td style="padding:6px 7px;text-align:right;font-weight:700;color:#b91c1c">${fN(totalBorç)}</td>
-            <td style="padding:6px 7px;text-align:right;font-weight:700;color:#065f46">${fN(totalAlacak)}</td>
-            <td style="padding:6px 7px;text-align:right;font-weight:700">${fN(Math.abs(netBakiye))}${netSuffix}</td>
-          </tr>
-        </tfoot>
-      </table>`;
+      <div class="header">
+        <div class="header-left">
+          <div class="co">${companyName}</div>
+          <div class="title">${L.title}</div>
+        </div>
+        <div class="header-right">
+          <div class="entity-label">${L.entity}</div>
+          <div class="entity-name">${entityName}</div>
+        </div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi kpi-debit">
+          <div class="kpi-label">${L.totalDebit}</div>
+          <div class="kpi-value">${fUSD(totalBorç)}</div>
+        </div>
+        <div class="kpi kpi-credit">
+          <div class="kpi-label">${L.totalCredit}</div>
+          <div class="kpi-value">${fUSD(totalAlacak)}</div>
+        </div>
+        <div class="kpi kpi-net">
+          <div class="kpi-label">${L.netBalance}</div>
+          <div class="kpi-value" style="color:${netColor}">${fUSD(Math.abs(netBakiye))} ${netSuffix ? `<span style="font-size:11px">${netSuffix.trim()}</span>` : ''}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">${L.txnCount}</div>
+          <div class="kpi-value" style="color:#475569">${txnsWithBalance.length}</div>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="meta-item">${L.period}: <strong>${periodLabel}</strong></div>
+        <div class="meta-item">${L.currency}: <strong>USD</strong></div>
+        <div class="meta-item" style="margin-left:auto">${today}</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>${L.date}</th>
+              <th>${L.type}</th>
+              <th>${L.ref}</th>
+              <th>${L.desc}</th>
+              <th class="th-c">${L.curr}</th>
+              <th class="th-r">${L.debit} (USD)</th>
+              <th class="th-r">${L.credit} (USD)</th>
+              <th class="th-r">${L.balance} (USD)</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="color:#64748b;font-size:9.5px">${L.recordCount}: ${txnsWithBalance.length}</td>
+              <td></td>
+              <td style="text-align:right;color:#b91c1c">${fUSD(totalBorç)}</td>
+              <td style="text-align:right;color:#065f46">${fUSD(totalAlacak)}</td>
+              <td style="text-align:right;color:${netColor}">${fUSD(Math.abs(netBakiye))}${netSuffix}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="footer">
+        <div class="footer-text">${companyName} · ${L.title}</div>
+        <div class="footer-text">${today}</div>
+      </div>`;
 
-    const win = window.open('', '_blank', 'width=1050,height=860');
+    const win = window.open('', '_blank', 'width=1080,height=900');
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html dir="${L.dir}"><head><meta charset="UTF-8">${fontLink}<title>${L.title} — ${entityName}</title><style>${css}</style></head><body>${printBar}<div class="page">${html}</div></body></html>`);
     win.document.close();
@@ -1253,10 +1313,10 @@ export function AccountStatementTab() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {['Tarih', 'İşlem Türü', 'İşlem No', 'Açıklama', 'Borç', 'Alacak', 'Bakiye'].map((h, i) => (
+                    {['Tarih', 'İşlem Türü', 'İşlem No', 'Açıklama', 'Döviz', 'Borç (USD)', 'Alacak (USD)', 'Bakiye (USD)'].map((h, i) => (
                       <th key={h} className={cn(
                         'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap',
-                        i >= 4 ? 'text-right' : 'text-left',
+                        i >= 5 ? 'text-right' : 'text-left',
                       )}>
                         {h}
                       </th>
@@ -1273,24 +1333,22 @@ export function AccountStatementTab() {
                       <td className="px-4 py-3 text-[12px] text-gray-700">{tc(`txType.${txn.transaction_type}`)}</td>
                       <td className="px-4 py-3 text-[11px] font-mono text-gray-400">{txn.reference_no || '—'}</td>
                       <td className="px-4 py-3 text-[12px] text-gray-600 max-w-[200px] truncate">{txn.description || '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] font-bold text-gray-700 tabular-nums">{txn.currency}</span>
+                          {txn.currency !== 'USD' && (
+                            <span className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-right">
                         {txn.isDebit ? (
-                          <div>
-                            <div className="text-[12px] font-semibold text-red-600 tabular-nums">{fUSD(txn.amt)}</div>
-                            {txn.currency !== 'USD' && (
-                              <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
-                            )}
-                          </div>
+                          <div className="text-[12px] font-semibold text-red-600 tabular-nums">{fUSD(txn.amt)}</div>
                         ) : ''}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {!txn.isDebit ? (
-                          <div>
-                            <div className="text-[12px] font-semibold text-green-700 tabular-nums">{fUSD(txn.amt)}</div>
-                            {txn.currency !== 'USD' && (
-                              <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
-                            )}
-                          </div>
+                          <div className="text-[12px] font-semibold text-green-700 tabular-nums">{fUSD(txn.amt)}</div>
                         ) : ''}
                       </td>
                       <td className="px-4 py-3 text-[12px] text-right font-bold whitespace-nowrap">
@@ -1309,7 +1367,7 @@ export function AccountStatementTab() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-gray-100 bg-gray-50/60">
-                    <td colSpan={3} className="px-4 py-3 text-[11px] text-gray-400">{txnsWithBalance.length} kayıt</td>
+                    <td colSpan={4} className="px-4 py-3 text-[11px] text-gray-400">{txnsWithBalance.length} kayıt</td>
                     <td className="px-4 py-3 text-[10px] font-bold text-gray-500 text-right uppercase tracking-widest">Genel Toplam</td>
                     <td className="px-4 py-3 text-[13px] text-right font-black text-red-600">{fUSD(totalBorç)}</td>
                     <td className="px-4 py-3 text-[13px] text-right font-black text-green-700">{fUSD(totalAlacak)}</td>

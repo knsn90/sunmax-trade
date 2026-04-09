@@ -122,7 +122,14 @@ export const transactionService = {
     }
     const { data, error } = await query.order('transaction_date', { ascending: true });
     if (error) throw new Error(error.message);
-    return (data ?? []) as Transaction[];
+    // Dedup by id — PostgREST OR + embedded join can produce duplicate rows
+    const seen = new Set<string>();
+    const deduped = (data ?? []).filter((t: { id: string }) => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+    return deduped as Transaction[];
   },
 
   async getById(id: string): Promise<Transaction> {
