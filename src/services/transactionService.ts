@@ -135,19 +135,22 @@ export const transactionService = {
 
     // Step 3b: party_name fallback — finds transactions entered without a customer FK
     // (user typed the name instead of selecting from the entity dropdown).
-    // Only requires customer_id IS NULL — we don't restrict supplier_id/service_provider_id
-    // because some transactions may be linked to a supplier entity while the customer was
-    // typed manually (e.g. same party exists in both tables).
+    // Uses ilike for case-insensitive matching. Only requires customer_id IS NULL.
     let nameData: typeof mainData = [];
     if (entityName) {
       const { data: nd } = await supabase
         .from('transactions')
         .select(TXN_SELECT)
-        .eq('party_name', entityName)
+        .ilike('party_name', entityName)
         .is('customer_id', null)
         .order('transaction_date', { ascending: true });
       nameData = (nd ?? []) as typeof mainData;
     }
+
+    // Debug: log what was found (remove after investigation)
+    console.log('[listByEntityEnhanced]', { entityType, entityId, entityName, fileIds, mainCount: (mainData ?? []).length, nameCount: nameData.length });
+    console.log('[listByEntityEnhanced] mainData types:', (mainData ?? []).map((t: { transaction_type: string; customer_id?: string | null }) => `${t.transaction_type}(cid:${t.customer_id ?? 'null'})`));
+    console.log('[listByEntityEnhanced] nameData types:', nameData.map((t: { transaction_type: string; party_name?: string | null }) => `${t.transaction_type}(name:${t.party_name})`));
 
     // Merge and dedup by id
     const combined = [...(mainData ?? []), ...nameData];
