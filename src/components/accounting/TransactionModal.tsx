@@ -147,6 +147,10 @@ export function TransactionModal({
       swift_bic: '',
       card_type: '',
       cash_receiver: '',
+      masraf_turu: '',
+      masraf_tutar: 0,
+      masraf_currency: 'USD',
+      masraf_rate: 1,
       notes: '',
       kasa_id: '',
       bank_account_id: '',
@@ -184,6 +188,10 @@ export function TransactionModal({
         swift_bic: transaction.swift_bic ?? '',
         card_type: (transaction.card_type ?? '') as TransactionFormData['card_type'],
         cash_receiver: transaction.cash_receiver ?? '',
+        masraf_turu: transaction.masraf_turu ?? '',
+        masraf_tutar: transaction.masraf_tutar ?? 0,
+        masraf_currency: (transaction.masraf_currency ?? 'USD') as TransactionFormData['masraf_currency'],
+        masraf_rate: transaction.masraf_rate ?? 1,
         notes: transaction.notes,
         kasa_id: transaction.kasa_id ?? '',
         bank_account_id: transaction.bank_account_id ?? '',
@@ -204,7 +212,11 @@ export function TransactionModal({
         swift_bic: '',
         description: '',
         reference_no: '',
-          notes: '',
+        masraf_turu: '',
+        masraf_tutar: 0,
+        masraf_currency: 'USD',
+        masraf_rate: 1,
+        notes: '',
         trade_file_id: defaultTradeFileId ?? '',
         customer_id: '',
         supplier_id: '',
@@ -222,9 +234,14 @@ export function TransactionModal({
   const amount        = useWatch({ control, name: 'amount' }) ?? 0;
   const rate          = useWatch({ control, name: 'exchange_rate' }) ?? 1;
   const paymentMethod = useWatch({ control, name: 'payment_method' });
+  const masrafTutar   = useWatch({ control, name: 'masraf_tutar' }) ?? 0;
+  const masrafCurrency = useWatch({ control, name: 'masraf_currency' });
+  const masrafRate    = useWatch({ control, name: 'masraf_rate' }) ?? 1;
 
   // Show exchange rate for all non-USD currencies
   const isNonUSD = currency !== 'USD';
+  const isMasrafNonUSD = masrafCurrency !== 'USD';
+  const masrafUsd = masrafTutar > 0 ? toUSD(masrafTutar, masrafCurrency as 'USD', masrafRate) : 0;
   const usdEquivalent = toUSD(amount, currency as 'USD', rate);
 
   // ── Bidirectional USD input ──────────────────────────────────────────────
@@ -793,6 +810,51 @@ export function TransactionModal({
                 </div>
               )}
             </>
+          )}
+
+          {/* ── Masraf / Komisyon ────────────────────────────────────────── */}
+          {txnType !== 'ic_transfer' && (
+            <div className="mb-2.5 border border-dashed border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50/40">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                Masraf / Komisyon <span className="font-normal normal-case tracking-normal">(opsiyonel)</span>
+              </p>
+              <FormRow cols={2}>
+                <FormGroup label="Masraf Türü">
+                  <NativeSelect {...register('masraf_turu')}>
+                    <option value="">— Yok —</option>
+                    <option value="Havale Masrafı">Havale Masrafı</option>
+                    <option value="Banka Komisyonu">Banka Komisyonu</option>
+                    <option value="Sarraf Masrafı">Sarraf Masrafı</option>
+                    <option value="Swift Masrafı">Swift Masrafı</option>
+                    <option value="Diğer">Diğer</option>
+                  </NativeSelect>
+                </FormGroup>
+                <FormGroup label="Para Birimi">
+                  <NativeSelect {...register('masraf_currency')}>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="TRY">TRY</option>
+                    <option value="AED">AED</option>
+                    <option value="GBP">GBP</option>
+                  </NativeSelect>
+                </FormGroup>
+              </FormRow>
+              <FormRow cols={isMasrafNonUSD ? 3 : 2}>
+                <FormGroup label="Tutar">
+                  <Input type="number" step="0.01" min="0" {...register('masraf_tutar')} placeholder="0.00" />
+                </FormGroup>
+                {isMasrafNonUSD && (
+                  <FormGroup label={`Kur (1 USD = ? ${masrafCurrency})`}>
+                    <Input type="number" step="0.0001" min="0" {...register('masraf_rate')} placeholder="örn. 32.50" />
+                  </FormGroup>
+                )}
+                <FormGroup label="USD Karşılığı">
+                  <div className="flex items-center h-9 px-3 rounded-xl bg-orange-50 border border-orange-100 text-[12px] font-bold text-orange-700 tabular-nums">
+                    {masrafUsd > 0 ? `$${masrafUsd.toFixed(2)}` : <span className="text-gray-400 font-normal">—</span>}
+                  </div>
+                </FormGroup>
+              </FormRow>
+            </div>
           )}
 
           <FormGroup label={tc('form.notes')} className="mb-2">

@@ -63,7 +63,6 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
   const { t: tc } = useTranslation('common');
   const typeColor = TYPE_COLORS[t.transaction_type] ?? '#6b7280';
   const partyName = t.customer?.name ?? t.supplier?.name ?? t.service_provider?.name ?? t.party_name ?? '—';
-  const remaining = t.amount - (t.paid_amount ?? 0);
   const isDraft = (t.doc_status ?? 'draft') !== 'approved';
 
   return (
@@ -90,9 +89,9 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
       </div>
       {/* Amount + status */}
       <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className="text-[13px] font-bold text-gray-900">{fCurrency(t.amount, t.currency)}</span>
-        {remaining > 0 && remaining < t.amount && (
-          <span className="text-[10px] text-amber-500 font-semibold">rem {fCurrency(remaining, t.currency)}</span>
+        <span className="text-[13px] font-bold text-gray-900">{fUSD(t.amount_usd ?? t.amount)}</span>
+        {t.currency !== 'USD' && (
+          <span className="text-[10px] text-gray-400 tabular-nums">{fCurrency(t.amount, t.currency)}</span>
         )}
         <Badge variant={t.payment_status as PaymentStatus} className="text-[9px] px-1.5 py-0">
           {tc('payStatus.' + t.payment_status)}
@@ -644,11 +643,9 @@ export function AccountingPage() {
                         </td>
                         <td className="px-4 py-2.5 text-[11px] text-gray-500 truncate">{txn.description || '—'}</td>
                         <td className="px-4 py-2.5">
-                          <div className="text-[13px] font-bold text-blue-700">{fCurrency(txn.amount, txn.currency)}</div>
-                          {(txn.paid_amount ?? 0) > 0 && (
-                            <div className="text-[10px] text-green-600 font-semibold">
-                              {fCurrency(txn.paid_amount, txn.currency)} ödendi
-                            </div>
+                          <div className="text-[13px] font-bold text-blue-700">{fUSD(txn.amount_usd ?? txn.amount)}</div>
+                          {txn.currency !== 'USD' && (
+                            <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
                           )}
                         </td>
                         <td className="px-4 py-2.5">
@@ -754,9 +751,9 @@ export function AccountingPage() {
                         <td className="px-3 py-3 text-right">
                           {isDebit ? (
                             <div>
-                              <div className="text-[12px] font-semibold text-red-600 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
-                              {(txn.paid_amount ?? 0) > 0 && (txn.paid_amount ?? 0) < txn.amount && (
-                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.paid_amount, txn.currency)} ödendi</div>
+                              <div className="text-[12px] font-semibold text-red-600 tabular-nums">{fUSD(txn.amount_usd ?? txn.amount)}</div>
+                              {txn.currency !== 'USD' && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
                               )}
                             </div>
                           ) : <span className="text-gray-200 text-[11px]">—</span>}
@@ -765,9 +762,9 @@ export function AccountingPage() {
                         <td className="px-3 py-3 text-right">
                           {!isDebit ? (
                             <div>
-                              <div className="text-[12px] font-semibold text-emerald-600 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
-                              {(txn.paid_amount ?? 0) > 0 && (txn.paid_amount ?? 0) < txn.amount && (
-                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.paid_amount, txn.currency)} tahsil</div>
+                              <div className="text-[12px] font-semibold text-emerald-600 tabular-nums">{fUSD(txn.amount_usd ?? txn.amount)}</div>
+                              {txn.currency !== 'USD' && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
                               )}
                             </div>
                           ) : <span className="text-gray-200 text-[11px]">—</span>}

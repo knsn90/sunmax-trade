@@ -400,6 +400,11 @@ export interface Transaction extends Timestamps {
   swift_bic: string | null;
   card_type: string | null;
   cash_receiver: string | null;
+  masraf_turu: string;
+  masraf_tutar: number;
+  masraf_currency: string;
+  masraf_rate: number;
+  masraf_usd: number;
   notes: string;
   doc_status: DocStatus;
   approved_by: string | null;
