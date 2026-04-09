@@ -103,15 +103,24 @@ export const transactionService = {
     const txnColumn = entityType === 'customer' ? 'customer_id' : 'supplier_id';
     const partyType = entityType; // 'customer' | 'supplier'
 
-    // Step 1: get trade file IDs for this entity
+    // Step 1: entity name — for party_name fallback (covers manually typed entries without FK link)
+    const entityTable = entityType === 'customer' ? 'customers' : 'suppliers';
+    const { data: entityRow } = await supabase
+      .from(entityTable)
+      .select('name')
+      .eq('id', entityId)
+      .single();
+    const entityName = (entityRow as { name?: string } | null)?.name ?? null;
+
+    // Step 2: get trade file IDs for this entity
     const { data: files } = await supabase
       .from('trade_files')
       .select('id')
       .eq(txnColumn, entityId);
     const fileIds = (files ?? []).map((f: { id: string }) => f.id);
 
-    // Step 2: direct match OR trade-file match — but ALWAYS filter by party_type so
-    // customer and supplier accounts never see each other's transactions on the same file.
+    // Step 3a: FK-based query — direct match OR trade-file match
+    // Always filter by party_type on file matches so customer/supplier don't bleed into each other.
     let query = supabase.from('transactions').select(TXN_SELECT);
     if (fileIds.length > 0) {
       query = query.or(
@@ -121,15 +130,34 @@ export const transactionService = {
     } else {
       query = query.eq(txnColumn, entityId);
     }
-    const { data, error } = await query.order('transaction_date', { ascending: true });
+    const { data: mainData, error } = await query.order('transaction_date', { ascending: true });
     if (error) throw new Error(error.message);
-    // Dedup by id — PostgREST OR + embedded join can produce duplicate rows
+
+    // Step 3b: party_name fallback — finds transactions entered without an entity FK
+    // (user typed the name instead of selecting from the dropdown)
+    let nameData: typeof mainData = [];
+    if (entityName) {
+      const { data: nd } = await supabase
+        .from('transactions')
+        .select(TXN_SELECT)
+        .eq('party_name', entityName)
+        .or(`party_type.eq.${partyType},party_type.is.null`)
+        .order('transaction_date', { ascending: true });
+      nameData = (nd ?? []) as typeof mainData;
+    }
+
+    // Merge and dedup by id
+    const combined = [...(mainData ?? []), ...nameData];
     const seen = new Set<string>();
-    const deduped = (data ?? []).filter((t: { id: string }) => {
+    const deduped = combined.filter((t: { id: string }) => {
       if (seen.has(t.id)) return false;
       seen.add(t.id);
       return true;
     });
+    // Re-sort merged result
+    (deduped as Array<{ transaction_date: string }>).sort(
+      (a, b) => a.transaction_date.localeCompare(b.transaction_date),
+    );
     return deduped as Transaction[];
   },
 
