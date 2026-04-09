@@ -1,0 +1,263 @@
+import { useEffect } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useKasalar } from '@/hooks/useKasalar';
+import { useBankAccounts } from '@/hooks/useSettings';
+import { useCreateTransfer } from '@/hooks/useTransfers';
+import { useTheme } from '@/contexts/ThemeContext';
+import { today } from '@/lib/formatters';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect, Textarea } from '@/components/ui/form-elements';
+import { FormRow, FormGroup } from '@/components/ui/shared';
+import { ArrowRight, ArrowLeftRight, Banknote, Landmark } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const schema = z.object({
+  transfer_date: z.string().min(1),
+  description: z.string().default(''),
+  amount: z.coerce.number().positive('Tutar 0\'dan büyük olmalı'),
+  currency: z.string().default('USD'),
+  exchange_rate: z.coerce.number().positive().default(1),
+  from_type: z.enum(['kasa', 'bank']),
+  from_id: z.string().min(1, 'Kaynak hesap seçin'),
+  to_type: z.enum(['kasa', 'bank']),
+  to_id: z.string().min(1, 'Hedef hesap seçin'),
+  reference_no: z.string().default(''),
+  notes: z.string().default(''),
+});
+
+type FormData = z.infer<typeof schema>;
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}
+
+export function TransferModal({ open, onOpenChange }: Props) {
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { data: kasalar = [] } = useKasalar();
+  const { data: bankAccounts = [] } = useBankAccounts();
+  const createTransfer = useCreateTransfer();
+
+  const { register, handleSubmit, control, setValue, reset, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      transfer_date: today(),
+      currency: 'USD',
+      exchange_rate: 1,
+      from_type: 'kasa',
+      to_type: 'bank',
+      from_id: '',
+      to_id: '',
+      description: '',
+      reference_no: '',
+      notes: '',
+    },
+  });
+
+  const fromType = useWatch({ control, name: 'from_type' });
+  const toType   = useWatch({ control, name: 'to_type' });
+  const currency = useWatch({ control, name: 'currency' });
+  const amount   = useWatch({ control, name: 'amount' }) ?? 0;
+  const rate     = useWatch({ control, name: 'exchange_rate' }) ?? 1;
+
+  useEffect(() => {
+    if (open) reset({
+      transfer_date: today(),
+      currency: 'USD',
+      exchange_rate: 1,
+      from_type: 'kasa',
+      to_type: 'bank',
+      from_id: '',
+      to_id: '',
+      description: '',
+      reference_no: '',
+      notes: '',
+    });
+  }, [open, reset]);
+
+  // from_type değişince from_id sıfırla
+  useEffect(() => { setValue('from_id', ''); }, [fromType, setValue]);
+  useEffect(() => { setValue('to_id', ''); }, [toType, setValue]);
+
+  async function onSubmit(data: FormData) {
+    const amount_usd = currency === 'USD'
+      ? data.amount
+      : rate > 0 ? data.amount / rate : data.amount;
+    try {
+      await createTransfer.mutateAsync({ ...data, amount_usd });
+      onOpenChange(false);
+    } catch { /* toast shows error */ }
+  }
+
+  const isNonUSD = currency !== 'USD';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4" style={{ color: accent }} />
+            İç Transfer
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+          {/* Kaynak → Hedef */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end">
+            {/* Kaynak Hesap */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium text-gray-500">Kaynak Hesap (Çıkış)</label>
+              {/* Kasa / Banka toggle */}
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                {([
+                  { value: 'kasa' as const, label: 'Kasa', Icon: Banknote },
+                  { value: 'bank' as const, label: 'Banka', Icon: Landmark },
+                ]).map(({ value, label, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setValue('from_type', value)}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-[11px] font-semibold transition-all',
+                      fromType === value ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500',
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <NativeSelect {...register('from_id')}>
+                <option value="">— Hesap seçin —</option>
+                {fromType === 'kasa'
+                  ? kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)
+                  : bankAccounts.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.bank_name}{b.account_name ? ` — ${b.account_name}` : ''}{b.currency ? ` · ${b.currency}` : ''}
+                      </option>
+                    ))
+                }
+              </NativeSelect>
+              {errors.from_id && (
+                <p className="text-[11px] text-red-500">{errors.from_id.message}</p>
+              )}
+            </div>
+
+            {/* Arrow divider */}
+            <div className="pb-2 text-gray-300">
+              <ArrowRight className="h-5 w-5" />
+            </div>
+
+            {/* Hedef Hesap */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium text-gray-500">Hedef Hesap (Giriş)</label>
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                {([
+                  { value: 'kasa' as const, label: 'Kasa', Icon: Banknote },
+                  { value: 'bank' as const, label: 'Banka', Icon: Landmark },
+                ]).map(({ value, label, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setValue('to_type', value)}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-[11px] font-semibold transition-all',
+                      toType === value ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500',
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <NativeSelect {...register('to_id')}>
+                <option value="">— Hesap seçin —</option>
+                {toType === 'kasa'
+                  ? kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)
+                  : bankAccounts.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.bank_name}{b.account_name ? ` — ${b.account_name}` : ''}{b.currency ? ` · ${b.currency}` : ''}
+                      </option>
+                    ))
+                }
+              </NativeSelect>
+              {errors.to_id && (
+                <p className="text-[11px] text-red-500">{errors.to_id.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Tutar & Para Birimi */}
+          <FormRow cols={isNonUSD ? 3 : 2}>
+            <FormGroup label="Para Birimi">
+              <NativeSelect {...register('currency')}>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="AED">AED</option>
+                <option value="TRY">TRY</option>
+                <option value="GBP">GBP</option>
+              </NativeSelect>
+            </FormGroup>
+            <FormGroup label="Tutar *" error={errors.amount?.message}>
+              <Input type="number" step="0.01" {...register('amount')} />
+            </FormGroup>
+            {isNonUSD && (
+              <FormGroup label="USD Karşılığı">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 pointer-events-none">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={rate > 0 && amount > 0 ? (amount / rate).toFixed(2) : ''}
+                    readOnly
+                    placeholder="0.00"
+                    className="pl-6 bg-blue-50 border-blue-100"
+                  />
+                </div>
+              </FormGroup>
+            )}
+          </FormRow>
+
+          {isNonUSD && (
+            <FormGroup label="Kur (yerel/USD)">
+              <Input type="number" step="0.0001" {...register('exchange_rate')} />
+            </FormGroup>
+          )}
+
+          {/* Tarih & Referans No */}
+          <FormRow cols={2}>
+            <FormGroup label="Tarih *">
+              <Input type="date" {...register('transfer_date')} />
+            </FormGroup>
+            <FormGroup label="Referans No">
+              <Input {...register('reference_no')} placeholder="Makbuz, dekont no" />
+            </FormGroup>
+          </FormRow>
+
+          <FormGroup label="Açıklama">
+            <Input {...register('description')} placeholder="örn. Kasadan Garanti'ye nakit yatırma" />
+          </FormGroup>
+
+          <FormGroup label="Not">
+            <Textarea rows={2} {...register('notes')} />
+          </FormGroup>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              İptal
+            </Button>
+            <Button type="submit" disabled={createTransfer.isPending}>
+              {createTransfer.isPending ? 'Kaydediliyor…' : 'Transferi Kaydet'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

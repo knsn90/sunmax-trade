@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { useKasalar } from '@/hooks/useKasalar';
 import { useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
-import type { Transaction, Kasa, BankAccount } from '@/types/database';
+import { useTransfers } from '@/hooks/useTransfers';
+import type { Transaction, Kasa, BankAccount, AccountTransfer } from '@/types/database';
 import { fCurrency, fDate } from '@/lib/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Banknote, Landmark, TrendingUp, CalendarDays, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Banknote, Landmark, TrendingUp, CalendarDays, ArrowDownLeft, ArrowUpRight, ArrowLeftRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /** Para bize geliyor mu? — TransactionModal ile aynı mantık */
@@ -19,12 +20,23 @@ function isMoneyIn(txnType: string, partyType: string | null): boolean {
 function computeBalance(
   openingBalance: number,
   txns: Transaction[],
+  incomingTransfers: AccountTransfer[] = [],
+  outgoingTransfers: AccountTransfer[] = [],
 ): number {
-  return txns.reduce((acc, t) => {
+  const txnBalance = txns.reduce((acc, t) => {
     const moneyIn = isMoneyIn(t.transaction_type, t.party_type);
     return acc + (moneyIn ? t.amount : -t.amount);
   }, openingBalance);
+  const transferBalance =
+    incomingTransfers.reduce((s, t) => s + t.amount, 0) -
+    outgoingTransfers.reduce((s, t) => s + t.amount, 0);
+  return txnBalance + transferBalance;
 }
+
+// ─── Ledger row tipi ────────────────────────────────────────────────────────
+type LedgerRow =
+  | { kind: 'txn';      txn: Transaction;       moneyIn: boolean; running: number }
+  | { kind: 'transfer'; transfer: AccountTransfer; moneyIn: boolean; running: number; otherName: string };
 
 // ─── Nakit Pozisyonu Kartı ───────────────────────────────────────────────────
 function PositionCard({
@@ -96,6 +108,7 @@ export function FinancialReportsTab() {
   const { data: kasalar = [] } = useKasalar();
   const { data: bankAccounts = [] } = useBankAccounts();
   const { data: allTxns = [] } = useTransactions();
+  const { data: allTransfers = [] } = useTransfers();
 
   const [selectedAccount, setSelectedAccount] = useState<AccountOption | null>(null);
   const [dateFrom, setDateFrom] = useState('');
@@ -124,22 +137,77 @@ export function FinancialReportsTab() {
     return map;
   }, [allTxns]);
 
+  // ── Transfer maps ──────────────────────────────────────────────────────────
+  const incomingTransfersByKasa = useMemo(() => {
+    const map = new Map<string, AccountTransfer[]>();
+    for (const t of allTransfers) {
+      if (t.to_type === 'kasa') {
+        if (!map.has(t.to_id)) map.set(t.to_id, []);
+        map.get(t.to_id)!.push(t);
+      }
+    }
+    return map;
+  }, [allTransfers]);
+
+  const outgoingTransfersByKasa = useMemo(() => {
+    const map = new Map<string, AccountTransfer[]>();
+    for (const t of allTransfers) {
+      if (t.from_type === 'kasa') {
+        if (!map.has(t.from_id)) map.set(t.from_id, []);
+        map.get(t.from_id)!.push(t);
+      }
+    }
+    return map;
+  }, [allTransfers]);
+
+  const incomingTransfersByBank = useMemo(() => {
+    const map = new Map<string, AccountTransfer[]>();
+    for (const t of allTransfers) {
+      if (t.to_type === 'bank') {
+        if (!map.has(t.to_id)) map.set(t.to_id, []);
+        map.get(t.to_id)!.push(t);
+      }
+    }
+    return map;
+  }, [allTransfers]);
+
+  const outgoingTransfersByBank = useMemo(() => {
+    const map = new Map<string, AccountTransfer[]>();
+    for (const t of allTransfers) {
+      if (t.from_type === 'bank') {
+        if (!map.has(t.from_id)) map.set(t.from_id, []);
+        map.get(t.from_id)!.push(t);
+      }
+    }
+    return map;
+  }, [allTransfers]);
+
   // ── Kasa bakiyeleri ────────────────────────────────────────────────────────
   const kasaBalances = useMemo(() =>
     kasalar.map(k => ({
       kasa: k,
-      balance: computeBalance(k.opening_balance ?? 0, txnsByKasa.get(k.id) ?? []),
+      balance: computeBalance(
+        k.opening_balance ?? 0,
+        txnsByKasa.get(k.id) ?? [],
+        incomingTransfersByKasa.get(k.id) ?? [],
+        outgoingTransfersByKasa.get(k.id) ?? [],
+      ),
     })),
-    [kasalar, txnsByKasa],
+    [kasalar, txnsByKasa, incomingTransfersByKasa, outgoingTransfersByKasa],
   );
 
   // ── Banka bakiyeleri ───────────────────────────────────────────────────────
   const bankBalances = useMemo(() =>
     bankAccounts.map(b => ({
       bank: b,
-      balance: computeBalance(b.opening_balance ?? 0, txnsByBank.get(b.id) ?? []),
+      balance: computeBalance(
+        b.opening_balance ?? 0,
+        txnsByBank.get(b.id) ?? [],
+        incomingTransfersByBank.get(b.id) ?? [],
+        outgoingTransfersByBank.get(b.id) ?? [],
+      ),
     })),
-    [bankAccounts, txnsByBank],
+    [bankAccounts, txnsByBank, incomingTransfersByBank, outgoingTransfersByBank],
   );
 
   // ── Seçili hesap için defter işlemleri ─────────────────────────────────────
@@ -161,6 +229,29 @@ export function FinancialReportsTab() {
     return [...txns].sort((a, b) => a.transaction_date.localeCompare(b.transaction_date));
   }, [selectedAccount, txnsByKasa, txnsByBank, dateFrom, dateTo]);
 
+  // ── Seçili hesap için transferler ──────────────────────────────────────────
+  const ledgerTransfers = useMemo(() => {
+    if (!selectedAccount) return { incoming: [] as AccountTransfer[], outgoing: [] as AccountTransfer[] };
+    let incoming: AccountTransfer[];
+    let outgoing: AccountTransfer[];
+    if (selectedAccount.kind === 'kasa') {
+      incoming = incomingTransfersByKasa.get(selectedAccount.kasa.id) ?? [];
+      outgoing = outgoingTransfersByKasa.get(selectedAccount.kasa.id) ?? [];
+    } else {
+      incoming = incomingTransfersByBank.get(selectedAccount.bank.id) ?? [];
+      outgoing = outgoingTransfersByBank.get(selectedAccount.bank.id) ?? [];
+    }
+    if (dateFrom) {
+      incoming = incoming.filter(t => t.transfer_date >= dateFrom);
+      outgoing = outgoing.filter(t => t.transfer_date >= dateFrom);
+    }
+    if (dateTo) {
+      incoming = incoming.filter(t => t.transfer_date <= dateTo);
+      outgoing = outgoing.filter(t => t.transfer_date <= dateTo);
+    }
+    return { incoming, outgoing };
+  }, [selectedAccount, incomingTransfersByKasa, outgoingTransfersByKasa, incomingTransfersByBank, outgoingTransfersByBank, dateFrom, dateTo]);
+
   // ── Kümülatif bakiye (tarih filtresinden önceki açılış bakiyesi) ───────────
   const openingForLedger = useMemo(() => {
     if (!selectedAccount) return 0;
@@ -169,29 +260,79 @@ export function FinancialReportsTab() {
       const preTxns = dateFrom
         ? (txnsByKasa.get(k.id) ?? []).filter(t => t.transaction_date < dateFrom)
         : [];
-      return computeBalance(k.opening_balance ?? 0, preTxns);
+      const preIncoming = dateFrom
+        ? (incomingTransfersByKasa.get(k.id) ?? []).filter(t => t.transfer_date < dateFrom)
+        : [];
+      const preOutgoing = dateFrom
+        ? (outgoingTransfersByKasa.get(k.id) ?? []).filter(t => t.transfer_date < dateFrom)
+        : [];
+      return computeBalance(k.opening_balance ?? 0, preTxns, preIncoming, preOutgoing);
     } else {
       const b = selectedAccount.bank;
       const preTxns = dateFrom
         ? (txnsByBank.get(b.id) ?? []).filter(t => t.transaction_date < dateFrom)
         : [];
-      return computeBalance(b.opening_balance ?? 0, preTxns);
+      const preIncoming = dateFrom
+        ? (incomingTransfersByBank.get(b.id) ?? []).filter(t => t.transfer_date < dateFrom)
+        : [];
+      const preOutgoing = dateFrom
+        ? (outgoingTransfersByBank.get(b.id) ?? []).filter(t => t.transfer_date < dateFrom)
+        : [];
+      return computeBalance(b.opening_balance ?? 0, preTxns, preIncoming, preOutgoing);
     }
-  }, [selectedAccount, dateFrom, txnsByKasa, txnsByBank]);
+  }, [selectedAccount, dateFrom, txnsByKasa, txnsByBank, incomingTransfersByKasa, outgoingTransfersByKasa, incomingTransfersByBank, outgoingTransfersByBank]);
 
-  // ── Kümülatif dizi ─────────────────────────────────────────────────────────
-  const ledgerRows = useMemo(() => {
+  // ── Hesap ismi yardımcısı ──────────────────────────────────────────────────
+  function getAccountName(type: 'kasa' | 'bank', id: string): string {
+    if (type === 'kasa') {
+      const k = kasalar.find(k => k.id === id);
+      return k?.name ?? '—';
+    } else {
+      const b = bankAccounts.find(b => b.id === id);
+      return b ? `${b.bank_name}${b.account_name ? ` — ${b.account_name}` : ''}` : '—';
+    }
+  }
+
+  // ── Kümülatif dizi (txn + transfer satırları birleşik) ─────────────────────
+  const ledgerRows = useMemo((): LedgerRow[] => {
+    const { incoming, outgoing } = ledgerTransfers;
+
+    // Tüm satırları tarih sırasına göre birleştir
+    type RawRow =
+      | { date: string; kind: 'txn'; txn: Transaction }
+      | { date: string; kind: 'transfer'; transfer: AccountTransfer; moneyIn: boolean };
+
+    const rows: RawRow[] = [
+      ...ledgerTxns.map(t => ({ date: t.transaction_date, kind: 'txn' as const, txn: t })),
+      ...incoming.map(t => ({ date: t.transfer_date, kind: 'transfer' as const, transfer: t, moneyIn: true })),
+      ...outgoing.map(t => ({ date: t.transfer_date, kind: 'transfer' as const, transfer: t, moneyIn: false })),
+    ];
+
+    rows.sort((a, b) => a.date.localeCompare(b.date));
+
     let running = openingForLedger;
-    return ledgerTxns.map(t => {
-      const moneyIn = isMoneyIn(t.transaction_type, t.party_type);
-      running = running + (moneyIn ? t.amount : -t.amount);
-      return { txn: t, moneyIn, running };
+    return rows.map(row => {
+      if (row.kind === 'txn') {
+        const moneyIn = isMoneyIn(row.txn.transaction_type, row.txn.party_type);
+        running = running + (moneyIn ? row.txn.amount : -row.txn.amount);
+        return { kind: 'txn' as const, txn: row.txn, moneyIn, running };
+      } else {
+        running = running + (row.moneyIn ? row.transfer.amount : -row.transfer.amount);
+        const otherName = row.moneyIn
+          ? getAccountName(row.transfer.from_type, row.transfer.from_id)
+          : getAccountName(row.transfer.to_type, row.transfer.to_id);
+        return { kind: 'transfer' as const, transfer: row.transfer, moneyIn: row.moneyIn, running, otherName };
+      }
     });
-  }, [ledgerTxns, openingForLedger]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ledgerTxns, ledgerTransfers, openingForLedger, kasalar, bankAccounts]);
 
   const closingBalance = ledgerRows.length > 0
     ? ledgerRows[ledgerRows.length - 1].running
     : openingForLedger;
+
+  const totalIn = ledgerRows.reduce((s, r) => s + (r.moneyIn ? (r.kind === 'txn' ? r.txn.amount : r.transfer.amount) : 0), 0);
+  const totalOut = ledgerRows.reduce((s, r) => s + (!r.moneyIn ? (r.kind === 'txn' ? r.txn.amount : r.transfer.amount) : 0), 0);
 
   const selectedName = selectedAccount
     ? selectedAccount.kind === 'kasa'
@@ -365,56 +506,116 @@ export function FinancialReportsTab() {
                         Bu dönemde işlem bulunamadı
                       </td>
                     </tr>
-                  ) : ledgerRows.map(({ txn, moneyIn, running }, i) => {
-                    const partyName = txn.customer?.name ?? txn.supplier?.name ?? txn.service_provider?.name ?? txn.party_name ?? '—';
-                    return (
-                      <tr
-                        key={txn.id}
-                        className={cn(
-                          'hover:bg-gray-50/60 transition-colors',
-                          i % 2 === 1 && 'bg-gray-50/30',
-                        )}
-                      >
-                        <td className="px-4 py-3 text-[11px] text-gray-500 whitespace-nowrap">{fDate(txn.transaction_date)}</td>
-                        <td className="px-4 py-3">
-                          <div className="text-[12px] font-semibold text-gray-800 truncate max-w-[260px]">
-                            {txn.description || partyName}
-                          </div>
-                          {txn.description && partyName !== '—' && (
-                            <div className="text-[10px] text-gray-400 truncate max-w-[260px]">{partyName}</div>
+                  ) : ledgerRows.map((row, i) => {
+                    if (row.kind === 'txn') {
+                      const { txn, moneyIn, running } = row;
+                      const partyName = txn.customer?.name ?? txn.supplier?.name ?? txn.service_provider?.name ?? txn.party_name ?? '—';
+                      return (
+                        <tr
+                          key={txn.id}
+                          className={cn(
+                            'hover:bg-gray-50/60 transition-colors',
+                            i % 2 === 1 && 'bg-gray-50/30',
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-[11px] font-mono text-gray-400 truncate">
-                          {txn.reference_no || txn.trade_file?.file_no || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {moneyIn ? (
-                            <span className="text-[12px] font-semibold text-emerald-700 tabular-nums">
-                              + {fCurrency(txn.amount, txn.currency)}
+                        >
+                          <td className="px-4 py-3 text-[11px] text-gray-500 whitespace-nowrap">{fDate(txn.transaction_date)}</td>
+                          <td className="px-4 py-3">
+                            <div className="text-[12px] font-semibold text-gray-800 truncate max-w-[260px]">
+                              {txn.description || partyName}
+                            </div>
+                            {txn.description && partyName !== '—' && (
+                              <div className="text-[10px] text-gray-400 truncate max-w-[260px]">{partyName}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-[11px] font-mono text-gray-400 truncate">
+                            {txn.reference_no || txn.trade_file?.file_no || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {moneyIn ? (
+                              <span className="text-[12px] font-semibold text-emerald-700 tabular-nums">
+                                + {fCurrency(txn.amount, txn.currency)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-200 text-[11px]">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {!moneyIn ? (
+                              <span className="text-[12px] font-semibold text-red-600 tabular-nums">
+                                − {fCurrency(txn.amount, txn.currency)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-200 text-[11px]">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={cn(
+                              'text-[13px] font-black tabular-nums',
+                              running >= 0 ? 'text-gray-900' : 'text-red-600',
+                            )}>
+                              {fCurrency(running, selectedCurrency as any)}
                             </span>
-                          ) : (
-                            <span className="text-gray-200 text-[11px]">—</span>
+                          </td>
+                        </tr>
+                      );
+                    } else {
+                      // Transfer satırı
+                      const { transfer, moneyIn, running, otherName } = row;
+                      const label = moneyIn
+                        ? `↙ ${otherName}'den gelen transfer`
+                        : `↗ ${otherName}'e transfer`;
+                      return (
+                        <tr
+                          key={`tr-${transfer.id}-${moneyIn ? 'in' : 'out'}`}
+                          className={cn(
+                            'hover:bg-amber-50/40 transition-colors',
+                            i % 2 === 1 && 'bg-amber-50/20',
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {!moneyIn ? (
-                            <span className="text-[12px] font-semibold text-red-600 tabular-nums">
-                              − {fCurrency(txn.amount, txn.currency)}
+                        >
+                          <td className="px-4 py-3 text-[11px] text-gray-500 whitespace-nowrap">{fDate(transfer.transfer_date)}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <ArrowLeftRight className="h-3 w-3 text-amber-500 shrink-0" />
+                              <div className="text-[12px] font-semibold text-amber-700 truncate max-w-[240px]">
+                                {transfer.description || label}
+                              </div>
+                            </div>
+                            {transfer.description && (
+                              <div className="text-[10px] text-amber-500 truncate max-w-[260px] pl-4">{label}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-[11px] font-mono text-gray-400 truncate">
+                            {transfer.reference_no || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {moneyIn ? (
+                              <span className="text-[12px] font-semibold text-emerald-700 tabular-nums">
+                                + {fCurrency(transfer.amount, transfer.currency as any)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-200 text-[11px]">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {!moneyIn ? (
+                              <span className="text-[12px] font-semibold text-red-600 tabular-nums">
+                                − {fCurrency(transfer.amount, transfer.currency as any)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-200 text-[11px]">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={cn(
+                              'text-[13px] font-black tabular-nums',
+                              running >= 0 ? 'text-gray-900' : 'text-red-600',
+                            )}>
+                              {fCurrency(running, selectedCurrency as any)}
                             </span>
-                          ) : (
-                            <span className="text-gray-200 text-[11px]">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={cn(
-                            'text-[13px] font-black tabular-nums',
-                            running >= 0 ? 'text-gray-900' : 'text-red-600',
-                          )}>
-                            {fCurrency(running, selectedCurrency as any)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
+                          </td>
+                        </tr>
+                      );
+                    }
                   })}
                 </tbody>
               </table>
@@ -427,13 +628,13 @@ export function FinancialReportsTab() {
                   <div>
                     <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Toplam Giriş</span>
                     <div className="text-[13px] font-bold text-emerald-700 tabular-nums">
-                      + {fCurrency(ledgerRows.filter(r => r.moneyIn).reduce((s, r) => s + r.txn.amount, 0), selectedCurrency as any)}
+                      + {fCurrency(totalIn, selectedCurrency as any)}
                     </div>
                   </div>
                   <div>
                     <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Toplam Çıkış</span>
                     <div className="text-[13px] font-bold text-red-600 tabular-nums">
-                      − {fCurrency(ledgerRows.filter(r => !r.moneyIn).reduce((s, r) => s + r.txn.amount, 0), selectedCurrency as any)}
+                      − {fCurrency(totalOut, selectedCurrency as any)}
                     </div>
                   </div>
                 </div>

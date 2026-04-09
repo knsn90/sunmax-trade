@@ -204,7 +204,7 @@ export function TransactionModal({
         swift_bic: '',
         description: '',
         reference_no: '',
-        notes: '',
+          notes: '',
         trade_file_id: defaultTradeFileId ?? '',
         customer_id: '',
         supplier_id: '',
@@ -221,7 +221,6 @@ export function TransactionModal({
   const currency      = useWatch({ control, name: 'currency' });
   const amount        = useWatch({ control, name: 'amount' }) ?? 0;
   const rate          = useWatch({ control, name: 'exchange_rate' }) ?? 1;
-  const paidAmount    = useWatch({ control, name: 'paid_amount' }) ?? 0;
   const paymentMethod = useWatch({ control, name: 'payment_method' });
 
   // Show exchange rate for all non-USD currencies
@@ -257,13 +256,6 @@ export function TransactionModal({
     : selectedParty?.entityType === 'supplier'
     ? allFiles.filter(f => f.supplier_id === selectedParty.id)
     : allFiles;
-
-  // Auto payment status
-  useEffect(() => {
-    if (paidAmount <= 0) setValue('payment_status', 'open');
-    else if (paidAmount >= amount) setValue('payment_status', 'paid');
-    else setValue('payment_status', 'partial');
-  }, [paidAmount, amount, setValue]);
 
   // ── Handle party selection ────────────────────────────────────────────────
   function handlePartyChange(party: SelectedParty | null) {
@@ -321,6 +313,10 @@ export function TransactionModal({
     }
 
     // ── Normal transaction branch ────────────────────────────────────────
+    // Yazılan tutar tamamen ödenmiş sayılır
+    data.paid_amount = data.amount;
+    data.payment_status = 'paid';
+
     const typeToParty: Record<string, TransactionFormData['party_type']> = {
       svc_inv: 'service_provider',
       purchase_inv: 'supplier',
@@ -599,19 +595,6 @@ export function TransactionModal({
                     </div>
                   </FormGroup>
                 )}
-              </FormRow>
-
-              <FormRow>
-                <FormGroup label={t('transaction.modal.paidAmount')}>
-                  <Input type="number" step="0.01" {...register('paid_amount')} />
-                </FormGroup>
-                <FormGroup label={t('transaction.modal.paymentStatus')}>
-                  <NativeSelect {...register('payment_status')}>
-                    <option value="open">{t('transaction.modal.statusOpen')}</option>
-                    <option value="partial">{t('transaction.modal.statusPartial')}</option>
-                    <option value="paid">{t('transaction.modal.statusPaid')}</option>
-                  </NativeSelect>
-                </FormGroup>
               </FormRow>
 
               {/* ── Ödeme Türü ─────────────────────────────────────────────── */}

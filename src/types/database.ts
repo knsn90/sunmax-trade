@@ -568,3 +568,29 @@ export interface BalanceSheetRow {
   balance: number;
   sort_order: number;
 }
+
+// ─── Account Transfers ───────────────────────────────────────────────────────
+
+export interface AccountTransfer {
+  id: string;
+  transfer_date: string;
+  description: string;
+  amount: number;
+  currency: string;
+  exchange_rate: number;
+  amount_usd: number;
+  from_type: 'kasa' | 'bank';
+  from_id: string;
+  to_type: 'kasa' | 'bank';
+  to_id: string;
+  reference_no: string;
+  notes: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined (select sorgusunda eklenir)
+  from_kasa?: { id: string; name: string; currency: string } | null;
+  from_bank?: { id: string; bank_name: string; account_name: string } | null;
+  to_kasa?: { id: string; name: string; currency: string } | null;
+  to_bank?: { id: string; bank_name: string; account_name: string } | null;
+}
