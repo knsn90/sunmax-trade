@@ -9,7 +9,6 @@ import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransacti
 import { useKasalar } from '@/hooks/useKasalar';
 import { useBankAccounts } from '@/hooks/useSettings';
 import { today, toUSD } from '@/lib/formatters';
-import { TRANSACTION_TYPE_LABELS } from '@/types/enums';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -338,8 +337,8 @@ export function TransactionModal({
           <FormRow>
             <FormGroup label={`${t('transaction.modal.type')} *`} error={errors.transaction_type?.message}>
               <NativeSelect {...register('transaction_type')}>
-                {Object.entries(TRANSACTION_TYPE_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
+                {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance'] as const).map(k => (
+                  <option key={k} value={k}>{tc('txType.' + k)}</option>
                 ))}
               </NativeSelect>
             </FormGroup>

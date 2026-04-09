@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { canWriteTransactions, isAdmin } from '@/lib/permissions';
 import { fDate, fCurrency, fUSD, fN } from '@/lib/formatters';
 import { printInvoice, printReceipt, printTransactionInvoice } from '@/lib/printDocument';
-import { TRANSACTION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/types/enums';
 import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
@@ -61,6 +60,7 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
   t: Transaction; writable: boolean; admin: boolean;
   settings: any; onEdit: () => void; onDelete: () => void; onPrint: () => void;
 }) {
+  const { t: tc } = useTranslation('common');
   const typeColor = TYPE_COLORS[t.transaction_type] ?? '#6b7280';
   const partyName = t.customer?.name ?? t.supplier?.name ?? t.service_provider?.name ?? t.party_name ?? '—';
   const remaining = t.amount - (t.paid_amount ?? 0);
@@ -81,7 +81,7 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
           <span className="font-mono">{t.trade_file?.file_no ?? '—'}</span>
           <span>·</span>
           <Badge variant={t.transaction_type as TransactionType} className="text-[9px] px-1.5 py-0">
-            {TRANSACTION_TYPE_LABELS[t.transaction_type]}
+            {tc('txType.' + t.transaction_type)}
           </Badge>
         </div>
         {t.description && (
@@ -95,7 +95,7 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
           <span className="text-[10px] text-amber-500 font-semibold">rem {fCurrency(remaining, t.currency)}</span>
         )}
         <Badge variant={t.payment_status as PaymentStatus} className="text-[9px] px-1.5 py-0">
-          {PAYMENT_STATUS_LABELS[t.payment_status]}
+          {tc('payStatus.' + t.payment_status)}
         </Badge>
       </div>
       {/* Actions */}
@@ -375,11 +375,11 @@ export function AccountingPage() {
             <div className="hidden md:flex items-center gap-2">
               <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-44" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                 <option value="">{t('filters.allTypes')}</option>
-                {Object.entries(TRANSACTION_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance'] as const).map(k => <option key={k} value={k}>{tc('txType.' + k)}</option>)}
               </NativeSelect>
               <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-40" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">{t('filters.allStatuses')}</option>
-                {Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {(['open','partial','paid'] as const).map(k => <option key={k} value={k}>{tc('payStatus.' + k)}</option>)}
               </NativeSelect>
             </div>
           )}
@@ -415,11 +415,11 @@ export function AccountingPage() {
           <div className="flex md:hidden gap-2">
             <NativeSelect className="flex-1 h-9 rounded-xl border-gray-200 text-[12px]" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
               <option value="">{t('filters.allTypes')}</option>
-              {Object.entries(TRANSACTION_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance'] as const).map(k => <option key={k} value={k}>{tc('txType.' + k)}</option>)}
             </NativeSelect>
             <NativeSelect className="flex-1 h-9 rounded-xl border-gray-200 text-[12px]" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="">{t('filters.allStatuses')}</option>
-              {Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {(['open','partial','paid'] as const).map(k => <option key={k} value={k}>{tc('payStatus.' + k)}</option>)}
             </NativeSelect>
           </div>
         )}
@@ -651,7 +651,7 @@ export function AccountingPage() {
                         </td>
                         <td className="px-4 py-2.5">
                           <Badge variant={txn.payment_status as PaymentStatus}>
-                            {PAYMENT_STATUS_LABELS[txn.payment_status]}
+                            {tc('payStatus.' + txn.payment_status)}
                           </Badge>
                         </td>
                         <td className="px-4 py-2.5 text-[10px] text-gray-400 truncate">{txn.notes || '—'}</td>
@@ -742,7 +742,7 @@ export function AccountingPage() {
                               {txn.trade_file?.file_no ?? txn.reference_no ?? '—'}
                             </span>
                           </div>
-                          <div className="text-[10px] text-gray-400 pl-2.5 mt-0.5 truncate">{TRANSACTION_TYPE_LABELS[txn.transaction_type]}</div>
+                          <div className="text-[10px] text-gray-400 pl-2.5 mt-0.5 truncate">{tc('txType.' + txn.transaction_type)}</div>
                         </td>
                         {/* Entity */}
                         <td className="px-3 py-3 text-[12px] text-gray-700 truncate">{partyName}</td>
