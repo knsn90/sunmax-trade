@@ -27,12 +27,21 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     size?: 'default' | 'lg' | 'xl';
+    dismissible?: boolean;
   }
->(({ className, children, size = 'default', ...props }, ref) => (
+>(({ className, children, size = 'default', dismissible = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      onInteractOutside={(e) => {
+        if (!dismissible) { e.preventDefault(); return; }
+        onInteractOutside?.(e);
+      }}
+      onEscapeKeyDown={(e) => {
+        if (!dismissible) { e.preventDefault(); return; }
+        onEscapeKeyDown?.(e);
+      }}
       className={cn(
         // Mobile: bottom sheet anchored to bottom
         'fixed bottom-0 left-0 right-0 z-50 w-full',
