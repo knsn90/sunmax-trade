@@ -1961,8 +1961,13 @@ export function CustomerReportTab() {
     [rawTxns],
   );
 
-  // Table 2: Satış fiyatı olan VE (fatura kesilmiş VEYA 'sale'/'delivery'/'completed' statüsünde) dosyalar
-  // invoicedFileIds bağımlılığını kaldırıp status kontrolüne geçiyoruz — muhasebe kaydı olmadan da dosya görünsün
+  // Table 2 — Birincil kaynak: sale_inv işlemleri (muhasebe kayıtları)
+  const saleInvoices = useMemo(
+    () => filteredTxns.filter((t) => t.transaction_type === 'sale_inv'),
+    [filteredTxns],
+  );
+
+  // Table 2 — Yedek kaynak: satış fiyatı olan ticaret dosyaları (sale_inv yoksa gösterilir)
   const customerFiles = useMemo(
     () => allFiles.filter(
       (f) => f.customer_id === customerId &&
@@ -1984,10 +1989,13 @@ export function CustomerReportTab() {
   );
 
   const totalPayments = payments.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
-  const totalProducts = customerFiles.reduce((s, f) => {
-    const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
-    return s + qty * (f.selling_price ?? 0);
-  }, 0);
+  // sale_inv varsa onlardan topla; yoksa ticaret dosyası tutarlarından
+  const totalProducts = saleInvoices.length > 0
+    ? saleInvoices.reduce((s, t) => s + (t.amount_usd ?? 0), 0)
+    : customerFiles.reduce((s, f) => {
+        const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
+        return s + qty * (f.selling_price ?? 0);
+      }, 0);
   const totalAdvances = advances.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
   // balance > 0: customer still owes us (borçlu); < 0: overpaid (alacaklı)
   // balance = (products + advances) - payments
@@ -2527,18 +2535,58 @@ export function CustomerReportTab() {
             )}
           </div>
 
-          {/* Table 2: Products */}
+          {/* Table 2: Products — sale_inv işlemleri (birincil) veya ticaret dosyaları (yedek) */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-green-100 text-green-700 text-[9px] font-extrabold flex items-center justify-center shrink-0">2</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.products}</span>
               </div>
-              <span className="text-[10px] text-gray-400">{customerFiles.length} {reportLang === 'fa' ? 'پرونده' : reportLang === 'tr' ? 'dosya' : 'files'}</span>
+              <span className="text-[10px] text-gray-400">
+                {saleInvoices.length > 0
+                  ? `${saleInvoices.length} ${L.records}`
+                  : `${customerFiles.length} ${reportLang === 'fa' ? 'پرونده' : reportLang === 'tr' ? 'dosya' : 'files'}`}
+              </span>
             </div>
-            {customerFiles.length === 0 ? (
+            {saleInvoices.length === 0 && customerFiles.length === 0 ? (
               <div className="px-5 py-10 text-center text-[12px] text-gray-400">{L.noProduct}</div>
+            ) : saleInvoices.length > 0 ? (
+              /* Birincil görünüm: sale_inv muhasebe kayıtları */
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {['#', 'Tarih', 'Açıklama', 'Tutar', 'Döviz', 'USD Karşılığı', 'Dosya / Ref'].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {saleInvoices.map((t, i) => (
+                      <tr key={t.id} className={cn('border-b border-gray-50 transition-colors', i % 2 === 1 ? 'bg-gray-50/40' : 'hover:bg-gray-50/60')}>
+                        <td className="px-4 py-3 text-[11px] text-gray-400 text-center font-mono">{i + 1}</td>
+                        <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(t.transaction_date)}</td>
+                        <td className="px-4 py-3 text-[12px] text-gray-700">{t.description || '—'}</td>
+                        <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
+                        <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
+                        <td className="px-4 py-3 text-[13px] font-bold text-green-700 text-right">{fUSD(t.amount_usd ?? 0)}</td>
+                        <td className="px-4 py-3 text-[10px] font-mono text-gray-400">
+                          {t.trade_file?.file_no ?? t.reference_no ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-green-50/60 border-t-2 border-green-100">
+                      <td colSpan={5} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalProducts}</td>
+                      <td className="px-4 py-3 text-[14px] font-black text-green-700 text-right">{fUSD(totalProducts)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             ) : (
+              /* Yedek görünüm: ticaret dosyası tutarları */
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
