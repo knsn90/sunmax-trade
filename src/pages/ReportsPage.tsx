@@ -707,31 +707,25 @@ const STMT_LABELS: Record<StatementLang, {
 function isBorç(
   txnType: string,
   entityType: 'customer' | 'supplier' | 'service_provider',
-  partyType?: string | null,
 ): boolean {
+  // advance → her zaman ALACAK (müşteri ön ödeme yaptı / biz tedarikçiye ön ödeme yaptık)
+  // party_type DB'de null olabileceği için entityType ile inference yapıyoruz
+  if (txnType === 'advance') return false;
+
   if (entityType === 'customer') {
-    // BORÇ: müşteri bize borçlu → satış faturası
-    if (txnType === 'sale_inv') return true;
-    // ALACAK: müşteri bizden alacaklı → tahsilat, müşteri ön ödemesi
-    if (txnType === 'receipt') return false;
-    if (txnType === 'advance' && partyType === 'customer') return false;
-    // Diğer işlemler (payment vb.) müşteri ekstresinde normalde görünmez ama borç say
-    return true;
+    // BORÇ: sale_inv → müşteri bize borçlu
+    // ALACAK: receipt → müşteri ödedi
+    return txnType === 'sale_inv';
   }
 
   if (entityType === 'supplier') {
-    // BORÇ: biz tedarikçiye borçluyuz → satın alma faturası, hizmet faturası
-    if (txnType === 'purchase_inv' || txnType === 'svc_inv') return true;
-    // ALACAK: biz tedarikçiye ödedik → ödeme, tedarikçi ön ödemesi
-    if (txnType === 'payment') return false;
-    if (txnType === 'advance' && partyType === 'supplier') return false;
-    return true;
+    // BORÇ: purchase_inv / svc_inv → biz onlara borçluyuz
+    // ALACAK: payment → biz ödedik
+    return txnType === 'purchase_inv' || txnType === 'svc_inv';
   }
 
   // service_provider
-  if (txnType === 'svc_inv') return true;
-  if (txnType === 'payment') return false;
-  return true;
+  return txnType === 'svc_inv';
 }
 
 const TXN_TYPE_OPTIONS = [
@@ -852,7 +846,7 @@ export function AccountStatementTab() {
   const txnsWithBalance = useMemo(() => {
     let balance = 0;
     return txns.map((txn) => {
-      const debit = isBorç(txn.transaction_type, entityType, txn.party_type);
+      const debit = isBorç(txn.transaction_type, entityType);
       const amt   = txn.amount_usd ?? txn.amount ?? 0;   // her zaman USD bazlı
       balance     = debit ? balance + amt : balance - amt;
       return { ...txn, isDebit: debit, amt, balance };
