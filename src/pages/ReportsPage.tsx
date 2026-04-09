@@ -831,7 +831,7 @@ export function AccountStatementTab() {
     let balance = 0;
     return txns.map((txn) => {
       const debit = isBorç(txn.transaction_type, entityType);
-      const amt   = txn.amount ?? 0;
+      const amt   = txn.amount_usd ?? txn.amount ?? 0;   // her zaman USD bazlı
       balance     = debit ? balance + amt : balance - amt;
       return { ...txn, isDebit: debit, amt, balance };
     });
@@ -1211,12 +1211,12 @@ export function AccountStatementTab() {
             <div className="grid grid-cols-3 divide-x divide-gray-50">
               <div className="px-5 py-4">
                 <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Borç</div>
-                <div className="text-[17px] font-extrabold text-red-600">{fN(totalBorç)}</div>
+                <div className="text-[17px] font-extrabold text-red-600">{fUSD(totalBorç)}</div>
                 <div className="text-[11px] text-gray-400 mt-0.5 truncate">{entityName}</div>
               </div>
               <div className="px-5 py-4">
                 <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Alacak</div>
-                <div className="text-[17px] font-extrabold text-green-700">{fN(totalAlacak)}</div>
+                <div className="text-[17px] font-extrabold text-green-700">{fUSD(totalAlacak)}</div>
                 <div className="text-[11px] text-gray-400 mt-0.5">{txnsWithBalance.length} işlem</div>
               </div>
               <div className="px-5 py-4" style={netBakiye !== 0 ? { background: netBakiye > 0 ? '#fffbeb' : '#f0fdf4' } : {}}>
@@ -1224,7 +1224,7 @@ export function AccountStatementTab() {
                 <div className="flex items-baseline gap-1.5 flex-wrap">
                   <span className="text-[17px] font-extrabold"
                     style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#15803d' : '#6b7280' }}>
-                    {fN(Math.abs(netBakiye))}
+                    {fUSD(Math.abs(netBakiye))}
                   </span>
                   <span className="text-[9px] font-extrabold uppercase tracking-widest"
                     style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#15803d' : '#9ca3af' }}>
@@ -1273,15 +1273,29 @@ export function AccountStatementTab() {
                       <td className="px-4 py-3 text-[12px] text-gray-700">{tc(`txType.${txn.transaction_type}`)}</td>
                       <td className="px-4 py-3 text-[11px] font-mono text-gray-400">{txn.reference_no || '—'}</td>
                       <td className="px-4 py-3 text-[12px] text-gray-600 max-w-[200px] truncate">{txn.description || '—'}</td>
-                      <td className="px-4 py-3 text-[12px] text-right font-semibold text-red-600">
-                        {txn.isDebit ? fN(txn.amt) : ''}
+                      <td className="px-4 py-3 text-right">
+                        {txn.isDebit ? (
+                          <div>
+                            <div className="text-[12px] font-semibold text-red-600 tabular-nums">{fUSD(txn.amt)}</div>
+                            {txn.currency !== 'USD' && (
+                              <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                            )}
+                          </div>
+                        ) : ''}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-right font-semibold text-green-700">
-                        {!txn.isDebit ? fN(txn.amt) : ''}
+                      <td className="px-4 py-3 text-right">
+                        {!txn.isDebit ? (
+                          <div>
+                            <div className="text-[12px] font-semibold text-green-700 tabular-nums">{fUSD(txn.amt)}</div>
+                            {txn.currency !== 'USD' && (
+                              <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                            )}
+                          </div>
+                        ) : ''}
                       </td>
                       <td className="px-4 py-3 text-[12px] text-right font-bold whitespace-nowrap">
                         <span style={{ color: txn.balance > 0 ? '#b45309' : txn.balance < 0 ? '#16a34a' : '#9ca3af' }}>
-                          {fN(Math.abs(txn.balance))}
+                          {fUSD(Math.abs(txn.balance))}
                         </span>
                         {txn.balance !== 0 && (
                           <span className="ml-1 text-[10px] font-black"
@@ -1297,11 +1311,11 @@ export function AccountStatementTab() {
                   <tr className="border-t-2 border-gray-100 bg-gray-50/60">
                     <td colSpan={3} className="px-4 py-3 text-[11px] text-gray-400">{txnsWithBalance.length} kayıt</td>
                     <td className="px-4 py-3 text-[10px] font-bold text-gray-500 text-right uppercase tracking-widest">Genel Toplam</td>
-                    <td className="px-4 py-3 text-[13px] text-right font-black text-red-600">{fN(totalBorç)}</td>
-                    <td className="px-4 py-3 text-[13px] text-right font-black text-green-700">{fN(totalAlacak)}</td>
+                    <td className="px-4 py-3 text-[13px] text-right font-black text-red-600">{fUSD(totalBorç)}</td>
+                    <td className="px-4 py-3 text-[13px] text-right font-black text-green-700">{fUSD(totalAlacak)}</td>
                     <td className="px-4 py-3 text-[13px] text-right font-black whitespace-nowrap">
                       <span style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#16a34a' : '#9ca3af' }}>
-                        {fN(Math.abs(netBakiye))}
+                        {fUSD(Math.abs(netBakiye))}
                       </span>
                       {netBakiye !== 0 && (
                         <span className="ml-1 text-[10px] font-black"
