@@ -20,7 +20,7 @@ const BASE_CSS = `
   body {
     font-family: Arial, sans-serif;
     font-size: 11px;
-    background: #e8ecf0;
+    background: #f1f5f9;
     color: #000;
     display: flex;
     height: 100vh;
@@ -29,37 +29,39 @@ const BASE_CSS = `
 
   /* ── Sidebar ── */
   .sidebar {
-    width: 230px;
-    min-width: 230px;
-    background: #1e293b;
+    width: 220px;
+    min-width: 220px;
+    background: #fff;
+    border-left: 1px solid #e5e7eb;
     display: flex;
     flex-direction: column;
     padding: 0;
     order: 2;
     z-index: 10;
     overflow-y: auto;
+    box-shadow: -2px 0 12px rgba(0,0,0,0.06);
   }
   .sidebar-header {
-    padding: 20px 18px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 18px 16px 14px;
+    border-bottom: 1px solid #f3f4f6;
   }
   .sidebar-co {
     font-size: 9px;
     font-weight: 700;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: #64748b;
+    color: #9ca3af;
     margin-bottom: 3px;
   }
   .sidebar-app {
     font-size: 14px;
     font-weight: 800;
-    color: #f1f5f9;
+    color: #111827;
     letter-spacing: -0.3px;
   }
   .sidebar-app span { color: #dc2626; }
   .sidebar-body {
-    padding: 16px 14px;
+    padding: 14px 14px;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -69,12 +71,12 @@ const BASE_CSS = `
     font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: #475569;
+    letter-spacing: 1px;
+    color: #9ca3af;
     margin-top: 14px;
     margin-bottom: 4px;
     padding-bottom: 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid #f3f4f6;
   }
   .sidebar-section:first-child { margin-top: 0; }
   .btn-primary {
@@ -94,9 +96,9 @@ const BASE_CSS = `
   .btn-primary:hover { opacity: 0.88; }
   .btn-ghost {
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    background: rgba(255,255,255,0.06);
-    color: #94a3b8;
-    border: 1px solid rgba(255,255,255,0.1);
+    background: #f9fafb;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
     padding: 9px 16px;
     border-radius: 10px;
     font-size: 12px;
@@ -105,7 +107,7 @@ const BASE_CSS = `
     width: 100%;
     transition: background 0.15s, color 0.15s;
   }
-  .btn-ghost:hover { background: rgba(255,255,255,0.11); color: #e2e8f0; }
+  .btn-ghost:hover { background: #f3f4f6; color: #374151; }
   .zoom-row {
     display: flex;
     align-items: center;
@@ -113,27 +115,27 @@ const BASE_CSS = `
   }
   .zoom-btn {
     flex: 1;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 7px;
     font-size: 16px;
     line-height: 1;
     cursor: pointer;
     font-weight: 600;
-    color: #cbd5e1;
+    color: #374151;
     transition: background 0.15s;
     text-align: center;
   }
-  .zoom-btn:hover { background: rgba(255,255,255,0.14); }
+  .zoom-btn:hover { background: #e5e7eb; }
   .zoom-val {
     flex: 1.2;
     text-align: center;
     font-size: 12px;
     font-weight: 700;
-    color: #f1f5f9;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.1);
+    color: #111827;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 7px 4px;
   }
@@ -142,12 +144,12 @@ const BASE_CSS = `
     justify-content: space-between;
     align-items: center;
     padding: 6px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px dashed #f3f4f6;
     font-size: 10px;
   }
   .info-row:last-child { border-bottom: none; }
-  .info-label { color: #64748b; font-weight: 500; }
-  .info-val { color: #e2e8f0; font-weight: 700; }
+  .info-label { color: #9ca3af; font-weight: 500; }
+  .info-val { color: #111827; font-weight: 700; }
   .status-badge {
     display: inline-flex;
     align-items: center;
@@ -159,13 +161,13 @@ const BASE_CSS = `
     letter-spacing: 0.5px;
     text-transform: uppercase;
   }
-  .status-draft { background: rgba(220,38,38,0.18); color: #fca5a5; }
-  .status-ok    { background: rgba(22,163,74,0.18);  color: #86efac; }
+  .status-draft { background: #fee2e2; color: #b91c1c; }
+  .status-ok    { background: #dcfce7; color: #15803d; }
   .sidebar-footer {
-    padding: 12px 14px;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 14px;
+    border-top: 1px solid #f3f4f6;
     font-size: 9px;
-    color: #334155;
+    color: #9ca3af;
     text-align: center;
   }
 
@@ -224,7 +226,7 @@ const DRAFT_WATERMARK_ATTR = 'draft-watermark';
 
 interface DropboxMeta { customerName: string; fileNo: string; documentName: string; }
 
-function buildFullHtml(html: string, title: string, isDraft = false, dropboxMeta?: DropboxMeta, companyName?: string): string {
+export function buildFullHtml(html: string, title: string, isDraft = false, dropboxMeta?: DropboxMeta, companyName?: string): string {
   const draftClass = isDraft ? ` ${DRAFT_WATERMARK_ATTR}` : '';
   const draftBadge = isDraft
     ? `<span class="status-badge status-draft">● Taslak</span>`

@@ -17,16 +17,14 @@ import { NativeSelect } from '@/components/ui/form-elements';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { TradeFile } from '@/types/database';
+import { buildFullHtml } from '@/lib/printDocument';
 
 // ─── Print helper ──────────────────────────────────────────────────────────
 
-const BASE_CSS = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;background:#888;padding:20px;color:#111}.page{background:#fff;width:210mm;margin:0 auto;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.4)}.np{text-align:center;margin-bottom:14px}@media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;width:100%;padding:10mm;margin:0}}`;
-const PRINT_BAR = `<div class="np"><button onclick="window.print()" style="background:#c0392b;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px">Print / PDF</button><button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #ccc;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer">Close</button></div>`;
-
-function openPrint(html: string, title: string) {
-  const win = window.open('', '_blank', 'width=980,height=800');
+function openPrint(html: string, title: string, companyName?: string) {
+  const win = window.open('', '_blank', 'width=1100,height=860');
   if (!win) return;
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>${BASE_CSS}</style></head><body>${PRINT_BAR}<div class="page">${html}</div></body></html>`);
+  win.document.write(buildFullHtml(html, title, false, undefined, companyName));
   win.document.close();
 }
 
@@ -925,29 +923,27 @@ export function AccountStatementTab() {
       </tr>`;
     }).join('');
 
-    const fontLink = L.font ? `<link rel="stylesheet" href="${L.font}">` : '';
-    const css = `
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:${ff};font-size:11px;background:#e2e8f0;padding:24px;color:#111;direction:${L.dir}}
-      .page{background:#fff;width:210mm;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.18)}
-      .header{background:#1e293b;padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-end}
-      .header-left .co{font-size:10px;font-weight:700;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:4px}
-      .header-left .title{font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.5px}
-      .header-right{text-align:right}
-      .header-right .entity-label{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:2px}
-      .header-right .entity-name{font-size:14px;font-weight:700;color:#f1f5f9}
-      .kpi-row{display:flex;background:#f8fafc;border-bottom:1px solid #e2e8f0}
-      .kpi{flex:1;padding:12px 18px;border-right:1px solid #e2e8f0}
+    const netColor = netBakiye > 0 ? '#92400e' : netBakiye < 0 ? '#065f46' : '#64748b';
+
+    // CSS embedded in the document content (not in outer BASE_CSS)
+    const stmtCss = `<style>
+      ${L.font ? `@import url('${L.font}');` : ''}
+      .stmt-wrap{font-family:${ff};direction:${L.dir};color:#111}
+      .stmt-doc-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #1e293b}
+      .stmt-co{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#9ca3af;margin-bottom:3px}
+      .stmt-title{font-size:20px;font-weight:800;color:#111827;letter-spacing:-0.5px}
+      .stmt-entity-label{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#9ca3af;margin-bottom:2px;text-align:right}
+      .stmt-entity-name{font-size:15px;font-weight:700;color:#1e293b;text-align:right}
+      .kpi-row{display:flex;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:12px;overflow:hidden}
+      .kpi{flex:1;padding:10px 14px;border-right:1px solid #e2e8f0}
       .kpi:last-child{border-right:none}
-      .kpi-label{font-size:8.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:4px}
-      .kpi-value{font-size:15px;font-weight:800}
+      .kpi-label{font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px}
+      .kpi-value{font-size:14px;font-weight:800}
       .kpi-debit .kpi-value{color:#b91c1c}
       .kpi-credit .kpi-value{color:#065f46}
       .kpi-net .kpi-value{color:#1e293b}
-      .meta{padding:10px 22px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;gap:24px;align-items:center}
-      .meta-item{font-size:9.5px;color:#64748b}
-      .meta-item strong{color:#1e293b;font-weight:700}
-      .table-wrap{padding:0}
+      .meta{display:flex;gap:20px;align-items:center;font-size:9.5px;color:#64748b;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e2e8f0}
+      .meta strong{color:#1e293b;font-weight:700}
       table{width:100%;border-collapse:collapse}
       thead tr{background:#f1f5f9;border-bottom:2px solid #cbd5e1}
       th{padding:6px 8px;font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748b;white-space:nowrap}
@@ -955,24 +951,19 @@ export function AccountStatementTab() {
       .th-c{text-align:center}
       tfoot tr{background:#f8fafc;border-top:2px solid #cbd5e1}
       tfoot td{padding:7px 8px;font-size:10px;font-weight:700}
-      .np{text-align:center;margin-bottom:18px}
-      .footer{padding:10px 22px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
-      .footer-text{font-size:8.5px;color:#94a3b8}
-      @media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;border-radius:0;width:100%;margin:0}}`;
+      .stmt-footer{margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:8.5px;color:#94a3b8}
+    </style>`;
 
-    const printBar = `<div class="np"><button onclick="window.print()" style="background:#dc2626;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f1f5f9;color:#374151;border:1px solid #cbd5e1;padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer">✕</button></div>`;
-
-    const netColor = netBakiye > 0 ? '#92400e' : netBakiye < 0 ? '#065f46' : '#64748b';
-
-    const html = `
-      <div class="header">
-        <div class="header-left">
-          <div class="co">${companyName}</div>
-          <div class="title">${L.title}</div>
+    const html = `${stmtCss}
+    <div class="stmt-wrap">
+      <div class="stmt-doc-header">
+        <div>
+          <div class="stmt-co">${companyName}</div>
+          <div class="stmt-title">${L.title}</div>
         </div>
-        <div class="header-right">
-          <div class="entity-label">${L.entity}</div>
-          <div class="entity-name">${entityName}</div>
+        <div>
+          <div class="stmt-entity-label">${L.entity}</div>
+          <div class="stmt-entity-name">${entityName}</div>
         </div>
       </div>
       <div class="kpi-row">
@@ -994,45 +985,41 @@ export function AccountStatementTab() {
         </div>
       </div>
       <div class="meta">
-        <div class="meta-item">${L.period}: <strong>${periodLabel}</strong></div>
-        <div class="meta-item">${L.currency}: <strong>USD</strong></div>
-        <div class="meta-item" style="margin-left:auto">${today}</div>
+        <span>${L.period}: <strong>${periodLabel}</strong></span>
+        <span>${L.currency}: <strong>USD</strong></span>
+        <span style="margin-left:auto">${today}</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>${L.date}</th>
-              <th>${L.type}</th>
-              <th>${L.ref}</th>
-              <th>${L.desc}</th>
-              <th class="th-c">${L.curr}</th>
-              <th class="th-r">${L.debit} (USD)</th>
-              <th class="th-r">${L.credit} (USD)</th>
-              <th class="th-r">${L.balance} (USD)</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" style="color:#64748b;font-size:9.5px">${L.recordCount}: ${txnsWithBalance.length}</td>
-              <td></td>
-              <td style="text-align:right;color:#b91c1c">${fUSD(totalBorç)}</td>
-              <td style="text-align:right;color:#065f46">${fUSD(totalAlacak)}</td>
-              <td style="text-align:right;color:${netColor}">${fUSD(Math.abs(netBakiye))}${netSuffix}</td>
-            </tr>
-          </tfoot>
-        </table>
+      <table>
+        <thead>
+          <tr>
+            <th>${L.date}</th>
+            <th>${L.type}</th>
+            <th>${L.ref}</th>
+            <th>${L.desc}</th>
+            <th class="th-c">${L.curr}</th>
+            <th class="th-r">${L.debit} (USD)</th>
+            <th class="th-r">${L.credit} (USD)</th>
+            <th class="th-r">${L.balance} (USD)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="color:#64748b;font-size:9.5px">${L.recordCount}: ${txnsWithBalance.length}</td>
+            <td></td>
+            <td style="text-align:right;color:#b91c1c">${fUSD(totalBorç)}</td>
+            <td style="text-align:right;color:#065f46">${fUSD(totalAlacak)}</td>
+            <td style="text-align:right;color:${netColor}">${fUSD(Math.abs(netBakiye))}${netSuffix}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div class="stmt-footer">
+        <span>${companyName} · ${L.title}</span>
+        <span>${today}</span>
       </div>
-      <div class="footer">
-        <div class="footer-text">${companyName} · ${L.title}</div>
-        <div class="footer-text">${today}</div>
-      </div>`;
+    </div>`;
 
-    const win = window.open('', '_blank', 'width=1080,height=900');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html dir="${L.dir}"><head><meta charset="UTF-8">${fontLink}<title>${L.title} — ${entityName}</title><style>${css}</style></head><body>${printBar}<div class="page">${html}</div></body></html>`);
-    win.document.close();
+    openPrint(html, `${L.title} — ${entityName}`, companyName);
   }
 
   // ── Excel export ──────────────────────────────────────────────────────────
