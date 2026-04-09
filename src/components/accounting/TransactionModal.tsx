@@ -65,6 +65,12 @@ interface TransactionModalProps {
   defaultTradeFileId?: string;
 }
 
+/** Para bize geliyor mu? Sadece bu tiplerde kasa/banka sorusu sorulur. */
+const INCOMING_TYPES = new Set(['receipt', 'sale_inv', 'advance']);
+function isIncoming(txnType: string): boolean {
+  return INCOMING_TYPES.has(txnType);
+}
+
 /** Derive the EntityKind filter for a given transaction type */
 function partyFilter(txnType: string): EntityKind | 'all' {
   if (txnType === 'svc_inv') return 'service_provider';
@@ -470,7 +476,7 @@ export function TransactionModal({
           {paymentMethod === 'banka_havalesi' && (
             <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
-              {bankAccounts.length > 0 && (
+              {isIncoming(txnType) && bankAccounts.length > 0 && (
                 <FormGroup label="Hangi Banka Hesabına Girdi?">
                   <NativeSelect
                     {...register('bank_account_id')}
@@ -558,7 +564,7 @@ export function TransactionModal({
           {paymentMethod === 'nakit' && (
             <div className="bg-green-50/60 border border-green-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">💵 Nakit Bilgileri</p>
-              {kasalar.length > 0 && (
+              {isIncoming(txnType) && kasalar.length > 0 && (
                 <FormGroup label="Hangi Kasaya Girdi?">
                   <NativeSelect {...register('kasa_id')}>
                     <option value="">— Kasa seçin —</option>
