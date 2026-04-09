@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,6 +6,7 @@ import { invoiceSchema, type InvoiceFormData } from '@/types/forms';
 import type { TradeFile, Invoice } from '@/types/database';
 import { useCreateInvoice, useUpdateInvoice } from '@/hooks/useDocuments';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
+import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { today, fCurrency } from '@/lib/formatters';
 import { formatInvoiceNo } from '@/lib/generators';
 import { parseInvoiceExcel, downloadInvoiceTemplate } from '@/lib/excelImport';
@@ -40,6 +41,36 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
   const updateInvoice = useUpdateInvoice();
   const isEdit = !!invoice;
   const importRef = useRef<HTMLInputElement>(null);
+
+  // Dahili dosya seçimi — muhasebe sayfasından "yeni satış faturası" açılırken kullanılır
+  const isSaleMode = invoiceType === 'sale';
+  const needsFilePicker = isSaleMode && !file && !invoice;
+  const { data: allFiles = [] } = useTradeFiles();
+  const saleFiles = allFiles.filter(f => ['sale', 'delivery', 'completed'].includes(f.status));
+  const [pickedFileId, setPickedFileId] = useState('');
+  const pickedFile = saleFiles.find(f => f.id === pickedFileId) ?? null;
+  const effectiveFile = file ?? pickedFile; // dışarıdan gelen file öncelikli
+
+  // Dosya değiştiğinde formu doldur
+  useEffect(() => {
+    if (!open) { setPickedFileId(''); return; }
+    if (pickedFile && !invoice) {
+      form.reset({
+        invoice_date: today(),
+        currency: pickedFile.currency ?? settings?.default_currency ?? 'USD',
+        incoterms: pickedFile.incoterms ?? settings?.default_incoterms ?? 'CPT',
+        proforma_no: pickedFile.proforma_ref ?? '',
+        cb_no: '',
+        insurance_no: pickedFile.insurance_tr ?? '',
+        quantity_admt: pickedFile.delivered_admt ?? pickedFile.tonnage_mt ?? 0,
+        unit_price: pickedFile.selling_price ?? 0,
+        freight: pickedFile.freight_cost ?? 0,
+        gross_weight_kg: pickedFile.gross_weight_kg ?? undefined,
+        packing_info: '',
+        payment_terms: pickedFile.payment_terms ?? settings?.payment_terms ?? '',
+      });
+    }
+  }, [pickedFile, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceSchema),
@@ -156,28 +187,29 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
     try {
       if (isEdit && invoice) {
         await updateInvoice.mutateAsync({ id: invoice.id, data, existingInvoice: invoice });
-      } else if (file) {
+      } else if (effectiveFile) {
         const isSale = effectiveType === 'sale';
         const prefix = isSale ? 'SINV' : (settings?.file_prefix ?? 'ESN');
         const invNo = isSale
           ? `SINV-${new Date().getFullYear()}-${String(Date.now() % 100000).padStart(5, '0')}`
           : formatInvoiceNo(prefix, Date.now() % 10000);
         await createInvoice.mutateAsync({
-          tradeFileId: file.id,
-          customerId: file.customer_id,
-          productName: file.product?.name ?? '',
+          tradeFileId: effectiveFile.id,
+          customerId: effectiveFile.customer_id,
+          productName: effectiveFile.product?.name ?? '',
           invoiceNo: invNo,
           data,
           invoiceType: effectiveType,
         });
+      } else {
+        toast.error('Lütfen bir ticaret dosyası seçin');
+        return;
       }
       onOpenChange(false);
     } catch {
       // Error already shown via toast — prevent UI freeze
     }
   }
-
-  if (!file && !invoice) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -191,7 +223,7 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
                   : (isEdit ? t('invoice.modal.titleEditCommercial') : t('invoice.modal.titleNewCommercial'))}
               </DialogTitle>
               <DialogDescription className="truncate">
-                {file?.file_no ?? ''} — {file?.customer?.name ?? invoice?.customer?.name ?? ''}
+                {effectiveFile?.file_no ?? ''} — {effectiveFile?.customer?.name ?? invoice?.customer?.name ?? ''}
               </DialogDescription>
             </div>
             <div className="flex gap-1.5 flex-shrink-0">
@@ -202,6 +234,25 @@ export function InvoiceModal({ open, onOpenChange, file, invoice, invoiceType = 
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
+          {/* Dosya seçici — sadece muhasebeden yeni satış faturası açıldığında gösterilir */}
+          {needsFilePicker && (
+            <FormRow cols={2}>
+              <FormGroup label="Ticaret Dosyası *">
+                <NativeSelect
+                  value={pickedFileId}
+                  onChange={e => setPickedFileId(e.target.value)}
+                >
+                  <option value="">— Dosya seçin —</option>
+                  {saleFiles.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.file_no} — {f.customer?.name ?? '—'} {f.product?.name ? `(${f.product.name})` : ''}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </FormGroup>
+            </FormRow>
+          )}
+
           <FormRow cols={3}>
             <FormGroup label={`${tc('form.date')} *`} error={errors.invoice_date?.message}>
               <Input type="date" {...register('invoice_date')} />

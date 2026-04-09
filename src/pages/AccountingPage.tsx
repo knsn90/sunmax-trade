@@ -399,8 +399,15 @@ export function AccountingPage() {
               </div>
               {writable && (
                 <button
-                  onClick={openNew}
-                  title="New Transaction"
+                  onClick={() => {
+                    if (activeTab === 'sale') {
+                      setEditingSaleInv(null);
+                      setSaleInvModalOpen(true);
+                    } else {
+                      openNew();
+                    }
+                  }}
+                  title={activeTab === 'sale' ? 'Yeni Satış Faturası' : 'New Transaction'}
                   className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity shrink-0"
                   style={{ background: accent }}
                 >
