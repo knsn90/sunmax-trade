@@ -704,13 +704,34 @@ const STMT_LABELS: Record<StatementLang, {
 };
 
 /** True → BORÇ (increases what they owe us / we owe them).  Entity-type aware. */
-function isBorç(txnType: string, entityType: 'customer' | 'supplier' | 'service_provider'): boolean {
+function isBorç(
+  txnType: string,
+  entityType: 'customer' | 'supplier' | 'service_provider',
+  partyType?: string | null,
+): boolean {
   if (entityType === 'customer') {
-    // sale_inv / advance / any non-receipt = borç (customer owes us)
-    return txnType !== 'receipt';
+    // BORÇ: müşteri bize borçlu → satış faturası
+    if (txnType === 'sale_inv') return true;
+    // ALACAK: müşteri bizden alacaklı → tahsilat, müşteri ön ödemesi
+    if (txnType === 'receipt') return false;
+    if (txnType === 'advance' && partyType === 'customer') return false;
+    // Diğer işlemler (payment vb.) müşteri ekstresinde normalde görünmez ama borç say
+    return true;
   }
-  // supplier / service_provider: purchase_inv / svc_inv = borç (we owe them); payment = alacak
-  return txnType !== 'payment';
+
+  if (entityType === 'supplier') {
+    // BORÇ: biz tedarikçiye borçluyuz → satın alma faturası, hizmet faturası
+    if (txnType === 'purchase_inv' || txnType === 'svc_inv') return true;
+    // ALACAK: biz tedarikçiye ödedik → ödeme, tedarikçi ön ödemesi
+    if (txnType === 'payment') return false;
+    if (txnType === 'advance' && partyType === 'supplier') return false;
+    return true;
+  }
+
+  // service_provider
+  if (txnType === 'svc_inv') return true;
+  if (txnType === 'payment') return false;
+  return true;
 }
 
 const TXN_TYPE_OPTIONS = [
@@ -831,7 +852,7 @@ export function AccountStatementTab() {
   const txnsWithBalance = useMemo(() => {
     let balance = 0;
     return txns.map((txn) => {
-      const debit = isBorç(txn.transaction_type, entityType);
+      const debit = isBorç(txn.transaction_type, entityType, txn.party_type);
       const amt   = txn.amount_usd ?? txn.amount ?? 0;   // her zaman USD bazlı
       balance     = debit ? balance + amt : balance - amt;
       return { ...txn, isDebit: debit, amt, balance };
