@@ -20,7 +20,7 @@ const BASE_CSS = `
   body {
     font-family: Arial, sans-serif;
     font-size: 11px;
-    background: #f1f5f9;
+    background: #e8ecf0;
     color: #000;
     display: flex;
     height: 100vh;
@@ -29,40 +29,57 @@ const BASE_CSS = `
 
   /* ── Sidebar ── */
   .sidebar {
-    width: 220px;
-    min-width: 220px;
-    background: #fff;
-    border-left: 1px solid #e5e7eb;
+    width: 230px;
+    min-width: 230px;
+    background: #1e293b;
     display: flex;
     flex-direction: column;
-    padding: 24px 16px 20px;
-    gap: 8px;
+    padding: 0;
     order: 2;
-    box-shadow: -2px 0 12px rgba(0,0,0,0.06);
     z-index: 10;
+    overflow-y: auto;
   }
-  .sidebar-logo {
-    font-size: 13px;
+  .sidebar-header {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .sidebar-co {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 3px;
+  }
+  .sidebar-app {
+    font-size: 14px;
     font-weight: 800;
-    color: #111827;
+    color: #f1f5f9;
     letter-spacing: -0.3px;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #f3f4f6;
   }
-  .sidebar-logo span { color: #dc2626; }
-  .sidebar-label {
+  .sidebar-app span { color: #dc2626; }
+  .sidebar-body {
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .sidebar-section {
     font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #9ca3af;
-    margin-top: 12px;
+    letter-spacing: 1.2px;
+    color: #475569;
+    margin-top: 14px;
     margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
   }
+  .sidebar-section:first-child { margin-top: 0; }
   .btn-primary {
     display: flex; align-items: center; justify-content: center; gap: 8px;
-    background: #111827;
+    background: #dc2626;
     color: #fff;
     border: none;
     padding: 11px 16px;
@@ -72,22 +89,23 @@ const BASE_CSS = `
     cursor: pointer;
     width: 100%;
     transition: opacity 0.15s;
+    letter-spacing: -0.2px;
   }
-  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:hover { opacity: 0.88; }
   .btn-ghost {
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    background: #f9fafb;
-    color: #374151;
-    border: 1px solid #e5e7eb;
+    background: rgba(255,255,255,0.06);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.1);
     padding: 9px 16px;
     border-radius: 10px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     width: 100%;
-    transition: background 0.15s;
+    transition: background 0.15s, color 0.15s;
   }
-  .btn-ghost:hover { background: #f3f4f6; }
+  .btn-ghost:hover { background: rgba(255,255,255,0.11); color: #e2e8f0; }
   .zoom-row {
     display: flex;
     align-items: center;
@@ -95,27 +113,27 @@ const BASE_CSS = `
   }
   .zoom-btn {
     flex: 1;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 8px;
     padding: 7px;
     font-size: 16px;
     line-height: 1;
     cursor: pointer;
     font-weight: 600;
-    color: #374151;
+    color: #cbd5e1;
     transition: background 0.15s;
     text-align: center;
   }
-  .zoom-btn:hover { background: #e5e7eb; }
+  .zoom-btn:hover { background: rgba(255,255,255,0.14); }
   .zoom-val {
     flex: 1.2;
     text-align: center;
     font-size: 12px;
     font-weight: 700;
-    color: #111827;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
+    color: #f1f5f9;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 8px;
     padding: 7px 4px;
   }
@@ -124,18 +142,38 @@ const BASE_CSS = `
     justify-content: space-between;
     align-items: center;
     padding: 6px 0;
-    border-bottom: 1px dashed #f3f4f6;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
     font-size: 10px;
   }
   .info-row:last-child { border-bottom: none; }
-  .info-label { color: #9ca3af; font-weight: 500; }
-  .info-val { color: #111827; font-weight: 700; }
+  .info-label { color: #64748b; font-weight: 500; }
+  .info-val { color: #e2e8f0; font-weight: 700; }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .status-draft { background: rgba(220,38,38,0.18); color: #fca5a5; }
+  .status-ok    { background: rgba(22,163,74,0.18);  color: #86efac; }
+  .sidebar-footer {
+    padding: 12px 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 9px;
+    color: #334155;
+    text-align: center;
+  }
 
   /* ── Document scroll area ── */
   .doc-area {
     flex: 1;
     overflow: auto;
-    padding: 40px 40px 60px;
+    padding: 36px 36px 60px;
     order: 1;
     display: flex;
     justify-content: center;
@@ -149,8 +187,9 @@ const BASE_CSS = `
     background: #fff;
     width: 210mm;
     padding: 14mm 14mm 12mm 14mm;
-    box-shadow: 0 8px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
+    box-shadow: 0 12px 48px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.1);
     position: relative;
+    border-radius: 3px;
   }
 
   /* DRAFT watermark */
@@ -175,7 +214,7 @@ const BASE_CSS = `
     .sidebar { display: none; }
     .doc-area { padding: 0; overflow: visible; }
     .doc-scale-wrapper { transform: none !important; }
-    .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; }
+    .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; border-radius: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .draft-watermark::before { position: fixed; top: 50%; left: 50%; }
   }
@@ -185,11 +224,12 @@ const DRAFT_WATERMARK_ATTR = 'draft-watermark';
 
 interface DropboxMeta { customerName: string; fileNo: string; documentName: string; }
 
-function buildFullHtml(html: string, title: string, isDraft = false, dropboxMeta?: DropboxMeta): string {
+function buildFullHtml(html: string, title: string, isDraft = false, dropboxMeta?: DropboxMeta, companyName?: string): string {
   const draftClass = isDraft ? ` ${DRAFT_WATERMARK_ATTR}` : '';
   const draftBadge = isDraft
-    ? `<div class="info-row"><span class="info-label">Durum</span><span class="info-val" style="color:#dc2626">TASLAK</span></div>`
-    : `<div class="info-row"><span class="info-label">Durum</span><span class="info-val" style="color:#16a34a">Onaylı</span></div>`;
+    ? `<span class="status-badge status-draft">● Taslak</span>`
+    : `<span class="status-badge status-ok">● Onaylı</span>`;
+  const co = esc(companyName || 'SUNMAX TRADE');
 
   return `<!DOCTYPE html>
 <html>
@@ -205,43 +245,52 @@ function buildFullHtml(html: string, title: string, isDraft = false, dropboxMeta
     </div>
   </div>
   <div class="sidebar">
-    <div class="sidebar-logo">Sun<span>plus</span> Trade</div>
-
-    <div class="sidebar-label">İşlemler</div>
-    <button class="btn-primary" onclick="window.print()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-      Print / PDF
-    </button>
-    <button class="btn-ghost" onclick="window.close()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      Kapat
-    </button>
-
-    <div class="sidebar-label">Yakınlaştırma</div>
-    <div class="zoom-row">
-      <button class="zoom-btn" onclick="zoomOut()">−</button>
-      <div class="zoom-val" id="zoomVal">100%</div>
-      <button class="zoom-btn" onclick="zoomIn()">+</button>
+    <div class="sidebar-header">
+      <div class="sidebar-co">${co}</div>
+      <div class="sidebar-app">Sun<span>max</span> Trade</div>
     </div>
-    <button class="btn-ghost" onclick="zoomReset()" style="font-size:11px;padding:6px 12px">Sıfırla</button>
+    <div class="sidebar-body">
 
-    <div class="sidebar-label">Belge</div>
-    <div class="info-row">
-      <span class="info-label">Başlık</span>
-      <span class="info-val" style="max-width:120px;text-align:right;word-break:break-all;font-size:9px">${esc(title)}</span>
+      <div class="sidebar-section">İşlemler</div>
+      <button class="btn-primary" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / PDF
+      </button>
+      <button class="btn-ghost" onclick="window.close()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Kapat
+      </button>
+
+      <div class="sidebar-section">Yakınlaştırma</div>
+      <div class="zoom-row">
+        <button class="zoom-btn" onclick="zoomOut()">−</button>
+        <div class="zoom-val" id="zoomVal">100%</div>
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+      </div>
+      <button class="btn-ghost" onclick="zoomReset()" style="font-size:11px;padding:7px 12px">↺ Sıfırla</button>
+
+      <div class="sidebar-section">Belge</div>
+      <div class="info-row">
+        <span class="info-label">Başlık</span>
+        <span class="info-val" style="max-width:116px;text-align:right;word-break:break-all;font-size:9px">${esc(title)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Durum</span>
+        <span>${draftBadge}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Format</span>
+        <span class="info-val">A4 / PDF</span>
+      </div>
+      ${dropboxMeta ? `
+      <div class="sidebar-section" style="margin-top:14px">Bulut</div>
+      <button id="dbxBtn" class="btn-ghost" onclick="uploadToDropbox()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg>
+        Dropbox'a Kaydet
+      </button>
+      ` : ''}
     </div>
-    ${draftBadge}
-    <div class="info-row">
-      <span class="info-label">Format</span>
-      <span class="info-val">A4</span>
-    </div>
-    ${dropboxMeta ? `
-    <div class="sidebar-label" style="margin-top:20px">Bulut</div>
-    <button id="dbxBtn" class="btn-ghost" onclick="uploadToDropbox()" style="gap:6px">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg>
-      Dropbox'a Kaydet
-    </button>
-    ` : ''}
+    <div class="sidebar-footer">Ctrl + Scroll → Yakınlaştır</div>
   </div>
 
   <script>
@@ -305,10 +354,10 @@ function buildFullHtml(html: string, title: string, isDraft = false, dropboxMeta
 </html>`;
 }
 
-function openPrintWindow(html: string, title: string, isDraft = false) {
+function openPrintWindow(html: string, title: string, isDraft = false, companyName?: string) {
   const win = window.open('', '_blank', 'width=1100,height=860');
   if (!win) return;
-  win.document.write(buildFullHtml(html, title, isDraft));
+  win.document.write(buildFullHtml(html, title, isDraft, undefined, companyName));
   win.document.close();
 }
 
@@ -458,7 +507,7 @@ function _buildInvoiceBody(inv: Invoice, settings: CompanySettings, bank: BankAc
     customerName: inv.customer?.name ?? '',
     fileNo: (inv.trade_file as unknown as { file_no?: string } | null)?.file_no ?? '',
     documentName: inv.invoice_no,
-  });
+  }, settings.company_name);
 }
 
 export function generateInvoiceHtml(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false): string {
@@ -598,7 +647,7 @@ function _buildPackingListBody(pl: PackingList, settings: CompanySettings, isDra
     customerName: pl.customer?.name ?? '',
     fileNo: (pl.trade_file as unknown as { file_no?: string } | null)?.file_no ?? '',
     documentName: pl.packing_list_no,
-  });
+  }, settings.company_name);
 }
 
 export function generatePackingListHtml(pl: PackingList, settings: CompanySettings, isDraft = false): string {
@@ -906,7 +955,7 @@ function _buildProformaBody(
     customerName: rawCustomerName,
     fileNo: file?.file_no ?? pi.proforma_no,
     documentName: pi.proforma_no,
-  });
+  }, settings.company_name);
 }
 
 export function printProforma(
@@ -1023,7 +1072,7 @@ export function printReceipt(txn: Transaction, settings: CompanySettings, isDraf
     ${footerHTML(settings)}
   `;
 
-  openPrintWindow(body, `${title} - ${docNo}`, isDraft);
+  openPrintWindow(body, `${title} - ${docNo}`, isDraft, settings.company_name);
 }
 
 // ─── Transaction Invoice (purchase_inv / svc_inv / sale_inv) ─────────────────
@@ -1145,5 +1194,5 @@ export function printTransactionInvoice(txn: Transaction, settings: CompanySetti
     ${footerHTML(settings)}
   `;
 
-  openPrintWindow(body, `${title} - ${docNo}`, isDraft);
+  openPrintWindow(body, `${title} - ${docNo}`, isDraft, settings.company_name);
 }
