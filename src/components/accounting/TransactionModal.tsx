@@ -471,7 +471,7 @@ export function TransactionModal({
             <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
               {bankAccounts.length > 0 && (
-                <FormGroup label="Banka Hesabı">
+                <FormGroup label="Hangi Banka Hesabına Girdi?">
                   <NativeSelect
                     {...register('bank_account_id')}
                     onChange={(e) => {
@@ -484,7 +484,7 @@ export function TransactionModal({
                       }
                     }}
                   >
-                    <option value="">— Kayıtlı hesap seçin —</option>
+                    <option value="">— Hesap seçin —</option>
                     {bankAccounts.map(a => (
                       <option key={a.id} value={a.id}>
                         {a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.iban_usd ? ` (USD)` : a.iban_eur ? ` (EUR)` : ''}
@@ -554,10 +554,22 @@ export function TransactionModal({
             </div>
           )}
 
-          {/* Nakit detayları */}
+          {/* Nakit detayları + Kasa seçimi */}
           {paymentMethod === 'nakit' && (
-            <div className="bg-green-50/60 border border-green-100 rounded-xl p-3 mb-2.5">
+            <div className="bg-green-50/60 border border-green-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">💵 Nakit Bilgileri</p>
+              {kasalar.length > 0 && (
+                <FormGroup label="Hangi Kasaya Girdi?">
+                  <NativeSelect {...register('kasa_id')}>
+                    <option value="">— Kasa seçin —</option>
+                    {kasalar.map(k => (
+                      <option key={k.id} value={k.id}>
+                        {k.name} ({k.currency})
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </FormGroup>
+              )}
               <FormRow cols={2}>
                 <FormGroup label="Teslim Alan Kişi">
                   <Input {...register('cash_receiver')} placeholder="Ad Soyad" />
@@ -567,20 +579,6 @@ export function TransactionModal({
                 </FormGroup>
               </FormRow>
             </div>
-          )}
-
-          {/* Kasa seçimi — nakit veya herhangi bir işlemde */}
-          {kasalar.length > 0 && (
-            <FormGroup label="Kasa" className="mb-2.5">
-              <NativeSelect {...register('kasa_id')}>
-                <option value="">— Kasa seçilmedi —</option>
-                {kasalar.map(k => (
-                  <option key={k.id} value={k.id}>
-                    {k.name} ({k.currency})
-                  </option>
-                ))}
-              </NativeSelect>
-            </FormGroup>
           )}
 
           <FormGroup label={tc('form.notes')} className="mb-2">
