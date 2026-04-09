@@ -65,9 +65,10 @@ interface TransactionModalProps {
   defaultTradeFileId?: string;
 }
 
-/** Para bize geliyor mu? Sadece bu durumlarda kasa/banka sorusu sorulur.
- *  - receipt, sale_inv → her zaman giriş
- *  - advance → müşteriden ise giriş; satıcı/hizmet sağlayıcıdan ise çıkış
+/** Para bize geliyor mu? (etiket metni için)
+ *  - receipt, sale_inv → giriş
+ *  - advance + customer → giriş; advance + supplier/service_provider → çıkış
+ *  - purchase_inv, svc_inv, payment → çıkış
  */
 function isMoneyIn(txnType: string, partyType: string): boolean {
   if (txnType === 'receipt' || txnType === 'sale_inv') return true;
@@ -480,8 +481,8 @@ export function TransactionModal({
           {paymentMethod === 'banka_havalesi' && (
             <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
-              {isMoneyIn(txnType, selectedParty?.entityType ?? '') && bankAccounts.length > 0 && (
-                <FormGroup label="Hangi Banka Hesabına Girdi?">
+              {bankAccounts.length > 0 && (
+                <FormGroup label={isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Hangi Banka Hesabına Girdi?' : 'Hangi Banka Hesabından Çıktı?'}>
                   <NativeSelect
                     {...register('bank_account_id')}
                     onChange={(e) => {
@@ -568,8 +569,8 @@ export function TransactionModal({
           {paymentMethod === 'nakit' && (
             <div className="bg-green-50/60 border border-green-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">💵 Nakit Bilgileri</p>
-              {isMoneyIn(txnType, selectedParty?.entityType ?? '') && kasalar.length > 0 && (
-                <FormGroup label="Hangi Kasaya Girdi?">
+              {kasalar.length > 0 && (
+                <FormGroup label={isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Hangi Kasaya Girdi?' : 'Hangi Kasadan Çıktı?'}>
                   <NativeSelect {...register('kasa_id')}>
                     <option value="">— Kasa seçin —</option>
                     {kasalar.map(k => (
