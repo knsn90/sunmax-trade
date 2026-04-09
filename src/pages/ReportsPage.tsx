@@ -2159,80 +2159,79 @@ export function CustomerReportTab() {
         ? `<style>@font-face{font-family:'Nazanin';src:url('${origin}/fonts/nazanin.ttf') format('truetype');font-weight:400;unicode-range:${nazaninRange}}@font-face{font-family:'Nazanin';src:url('${origin}/fonts/nazanin.ttf') format('truetype');font-weight:700;unicode-range:${nazaninRange}}</style>`
         : `<link rel="stylesheet" href="${fontDef.link}">`
       : '';
-    const farsiFontStack = isRtl ? `'${fontDef.family}',Arial,'Tahoma'` : "'Helvetica Neue',Arial";
-    const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:${farsiFontStack},sans-serif;font-size:11px;background:#e2e8f0;padding:24px;color:#111;direction:${isRtl ? 'rtl' : 'ltr'}}.page{background:#fff;width:210mm;margin:0 auto;padding:16mm 18mm;box-shadow:0 8px 32px rgba(0,0,0,.18);border-radius:2px}.np{text-align:center;margin-bottom:18px}@media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;width:100%;padding:12mm;margin:0}}`;
+    const farsiFontStack = isRtl ? `'${fontDef.family}',Arial,Tahoma` : 'Arial,"Helvetica Neue"';
+    // RTL + font override injected into content (buildFullHtml sidebarını bozmadan)
+    const dirOverride = isRtl
+      ? `${iranSansLink}<style>body,*{direction:rtl;font-family:${farsiFontStack},sans-serif!important}</style>`
+      : '';
 
-    const html = `
-      <div class="page">
-        <!-- HEADER -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #1e293b">
-          <div>${logoHtml}</div>
-          <div style="text-align:right">
-            <div style="font-size:16px;font-weight:800;letter-spacing:-.3px;color:#1e293b;margin-bottom:3px">${L.reportTitle.toUpperCase()}</div>
-            <div style="font-size:${isRtl ? '12px' : '10px'};color:#64748b">${L.dateLabel}: <strong style="color:#1e293b">${today}</strong>${dateRange}</div>
-          </div>
+    // buildFullHtml <div class="page"> ekliyor — biz sadece içeriği veriyoruz
+    const content = `
+      ${dirOverride}
+      <!-- HEADER -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #1e293b">
+        <div>${logoHtml}</div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:800;letter-spacing:-.3px;color:#1e293b;margin-bottom:3px">${L.reportTitle.toUpperCase()}</div>
+          <div style="font-size:${isRtl ? '12px' : '10px'};color:#64748b">${L.dateLabel}: <strong style="color:#1e293b">${today}</strong>${dateRange}</div>
         </div>
+      </div>
 
-        <!-- TO / SALUTATION BLOCK -->
-        <div style="margin-bottom:20px;${isRtl ? 'direction:rtl;text-align:right' : ''}">
-          <div style="font-size:15px;font-weight:1000;color:#1e293b;margin-bottom:2px">${L.salutComp} ${customerName}</div>
-          ${toName ? `<div style="font-size:15px;font-weight:1000;color:#1e293b;margin-bottom:4px">${toTitle === 'agha' ? L.salutNameAgha : L.salutNameKhanom} ${toName}</div>` : ''}
-          <div style="font-size:14px;font-weight:1000;color:#374151">${L.greeting}</div>
-        </div>
+      <!-- TO / SALUTATION BLOCK -->
+      <div style="margin-bottom:20px;${isRtl ? 'direction:rtl;text-align:right' : ''}">
+        <div style="font-size:15px;font-weight:1000;color:#1e293b;margin-bottom:2px">${L.salutComp} ${customerName}</div>
+        ${toName ? `<div style="font-size:15px;font-weight:1000;color:#1e293b;margin-bottom:4px">${toTitle === 'agha' ? L.salutNameAgha : L.salutNameKhanom} ${toName}</div>` : ''}
+        <div style="font-size:14px;font-weight:1000;color:#374151">${L.greeting}</div>
+      </div>
 
-        <!-- TABLE 1: PAYMENTS -->
-        ${sectionHead(1, L.payments, '#2563eb')}
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-          <thead>${hdr(L.payHdr, ['center','left','right','left','right','left'])}</thead>
-          <tbody>${payRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noPayment}</td></tr>`}</tbody>
-          <tfoot>${tfootRow(L.totalPayments, fUSD(totalPayments), '#1d4ed8')}</tfoot>
-        </table>
+      <!-- TABLE 1: PAYMENTS -->
+      ${sectionHead(1, L.payments, '#2563eb')}
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+        <thead>${hdr(L.payHdr, ['center','left','right','left','right','left'])}</thead>
+        <tbody>${payRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noPayment}</td></tr>`}</tbody>
+        <tfoot>${tfootRow(L.totalPayments, fUSD(totalPayments), '#1d4ed8')}</tfoot>
+      </table>
 
-        <!-- TABLE 2: PRODUCTS -->
-        ${sectionHead(2, L.products, '#16a34a')}
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-          <thead>${hdr(L.prdHdr, ['center','left','right','right','right','left'])}</thead>
-          <tbody>${prdRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noProduct}</td></tr>`}</tbody>
-          <tfoot>${tfootRow(L.totalProducts, fUSD(totalProducts), '#15803d')}</tfoot>
-        </table>
+      <!-- TABLE 2: PRODUCTS -->
+      ${sectionHead(2, L.products, '#16a34a')}
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+        <thead>${hdr(L.prdHdr, ['center','left','right','right','right','left'])}</thead>
+        <tbody>${prdRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noProduct}</td></tr>`}</tbody>
+        <tfoot>${tfootRow(L.totalProducts, fUSD(totalProducts), '#15803d')}</tfoot>
+      </table>
 
-        <!-- TABLE 3: ADVANCES -->
-        ${sectionHead(3, L.advances, '#7c3aed')}
-        ${advSection}
+      <!-- TABLE 3: ADVANCES -->
+      ${sectionHead(3, L.advances, '#7c3aed')}
+      ${advSection}
 
-        <!-- BALANCE -->
-        <div style="margin-top:20px;border-radius:8px;border:1.5px solid ${balanceBdr};background:${balanceBg};overflow:hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:16px;flex-wrap:wrap">
-            <div style="display:flex;align-items:flex-start;gap:10px">
-              <span style="font-size:13px;color:${balanceColor};margin-top:1px;flex-shrink:0">${balanceIcon}</span>
-              <div>
-                <div style="font-size:${isRtl ? '13px' : '9.5px'};color:#475569;font-weight:600;margin-bottom:5px">${L.balanceText}</div>
-                <div style="display:flex;gap:14px;flex-wrap:wrap">
-                  <span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">${L.products}: <strong style="color:#15803d;font-weight:1000">${fUSD(totalProducts)}</strong></span>
-                  ${totalAdvances > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">+ ${L.advances}: <strong style="color:#7c3aed;font-weight:1000">${fUSD(totalAdvances)}</strong></span>` : ''}
-                  <span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.payments}: <strong style="color:#1d4ed8;font-weight:1000">${fUSD(totalPayments)}</strong></span>
-                </div>
+      <!-- BALANCE -->
+      <div style="margin-top:20px;border-radius:8px;border:1.5px solid ${balanceBdr};background:${balanceBg};overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <span style="font-size:13px;color:${balanceColor};margin-top:1px;flex-shrink:0">${balanceIcon}</span>
+            <div>
+              <div style="font-size:${isRtl ? '13px' : '9.5px'};color:#475569;font-weight:600;margin-bottom:5px">${L.balanceText}</div>
+              <div style="display:flex;gap:14px;flex-wrap:wrap">
+                <span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">${L.products}: <strong style="color:#15803d;font-weight:1000">${fUSD(totalProducts)}</strong></span>
+                ${totalAdvances > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.advances}: <strong style="color:#7c3aed;font-weight:1000">${fUSD(totalAdvances)}</strong></span>` : ''}
+                ${totalPayments > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.payments}: <strong style="color:#1d4ed8;font-weight:1000">${fUSD(totalPayments)}</strong></span>` : ''}
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:${isRtl ? 'flex-start' : 'flex-end'};gap:3px;flex-shrink:0">
-              <div style="font-size:${isRtl ? '12px' : '9px'};color:${balanceColor};font-weight:1000;text-transform:uppercase;letter-spacing:.04em">${balanceLabel}</div>
-              <div style="font-size:${isRtl ? '16px' : '14px'};font-weight:1000;color:${balanceColor}">${fmtUSD(Math.abs(balance))}</div>
-            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:${isRtl ? 'flex-start' : 'flex-end'};gap:3px;flex-shrink:0">
+            <div style="font-size:${isRtl ? '12px' : '9px'};color:${balanceColor};font-weight:1000;text-transform:uppercase;letter-spacing:.04em">${balanceLabel}</div>
+            <div style="font-size:${isRtl ? '16px' : '14px'};font-weight:1000;color:${balanceColor}">${fmtUSD(Math.abs(balance))}</div>
           </div>
         </div>
+      </div>
 
-        <!-- FOOTER -->
-        <div style="margin-top:28px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:9px;color:#94a3b8">${companyName}</div>
-          <div style="font-size:9px;color:#cbd5e1">${today}</div>
-        </div>
+      <!-- FOOTER -->
+      <div style="margin-top:28px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:9px;color:#94a3b8">${companyName}</div>
+        <div style="font-size:9px;color:#cbd5e1">${today}</div>
       </div>`;
 
-    const win = window.open('', '_blank', 'width=1000,height=850');
-    if (!win) return;
-    const printBar = `<div class="np" style="text-align:center;margin-bottom:18px"><button onclick="window.print()" style="background:#1e293b;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f1f5f9;color:#374151;border:1px solid #cbd5e1;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer">${isRtl ? 'بستن' : reportLang === 'tr' ? 'Kapat' : 'Close'}</button></div>`;
-    win.document.write(`<!DOCTYPE html><html dir="${isRtl ? 'rtl' : 'ltr'}"><head><meta charset="UTF-8">${iranSansLink}<title>${customerName} — ${L.reportTitle}</title><style>${css}</style></head><body>${printBar}${html}</body></html>`);
-    win.document.close();
+    openPrint(content, `${customerName} — ${L.reportTitle}`, companyName);
   }
 
 
