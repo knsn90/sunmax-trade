@@ -17,6 +17,40 @@ import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
 import { Banknote, Landmark, CreditCard, HelpCircle } from 'lucide-react';
+
+const TR_BANKS = [
+  '— Seçin —',
+  // Kamu Bankaları
+  'Ziraat Bankası',
+  'Halkbank',
+  'Vakıfbank',
+  'Ziraat Katılım',
+  'Vakıf Katılım',
+  'Halk Katılım',
+  // Özel Bankalar
+  'Akbank',
+  'Garanti BBVA',
+  'İş Bankası',
+  'Yapı Kredi',
+  'Denizbank',
+  'QNB Finansbank',
+  'TEB',
+  'ING Bank',
+  'Şekerbank',
+  'Anadolubank',
+  'Odeabank',
+  'Fibabanka',
+  'Alternatif Bank',
+  'Burgan Bank',
+  // Katılım Bankaları
+  'Kuveyt Türk',
+  'Türkiye Finans',
+  'Albaraka Türk',
+  // Yabancı Bankalar
+  'HSBC',
+  'ICBC Turkey',
+  'Citibank',
+];
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
@@ -428,7 +462,9 @@ export function TransactionModal({
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
               <FormRow cols={2}>
                 <FormGroup label="Banka Adı">
-                  <Input {...register('bank_name')} placeholder="örn. Ziraat Bankası" />
+                  <NativeSelect {...register('bank_name')}>
+                    {TR_BANKS.map(b => <option key={b} value={b === '— Seçin —' ? '' : b}>{b}</option>)}
+                  </NativeSelect>
                 </FormGroup>
                 <FormGroup label="Referans No">
                   <Input {...register('reference_no')} placeholder="Havale / EFT ref no" />
@@ -451,7 +487,9 @@ export function TransactionModal({
               <p className="text-[10px] font-bold uppercase tracking-widest text-violet-500 mb-2">💳 Kart Bilgileri</p>
               <FormRow cols={2}>
                 <FormGroup label="Banka">
-                  <Input {...register('bank_name')} placeholder="örn. Garanti, Yapı Kredi" />
+                  <NativeSelect {...register('bank_name')}>
+                    {TR_BANKS.map(b => <option key={b} value={b === '— Seçin —' ? '' : b}>{b}</option>)}
+                  </NativeSelect>
                 </FormGroup>
                 <FormGroup label="Kart Türü">
                   <div className="flex gap-1.5">
