@@ -214,7 +214,7 @@ export const transactionSchema = z.object({
   exchange_rate: z.coerce.number().positive().default(1),
   paid_amount: z.coerce.number().min(0).default(0),
   payment_status: z.enum(['open', 'partial', 'paid']).default('open'),
-  payment_method: z.enum(['nakit', 'banka_havalesi', 'kredi_karti', '']).default(''),
+  payment_method: z.enum(['nakit', 'banka_havalesi', 'kredi_karti', 'ic_transfer', '']).default(''),
   bank_name: z.string().default(''),
   bank_account_no: z.string().default(''),
   swift_bic: z.string().default(''),
