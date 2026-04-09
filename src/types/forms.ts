@@ -221,6 +221,7 @@ export const transactionSchema = z.object({
   card_type: z.enum(['visa', 'mastercard', 'amex', 'troy', '']).default(''),
   cash_receiver: z.string().default(''),
   notes: z.string().default(''),
+  kasa_id: z.string().optional().default(''),
 }).refine(
   (d) => d.paid_amount <= d.amount,
   { message: 'Paid amount cannot exceed the total amount', path: ['paid_amount'] },

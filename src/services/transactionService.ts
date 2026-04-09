@@ -9,7 +9,8 @@ const TXN_SELECT = `
   trade_file:trade_files!trade_file_id(file_no,tonnage_mt,delivered_admt,product:products!product_id(name)),
   customer:customers!customer_id(name),
   supplier:suppliers!supplier_id(name),
-  service_provider:service_providers!service_provider_id(name)
+  service_provider:service_providers!service_provider_id(name),
+  kasa:kasalar(id,name,currency)
 `;
 
 export interface TransactionFilters {
@@ -178,6 +179,7 @@ export const transactionService = {
         swift_bic: input.swift_bic || null,
         card_type: input.card_type || null,
         cash_receiver: input.cash_receiver || null,
+        kasa_id: input.kasa_id || null,
         doc_status: 'draft',
         notes: input.notes,
       })
@@ -217,6 +219,7 @@ export const transactionService = {
         swift_bic: input.swift_bic || null,
         card_type: input.card_type || null,
         cash_receiver: input.cash_receiver || null,
+        kasa_id: input.kasa_id || null,
         notes: input.notes,
       })
       .eq('id', id)

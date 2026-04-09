@@ -6,6 +6,7 @@ import { transactionSchema, type TransactionFormData } from '@/types/forms';
 import type { Transaction } from '@/types/database';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
+import { useKasalar } from '@/hooks/useKasalar';
 import { today, toUSD } from '@/lib/formatters';
 import { TRANSACTION_TYPE_LABELS } from '@/types/enums';
 import {
@@ -94,6 +95,7 @@ export function TransactionModal({
   const isEdit = !!transaction;
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
+  const { data: kasalar = [] } = useKasalar();
 
   // ── Selected party state (drives customer_id / supplier_id / service_provider_id) ──
   const [selectedParty, setSelectedParty] = useState<SelectedParty | null>(null);
@@ -123,6 +125,7 @@ export function TransactionModal({
       card_type: '',
       cash_receiver: '',
       notes: '',
+      kasa_id: '',
     },
   });
 
@@ -154,6 +157,7 @@ export function TransactionModal({
         card_type: (transaction.card_type ?? '') as TransactionFormData['card_type'],
         cash_receiver: transaction.cash_receiver ?? '',
         notes: transaction.notes,
+        kasa_id: transaction.kasa_id ?? '',
       });
       setSelectedParty(partyFromTransaction(transaction));
     } else {
@@ -177,6 +181,7 @@ export function TransactionModal({
         supplier_id: '',
         service_provider_id: '',
         party_name: '',
+        kasa_id: '',
       });
       setSelectedParty(null);
     }
@@ -534,6 +539,20 @@ export function TransactionModal({
                 </FormGroup>
               </FormRow>
             </div>
+          )}
+
+          {/* Kasa seçimi — nakit veya herhangi bir işlemde */}
+          {kasalar.length > 0 && (
+            <FormGroup label="Kasa" className="mb-2.5">
+              <NativeSelect {...register('kasa_id')}>
+                <option value="">— Kasa seçilmedi —</option>
+                {kasalar.map(k => (
+                  <option key={k.id} value={k.id}>
+                    {k.name} ({k.currency})
+                  </option>
+                ))}
+              </NativeSelect>
+            </FormGroup>
           )}
 
           <FormGroup label={tc('form.notes')} className="mb-2">

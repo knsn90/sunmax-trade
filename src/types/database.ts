@@ -350,6 +350,18 @@ export interface PackingListItem {
   gross_weight_kg: number;
 }
 
+// ─── Kasa (Cash Register) ────────────────────────────────────────────────────
+
+export interface Kasa {
+  id: string;
+  name: string;
+  currency: string;
+  notes: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Accounting ─────────────────────────────────────────────────────────────
 
 export interface Transaction extends Timestamps {
@@ -382,11 +394,13 @@ export interface Transaction extends Timestamps {
   approved_by: string | null;
   approved_at: string | null;
   created_by: string | null;
+  kasa_id: string | null;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;
   supplier?: Supplier;
   service_provider?: ServiceProvider;
+  kasa?: Kasa;
 }
 
 // ─── System ─────────────────────────────────────────────────────────────────

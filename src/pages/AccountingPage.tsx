@@ -14,6 +14,7 @@ import { TRANSACTION_TYPE_LABELS, PAYMENT_STATUS_LABELS } from '@/types/enums';
 import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
+import { KasaManager } from '@/components/accounting/KasaManager';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
@@ -345,6 +346,9 @@ export function AccountingPage() {
             />
           </div>
         )}
+
+        {/* ── Kasa Manager ─────────────────────────────────────────────── */}
+        <KasaManager />
 
         {/* ── Toolbar ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
