@@ -108,7 +108,8 @@
       "Bash(printf 'DROPBOX_APP_KEY=jlvorl7vesm2b4x\\\\nDROPBOX_APP_SECRET=7r3b466yr2mvxgn\\\\nDROPBOX_REFRESH_TOKEN=Ix6Y_5isIU8AAAAAAAAAAWjgMvMeV4ZCYyaHTvpZCtQIhUglLGuxiB8TH2OoW06V\\\\n')",
       "Bash(curl -s -X POST https://gramxnhbkbnjbmkdomjf.supabase.co/functions/v1/dropbox -H 'Content-Type: application/json' -H 'apikey: sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP' -H 'Authorization: Bearer sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP' -d '{\"action\":\"uploadDocument\",\"customerName\":\"Test\",\"fileNo\":\"TEST-001\",\"documentName\":\"test-doc\",\"htmlContent\":\"<h1>Test Document</h1><p>Hello World</p>\"}')",
       "Bash(curl -s -X POST https://gramxnhbkbnjbmkdomjf.supabase.co/functions/v1/dropbox -H 'Content-Type: application/json' -H 'apikey: sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP' -H 'Authorization: Bearer sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP' -d '{\"action\":\"uploadDocument\",\"customerName\":\"Test\",\"fileNo\":\"TEST-001\",\"documentName\":\"test-doc\",\"htmlContent\":\"<h1>Test</h1><p>Merhaba Dünya</p>\"}')",
-      "Bash(wait)"
+      "Bash(wait)",
+      "Bash(vercel deploy:*)"
     ]
   }
 }

@@ -28,7 +28,7 @@ import {
   Printer, Pencil, Trash2, Plus, Search, AlertTriangle, BookCheck,
 } from 'lucide-react';
 
-type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash';
+type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash' | 'ayarlar';
 
 const TYPE_COLORS: Record<string, string> = {
   purchase_inv: '#f59e0b',
@@ -131,11 +131,12 @@ export function AccountingPage() {
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   const TABS: { key: AccTab; label: string }[] = [
-    { key: 'all',  label: t('tabs.all') },
-    { key: 'buy',  label: t('tabs.purchases') },
-    { key: 'svc',  label: t('tabs.services') },
-    { key: 'sale', label: t('tabs.saleInvoices') },
-    { key: 'cash', label: t('tabs.cashFlow') },
+    { key: 'all',     label: t('tabs.all') },
+    { key: 'buy',     label: t('tabs.purchases') },
+    { key: 'svc',     label: t('tabs.services') },
+    { key: 'sale',    label: t('tabs.saleInvoices') },
+    { key: 'cash',    label: t('tabs.cashFlow') },
+    { key: 'ayarlar', label: 'Ayarlar' },
   ];
 
   const [activeTab, setActiveTab] = useState<AccTab>('all');
@@ -143,8 +144,9 @@ export function AccountingPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
+  const txnTab = (activeTab === 'sale' || activeTab === 'ayarlar') ? 'all' : activeTab;
   const { data: txns = [], isLoading } = useTransactions({
-    tab: activeTab === 'sale' ? 'all' : activeTab,
+    tab: txnTab,
     type: typeFilter as TransactionType | undefined || undefined,
     status: statusFilter as PaymentStatus | undefined || undefined,
   });
@@ -167,7 +169,7 @@ export function AccountingPage() {
   const [saleInvModalOpen, setSaleInvModalOpen] = useState(false);
 
   const tabDefaultType: Record<AccTab, string | undefined> = {
-    all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt',
+    all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', ayarlar: undefined,
   };
 
   // ── Unposted advances ──────────────────────────────────────────────────────
@@ -348,11 +350,6 @@ export function AccountingPage() {
           </div>
         )}
 
-        {/* ── Kasa + Banka Hesapları ───────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4">
-          <KasaManager />
-          <BankAccountManager />
-        </div>
 
         {/* ── Toolbar ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
@@ -804,6 +801,14 @@ export function AccountingPage() {
               </table>
             </div>
           </>
+        )}
+
+        {/* ── Ayarlar Tab (Kasalar + Banka Hesapları) ──────────────────── */}
+        {activeTab === 'ayarlar' && (
+          <div className="space-y-4 max-w-3xl">
+            <KasaManager />
+            <BankAccountManager />
+          </div>
         )}
 
       </div>
