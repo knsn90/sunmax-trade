@@ -135,13 +135,16 @@ export const transactionService = {
 
     // Step 3b: party_name fallback — finds transactions entered without an entity FK
     // (user typed the name instead of selecting from the dropdown)
+    // Only picks up "orphaned" rows: party_name matches AND all three FK cols are NULL.
     let nameData: typeof mainData = [];
     if (entityName) {
       const { data: nd } = await supabase
         .from('transactions')
         .select(TXN_SELECT)
         .eq('party_name', entityName)
-        .or(`party_type.eq.${partyType},party_type.is.null`)
+        .is('customer_id', null)
+        .is('supplier_id', null)
+        .is('service_provider_id', null)
         .order('transaction_date', { ascending: true });
       nameData = (nd ?? []) as typeof mainData;
     }
