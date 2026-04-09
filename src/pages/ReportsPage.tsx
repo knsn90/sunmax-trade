@@ -1977,15 +1977,15 @@ export function CustomerReportTab() {
     [allFiles, customerId, invoicedFileIds],
   );
 
-  // Table 3: Ön ödemeler — faturası kesilmiş dosyalara ait olanlar hariç
-  // party_type NULL olabiliyor (advance tipi typeToParty haritasında yoktu); tedarikçi avanslarını hariç tut
+  // Table 3: Ön ödemeler — tedarikçi avansları hariç, TÜM müşteri ön ödemeleri gösterilir
+  // (faturası kesilmiş dosyalara ait olanlar da dahil — müşterinin borcunu azaltır)
+  // party_type NULL olabiliyor (advance tipi typeToParty haritasında yoktu)
   const advances = useMemo(
     () => filteredTxns.filter(
       (t) => t.transaction_type === 'advance' &&
-             t.party_type !== 'supplier' &&
-             !invoicedFileIds.has(t.trade_file_id ?? ''),
+             t.party_type !== 'supplier',
     ),
-    [filteredTxns, invoicedFileIds],
+    [filteredTxns],
   );
 
   const totalPayments = payments.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
@@ -1998,8 +1998,8 @@ export function CustomerReportTab() {
       }, 0);
   const totalAdvances = advances.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
   // balance > 0: customer still owes us (borçlu); < 0: overpaid (alacaklı)
-  // balance = (products + advances) - payments
-  const balance = totalProducts + totalAdvances - totalPayments;
+  // balance = products - advances (prepaid) - payments (post-invoice receipts)
+  const balance = totalProducts - totalAdvances - totalPayments;
 
   // Outside-click handler — customer dropdown
   useEffect(() => {
