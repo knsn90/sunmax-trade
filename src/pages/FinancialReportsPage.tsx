@@ -4,8 +4,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PnlReportTab, AccountStatementTab, CustomerReportTab } from '@/pages/ReportsPage';
+import { FinancialReportsTab } from '@/components/accounting/FinancialReportsTab';
 
-type FinTab = 'trade_pnl' | 'cari' | 'customer_report';
+type FinTab = 'trade_pnl' | 'cari' | 'customer_report' | 'kasa_banka';
 
 export function FinancialReportsPage() {
   const { theme } = useTheme();
@@ -18,6 +19,7 @@ export function FinancialReportsPage() {
     { key: 'trade_pnl',       label: 'Kar/Zarar Raporu' },
     { key: 'cari',            label: 'Hesap Ekstresi' },
     { key: 'customer_report', label: 'Müşteri Raporu' },
+    { key: 'kasa_banka',      label: 'Kasa ve Banka' },
   ];
 
   return (
@@ -54,6 +56,7 @@ export function FinancialReportsPage() {
       {activeTab === 'trade_pnl'       && <PnlReportTab />}
       {activeTab === 'cari'            && <AccountStatementTab />}
       {activeTab === 'customer_report' && <CustomerReportTab />}
+      {activeTab === 'kasa_banka'      && <FinancialReportsTab />}
     </div>
   );
 }

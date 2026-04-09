@@ -478,49 +478,80 @@ export function TransactionModal({
 
           {/* Banka Havalesi detayları */}
           {paymentMethod === 'banka_havalesi' && (
-            <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-2.5 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
-              {bankAccounts.length > 0 && (
-                <FormGroup label={isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Hangi Banka Hesabına Girdi?' : 'Hangi Banka Hesabından Çıktı?'}>
-                  <NativeSelect
-                    {...register('bank_account_id')}
-                    onChange={(e) => {
-                      register('bank_account_id').onChange(e);
-                      const acc = bankAccounts.find(a => a.id === e.target.value);
-                      if (acc) {
-                        setValue('bank_name', acc.bank_name);
-                        setValue('bank_account_no', acc.iban_usd || acc.iban_eur || '');
-                        setValue('swift_bic', acc.swift_bic || '');
-                      }
-                    }}
-                  >
-                    <option value="">— Hesap seçin —</option>
-                    {bankAccounts.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.iban_usd ? ` (USD)` : a.iban_eur ? ` (EUR)` : ''}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </FormGroup>
-              )}
-              <FormRow cols={2}>
-                <FormGroup label="Banka Adı">
-                  <NativeSelect {...register('bank_name')}>
-                    {TR_BANKS.map(b => <option key={b} value={b === '— Seçin —' ? '' : b}>{b}</option>)}
-                  </NativeSelect>
-                </FormGroup>
-                <FormGroup label="Referans No">
-                  <Input {...register('reference_no')} placeholder="Havale / EFT ref no" />
-                </FormGroup>
-              </FormRow>
-              <FormRow cols={2}>
-                <FormGroup label="IBAN / Hesap No">
-                  <Input {...register('bank_account_no')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
-                </FormGroup>
-                <FormGroup label="Swift / BIC">
-                  <Input {...register('swift_bic')} placeholder="örn. TCZBTR2A" className="font-mono text-[12px]" />
-                </FormGroup>
-              </FormRow>
+            <div className="mb-2.5 space-y-2">
+
+              {/* ── BİZİM HESABIMIZ ───────────────────────────────────────── */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+                    <Landmark className="h-3 w-3 text-white" />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
+                    {isMoneyIn(txnType, selectedParty?.entityType ?? '')
+                      ? 'Para Hangi Hesabımıza Girdi?'
+                      : 'Para Hangi Hesabımızdan Çıktı?'}
+                  </p>
+                </div>
+                <NativeSelect
+                  {...register('bank_account_id')}
+                  onChange={(e) => {
+                    register('bank_account_id').onChange(e);
+                    const acc = bankAccounts.find(a => a.id === e.target.value);
+                    if (acc) {
+                      setValue('bank_name', acc.bank_name);
+                      setValue('bank_account_no', acc.iban_usd || acc.iban_eur || '');
+                      setValue('swift_bic', acc.swift_bic || '');
+                    } else {
+                      setValue('bank_name', '');
+                      setValue('bank_account_no', '');
+                      setValue('swift_bic', '');
+                    }
+                  }}
+                >
+                  <option value="">— Hesap seçin —</option>
+                  {bankAccounts.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.currency ? ` · ${a.currency}` : ''}
+                    </option>
+                  ))}
+                </NativeSelect>
+                {bankAccounts.length === 0 && (
+                  <p className="text-[11px] text-blue-500 italic">
+                    Henüz banka hesabı eklenmemiş. Muhasebe → Ayarlar'dan ekleyebilirsiniz.
+                  </p>
+                )}
+              </div>
+
+              {/* ── KARŞI TARAF BANKA BİLGİLERİ ──────────────────────────── */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center shrink-0">
+                    <Landmark className="h-3 w-3 text-white" />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                    Karşı Taraf Banka Bilgileri
+                  </p>
+                </div>
+                <FormRow cols={2}>
+                  <FormGroup label="Banka Adı">
+                    <NativeSelect {...register('bank_name')}>
+                      {TR_BANKS.map(b => <option key={b} value={b === '— Seçin —' ? '' : b}>{b}</option>)}
+                    </NativeSelect>
+                  </FormGroup>
+                  <FormGroup label="Referans No">
+                    <Input {...register('reference_no')} placeholder="Havale / EFT ref no" />
+                  </FormGroup>
+                </FormRow>
+                <FormRow cols={2}>
+                  <FormGroup label="IBAN / Hesap No">
+                    <Input {...register('bank_account_no')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
+                  </FormGroup>
+                  <FormGroup label="Swift / BIC">
+                    <Input {...register('swift_bic')} placeholder="örn. TCZBTR2A" className="font-mono text-[12px]" />
+                  </FormGroup>
+                </FormRow>
+              </div>
+
             </div>
           )}
 

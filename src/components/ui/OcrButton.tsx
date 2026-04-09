@@ -10,7 +10,7 @@ interface OcrButtonProps {
   label?: string;
 }
 
-export function OcrButton({ onResult, mode, label = 'Read from Document' }: OcrButtonProps) {
+export function OcrButton({ onResult, mode, label = 'Belgeden Oku' }: OcrButtonProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +20,7 @@ export function OcrButton({ onResult, mode, label = 'Read from Document' }: OcrB
     e.target.value = '';
 
     if (!getApiKey('anthropic')) {
-      toast.error('Claude API key not configured. Add it in Settings → API Keys.');
+      toast.error('Claude API anahtarı yapılandırılmamış. Ayarlar → API Anahtarları bölümünden ekleyin.');
       return;
     }
 
@@ -28,7 +28,7 @@ export function OcrButton({ onResult, mode, label = 'Read from Document' }: OcrB
     try {
       const result = await ocrDocument(file, mode);
       onResult(result);
-      toast.success('Document read — fields filled automatically');
+      toast.success('Belge okundu — alanlar otomatik dolduruldu');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'OCR failed');
     } finally {
@@ -46,7 +46,7 @@ export function OcrButton({ onResult, mode, label = 'Read from Document' }: OcrB
         onClick={() => fileRef.current?.click()}
       >
         <ScanLine className="h-3.5 w-3.5" />
-        {loading ? 'Reading…' : label}
+        {loading ? 'Okunuyor…' : label}
       </Button>
       <input
         ref={fileRef}
