@@ -386,7 +386,7 @@ export function AccountingPage() {
             </div>
           )}
 
-          {/* Search + New Transaction */}
+          {/* Search + Transfer + New Transaction */}
           {activeTab !== 'ayarlar' && (
             <div className="flex items-center gap-2 w-full md:w-auto">
               <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 md:w-56">
