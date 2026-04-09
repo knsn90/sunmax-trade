@@ -133,9 +133,11 @@ export const transactionService = {
     const { data: mainData, error } = await query.order('transaction_date', { ascending: true });
     if (error) throw new Error(error.message);
 
-    // Step 3b: party_name fallback — finds transactions entered without an entity FK
-    // (user typed the name instead of selecting from the dropdown)
-    // Only picks up "orphaned" rows: party_name matches AND all three FK cols are NULL.
+    // Step 3b: party_name fallback — finds transactions entered without a customer FK
+    // (user typed the name instead of selecting from the entity dropdown).
+    // Only requires customer_id IS NULL — we don't restrict supplier_id/service_provider_id
+    // because some transactions may be linked to a supplier entity while the customer was
+    // typed manually (e.g. same party exists in both tables).
     let nameData: typeof mainData = [];
     if (entityName) {
       const { data: nd } = await supabase
@@ -143,8 +145,6 @@ export const transactionService = {
         .select(TXN_SELECT)
         .eq('party_name', entityName)
         .is('customer_id', null)
-        .is('supplier_id', null)
-        .is('service_provider_id', null)
         .order('transaction_date', { ascending: true });
       nameData = (nd ?? []) as typeof mainData;
     }
