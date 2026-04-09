@@ -7,6 +7,7 @@ import type { Transaction } from '@/types/database';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { useKasalar } from '@/hooks/useKasalar';
+import { useBankAccounts } from '@/hooks/useSettings';
 import { today, toUSD } from '@/lib/formatters';
 import { TRANSACTION_TYPE_LABELS } from '@/types/enums';
 import {
@@ -96,6 +97,7 @@ export function TransactionModal({
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
   const { data: kasalar = [] } = useKasalar();
+  const { data: bankAccounts = [] } = useBankAccounts();
 
   // ── Selected party state (drives customer_id / supplier_id / service_provider_id) ──
   const [selectedParty, setSelectedParty] = useState<SelectedParty | null>(null);
@@ -126,6 +128,7 @@ export function TransactionModal({
       cash_receiver: '',
       notes: '',
       kasa_id: '',
+      bank_account_id: '',
     },
   });
 
@@ -158,6 +161,7 @@ export function TransactionModal({
         cash_receiver: transaction.cash_receiver ?? '',
         notes: transaction.notes,
         kasa_id: transaction.kasa_id ?? '',
+        bank_account_id: transaction.bank_account_id ?? '',
       });
       setSelectedParty(partyFromTransaction(transaction));
     } else {
@@ -182,6 +186,7 @@ export function TransactionModal({
         service_provider_id: '',
         party_name: '',
         kasa_id: '',
+        bank_account_id: '',
       });
       setSelectedParty(null);
     }
@@ -465,6 +470,29 @@ export function TransactionModal({
           {paymentMethod === 'banka_havalesi' && (
             <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
+              {bankAccounts.length > 0 && (
+                <FormGroup label="Banka Hesabı">
+                  <NativeSelect
+                    {...register('bank_account_id')}
+                    onChange={(e) => {
+                      register('bank_account_id').onChange(e);
+                      const acc = bankAccounts.find(a => a.id === e.target.value);
+                      if (acc) {
+                        setValue('bank_name', acc.bank_name);
+                        setValue('bank_account_no', acc.iban_usd || acc.iban_eur || '');
+                        setValue('swift_bic', acc.swift_bic || '');
+                      }
+                    }}
+                  >
+                    <option value="">— Kayıtlı hesap seçin —</option>
+                    {bankAccounts.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.iban_usd ? ` (USD)` : a.iban_eur ? ` (EUR)` : ''}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </FormGroup>
+              )}
               <FormRow cols={2}>
                 <FormGroup label="Banka Adı">
                   <NativeSelect {...register('bank_name')}>

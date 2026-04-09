@@ -10,7 +10,8 @@ const TXN_SELECT = `
   customer:customers!customer_id(name),
   supplier:suppliers!supplier_id(name),
   service_provider:service_providers!service_provider_id(name),
-  kasa:kasalar(id,name,currency)
+  kasa:kasalar(id,name,currency),
+  bank_account:bank_accounts(id,bank_name,account_name,iban_usd,iban_eur,swift_bic)
 `;
 
 export interface TransactionFilters {
@@ -180,6 +181,7 @@ export const transactionService = {
         card_type: input.card_type || null,
         cash_receiver: input.cash_receiver || null,
         kasa_id: input.kasa_id || null,
+        bank_account_id: input.bank_account_id || null,
         doc_status: 'draft',
         notes: input.notes,
       })
@@ -220,6 +222,7 @@ export const transactionService = {
         card_type: input.card_type || null,
         cash_receiver: input.cash_receiver || null,
         kasa_id: input.kasa_id || null,
+        bank_account_id: input.bank_account_id || null,
         notes: input.notes,
       })
       .eq('id', id)

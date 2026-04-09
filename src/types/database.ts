@@ -395,12 +395,14 @@ export interface Transaction extends Timestamps {
   approved_at: string | null;
   created_by: string | null;
   kasa_id: string | null;
+  bank_account_id: string | null;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;
   supplier?: Supplier;
   service_provider?: ServiceProvider;
   kasa?: Kasa;
+  bank_account?: BankAccount;
 }
 
 // ─── System ─────────────────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
 import { KasaManager } from '@/components/accounting/KasaManager';
+import { BankAccountManager } from '@/components/accounting/BankAccountManager';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
@@ -347,8 +348,11 @@ export function AccountingPage() {
           </div>
         )}
 
-        {/* ── Kasa Manager ─────────────────────────────────────────────── */}
-        <KasaManager />
+        {/* ── Kasa + Banka Hesapları ───────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-4">
+          <KasaManager />
+          <BankAccountManager />
+        </div>
 
         {/* ── Toolbar ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
