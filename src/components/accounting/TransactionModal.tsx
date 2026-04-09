@@ -65,10 +65,14 @@ interface TransactionModalProps {
   defaultTradeFileId?: string;
 }
 
-/** Para bize geliyor mu? Sadece bu tiplerde kasa/banka sorusu sorulur. */
-const INCOMING_TYPES = new Set(['receipt', 'sale_inv', 'advance']);
-function isIncoming(txnType: string): boolean {
-  return INCOMING_TYPES.has(txnType);
+/** Para bize geliyor mu? Sadece bu durumlarda kasa/banka sorusu sorulur.
+ *  - receipt, sale_inv → her zaman giriş
+ *  - advance → müşteriden ise giriş; satıcı/hizmet sağlayıcıdan ise çıkış
+ */
+function isMoneyIn(txnType: string, partyType: string): boolean {
+  if (txnType === 'receipt' || txnType === 'sale_inv') return true;
+  if (txnType === 'advance') return partyType === 'customer';
+  return false;
 }
 
 /** Derive the EntityKind filter for a given transaction type */
@@ -476,7 +480,7 @@ export function TransactionModal({
           {paymentMethod === 'banka_havalesi' && (
             <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
-              {isIncoming(txnType) && bankAccounts.length > 0 && (
+              {isMoneyIn(txnType, selectedParty?.entityType ?? '') && bankAccounts.length > 0 && (
                 <FormGroup label="Hangi Banka Hesabına Girdi?">
                   <NativeSelect
                     {...register('bank_account_id')}
@@ -564,7 +568,7 @@ export function TransactionModal({
           {paymentMethod === 'nakit' && (
             <div className="bg-green-50/60 border border-green-100 rounded-xl p-3 mb-2.5 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">💵 Nakit Bilgileri</p>
-              {isIncoming(txnType) && kasalar.length > 0 && (
+              {isMoneyIn(txnType, selectedParty?.entityType ?? '') && kasalar.length > 0 && (
                 <FormGroup label="Hangi Kasaya Girdi?">
                   <NativeSelect {...register('kasa_id')}>
                     <option value="">— Kasa seçin —</option>
