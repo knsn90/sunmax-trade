@@ -200,7 +200,7 @@ export type ProformaFormData = z.infer<typeof proformaSchema>;
 
 export const transactionSchema = z.object({
   transaction_date: z.string().min(1, 'Date required'),
-  transaction_type: z.enum(['svc_inv', 'purchase_inv', 'receipt', 'payment', 'sale_inv', 'advance']),
+  transaction_type: z.enum(['svc_inv', 'purchase_inv', 'receipt', 'payment', 'sale_inv', 'advance', 'ic_transfer']),
   trade_file_id: z.string().optional(),
   party_type: z.enum(['customer', 'supplier', 'service_provider', 'other']).optional(),
   customer_id: z.string().optional(),
@@ -214,7 +214,7 @@ export const transactionSchema = z.object({
   exchange_rate: z.coerce.number().positive().default(1),
   paid_amount: z.coerce.number().min(0).default(0),
   payment_status: z.enum(['open', 'partial', 'paid']).default('open'),
-  payment_method: z.enum(['nakit', 'banka_havalesi', 'kredi_karti', 'ic_transfer', '']).default(''),
+  payment_method: z.enum(['nakit', 'banka_havalesi', 'kredi_karti', '']).default(''),
   bank_name: z.string().default(''),
   bank_account_no: z.string().default(''),
   swift_bic: z.string().default(''),

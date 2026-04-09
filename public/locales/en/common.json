@@ -101,7 +101,8 @@
     "receipt": "Receipt",
     "payment": "Payment",
     "sale_inv": "Sale Invoice",
-    "advance": "Advance Payment"
+    "advance": "Advance Payment",
+    "ic_transfer": "Internal Transfer"
   },
   "payStatus": {
     "open": "Open",

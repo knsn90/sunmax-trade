@@ -101,7 +101,8 @@
     "receipt": "Makbuz",
     "payment": "Ödeme",
     "sale_inv": "Satış Faturası",
-    "advance": "Ön Ödeme"
+    "advance": "Ön Ödeme",
+    "ic_transfer": "İç Transfer"
   },
   "payStatus": {
     "open": "Açık",
