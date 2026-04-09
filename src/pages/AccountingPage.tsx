@@ -833,6 +833,7 @@ export function AccountingPage() {
         onOpenChange={setTxnModalOpen}
         transaction={editingTxn}
         defaultType={tabDefaultType[activeTab]}
+        onSaleInvRedirect={() => { setEditingSaleInv(null); setSaleInvModalOpen(true); }}
       />
       <InvoiceModal
         open={saleInvModalOpen}
