@@ -892,10 +892,6 @@ export function TransactionModal({
             </div>
           )}
 
-          <FormGroup label={tc('form.notes')} className="mb-2">
-            <Textarea rows={2} {...register('notes')} />
-          </FormGroup>
-
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {tc('btn.cancel')}
