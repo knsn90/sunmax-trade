@@ -668,6 +668,10 @@ const STMT_LABELS: Record<StatementLang, {
   date: string; type: string; ref: string; desc: string; debit: string; credit: string; balance: string; curr: string;
   outstanding: string; settled: string;
   openingBalance: string; recordCount: string; grandTotal: string;
+  /** Bakiye yön etiketi: pozitif bakiye (borçlu) */
+  debitSuffix: string;
+  /** Bakiye yön etiketi: negatif bakiye (alacaklı) */
+  creditSuffix: string;
   printBtn: string; dir: 'ltr' | 'rtl'; font?: string;
 }> = {
   en: {
@@ -678,6 +682,7 @@ const STMT_LABELS: Record<StatementLang, {
     debit: 'Debit', credit: 'Credit', balance: 'Balance', curr: 'Curr.',
     outstanding: 'Outstanding', settled: 'Settled',
     openingBalance: 'Opening Balance', recordCount: 'Records', grandTotal: 'GRAND TOTAL',
+    debitSuffix: '(Dr)', creditSuffix: '(Cr)',
     printBtn: 'Print / PDF', dir: 'ltr',
   },
   tr: {
@@ -688,6 +693,7 @@ const STMT_LABELS: Record<StatementLang, {
     debit: 'Borç', credit: 'Alacak', balance: 'Bakiye', curr: 'Döviz',
     outstanding: 'Bakiye Borç', settled: 'Kapandı',
     openingBalance: 'Rapor Öncesi Bakiye', recordCount: 'Kayıt Sayısı', grandTotal: 'GENEL TOPLAM',
+    debitSuffix: '(B)', creditSuffix: '(A)',
     printBtn: 'Yazdır / PDF', dir: 'ltr',
   },
   fa: {
@@ -698,6 +704,7 @@ const STMT_LABELS: Record<StatementLang, {
     debit: 'بدهکاری', credit: 'بستانکاری', balance: 'موجودی', curr: 'ارز',
     outstanding: 'مانده بدهی', settled: 'تسویه',
     openingBalance: 'مانده قبل از دوره', recordCount: 'تعداد سطر', grandTotal: 'جمع کل',
+    debitSuffix: 'بدهکار', creditSuffix: 'بستانکار',
     printBtn: 'چاپ / PDF', dir: 'rtl',
     font: 'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap',
   },
@@ -872,9 +879,10 @@ export function AccountStatementTab() {
       ? `${dateFrom ? fDate(dateFrom) : '…'}  –  ${dateTo ? fDate(dateTo) : '…'}`
       : '—';
 
-    // (A) = Alacak, (B) = Borç suffix on running balance
-    const balSuffix = (b: number) => b > 0 ? ' (B)' : b < 0 ? ' (A)' : '';
-    const netSuffix = netBakiye > 0 ? ' (B)' : netBakiye < 0 ? ' (A)' : '';
+    // Dile göre bakiye yön etiketi
+    const balSuffix = (b: number) =>
+      b > 0 ? ` ${L.debitSuffix}` : b < 0 ? ` ${L.creditSuffix}` : '';
+    const netSuffix = netBakiye > 0 ? ` ${L.debitSuffix}` : netBakiye < 0 ? ` ${L.creditSuffix}` : '';
 
     // Transaction type labels for print (no React hook inside)
     const TYPE_TR: Record<string, string> = {
