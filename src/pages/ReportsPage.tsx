@@ -888,14 +888,17 @@ export function AccountStatementTab() {
     const TYPE_TR: Record<string, string> = {
       sale_inv: 'Satış Faturası', purchase_inv: 'Alım Faturası',
       svc_inv: 'Hizmet Faturası', receipt: 'Tahsilat', payment: 'Ödeme',
+      advance: 'Ön Ödeme',
     };
     const TYPE_EN: Record<string, string> = {
       sale_inv: 'Sales Invoice', purchase_inv: 'Purchase Invoice',
       svc_inv: 'Service Invoice', receipt: 'Receipt', payment: 'Payment',
+      advance: 'Advance Payment',
     };
     const TYPE_FA: Record<string, string> = {
       sale_inv: 'فاکتور فروش', purchase_inv: 'فاکتور خرید',
       svc_inv: 'فاکتور خدمات', receipt: 'دریافت', payment: 'پرداخت',
+      advance: 'پیش پرداخت',
     };
     const TYPE_LABEL = printLang === 'fa' ? TYPE_FA : printLang === 'en' ? TYPE_EN : TYPE_TR;
 
