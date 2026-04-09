@@ -371,6 +371,12 @@ export interface Transaction extends Timestamps {
   paid_amount: number;
   paid_amount_usd: number;
   payment_status: PaymentStatus;
+  payment_method: string | null;
+  bank_name: string | null;
+  bank_account_no: string | null;
+  swift_bic: string | null;
+  card_type: string | null;
+  cash_receiver: string | null;
   notes: string;
   doc_status: DocStatus;
   approved_by: string | null;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +6,7 @@ import { transactionSchema, type TransactionFormData } from '@/types/forms';
 import type { Transaction } from '@/types/database';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
-import { today, fUSD, toUSD } from '@/lib/formatters';
+import { today, toUSD } from '@/lib/formatters';
 import { TRANSACTION_TYPE_LABELS } from '@/types/enums';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
+import { Banknote, Landmark, CreditCard, HelpCircle } from 'lucide-react';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
@@ -81,11 +82,17 @@ export function TransactionModal({
       exchange_rate: 1,
       paid_amount: 0,
       payment_status: 'open',
+      payment_method: '',
+      bank_name: '',
+      bank_account_no: '',
+      swift_bic: '',
+      card_type: '',
+      cash_receiver: '',
       notes: '',
     },
   });
 
-  const { register, handleSubmit, formState: { errors }, reset, control, setValue } = form;
+  const { register, handleSubmit, formState: { errors }, reset, control, setValue, watch } = form;
 
   // ── Populate form when modal opens ───────────────────────────────────────
   useEffect(() => {
@@ -106,6 +113,12 @@ export function TransactionModal({
         exchange_rate: transaction.exchange_rate,
         paid_amount: transaction.paid_amount,
         payment_status: transaction.payment_status,
+        payment_method: (transaction.payment_method ?? '') as TransactionFormData['payment_method'],
+        bank_name: transaction.bank_name ?? '',
+        bank_account_no: transaction.bank_account_no ?? '',
+        swift_bic: transaction.swift_bic ?? '',
+        card_type: (transaction.card_type ?? '') as TransactionFormData['card_type'],
+        cash_receiver: transaction.cash_receiver ?? '',
         notes: transaction.notes,
       });
       setSelectedParty(partyFromTransaction(transaction));
@@ -118,6 +131,10 @@ export function TransactionModal({
         exchange_rate: 1,
         paid_amount: 0,
         payment_status: 'open',
+        payment_method: '',
+        bank_name: '',
+        bank_account_no: '',
+        swift_bic: '',
         description: '',
         reference_no: '',
         notes: '',
@@ -131,15 +148,36 @@ export function TransactionModal({
     }
   }, [open, transaction, defaultType, defaultTradeFileId, reset]);
 
-  const txnType = useWatch({ control, name: 'transaction_type' });
-  const currency = useWatch({ control, name: 'currency' });
-  const amount = useWatch({ control, name: 'amount' }) ?? 0;
-  const rate = useWatch({ control, name: 'exchange_rate' }) ?? 1;
-  const paidAmount = useWatch({ control, name: 'paid_amount' }) ?? 0;
+  const txnType       = useWatch({ control, name: 'transaction_type' });
+  const currency      = useWatch({ control, name: 'currency' });
+  const amount        = useWatch({ control, name: 'amount' }) ?? 0;
+  const rate          = useWatch({ control, name: 'exchange_rate' }) ?? 1;
+  const paidAmount    = useWatch({ control, name: 'paid_amount' }) ?? 0;
+  const paymentMethod = useWatch({ control, name: 'payment_method' });
 
   // Show exchange rate for all non-USD currencies
   const isNonUSD = currency !== 'USD';
   const usdEquivalent = toUSD(amount, currency as 'USD', rate);
+
+  // ── Bidirectional USD input ──────────────────────────────────────────────
+  const [usdStr, setUsdStr] = useState('');
+  const usdFocused = useRef(false);
+
+  // When amount/rate/currency change externally → update USD display
+  useEffect(() => {
+    if (usdFocused.current) return;
+    setUsdStr(isNonUSD && usdEquivalent > 0 ? usdEquivalent.toFixed(2) : '');
+  }, [amount, rate, currency, isNonUSD, usdEquivalent]);
+
+  function handleUsdChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setUsdStr(val);
+    const usdVal = parseFloat(val);
+    if (usdVal > 0 && amount > 0) {
+      // rate = amount / usdEquivalent
+      setValue('exchange_rate', parseFloat((amount / usdVal).toFixed(6)));
+    }
+  }
 
   // Fetch ALL files once (cached) — filter client-side by selected customer.
   // Avoids a new network request on every customer change and eliminates the
@@ -292,7 +330,7 @@ export function TransactionModal({
             </FormGroup>
           </FormRow>
 
-          <FormRow cols={isNonUSD ? 3 : 2}>
+          <FormRow cols={isNonUSD ? 4 : 2}>
             <FormGroup label={tc('form.currency')}>
               <NativeSelect {...register('currency')}>
                 <option value="USD">USD</option>
@@ -306,16 +344,41 @@ export function TransactionModal({
             </FormGroup>
             {isNonUSD && (
               <FormGroup label={t('transaction.modal.exchangeRate')}>
-                <Input type="number" step="0.01" {...register('exchange_rate')} placeholder={t('transaction.modal.exchangeRatePlaceholder')} />
+                <Input
+                  type="number"
+                  step="0.0001"
+                  {...register('exchange_rate')}
+                  placeholder={t('transaction.modal.exchangeRatePlaceholder')}
+                  onChange={(e) => {
+                    register('exchange_rate').onChange(e);
+                    if (!usdFocused.current) setUsdStr('');
+                  }}
+                />
+              </FormGroup>
+            )}
+            {isNonUSD && (
+              <FormGroup label="USD Karşılığı">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 pointer-events-none">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={usdStr}
+                    onChange={handleUsdChange}
+                    onFocus={() => { usdFocused.current = true; }}
+                    onBlur={() => {
+                      usdFocused.current = false;
+                      // Recalculate display after blur
+                      const usd = toUSD(amount, currency as 'USD', rate);
+                      setUsdStr(usd > 0 ? usd.toFixed(2) : '');
+                    }}
+                    placeholder="0.00"
+                    className="pl-6 bg-blue-50 border-blue-100 focus:bg-white"
+                  />
+                </div>
               </FormGroup>
             )}
           </FormRow>
-
-          {isNonUSD && (
-            <div className="bg-brand-50 rounded-lg px-3 py-2 mb-2.5 text-xs">
-              {t('transaction.modal.usdEquivalent')} <strong className="text-brand-600">{fUSD(usdEquivalent)}</strong>
-            </div>
-          )}
 
           <FormRow>
             <FormGroup label={t('transaction.modal.paidAmount')}>
@@ -329,6 +392,111 @@ export function TransactionModal({
               </NativeSelect>
             </FormGroup>
           </FormRow>
+
+          {/* ── Ödeme Türü ──────────────────────────────────────────────── */}
+          <FormGroup label="Ödeme Türü" className="mb-2.5">
+            <div className="flex gap-2">
+              {([
+                { value: '',               label: 'Belirtilmedi',   Icon: HelpCircle  },
+                { value: 'nakit',          label: 'Nakit',          Icon: Banknote    },
+                { value: 'banka_havalesi', label: 'Banka Havalesi', Icon: Landmark    },
+                { value: 'kredi_karti',    label: 'Kredi Kartı',    Icon: CreditCard  },
+              ] as const).map(({ value, label, Icon }) => {
+                const active = paymentMethod === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setValue('payment_method', value)}
+                    className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-xl text-[10px] font-semibold border transition-all ${
+                      active
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400 hover:text-gray-700'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={1.5} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </FormGroup>
+
+          {/* Banka Havalesi detayları */}
+          {paymentMethod === 'banka_havalesi' && (
+            <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-2.5 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2">🏦 Banka Bilgileri</p>
+              <FormRow cols={2}>
+                <FormGroup label="Banka Adı">
+                  <Input {...register('bank_name')} placeholder="örn. Ziraat Bankası" />
+                </FormGroup>
+                <FormGroup label="Referans No">
+                  <Input {...register('reference_no')} placeholder="Havale / EFT ref no" />
+                </FormGroup>
+              </FormRow>
+              <FormRow cols={2}>
+                <FormGroup label="IBAN / Hesap No">
+                  <Input {...register('bank_account_no')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
+                </FormGroup>
+                <FormGroup label="Swift / BIC">
+                  <Input {...register('swift_bic')} placeholder="örn. TCZBTR2A" className="font-mono text-[12px]" />
+                </FormGroup>
+              </FormRow>
+            </div>
+          )}
+
+          {/* Kredi Kartı detayları */}
+          {paymentMethod === 'kredi_karti' && (
+            <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-3 mb-2.5 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-violet-500 mb-2">💳 Kart Bilgileri</p>
+              <FormRow cols={2}>
+                <FormGroup label="Banka">
+                  <Input {...register('bank_name')} placeholder="örn. Garanti, Yapı Kredi" />
+                </FormGroup>
+                <FormGroup label="Kart Türü">
+                  <div className="flex gap-1.5">
+                    {([
+                      { value: 'visa',       label: 'Visa'       },
+                      { value: 'mastercard', label: 'Mastercard' },
+                      { value: 'amex',       label: 'Amex'       },
+                      { value: 'troy',       label: 'Troy'       },
+                    ] as const).map(({ value, label }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setValue('card_type', value)}
+                          className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                            watch('card_type') === value
+                              ? 'bg-violet-600 text-white border-violet-600'
+                              : 'bg-white text-gray-500 border-gray-200 hover:border-violet-300 hover:text-violet-600'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                    ))}
+                  </div>
+                </FormGroup>
+              </FormRow>
+              <FormGroup label="Referans No">
+                <Input {...register('reference_no')} placeholder="POS slip / işlem no" />
+              </FormGroup>
+            </div>
+          )}
+
+          {/* Nakit detayları */}
+          {paymentMethod === 'nakit' && (
+            <div className="bg-green-50/60 border border-green-100 rounded-xl p-3 mb-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">💵 Nakit Bilgileri</p>
+              <FormRow cols={2}>
+                <FormGroup label="Teslim Alan Kişi">
+                  <Input {...register('cash_receiver')} placeholder="Ad Soyad" />
+                </FormGroup>
+                <FormGroup label="Makbuz / Referans No">
+                  <Input {...register('reference_no')} placeholder="Makbuz no" />
+                </FormGroup>
+              </FormRow>
+            </div>
+          )}
 
           <FormGroup label={tc('form.notes')} className="mb-2">
             <Textarea rows={2} {...register('notes')} />

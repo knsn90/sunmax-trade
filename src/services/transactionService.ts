@@ -172,6 +172,12 @@ export const transactionService = {
         paid_amount: input.paid_amount,
         paid_amount_usd: paidAmountUsd,
         payment_status: input.payment_status,
+        payment_method: input.payment_method || null,
+        bank_name: input.bank_name || null,
+        bank_account_no: input.bank_account_no || null,
+        swift_bic: input.swift_bic || null,
+        card_type: input.card_type || null,
+        cash_receiver: input.cash_receiver || null,
         doc_status: 'draft',
         notes: input.notes,
       })
@@ -205,6 +211,12 @@ export const transactionService = {
         paid_amount: input.paid_amount,
         paid_amount_usd: paidAmountUsd,
         payment_status: input.payment_status,
+        payment_method: input.payment_method || null,
+        bank_name: input.bank_name || null,
+        bank_account_no: input.bank_account_no || null,
+        swift_bic: input.swift_bic || null,
+        card_type: input.card_type || null,
+        cash_receiver: input.cash_receiver || null,
         notes: input.notes,
       })
       .eq('id', id)
