@@ -14,8 +14,7 @@ export function useKasalar() {
 export function useCreateKasa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; currency: string; notes: string }) =>
-      kasaService.create(input),
+    mutationFn: (input: Record<string, unknown>) => kasaService.create(input as any),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kasaKeys.all });
       toast.success('Kasa oluşturuldu');
@@ -27,8 +26,8 @@ export function useCreateKasa() {
 export function useUpdateKasa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: string; name: string; currency: string; notes: string }) =>
-      kasaService.update(id, input),
+    mutationFn: ({ id, ...input }: { id: string; [k: string]: unknown }) =>
+      kasaService.update(id, input as any),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kasaKeys.all });
       toast.success('Kasa güncellendi');

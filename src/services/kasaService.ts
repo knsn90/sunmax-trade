@@ -11,7 +11,7 @@ export const kasaService = {
     if (error) throw new Error(error.message);
     return (data ?? []) as Kasa[];
   },
-  async create(input: { name: string; currency: string; notes: string }): Promise<Kasa> {
+  async create(input: Partial<Kasa>): Promise<Kasa> {
     const { data, error } = await supabase
       .from('kasalar')
       .insert(input)
@@ -20,7 +20,7 @@ export const kasaService = {
     if (error) throw new Error(error.message);
     return data as Kasa;
   },
-  async update(id: string, input: { name: string; currency: string; notes: string }): Promise<Kasa> {
+  async update(id: string, input: Partial<Kasa>): Promise<Kasa> {
     const { data, error } = await supabase
       .from('kasalar')
       .update({ ...input, updated_at: new Date().toISOString() })

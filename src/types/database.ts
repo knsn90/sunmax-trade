@@ -47,10 +47,17 @@ export interface BankAccount extends Timestamps {
   id: string;
   bank_name: string;
   account_name: string;
+  currency: string;
+  account_number: string;
+  branch_name: string;
+  branch_code: string;
   iban_usd: string;
   iban_eur: string;
   swift_bic: string;
   correspondent_bank: string;
+  opening_balance: number;
+  opening_balance_date: string | null;
+  account_type: string;
   is_default: boolean;
 }
 
@@ -355,7 +362,11 @@ export interface PackingListItem {
 export interface Kasa {
   id: string;
   name: string;
+  account_code: string;
   currency: string;
+  opening_balance: number;
+  opening_balance_date: string | null;
+  responsible: string;
   notes: string;
   is_active: boolean;
   created_at: string;

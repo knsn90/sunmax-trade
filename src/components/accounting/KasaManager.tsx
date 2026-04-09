@@ -2,12 +2,32 @@ import { useState } from 'react';
 import { useKasalar, useCreateKasa, useUpdateKasa, useDeleteKasa } from '@/hooks/useKasalar';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTheme } from '@/contexts/ThemeContext';
-import { fCurrency } from '@/lib/formatters';
+import { fCurrency, fDate } from '@/lib/formatters';
 import type { CurrencyCode } from '@/types/enums';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { Vault, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
+
+type KasaForm = {
+  name: string;
+  account_code: string;
+  currency: string;
+  opening_balance: string;
+  opening_balance_date: string;
+  responsible: string;
+  notes: string;
+};
+
+const EMPTY: KasaForm = {
+  name: '',
+  account_code: '',
+  currency: 'TRY',
+  opening_balance: '',
+  opening_balance_date: '',
+  responsible: '',
+  notes: '',
+};
 
 export function KasaManager() {
   const { theme } = useTheme();
@@ -20,28 +40,44 @@ export function KasaManager() {
 
   const [showNew, setShowNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', currency: 'TRY', notes: '' });
+  const [form, setForm] = useState<KasaForm>(EMPTY);
 
-  // Compute balance per kasa from transactions
-  function kasaBalance(kasaId: string): number {
-    return allTxns
+  /** Bakiye = açılış bakiyesi + işlemlerden hesaplanan bakiye */
+  function kasaBalance(kasaId: string, openingBalance: number): number {
+    const txnBalance = allTxns
       .filter(t => t.kasa_id === kasaId)
       .reduce((sum, t) => {
-        const credit = ['receipt', 'advance'].includes(t.transaction_type);
+        const credit = isMoneyIn(t.transaction_type, t.party_type ?? '');
         return sum + (credit ? t.amount : -t.amount);
       }, 0);
+    return openingBalance + txnBalance;
+  }
+
+  function isMoneyIn(txnType: string, partyType: string): boolean {
+    if (txnType === 'receipt' || txnType === 'sale_inv') return true;
+    if (txnType === 'advance') return partyType === 'customer';
+    return false;
   }
 
   async function handleSave() {
     if (!form.name.trim()) return;
+    const payload = {
+      name: form.name.trim(),
+      account_code: form.account_code.trim(),
+      currency: form.currency,
+      opening_balance: parseFloat(form.opening_balance) || 0,
+      opening_balance_date: form.opening_balance_date || null,
+      responsible: form.responsible.trim(),
+      notes: form.notes.trim(),
+    };
     if (editId) {
-      await updateKasa.mutateAsync({ id: editId, ...form });
+      await updateKasa.mutateAsync({ id: editId, ...payload });
       setEditId(null);
     } else {
-      await createKasa.mutateAsync(form);
+      await createKasa.mutateAsync(payload);
       setShowNew(false);
     }
-    setForm({ name: '', currency: 'TRY', notes: '' });
+    setForm(EMPTY);
   }
 
   return (
@@ -58,11 +94,7 @@ export function KasaManager() {
           )}
         </div>
         <button
-          onClick={() => {
-            setShowNew(true);
-            setEditId(null);
-            setForm({ name: '', currency: 'TRY', notes: '' });
-          }}
+          onClick={() => { setShowNew(true); setEditId(null); setForm(EMPTY); }}
           className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-xl text-white hover:opacity-90 transition-opacity"
           style={{ background: accent }}
         >
@@ -70,30 +102,68 @@ export function KasaManager() {
         </button>
       </div>
 
-      {/* New / edit kasa form */}
+      {/* Form */}
       {(showNew || editId) && (
-        <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+        <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100 space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
             {editId ? 'Kasayı Düzenle' : 'Yeni Kasa'}
           </p>
+
+          {/* Satır 1 — kimlik */}
           <FormRow cols={3}>
-            <FormGroup label="Kasa Adı">
+            <FormGroup label="Kasa Adı *">
               <Input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="örn. Ana Kasa, Dolar Kasa"
+                placeholder="örn. Ana Kasa, USD Kasa"
+              />
+            </FormGroup>
+            <FormGroup label="Hesap Kodu">
+              <Input
+                value={form.account_code}
+                onChange={e => setForm(f => ({ ...f, account_code: e.target.value }))}
+                placeholder="örn. 100, 100.01"
+                className="font-mono text-[12px]"
               />
             </FormGroup>
             <FormGroup label="Para Birimi">
-              <NativeSelect
-                value={form.currency}
-                onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
-              >
+              <NativeSelect value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
                 <option value="TRY">TRY — Türk Lirası</option>
                 <option value="USD">USD — Dolar</option>
                 <option value="EUR">EUR — Euro</option>
                 <option value="AED">AED — Dirhem</option>
               </NativeSelect>
+            </FormGroup>
+          </FormRow>
+
+          {/* Satır 2 — açılış */}
+          <FormRow cols={2}>
+            <FormGroup label="Açılış Bakiyesi">
+              <Input
+                type="number"
+                step="0.01"
+                value={form.opening_balance}
+                onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
+                placeholder="0.00"
+              />
+            </FormGroup>
+            <FormGroup label="Açılış Tarihi">
+              <Input
+                type="date"
+                value={form.opening_balance_date}
+                onChange={e => setForm(f => ({ ...f, opening_balance_date: e.target.value }))}
+              />
+            </FormGroup>
+          </FormRow>
+
+          {/* Satır 3 — sorumlu + notlar */}
+          <FormRow cols={2}>
+            <FormGroup label="Sorumlu Kişi">
+              <Input
+                value={form.responsible}
+                onChange={e => setForm(f => ({ ...f, responsible: e.target.value }))}
+                placeholder="Ad Soyad"
+              />
             </FormGroup>
             <FormGroup label="Notlar">
               <Input
@@ -103,7 +173,8 @@ export function KasaManager() {
               />
             </FormGroup>
           </FormRow>
-          <div className="flex gap-2 mt-2">
+
+          <div className="flex gap-2 pt-1">
             <button
               onClick={handleSave}
               disabled={!form.name.trim() || createKasa.isPending || updateKasa.isPending}
@@ -114,10 +185,7 @@ export function KasaManager() {
               {editId ? 'Kaydet' : 'Oluştur'}
             </button>
             <button
-              onClick={() => {
-                setShowNew(false);
-                setEditId(null);
-              }}
+              onClick={() => { setShowNew(false); setEditId(null); setForm(EMPTY); }}
               className="px-3 h-8 rounded-xl text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
               <X className="h-3.5 w-3.5" />
@@ -126,7 +194,7 @@ export function KasaManager() {
         </div>
       )}
 
-      {/* Kasa list */}
+      {/* Liste */}
       {isLoading ? (
         <div className="px-6 py-8 text-center text-[12px] text-gray-400">Yükleniyor…</div>
       ) : kasalar.length === 0 && !showNew ? (
@@ -138,20 +206,27 @@ export function KasaManager() {
       ) : (
         <div className="divide-y divide-gray-50">
           {kasalar.map(kasa => {
-            const balance = kasaBalance(kasa.id);
+            const balance = kasaBalance(kasa.id, kasa.opening_balance ?? 0);
             const isPos = balance >= 0;
             return (
-              <div
-                key={kasa.id}
-                className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50/40 transition-colors group"
-              >
+              <div key={kasa.id} className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50/40 transition-colors group">
                 <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
                   <Vault className="h-4 w-4 text-gray-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-gray-900">{kasa.name}</p>
-                  <p className="text-[10px] text-gray-400">
-                    {kasa.currency}{kasa.notes ? ` · ${kasa.notes}` : ''}
+                  <div className="flex items-center gap-2">
+                    <p className="text-[13px] font-semibold text-gray-900">{kasa.name}</p>
+                    {kasa.account_code && (
+                      <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {kasa.account_code}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    {kasa.currency}
+                    {kasa.responsible ? ` · ${kasa.responsible}` : ''}
+                    {kasa.opening_balance_date ? ` · Açılış: ${fDate(kasa.opening_balance_date)}` : ''}
+                    {kasa.notes ? ` · ${kasa.notes}` : ''}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -164,7 +239,15 @@ export function KasaManager() {
                   <button
                     onClick={() => {
                       setEditId(kasa.id);
-                      setForm({ name: kasa.name, currency: kasa.currency, notes: kasa.notes });
+                      setForm({
+                        name: kasa.name,
+                        account_code: kasa.account_code ?? '',
+                        currency: kasa.currency,
+                        opening_balance: kasa.opening_balance ? String(kasa.opening_balance) : '',
+                        opening_balance_date: kasa.opening_balance_date ?? '',
+                        responsible: kasa.responsible ?? '',
+                        notes: kasa.notes,
+                      });
                       setShowNew(false);
                     }}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"

@@ -248,13 +248,20 @@ export const companySettingsSchema = z.object({
 export type CompanySettingsFormData = z.infer<typeof companySettingsSchema>;
 
 export const bankAccountSchema = z.object({
-  bank_name: z.string().min(1, 'Bank name required'),
-  account_name: z.string().default(''),
-  iban_usd: z.string().default(''),
-  iban_eur: z.string().default(''),
-  swift_bic: z.string().default(''),
-  correspondent_bank: z.string().default(''),
-  is_default: z.boolean().default(false),
+  bank_name:              z.string().min(1, 'Banka adı zorunlu'),
+  account_name:           z.string().default(''),
+  currency:               z.string().default('USD'),
+  account_number:         z.string().default(''),
+  branch_name:            z.string().default(''),
+  branch_code:            z.string().default(''),
+  iban_usd:               z.string().default(''),
+  iban_eur:               z.string().default(''),
+  swift_bic:              z.string().default(''),
+  correspondent_bank:     z.string().default(''),
+  opening_balance:        z.coerce.number().default(0),
+  opening_balance_date:   z.string().optional().default(''),
+  account_type:           z.string().default('checking'),
+  is_default:             z.boolean().default(false),
 });
 export type BankAccountFormData = z.infer<typeof bankAccountSchema>;
 

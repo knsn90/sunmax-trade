@@ -2,37 +2,58 @@ import { useState } from 'react';
 import { useBankAccounts, useUpsertBankAccount } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTheme } from '@/contexts/ThemeContext';
-import { fCurrency } from '@/lib/formatters';
+import { fCurrency, fDate } from '@/lib/formatters';
 import type { CurrencyCode } from '@/types/enums';
 import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { Landmark, Plus, Pencil, X, Check, ChevronsUpDown } from 'lucide-react';
+
+const ACCOUNT_TYPES = [
+  { value: 'checking',  label: 'Vadesiz (Cari Hesap)' },
+  { value: 'savings',   label: 'Vadeli Mevduat' },
+  { value: 'fx',        label: 'Döviz Hesabı' },
+  { value: 'loan',      label: 'Kredi Hesabı' },
+];
 
 type BankForm = {
   bank_name: string;
   account_name: string;
+  currency: string;
+  account_number: string;
+  branch_name: string;
+  branch_code: string;
   iban_usd: string;
   iban_eur: string;
   swift_bic: string;
   correspondent_bank: string;
+  opening_balance: string;
+  opening_balance_date: string;
+  account_type: string;
   is_default: boolean;
 };
 
-const EMPTY_FORM: BankForm = {
+const EMPTY: BankForm = {
   bank_name: '',
   account_name: '',
+  currency: 'USD',
+  account_number: '',
+  branch_name: '',
+  branch_code: '',
   iban_usd: '',
   iban_eur: '',
   swift_bic: '',
   correspondent_bank: '',
+  opening_balance: '',
+  opening_balance_date: '',
+  account_type: 'checking',
   is_default: false,
 };
 
-/** Determine currency of a bank account — USD if has USD IBAN, else EUR, else TRY */
-function accountCurrency(iban_usd: string, iban_eur: string): CurrencyCode {
-  if (iban_usd) return 'USD';
-  if (iban_eur) return 'EUR';
-  return 'TRY';
+function isMoneyIn(txnType: string, partyType: string): boolean {
+  if (txnType === 'receipt' || txnType === 'sale_inv') return true;
+  if (txnType === 'advance') return partyType === 'customer';
+  return false;
 }
 
 export function BankAccountManager() {
@@ -44,33 +65,42 @@ export function BankAccountManager() {
 
   const [showNew, setShowNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<BankForm>(EMPTY_FORM);
+  const [form, setForm] = useState<BankForm>(EMPTY);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  /** Compute balance for a bank account from linked transactions */
-  function accountBalance(accountId: string, currency: CurrencyCode): number {
-    return allTxns
-      .filter(t => t.bank_account_id === accountId)
-      .reduce((sum, t) => {
-        // Incoming: receipt = money we received, advance from customer = incoming
-        const isCredit = t.transaction_type === 'receipt' ||
-          (t.transaction_type === 'advance' && t.party_type === 'customer');
-        const txnAmt = currency === 'USD' ? t.amount_usd : t.amount;
-        return sum + (isCredit ? txnAmt : -txnAmt);
-      }, 0);
+  function f(field: keyof BankForm) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm(prev => ({ ...prev, [field]: e.target.value }));
   }
 
-  /** Count transactions for a bank account */
+  function accountBalance(accountId: string, currency: string, openingBalance: number): number {
+    const txnBalance = allTxns
+      .filter(t => t.bank_account_id === accountId)
+      .reduce((sum, t) => {
+        const credit = isMoneyIn(t.transaction_type, t.party_type ?? '');
+        const amt = currency === 'USD' ? t.amount_usd : t.amount;
+        return sum + (credit ? amt : -amt);
+      }, 0);
+    return openingBalance + txnBalance;
+  }
+
   function txnCount(accountId: string): number {
     return allTxns.filter(t => t.bank_account_id === accountId).length;
   }
 
   async function handleSave() {
     if (!form.bank_name.trim()) return;
-    await upsert.mutateAsync({ id: editId, data: form });
+    await upsert.mutateAsync({
+      id: editId,
+      data: {
+        ...form,
+        opening_balance: parseFloat(form.opening_balance) || 0,
+        opening_balance_date: form.opening_balance_date || '',
+      },
+    });
     setEditId(null);
     setShowNew(false);
-    setForm(EMPTY_FORM);
+    setForm(EMPTY);
   }
 
   function startEdit(acc: typeof accounts[number]) {
@@ -79,10 +109,17 @@ export function BankAccountManager() {
     setForm({
       bank_name: acc.bank_name,
       account_name: acc.account_name,
+      currency: acc.currency ?? 'USD',
+      account_number: acc.account_number ?? '',
+      branch_name: acc.branch_name ?? '',
+      branch_code: acc.branch_code ?? '',
       iban_usd: acc.iban_usd,
       iban_eur: acc.iban_eur,
       swift_bic: acc.swift_bic,
       correspondent_bank: acc.correspondent_bank,
+      opening_balance: acc.opening_balance ? String(acc.opening_balance) : '',
+      opening_balance_date: acc.opening_balance_date ?? '',
+      account_type: acc.account_type ?? 'checking',
       is_default: acc.is_default,
     });
   }
@@ -101,11 +138,7 @@ export function BankAccountManager() {
           )}
         </div>
         <button
-          onClick={() => {
-            setShowNew(true);
-            setEditId(null);
-            setForm(EMPTY_FORM);
-          }}
+          onClick={() => { setShowNew(true); setEditId(null); setForm(EMPTY); }}
           className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-xl text-white hover:opacity-90 transition-opacity"
           style={{ background: accent }}
         >
@@ -113,72 +146,91 @@ export function BankAccountManager() {
         </button>
       </div>
 
-      {/* New / edit form */}
+      {/* Form */}
       {(showNew || editId) && (
-        <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+        <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100 space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
             {editId ? 'Hesabı Düzenle' : 'Yeni Banka Hesabı'}
           </p>
-          <FormRow cols={2}>
+
+          {/* Kimlik */}
+          <FormRow cols={3}>
             <FormGroup label="Banka Adı *">
-              <Input
-                value={form.bank_name}
-                onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))}
-                placeholder="örn. Garanti BBVA"
-              />
+              <Input value={form.bank_name} onChange={f('bank_name')} placeholder="örn. Garanti BBVA" />
             </FormGroup>
-            <FormGroup label="Hesap Adı / Şube">
-              <Input
-                value={form.account_name}
-                onChange={e => setForm(f => ({ ...f, account_name: e.target.value }))}
-                placeholder="örn. USD Ana Hesap"
-              />
+            <FormGroup label="Hesap Adı">
+              <Input value={form.account_name} onChange={f('account_name')} placeholder="örn. USD Operasyon" />
+            </FormGroup>
+            <FormGroup label="Para Birimi">
+              <NativeSelect value={form.currency} onChange={f('currency')}>
+                <option value="USD">USD — Dolar</option>
+                <option value="EUR">EUR — Euro</option>
+                <option value="TRY">TRY — Türk Lirası</option>
+                <option value="AED">AED — Dirhem</option>
+                <option value="GBP">GBP — Sterlin</option>
+              </NativeSelect>
             </FormGroup>
           </FormRow>
+
+          {/* Hesap türü + hesap no */}
+          <FormRow cols={3}>
+            <FormGroup label="Hesap Türü">
+              <NativeSelect value={form.account_type} onChange={f('account_type')}>
+                {ACCOUNT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </NativeSelect>
+            </FormGroup>
+            <FormGroup label="Hesap No">
+              <Input value={form.account_number} onChange={f('account_number')} placeholder="0000-0000000-00" className="font-mono text-[12px]" />
+            </FormGroup>
+            <FormGroup label="Swift / BIC">
+              <Input value={form.swift_bic} onChange={f('swift_bic')} placeholder="örn. TGBATRIS" className="font-mono text-[12px]" />
+            </FormGroup>
+          </FormRow>
+
+          {/* Şube */}
+          <FormRow cols={2}>
+            <FormGroup label="Şube Adı">
+              <Input value={form.branch_name} onChange={f('branch_name')} placeholder="örn. Levent Şubesi" />
+            </FormGroup>
+            <FormGroup label="Şube Kodu">
+              <Input value={form.branch_code} onChange={f('branch_code')} placeholder="örn. 0123" className="font-mono text-[12px]" />
+            </FormGroup>
+          </FormRow>
+
+          {/* IBAN */}
           <FormRow cols={2}>
             <FormGroup label="IBAN (USD)">
-              <Input
-                value={form.iban_usd}
-                onChange={e => setForm(f => ({ ...f, iban_usd: e.target.value }))}
-                placeholder="TR00 0000 0000 0000 0000 00"
-                className="font-mono text-[12px]"
-              />
+              <Input value={form.iban_usd} onChange={f('iban_usd')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
             </FormGroup>
             <FormGroup label="IBAN (EUR)">
-              <Input
-                value={form.iban_eur}
-                onChange={e => setForm(f => ({ ...f, iban_eur: e.target.value }))}
-                placeholder="TR00 0000 0000 0000 0000 00"
-                className="font-mono text-[12px]"
-              />
+              <Input value={form.iban_eur} onChange={f('iban_eur')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
             </FormGroup>
           </FormRow>
+
+          {/* Muhabir banka */}
+          <FormGroup label="Muhabir Banka (Correspondent)">
+            <Input value={form.correspondent_bank} onChange={f('correspondent_bank')} placeholder="örn. JP Morgan Chase, New York — CHASUS33" />
+          </FormGroup>
+
+          {/* Açılış bakiyesi */}
           <FormRow cols={2}>
-            <FormGroup label="Swift / BIC">
-              <Input
-                value={form.swift_bic}
-                onChange={e => setForm(f => ({ ...f, swift_bic: e.target.value }))}
-                placeholder="örn. TGBATRIS"
-                className="font-mono text-[12px]"
-              />
+            <FormGroup label="Açılış Bakiyesi">
+              <Input type="number" step="0.01" value={form.opening_balance} onChange={f('opening_balance')} placeholder="0.00" />
             </FormGroup>
-            <FormGroup label="Muhabir Banka">
-              <Input
-                value={form.correspondent_bank}
-                onChange={e => setForm(f => ({ ...f, correspondent_bank: e.target.value }))}
-                placeholder="örn. JP Morgan Chase"
-              />
+            <FormGroup label="Açılış Tarihi">
+              <Input type="date" value={form.opening_balance_date} onChange={f('opening_balance_date')} />
             </FormGroup>
           </FormRow>
-          <div className="flex items-center gap-4 mt-2">
+
+          <div className="flex items-center gap-4 pt-1">
             <label className="flex items-center gap-2 text-[11px] font-medium text-gray-500 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={form.is_default}
-                onChange={e => setForm(f => ({ ...f, is_default: e.target.checked }))}
+                onChange={e => setForm(prev => ({ ...prev, is_default: e.target.checked }))}
                 className="rounded"
               />
-              Varsayılan hesap
+              Varsayılan hesap (faturalarda kullanılır)
             </label>
             <div className="flex gap-2 ml-auto">
               <button
@@ -191,7 +243,7 @@ export function BankAccountManager() {
                 {editId ? 'Kaydet' : 'Oluştur'}
               </button>
               <button
-                onClick={() => { setShowNew(false); setEditId(null); setForm(EMPTY_FORM); }}
+                onClick={() => { setShowNew(false); setEditId(null); setForm(EMPTY); }}
                 className="px-3 h-8 rounded-xl text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
@@ -201,7 +253,7 @@ export function BankAccountManager() {
         </div>
       )}
 
-      {/* Account list */}
+      {/* Liste */}
       {isLoading ? (
         <div className="px-6 py-8 text-center text-[12px] text-gray-400">Yükleniyor…</div>
       ) : accounts.length === 0 && !showNew ? (
@@ -213,21 +265,19 @@ export function BankAccountManager() {
       ) : (
         <div className="divide-y divide-gray-50">
           {accounts.map(acc => {
-            const cur = accountCurrency(acc.iban_usd, acc.iban_eur);
-            const balance = accountBalance(acc.id, cur);
+            const cur = (acc.currency ?? 'USD') as CurrencyCode;
+            const balance = accountBalance(acc.id, acc.currency ?? 'USD', acc.opening_balance ?? 0);
             const count = txnCount(acc.id);
             const isPos = balance >= 0;
             const isExpanded = expanded === acc.id;
+            const typeLabel = ACCOUNT_TYPES.find(t => t.value === acc.account_type)?.label ?? acc.account_type;
 
             return (
               <div key={acc.id}>
                 <div className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50/40 transition-colors group">
-                  {/* Icon */}
                   <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                     <Landmark className="h-4 w-4 text-blue-500" />
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-[13px] font-semibold text-gray-900">{acc.bank_name}</p>
@@ -236,27 +286,28 @@ export function BankAccountManager() {
                           Varsayılan
                         </span>
                       )}
+                      <span className="text-[9px] font-semibold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                        {cur}
+                      </span>
                     </div>
                     <p className="text-[11px] text-gray-400">
-                      {acc.account_name || '—'}{acc.swift_bic ? ` · ${acc.swift_bic}` : ''}
+                      {acc.account_name || typeLabel}
+                      {acc.branch_name ? ` · ${acc.branch_name}` : ''}
                       {count > 0 ? ` · ${count} işlem` : ''}
+                      {acc.opening_balance_date ? ` · ${fDate(acc.opening_balance_date)}'den` : ''}
                     </p>
                   </div>
-
-                  {/* Balance */}
                   <div className="text-right shrink-0">
                     <p className={`text-[15px] font-black ${isPos ? 'text-green-600' : 'text-red-500'}`}>
                       {isPos ? '+' : ''}{fCurrency(balance, cur)}
                     </p>
                     <p className="text-[10px] text-gray-400">{cur} Bakiye</p>
                   </div>
-
-                  {/* Actions */}
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => setExpanded(isExpanded ? null : acc.id)}
                       className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                      title="IBAN detayları"
+                      title="Detaylar"
                     >
                       <ChevronsUpDown className="h-3.5 w-3.5" />
                     </button>
@@ -269,20 +320,13 @@ export function BankAccountManager() {
                   </div>
                 </div>
 
-                {/* Expanded IBAN details */}
                 {isExpanded && (
                   <div className="px-6 pb-4 -mt-1 bg-gray-50/50">
-                    <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-gray-100">
-                      {acc.iban_usd && (
+                    <div className="grid grid-cols-3 gap-3 p-3 bg-white rounded-xl border border-gray-100">
+                      {acc.account_number && (
                         <div>
-                          <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">IBAN — USD</div>
-                          <div className="text-[12px] font-mono text-gray-800 break-all">{acc.iban_usd}</div>
-                        </div>
-                      )}
-                      {acc.iban_eur && (
-                        <div>
-                          <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">IBAN — EUR</div>
-                          <div className="text-[12px] font-mono text-gray-800 break-all">{acc.iban_eur}</div>
+                          <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Hesap No</div>
+                          <div className="text-[12px] font-mono text-gray-800">{acc.account_number}</div>
                         </div>
                       )}
                       {acc.swift_bic && (
@@ -291,10 +335,34 @@ export function BankAccountManager() {
                           <div className="text-[12px] font-mono text-gray-800">{acc.swift_bic}</div>
                         </div>
                       )}
-                      {acc.correspondent_bank && (
+                      {acc.branch_code && (
                         <div>
+                          <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Şube Kodu</div>
+                          <div className="text-[12px] font-mono text-gray-800">{acc.branch_code}</div>
+                        </div>
+                      )}
+                      {acc.iban_usd && (
+                        <div className="col-span-2">
+                          <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">IBAN — USD</div>
+                          <div className="text-[12px] font-mono text-gray-800 break-all">{acc.iban_usd}</div>
+                        </div>
+                      )}
+                      {acc.iban_eur && (
+                        <div className="col-span-2">
+                          <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">IBAN — EUR</div>
+                          <div className="text-[12px] font-mono text-gray-800 break-all">{acc.iban_eur}</div>
+                        </div>
+                      )}
+                      {acc.correspondent_bank && (
+                        <div className="col-span-3">
                           <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Muhabir Banka</div>
                           <div className="text-[12px] text-gray-800">{acc.correspondent_bank}</div>
+                        </div>
+                      )}
+                      {acc.opening_balance != null && acc.opening_balance !== 0 && (
+                        <div>
+                          <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Açılış Bakiyesi</div>
+                          <div className="text-[12px] font-semibold text-gray-800">{fCurrency(acc.opening_balance, cur)}</div>
                         </div>
                       )}
                     </div>
