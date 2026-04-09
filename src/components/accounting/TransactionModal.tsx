@@ -57,7 +57,6 @@ export function TransactionModal({
   const { t: tc } = useTranslation('common');
 
   const isEdit = !!transaction;
-  const { data: files = [] } = useTradeFiles();
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
 
@@ -138,8 +137,19 @@ export function TransactionModal({
   const rate = useWatch({ control, name: 'exchange_rate' }) ?? 1;
   const paidAmount = useWatch({ control, name: 'paid_amount' }) ?? 0;
 
-  const isTRY = currency === 'TRY';
+  // Show exchange rate for all non-USD currencies
+  const isNonUSD = currency !== 'USD';
   const usdEquivalent = toUSD(amount, currency as 'USD', rate);
+
+  // Fetch ALL files once (cached) — filter client-side by selected customer.
+  // Avoids a new network request on every customer change and eliminates the
+  // "empty while loading" flash that the server-side filter approach had.
+  const { data: allFiles = [] } = useTradeFiles();
+  const files = selectedParty?.entityType === 'customer'
+    ? allFiles.filter(f => f.customer_id === selectedParty.id)
+    : selectedParty?.entityType === 'supplier'
+    ? allFiles.filter(f => f.supplier_id === selectedParty.id)
+    : allFiles;
 
   // Auto payment status
   useEffect(() => {
@@ -156,6 +166,8 @@ export function TransactionModal({
     setValue('supplier_id', '');
     setValue('service_provider_id', '');
     setValue('party_name', '');
+    // Clear trade file — it will be re-filtered for the new party
+    setValue('trade_file_id', '');
     if (!party) return;
     // Set the relevant FK
     if (party.entityType === 'customer') setValue('customer_id', party.id);
@@ -198,7 +210,7 @@ export function TransactionModal({
   }
 
   function handleOcrResult(result: OcrResult) {
-    const currencies = ['USD', 'EUR', 'TRY'];
+    const currencies = ['USD', 'EUR', 'TRY', 'AED'];
     if (result.date) setValue('transaction_date', result.date);
     if (result.amount) setValue('amount', result.amount);
     if (result.currency && currencies.includes(result.currency)) {
@@ -243,18 +255,7 @@ export function TransactionModal({
             </FormGroup>
           </FormRow>
 
-          <FormGroup label={t('transaction.modal.tradeFile')} className="mb-2.5">
-            <NativeSelect {...register('trade_file_id')}>
-              <option value="">{t('transaction.modal.tradeFileSelect')}</option>
-              {files.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.file_no} – {f.customer?.name ?? ''}
-                </option>
-              ))}
-            </NativeSelect>
-          </FormGroup>
-
-          {/* Unified party picker for all transaction types */}
+          {/* 1) TARAF — party picker (önce taraf seçilir) */}
           <FormGroup label={partyLabel[txnType] ?? t('transaction.modal.party')} className="mb-2.5">
             {ocrPartyHint && (
               <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-lg px-2.5 py-1.5 mb-1.5 text-xs">
@@ -270,6 +271,18 @@ export function TransactionModal({
             />
           </FormGroup>
 
+          {/* 2) TİCARET DOSYASI — müşteri seçiliyse sadece o müşterinin dosyaları */}
+          <FormGroup label={t('transaction.modal.tradeFile')} className="mb-2.5">
+            <NativeSelect {...register('trade_file_id')}>
+              <option value="">{t('transaction.modal.tradeFileSelect')}</option>
+              {files.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.file_no} – {f.customer?.name ?? ''}
+                </option>
+              ))}
+            </NativeSelect>
+          </FormGroup>
+
           <FormRow>
             <FormGroup label={`${t('transaction.modal.description')} *`} error={errors.description?.message}>
               <Input {...register('description')} placeholder={t('transaction.modal.descriptionPlaceholder')} />
@@ -279,24 +292,26 @@ export function TransactionModal({
             </FormGroup>
           </FormRow>
 
-          <FormRow cols={isTRY ? 3 : 2}>
+          <FormRow cols={isNonUSD ? 3 : 2}>
             <FormGroup label={tc('form.currency')}>
               <NativeSelect {...register('currency')}>
                 <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="AED">AED</option>
                 <option value="TRY">TRY</option>
               </NativeSelect>
             </FormGroup>
             <FormGroup label={`${t('transaction.modal.amount')} *`} error={errors.amount?.message}>
               <Input type="number" step="0.01" {...register('amount')} />
             </FormGroup>
-            {isTRY && (
+            {isNonUSD && (
               <FormGroup label={t('transaction.modal.exchangeRate')}>
                 <Input type="number" step="0.01" {...register('exchange_rate')} placeholder={t('transaction.modal.exchangeRatePlaceholder')} />
               </FormGroup>
             )}
           </FormRow>
 
-          {isTRY && (
+          {isNonUSD && (
             <div className="bg-brand-50 rounded-lg px-3 py-2 mb-2.5 text-xs">
               {t('transaction.modal.usdEquivalent')} <strong className="text-brand-600">{fUSD(usdEquivalent)}</strong>
             </div>

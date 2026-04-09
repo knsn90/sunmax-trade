@@ -6,7 +6,7 @@ import { toUSD } from '@/lib/formatters';
 
 const TXN_SELECT = `
   *,
-  trade_file:trade_files!trade_file_id(file_no),
+  trade_file:trade_files!trade_file_id(file_no,tonnage_mt,delivered_admt,product:products!product_id(name)),
   customer:customers!customer_id(name),
   supplier:suppliers!supplier_id(name),
   service_provider:service_providers!service_provider_id(name)
@@ -36,15 +36,25 @@ export const transactionService = {
       query = query.eq('payment_status', filters.status);
     }
     if (filters?.tab && filters.tab !== 'all') {
-      const tabMap: Record<string, TransactionType[]> = {
-        buy: ['purchase_inv'],
-        svc: ['svc_inv'],
-        cash: ['receipt', 'payment'],
-        sale: ['sale_inv'],
-      };
-      const types = tabMap[filters.tab];
-      if (types) {
-        query = query.in('transaction_type', types);
+      if (filters.tab === 'buy') {
+        // Satın alma faturası + tedarikçi ön ödemesi
+        query = query.or(
+          `transaction_type.eq.purchase_inv,` +
+          `and(transaction_type.eq.advance,party_type.eq.supplier)`,
+        );
+      } else if (filters.tab === 'sale') {
+        // Satış faturası + müşteri ön ödemesi
+        query = query.or(
+          `transaction_type.eq.sale_inv,` +
+          `and(transaction_type.eq.advance,party_type.eq.customer)`,
+        );
+      } else {
+        const tabMap: Record<string, TransactionType[]> = {
+          svc: ['svc_inv'],
+          cash: ['receipt', 'payment'],
+        };
+        const types = tabMap[filters.tab];
+        if (types) query = query.in('transaction_type', types);
       }
     }
 
@@ -88,21 +98,24 @@ export const transactionService = {
       return (data ?? []) as Transaction[];
     }
 
-    // For customer/supplier: also include transactions via trade file link
-    const fileColumn = entityType === 'customer' ? 'customer_id' : 'supplier_id';
-    const txnColumn  = entityType === 'customer' ? 'customer_id' : 'supplier_id';
+    const txnColumn = entityType === 'customer' ? 'customer_id' : 'supplier_id';
+    const partyType = entityType; // 'customer' | 'supplier'
 
     // Step 1: get trade file IDs for this entity
     const { data: files } = await supabase
       .from('trade_files')
       .select('id')
-      .eq(fileColumn, entityId);
+      .eq(txnColumn, entityId);
     const fileIds = (files ?? []).map((f: { id: string }) => f.id);
 
-    // Step 2: query transactions by direct link OR trade file link
+    // Step 2: direct match OR trade-file match — but ALWAYS filter by party_type so
+    // customer and supplier accounts never see each other's transactions on the same file.
     let query = supabase.from('transactions').select(TXN_SELECT);
     if (fileIds.length > 0) {
-      query = query.or(`${txnColumn}.eq.${entityId},trade_file_id.in.(${fileIds.join(',')})`);
+      query = query.or(
+        `${txnColumn}.eq.${entityId},` +
+        `and(trade_file_id.in.(${fileIds.join(',')}),party_type.eq.${partyType})`,
+      );
     } else {
       query = query.eq(txnColumn, entityId);
     }
@@ -159,6 +172,7 @@ export const transactionService = {
         paid_amount: input.paid_amount,
         paid_amount_usd: paidAmountUsd,
         payment_status: input.payment_status,
+        doc_status: 'draft',
         notes: input.notes,
       })
       .select(TXN_SELECT)
@@ -249,34 +263,42 @@ export const transactionService = {
     totalRevenue: number;
     totalCost: number;
   }> {
-    // Sale invoices live in the invoices table, not transactions
-    const [{ data: saleInvoices }, { data: txns }] = await Promise.all([
-      supabase.from('invoices').select('total').eq('invoice_type', 'sale'),
-      supabase.from('transactions').select('transaction_type, amount_usd, paid_amount_usd'),
-    ]);
+    const { data: txns } = await supabase
+      .from('transactions')
+      .select('transaction_type, party_type, amount_usd');
 
-    // Revenue = sum of all sale invoice totals
-    const totalRevenue = (saleInvoices ?? []).reduce((s, inv) => s + (inv.total ?? 0), 0);
+    const all = txns ?? [];
 
-    // Total receipts collected (cash received from customers)
-    const totalReceived = (txns ?? [])
-      .filter((t) => t.transaction_type === 'receipt')
+    // BORÇ tarafı: müşteri alacakları + ödenen borçlar + müşteri ön ödemeleri
+    const isBorc = (t: { transaction_type: string; party_type?: string | null }) =>
+      t.transaction_type === 'sale_inv' ||
+      t.transaction_type === 'payment' ||
+      (t.transaction_type === 'advance' && t.party_type === 'customer');
+
+    // ALACAK tarafı: tahsilatlar + satıcı/hizmet borçları + tedarikçi ön ödemeleri
+    const isAlacak = (t: { transaction_type: string; party_type?: string | null }) =>
+      t.transaction_type === 'receipt' ||
+      t.transaction_type === 'purchase_inv' ||
+      t.transaction_type === 'svc_inv' ||
+      (t.transaction_type === 'advance' && t.party_type === 'supplier');
+
+    const totalPayable    = all
+      .filter(isBorc)
       .reduce((s, t) => s + (t.amount_usd ?? 0), 0);
 
-    // Receivable = what customers still owe us
-    const totalReceivable = Math.max(0, totalRevenue - totalReceived);
+    const totalReceivable = all
+      .filter(isAlacak)
+      .reduce((s, t) => s + (t.amount_usd ?? 0), 0);
 
-    // Costs = purchase + service invoice totals
-    const costTxns = (txns ?? []).filter(
-      (t) => t.transaction_type === 'purchase_inv' || t.transaction_type === 'svc_inv',
-    );
-    const totalCost = costTxns.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
+    // Gelir = sale_inv + müşteri ön ödemeleri
+    const totalRevenue = all
+      .filter(t => t.transaction_type === 'sale_inv' || (t.transaction_type === 'advance' && t.party_type === 'customer'))
+      .reduce((s, t) => s + (t.amount_usd ?? 0), 0);
 
-    // Payable = what we still owe (unpaid portion)
-    const totalPayable = costTxns.reduce(
-      (s, t) => s + Math.max(0, (t.amount_usd ?? 0) - (t.paid_amount_usd ?? 0)),
-      0,
-    );
+    // Maliyet = purchase_inv + svc_inv + tedarikçi ön ödemeleri
+    const totalCost = all
+      .filter(t => t.transaction_type === 'purchase_inv' || t.transaction_type === 'svc_inv' || (t.transaction_type === 'advance' && t.party_type === 'supplier'))
+      .reduce((s, t) => s + (t.amount_usd ?? 0), 0);
 
     return { totalReceivable, totalPayable, totalRevenue, totalCost };
   },

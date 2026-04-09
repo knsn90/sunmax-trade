@@ -4,7 +4,8 @@
     "pnl": "P&L Report",
     "cari": "Account Statement",
     "analytics": "Analytics",
-    "eta": "ETA Report"
+    "eta": "ETA Report",
+    "statement": "Customer Statement"
   },
   "sales": {
     "customer": "Customer",

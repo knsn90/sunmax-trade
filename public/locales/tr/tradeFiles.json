@@ -108,6 +108,8 @@
     "loading": "Yükleniyor…",
     "noObligations": "Henüz yükümlülük yok. Avans oranı girildiğinde otomatik oluşturulacak.",
     "allSettled": "Tamamı tahsil edildi",
+    "totalDebt": "Müşteri Toplam Borç",
+    "downpayment": "Ön Ödeme",
     "customer": "Müşteri",
     "supplier": "Tedarikçi",
     "paid": "ödendi",

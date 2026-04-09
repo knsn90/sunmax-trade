@@ -1,6 +1,5 @@
 import type { CurrencyCode } from '@/types/enums';
 import { CURRENCY_SYMBOLS } from '@/types/enums';
-import i18n from '@/i18n';
 
 /**
  * Format a number with locale grouping.
@@ -42,22 +41,25 @@ export function fUSD(value: number | null | undefined): string {
 }
 
 /**
- * Format a date string for display.
- * fDate('2025-03-17') → "17 Mar 2025"
+ * Format a date string as dd.mm.yyyy (numeric, locale-independent).
+ * fDate('2025-03-17') → "17.03.2025"
  */
-export function fDate(dateStr: string | null | undefined): string {
+export function fDateDMY(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
   try {
     const d = new Date(dateStr + 'T00:00:00');
-    const lang = i18n.language?.slice(0, 2) ?? 'en';
-    return d.toLocaleDateString(lang, {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
   } catch {
     return dateStr;
   }
+}
+
+/** Alias — always dd.mm.yyyy format. */
+export function fDate(dateStr: string | null | undefined): string {
+  return fDateDMY(dateStr);
 }
 
 /**

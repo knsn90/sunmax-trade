@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/services/supabase';
+import { journalService } from '@/services/journalService';
 import { useTransactions, useTransactionSummary, useDeleteTransaction } from '@/hooks/useTransactions';
 import { useSaleInvoices, useDeleteInvoice } from '@/hooks/useDocuments';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
@@ -20,7 +23,7 @@ import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2,
-  Printer, Pencil, Trash2, Plus, Search,
+  Printer, Pencil, Trash2, Plus, Search, AlertTriangle, BookCheck,
 } from 'lucide-react';
 
 type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash';
@@ -95,6 +98,7 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
       </div>
       {/* Actions */}
       <div className="flex items-center gap-0.5 shrink-0 ml-1">
+        <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
         {settings && (
           <button onClick={onPrint} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
             <Printer className="h-3.5 w-3.5" />
@@ -137,12 +141,15 @@ export function AccountingPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
-  const txnTab = activeTab === 'sale' ? 'all' : activeTab;
   const { data: txns = [], isLoading } = useTransactions({
-    tab: txnTab,
+    tab: activeTab === 'sale' ? 'all' : activeTab,
     type: typeFilter as TransactionType | undefined || undefined,
     status: statusFilter as PaymentStatus | undefined || undefined,
   });
+  // sale_inv transactions (advance receivables) shown separately in sale tab
+  const { data: saleInvTxns = [] } = useTransactions(
+    activeTab === 'sale' ? { tab: 'sale' } : undefined,
+  );
   const { data: summary } = useTransactionSummary();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -160,6 +167,124 @@ export function AccountingPage() {
   const tabDefaultType: Record<AccTab, string | undefined> = {
     all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt',
   };
+
+  // ── Unposted advances ──────────────────────────────────────────────────────
+  const qc = useQueryClient();
+  const [postingId, setPostingId] = useState<string | null>(null);
+
+  // Customer advance: sale_inv not yet posted
+  const { data: unpostedAdvances = [] } = useQuery({
+    queryKey: ['unposted-advances'],
+    enabled: activeTab === 'sale',
+    queryFn: async () => {
+      const { data: files } = await supabase
+        .from('trade_files')
+        .select('id, file_no, advance_rate, selling_price, tonnage_mt, currency, sale_currency, customer_id, customer:customers!customer_id(id, name)')
+        .eq('status', 'sale')
+        .gt('advance_rate', 0);
+      if (!files?.length) return [];
+      const { data: posted } = await supabase
+        .from('transactions')
+        .select('trade_file_id')
+        .eq('transaction_type', 'advance')
+        .eq('party_type', 'customer')
+        .in('trade_file_id', files.map((f: any) => f.id));
+      const postedIds = new Set((posted ?? []).map((p: any) => p.trade_file_id));
+      return files.filter((f: any) => !postedIds.has(f.id));
+    },
+  });
+
+  // Supplier advance: obligations with party=supplier & type=advance not yet posted
+  const { data: unpostedSupplierAdvances = [] } = useQuery({
+    queryKey: ['unposted-supplier-advances'],
+    enabled: activeTab === 'buy',
+    queryFn: async () => {
+      // 1. Get all supplier advance obligations
+      const { data: obs } = await supabase
+        .from('trade_obligations')
+        .select(`
+          id, amount, currency, supplier_id, trade_file_id,
+          trade_file:trade_files!trade_file_id(id, file_no, status),
+          supplier:suppliers!supplier_id(id, name)
+        `)
+        .eq('party', 'supplier')
+        .eq('type', 'advance')
+        .neq('status', 'cancelled');
+      if (!obs?.length) return [];
+
+      const fileIds = [...new Set(obs.map((o: any) => o.trade_file_id))];
+
+      // 2. Get already-posted supplier advance transactions for these files
+      const { data: posted } = await supabase
+        .from('transactions')
+        .select('trade_file_id')
+        .eq('transaction_type', 'advance')
+        .eq('party_type', 'supplier')
+        .in('trade_file_id', fileIds);
+
+      const postedIds = new Set((posted ?? []).map((p: any) => p.trade_file_id));
+
+      // 3. Return unposted ones (one per file — use largest obligation per file)
+      const byFile = new Map<string, any>();
+      for (const ob of obs) {
+        const fid = ob.trade_file_id;
+        if (postedIds.has(fid)) continue;
+        if (!byFile.has(fid) || ob.amount > byFile.get(fid).amount) {
+          byFile.set(fid, ob);
+        }
+      }
+      return Array.from(byFile.values());
+    },
+  });
+
+  async function postAdvance(file: any) {
+    const rate    = Number(file.advance_rate ?? 0);
+    const selling = Number(file.selling_price ?? 0);
+    const tonnage = Number(file.tonnage_mt ?? 0);
+    const amount  = Math.round(selling * tonnage * rate / 100 * 100) / 100;
+    if (!amount || !file.customer_id) return;
+    setPostingId(file.id);
+    try {
+      await journalService.postAdvanceReceivable({
+        tradeFileId:  file.id,
+        fileNo:       file.file_no,
+        customerId:   file.customer_id,
+        customerName: (file.customer as any)?.name ?? '',
+        amount,
+        currency:     file.sale_currency ?? file.currency ?? 'USD',
+        advanceRate:  rate,
+      });
+      qc.invalidateQueries({ queryKey: ['unposted-advances'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+    } finally {
+      setPostingId(null);
+    }
+  }
+
+  async function postSupplierAdvance(ob: any) {
+    // ob is a trade_obligation row with trade_file and supplier joined
+    const fileId   = ob.trade_file_id;
+    const fileNo   = (ob.trade_file as any)?.file_no ?? ob.trade_file_id;
+    const amount   = Number(ob.amount ?? 0);
+    const currency = ob.currency ?? 'USD';
+    if (!amount || !ob.supplier_id) return;
+    setPostingId(fileId + '_sup');
+    try {
+      await journalService.postAdvancePayable({
+        tradeFileId:  fileId,
+        fileNo,
+        supplierId:   ob.supplier_id,
+        supplierName: (ob.supplier as any)?.name ?? '',
+        amount,
+        currency,
+        advanceRate:  0, // obligation amount already exact, rate not needed
+      });
+      qc.invalidateQueries({ queryKey: ['unposted-supplier-advances'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+    } finally {
+      setPostingId(null);
+    }
+  }
 
   function openNew() { setEditingTxn(null); setTxnModalOpen(true); }
   function openEdit(txn: Transaction) { setEditingTxn(txn); setTxnModalOpen(true); }
@@ -254,28 +379,28 @@ export function AccountingPage() {
             </div>
           )}
 
-          {/* Search + New Transaction side by side */}
+          {/* Search + New Transaction */}
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 md:w-56">
-              <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-              <input
-                className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-                placeholder={t('filters.search')}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+              <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 md:w-56">
+                <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                <input
+                  className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+                  placeholder={t('filters.search')}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+              {writable && (
+                <button
+                  onClick={openNew}
+                  title="New Transaction"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity shrink-0"
+                  style={{ background: accent }}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
             </div>
-            {writable && (
-              <button
-                onClick={openNew}
-                title="New Transaction"
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity shrink-0"
-                style={{ background: accent }}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Mobile filters */}
@@ -289,6 +414,86 @@ export function AccountingPage() {
               <option value="">{t('filters.allStatuses')}</option>
               {Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </NativeSelect>
+          </div>
+        )}
+
+        {/* ── Unposted advances banner ──────────────────────────────────── */}
+        {activeTab === 'sale' && unpostedAdvances.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+              <span className="text-[12px] font-bold text-amber-700">
+                Muhasebeye İşlenmemiş Ön Ödemeler ({unpostedAdvances.length})
+              </span>
+              <span className="text-[11px] text-amber-500 ml-1">— aşağıdaki butona tıklayarak işleyin</span>
+            </div>
+            <div className="divide-y divide-amber-100">
+              {unpostedAdvances.map((file: any) => {
+                const rate   = Number(file.advance_rate ?? 0);
+                const amount = Math.round(Number(file.selling_price ?? 0) * Number(file.tonnage_mt ?? 0) * rate / 100 * 100) / 100;
+                const cur    = file.sale_currency ?? file.currency ?? 'USD';
+                return (
+                  <div key={file.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[12px] font-bold font-mono text-gray-700">{file.file_no}</span>
+                      <span className="text-[11px] text-gray-500 ml-2">{(file.customer as any)?.name ?? '—'}</span>
+                      <span className="text-[11px] text-amber-600 ml-2 font-semibold">
+                        %{rate} · {fCurrency(amount, cur)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => postAdvance(file)}
+                      disabled={postingId === file.id}
+                      className="flex items-center gap-1.5 h-7 px-3 rounded-xl text-[11px] font-semibold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 transition-colors shrink-0"
+                    >
+                      <BookCheck className="h-3 w-3" />
+                      {postingId === file.id ? 'İşleniyor…' : 'Muhasebeye İşle'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Unposted supplier advances banner (Alımlar tab) ───────────── */}
+        {activeTab === 'buy' && unpostedSupplierAdvances.length > 0 && (
+          <div className="bg-violet-50 border border-violet-200 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-violet-100">
+              <AlertTriangle className="h-4 w-4 text-violet-500 shrink-0" />
+              <span className="text-[12px] font-bold text-violet-700">
+                Muhasebeye İşlenmemiş Satıcı Ön Ödemeleri ({unpostedSupplierAdvances.length})
+              </span>
+              <span className="text-[11px] text-violet-500 ml-1">— satıcı alacaklı olarak kaydedilecek</span>
+            </div>
+            <div className="divide-y divide-violet-100">
+              {unpostedSupplierAdvances.map((ob: any) => {
+                const fileNo  = (ob.trade_file as any)?.file_no ?? ob.trade_file_id;
+                const supName = (ob.supplier as any)?.name ?? '—';
+                const amount  = Number(ob.amount ?? 0);
+                const cur     = ob.currency ?? 'USD';
+                const supId   = ob.trade_file_id + '_sup';
+                return (
+                  <div key={ob.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[12px] font-bold font-mono text-gray-700">{fileNo}</span>
+                      <span className="text-[11px] text-gray-500 ml-2">{supName}</span>
+                      <span className="text-[11px] text-violet-600 ml-2 font-semibold">
+                        {fCurrency(amount, cur)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => postSupplierAdvance(ob)}
+                      disabled={postingId === supId}
+                      className="flex items-center gap-1.5 h-7 px-3 rounded-xl text-[11px] font-semibold text-white bg-violet-500 hover:bg-violet-600 disabled:opacity-50 transition-colors shrink-0"
+                    >
+                      <BookCheck className="h-3 w-3" />
+                      {postingId === supId ? 'İşleniyor…' : 'Muhasebeye İşle'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -398,6 +603,57 @@ export function AccountingPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* ── Advance receivables from transactions table ── */}
+            {saleInvTxns.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    Ön Ödeme Alacakları
+                  </span>
+                  <span className="ml-auto text-[10px] text-gray-400">{saleInvTxns.length} kayıt</span>
+                </div>
+                <table className="w-full table-fixed">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[14%]">Tarih</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Dosya / Müşteri</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[28%]">Açıklama</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Tutar</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[12%]">Durum</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[12%]">Notlar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {saleInvTxns.map(txn => (
+                      <tr key={txn.id} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/30 transition-colors">
+                        <td className="px-4 py-2.5 text-[12px] text-gray-500">{fDate(txn.transaction_date)}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="text-[12px] font-mono font-bold text-gray-700 truncate">{txn.trade_file?.file_no ?? txn.reference_no ?? '—'}</div>
+                          <div className="text-[11px] text-gray-400 truncate">{txn.customer?.name ?? txn.party_name ?? '—'}</div>
+                        </td>
+                        <td className="px-4 py-2.5 text-[11px] text-gray-500 truncate">{txn.description || '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="text-[13px] font-bold text-blue-700">{fCurrency(txn.amount, txn.currency)}</div>
+                          {(txn.paid_amount ?? 0) > 0 && (
+                            <div className="text-[10px] text-green-600 font-semibold">
+                              {fCurrency(txn.paid_amount, txn.currency)} ödendi
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <Badge variant={txn.payment_status as PaymentStatus}>
+                            {PAYMENT_STATUS_LABELS[txn.payment_status]}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-2.5 text-[10px] text-gray-400 truncate">{txn.notes || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
 
@@ -425,74 +681,109 @@ export function AccountingPage() {
               ))}
             </div>
 
-            {/* Desktop — 6 merged columns, no scroll */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+            {/* Desktop — responsive register table, no horizontal scroll */}
+            <div className="hidden md:block bg-white rounded-2xl shadow-sm">
               <table className="w-full table-fixed">
+                <colgroup>
+                  <col className="w-[88px]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[18%]" />
+                  <col className="hidden lg:table-column" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[72px]" />
+                  <col className="w-[76px]" />
+                </colgroup>
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Type / Date</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">File / Party</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Description</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[15%]">Amount / Remaining</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[13%]">Status</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[20%]">Actions</th>
+                  <tr className="border-b border-gray-100 bg-gray-50/60">
+                    <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Tarih</th>
+                    <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">ID / Dosya</th>
+                    <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Firma</th>
+                    <th className="hidden lg:table-cell px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Açıklama</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Borç</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Alacak</th>
+                    <th className="px-2 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Onay</th>
+                    <th className="px-2 py-2.5" />
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-50">
                   {filteredTxns.length === 0 ? (
-                    <tr><td colSpan={6} className="py-14 text-center text-[13px] text-gray-400">{t('empty.noTransactions')}</td></tr>
-                  ) : filteredTxns.map(t => {
-                    const remaining = t.amount - (t.paid_amount ?? 0);
-                    const partyName = t.customer?.name ?? t.supplier?.name ?? t.service_provider?.name ?? t.party_name ?? '—';
-                    const typeColor = TYPE_COLORS[t.transaction_type] ?? '#6b7280';
-                    const isDraft = (t.doc_status ?? 'draft') !== 'approved';
+                    <tr><td colSpan={8} className="py-14 text-center text-[13px] text-gray-400">{t('empty.noTransactions')}</td></tr>
+                  ) : filteredTxns.map(txn => {
+                    const partyName = txn.customer?.name ?? txn.supplier?.name ?? txn.service_provider?.name ?? txn.party_name ?? '—';
+                    const isDraft   = (txn.doc_status ?? 'draft') !== 'approved';
+                    // BORÇ (debit): alacaklar ve ödenen borçlar
+                    //   sale_inv              → müşteri bize borçlu
+                    //   payment               → satıcıya ödeme yaptık
+                    //   advance (customer)    → müşteriden ön ödeme alacağı
+                    // ALACAK (credit): borçlar ve gelen tahsilatlar
+                    //   purchase_inv / svc_inv → satıcıya borcumuz arttı
+                    //   receipt               → müşteri ödedi
+                    //   advance (supplier)    → tedarikçiye ön ödeme borcu
+                    const isDebit   = ['sale_inv', 'payment'].includes(txn.transaction_type)
+                      || (txn.transaction_type === 'advance' && txn.party_type === 'customer');
+                    const typeColor = TYPE_COLORS[txn.transaction_type] ?? '#6b7280';
                     return (
-                      <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                        {/* Type + Date */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
+                      <tr key={txn.id} className={`hover:bg-blue-50/20 transition-colors ${isDraft ? 'bg-amber-50/20' : ''}`}>
+                        {/* Date */}
+                        <td className="px-3 py-3 text-[11px] text-gray-500">{fDate(txn.transaction_date)}</td>
+                        {/* ID */}
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1 min-w-0">
                             <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: typeColor }} />
-                            <Badge variant={t.transaction_type as TransactionType}>
-                              {TRANSACTION_TYPE_LABELS[t.transaction_type]}
-                            </Badge>
+                            <span className="text-[11px] font-bold font-mono text-gray-700 truncate">
+                              {txn.trade_file?.file_no ?? txn.reference_no ?? '—'}
+                            </span>
                           </div>
-                          <div className="text-[10px] text-gray-400 mt-0.5 pl-3">{fDate(t.transaction_date)}</div>
+                          <div className="text-[10px] text-gray-400 pl-2.5 mt-0.5 truncate">{TRANSACTION_TYPE_LABELS[txn.transaction_type]}</div>
                         </td>
-                        {/* File + Party */}
-                        <td className="px-4 py-3">
-                          <div className="text-[12px] font-mono font-bold text-gray-700 truncate">{t.trade_file?.file_no ?? '—'}</div>
-                          <div className="text-[11px] text-gray-500 truncate">{partyName}</div>
+                        {/* Entity */}
+                        <td className="px-3 py-3 text-[12px] text-gray-700 truncate">{partyName}</td>
+                        {/* Description — hidden on md, visible on lg */}
+                        <td className="hidden lg:table-cell px-3 py-3 text-[11px] text-gray-500 truncate">{txn.description || '—'}</td>
+                        {/* Borç */}
+                        <td className="px-3 py-3 text-right">
+                          {isDebit ? (
+                            <div>
+                              <div className="text-[12px] font-semibold text-red-600 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                              {(txn.paid_amount ?? 0) > 0 && (txn.paid_amount ?? 0) < txn.amount && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.paid_amount, txn.currency)} ödendi</div>
+                              )}
+                            </div>
+                          ) : <span className="text-gray-200 text-[11px]">—</span>}
                         </td>
-                        {/* Description */}
-                        <td className="px-4 py-3 text-[11px] text-gray-500 truncate">{t.description || '—'}</td>
-                        {/* Amount + Remaining */}
-                        <td className="px-4 py-3">
-                          <div className="text-[13px] font-bold text-gray-900">{fCurrency(t.amount, t.currency)}</div>
-                          {remaining > 0 && remaining < t.amount && (
-                            <div className="text-[10px] text-amber-500 font-semibold">rem {fCurrency(remaining, t.currency)}</div>
-                          )}
+                        {/* Alacak */}
+                        <td className="px-3 py-3 text-right">
+                          {!isDebit ? (
+                            <div>
+                              <div className="text-[12px] font-semibold text-emerald-600 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                              {(txn.paid_amount ?? 0) > 0 && (txn.paid_amount ?? 0) < txn.amount && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.paid_amount, txn.currency)} tahsil</div>
+                              )}
+                            </div>
+                          ) : <span className="text-gray-200 text-[11px]">—</span>}
                         </td>
-                        {/* Pay + Doc status */}
-                        <td className="px-4 py-3">
-                          <Badge variant={t.payment_status as PaymentStatus}>{PAYMENT_STATUS_LABELS[t.payment_status]}</Badge>
-                          <div className="mt-1"><DocStatusBadge status={t.doc_status ?? 'draft'} /></div>
+                        {/* Onay */}
+                        <td className="px-2 py-3">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <ApprovalActions table="transactions" id={txn.id} currentStatus={txn.doc_status ?? 'draft'} />
+                          </div>
                         </td>
                         {/* Actions */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 flex-nowrap">
-                            <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
+                        <td className="px-2 py-3">
+                          <div className="flex items-center gap-0.5 justify-end">
                             {settings && (
-                              <button onClick={() => handleTxnPrint(t)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Print">
+                              <button onClick={() => handleTxnPrint(txn)} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="Yazdır">
                                 <Printer className="h-3.5 w-3.5" />
                               </button>
                             )}
                             {writable && isDraft && (
-                              <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                              <button onClick={() => openEdit(txn)} className="p-1 rounded-lg text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Düzenle">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             )}
                             {admin && isDraft && (
-                              <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                              <button onClick={() => handleDelete(txn.id)} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Sil">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             )}

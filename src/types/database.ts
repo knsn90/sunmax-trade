@@ -177,12 +177,18 @@ export interface TradeFile extends Timestamps {
   purchase_currency: CurrencyCode; // currency used to buy from supplier
   sale_currency: CurrencyCode;     // currency used to sell to customer
   payment_terms: string | null;
+  advance_rate: number | null;
+  purchase_advance_rate: number | null;
   transport_mode: TransportMode | null;
   eta: string | null;
   revised_eta: string | null;
   delay_notes: string | null;
   vessel_name: string | null;
   proforma_ref: string | null;
+  google_drive_folder_id: string | null;
+  google_drive_folder_url: string | null;
+  dropbox_folder_path: string | null;
+  dropbox_folder_url: string | null;
   register_no: string | null;
   // Delivery phase
   delivered_admt: number | null;
@@ -477,6 +483,28 @@ export interface ReconciliationMatch {
   notes: string | null;
   matched_by: string | null;
   matched_at: string;
+}
+
+// ─── Trade File Notes ────────────────────────────────────────────────────────
+
+export interface TradeFileNote {
+  id: string;
+  trade_file_id: string;
+  content: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface TradeFileAttachment {
+  id: string;
+  trade_file_id: string;
+  name: string;
+  file_type: string | null;
+  file_size_bytes: number | null;
+  dropbox_url: string | null;
+  dropbox_path: string | null;
+  created_by: string | null;
+  created_at: string;
 }
 
 // ─── Financial Reports ───────────────────────────────────────────────────────

@@ -16,9 +16,7 @@ const PATH_TITLE_KEYS: Record<string, string> = {
   '/files':     'topbar.pageTitles.files',
   '/documents': 'topbar.pageTitles.documents',
   '/accounting':'topbar.pageTitles.accounting',
-  '/ledger':    'topbar.pageTitles.ledger',
   '/fin-reports':'topbar.pageTitles.finReports',
-  '/bank-recon':'topbar.pageTitles.bankRecon',
   '/reports':   'topbar.pageTitles.reports',
   '/contacts':  'topbar.pageTitles.contacts',
   '/products':  'topbar.pageTitles.products',
@@ -78,6 +76,11 @@ export function Topbar() {
   const titleKey = PATH_TITLE_KEYS[basePath];
   const title    = titleKey ? t(titleKey) : t('brand.name');
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
+
   if (isDonezo) {
     return (
       <header
@@ -121,7 +124,7 @@ export function Topbar() {
             </button>
           )}
 
-          <Button variant="ghost" size="sm" onClick={signOut} title={t('topbar.logout')} className="text-gray-400 hover:text-gray-600">
+          <Button variant="ghost" size="sm" onClick={handleSignOut} title={t('topbar.logout')} className="text-gray-400 hover:text-gray-600">
             <LogOut className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -165,7 +168,7 @@ export function Topbar() {
         </div>
         <LanguageSwitcher />
         <NotificationBell />
-        <Button variant="ghost" size="sm" onClick={signOut} title={t('topbar.logout')} className="text-white/70 hover:text-white hover:bg-white/10">
+        <Button variant="ghost" size="sm" onClick={handleSignOut} title={t('topbar.logout')} className="text-white/70 hover:text-white hover:bg-white/10">
           <LogOut className="h-3.5 w-3.5" />
         </Button>
       </div>

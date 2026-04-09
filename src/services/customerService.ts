@@ -26,12 +26,14 @@ export const customerService = {
   },
 
   async create(input: CustomerFormData): Promise<Customer> {
-    // Generate next code
-    const { count } = await supabase
-      .from('customers')
-      .select('*', { count: 'exact', head: true });
-
-    const code = `C${String((count ?? 0) + 1).padStart(3, '0')}`;
+    // Use user-provided code if given, otherwise fall back to auto-generated C001 style
+    let code = input.code?.trim().toUpperCase() || '';
+    if (!code) {
+      const { count } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true });
+      code = `C${String((count ?? 0) + 1).padStart(3, '0')}`;
+    }
 
     const { data, error } = await supabase
       .from('customers')
@@ -44,9 +46,17 @@ export const customerService = {
   },
 
   async update(id: string, input: CustomerFormData): Promise<Customer> {
+    const patch: Record<string, unknown> = { ...input };
+    // Normalize code: uppercase, skip empty string (don't overwrite with empty)
+    if (input.code !== undefined && input.code !== '') {
+      patch.code = input.code.trim().toUpperCase();
+    } else {
+      delete patch.code; // don't send empty string to DB
+    }
+
     const { data, error } = await supabase
       .from('customers')
-      .update(input)
+      .update(patch)
       .eq('id', id)
       .select()
       .single();

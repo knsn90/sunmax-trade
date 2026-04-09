@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, type MutableRefObject } from 'react';
+import { generateCustomerCode } from '@/lib/generators';
 import { useTranslation } from 'react-i18next';
 import {
   useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer,
@@ -61,7 +62,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
   const color = TAB_COLORS['customers'];
 
   const EMPTY: CustomerFormData = {
-    name: '', country: '', city: '', address: '',
+    name: '', code: '', country: '', city: '', address: '',
     contact_email: '', contact_phone: '',
     tax_id: '', website: '', payment_terms: '', notes: '',
   };
@@ -70,7 +71,17 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
     resolver: zodResolver(customerSchema),
     defaultValues: EMPTY,
   });
-  const { register, handleSubmit, formState: { errors }, reset } = form;
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue: setVal } = form;
+
+  // Auto-generate code from name when creating (if code still empty)
+  const watchedName = watch('name');
+  const watchedCode = watch('code');
+  useEffect(() => {
+    if (editing) return;
+    if (watchedCode) return;
+    if (!watchedName?.trim()) return;
+    setVal('code', generateCustomerCode(watchedName));
+  }, [watchedName, watchedCode, editing, setVal]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return customers;
@@ -88,7 +99,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
   function openEdit(c: Customer) {
     setEditing(c);
     reset({
-      name: c.name, country: c.country, city: c.city ?? '', address: c.address,
+      name: c.name, code: c.code ?? '', country: c.country, city: c.city ?? '', address: c.address,
       contact_email: c.contact_email, contact_phone: c.contact_phone,
       tax_id: c.tax_id ?? '', website: c.website ?? '',
       payment_terms: c.payment_terms ?? '', notes: c.notes,
@@ -201,6 +212,16 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
             />
             <FormRow>
               <FormGroup label={`${t('form.companyName')} *`} error={errors.name?.message}><Input {...register('name')} /></FormGroup>
+              <FormGroup label="Kısa Kod" error={errors.code?.message}>
+                <Input
+                  {...register('code')}
+                  placeholder="ör. ASJ"
+                  maxLength={6}
+                  onChange={e => { e.target.value = e.target.value.toUpperCase(); register('code').onChange(e); }}
+                />
+              </FormGroup>
+            </FormRow>
+            <FormRow>
               <FormGroup label={t('form.taxId')}><Input {...register('tax_id')} placeholder="e.g. 1234567890" /></FormGroup>
             </FormRow>
             <FormRow>

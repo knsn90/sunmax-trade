@@ -5,7 +5,8 @@
     "purchases": "Purchases",
     "services": "Services",
     "saleInvoices": "Sale Invoices",
-    "cashFlow": "Cash Flow"
+    "cashFlow": "Cash Flow",
+    "ledger": "Journal Ledger"
   },
   "filters": {
     "allTypes": "All Types",

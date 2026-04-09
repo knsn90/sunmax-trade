@@ -108,6 +108,8 @@
     "loading": "Loading…",
     "noObligations": "No obligations yet. They will be created automatically when the advance rate is set.",
     "allSettled": "Fully settled",
+    "totalDebt": "Customer Total Debt",
+    "downpayment": "Downpayment",
     "customer": "Customer",
     "supplier": "Supplier",
     "paid": "paid",

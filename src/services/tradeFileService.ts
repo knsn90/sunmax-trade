@@ -7,6 +7,7 @@ import type {
   DeliveryFormData,
 } from '@/types/forms';
 
+// Used for list queries — joins resolved by PostgREST
 const FILE_SELECT = `
   *,
   customer:customers!customer_id(*),
@@ -14,6 +15,7 @@ const FILE_SELECT = `
   supplier:suppliers!supplier_id(*)
 `;
 
+// Used for detail page — includes sub-documents
 const FILE_DETAIL_SELECT = `
   *,
   customer:customers!customer_id(*),
@@ -23,6 +25,9 @@ const FILE_DETAIL_SELECT = `
   packing_lists(*, packing_list_items(*)),
   proformas(*)
 `;
+
+// Minimal select for mutations — no joins, avoids Supabase load
+const MUTATION_SELECT = 'id, file_no, status';
 
 export const tradeFileService = {
   async list(filters?: {
@@ -76,9 +81,10 @@ export const tradeFileService = {
         tonnage_mt: input.tonnage_mt,
         customer_ref: input.customer_ref,
         notes: input.notes,
+        eta: input.eta || null,
         status: 'request' as TradeFileStatus,
       })
-      .select(FILE_SELECT)
+      .select(MUTATION_SELECT)
       .single();
 
     if (error) throw new Error(error.message);
@@ -104,6 +110,8 @@ export const tradeFileService = {
         purchase_currency: input.purchase_currency,
         sale_currency: input.sale_currency,
         payment_terms: input.payment_terms,
+        advance_rate: input.advance_rate,
+        purchase_advance_rate: input.purchase_advance_rate ?? 0,
         transport_mode: input.transport_mode,
         eta: input.eta || null,
         vessel_name: input.vessel_name || null,
@@ -112,7 +120,7 @@ export const tradeFileService = {
       })
       .eq('id', id)
       .eq('status', 'request')
-      .select(FILE_SELECT)
+      .select(MUTATION_SELECT)
       .single();
 
     if (error) throw new Error(error.message);
@@ -137,7 +145,7 @@ export const tradeFileService = {
         insurance_ir: input.insurance_ir || null,
       })
       .eq('id', id)
-      .select(FILE_SELECT)
+      .select(MUTATION_SELECT)
       .single();
 
     if (error) throw new Error(error.message);
@@ -157,11 +165,11 @@ export const tradeFileService = {
   },
 
   async delete(id: string): Promise<void> {
+    // CASCADE on trade_files handles dependent rows automatically (migration 028+).
     const { error } = await supabase
       .from('trade_files')
       .delete()
-      .eq('id', id)
-      .eq('status', 'request');
+      .eq('id', id);
 
     if (error) throw new Error(error.message);
   },
@@ -172,6 +180,23 @@ export const tradeFileService = {
       .update({ revised_eta: data.revised_eta, delay_notes: data.delay_notes ?? null })
       .eq('id', id);
     if (error) throw new Error(error.message);
+  },
+
+  async countByCustomer(customerId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('trade_files')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', customerId);
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  },
+
+  async updateFileNo(id: string, fileNo: string): Promise<void> {
+    const { error } = await supabase
+      .from('trade_files')
+      .update({ file_no: fileNo })
+      .eq('id', id);
+    if (error) throw error;
   },
 
   async countByCustomerPrefix(prefix: string): Promise<number> {
@@ -202,6 +227,8 @@ export const tradeFileService = {
         purchase_currency: input.purchase_currency,
         sale_currency: input.sale_currency,
         payment_terms: input.payment_terms,
+        advance_rate: input.advance_rate,
+        purchase_advance_rate: input.purchase_advance_rate ?? 0,
         transport_mode: input.transport_mode,
         eta: input.eta || null,
         vessel_name: input.vessel_name || null,
@@ -209,7 +236,7 @@ export const tradeFileService = {
         register_no: input.register_no || null,
       })
       .eq('id', id)
-      .select(FILE_SELECT)
+      .select(MUTATION_SELECT)
       .single();
 
     if (error) throw new Error(error.message);
@@ -228,7 +255,7 @@ export const tradeFileService = {
         notes: input.notes,
       })
       .eq('id', id)
-      .select(FILE_SELECT)
+      .select(MUTATION_SELECT)
       .single();
 
     if (error) throw new Error(error.message);
@@ -244,7 +271,7 @@ export const tradeFileService = {
       .from('trade_files')
       .update(patch)
       .eq('id', id)
-      .select(FILE_SELECT)
+      .select(MUTATION_SELECT)
       .single();
 
     if (error) throw new Error(error.message);

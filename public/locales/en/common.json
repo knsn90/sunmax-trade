@@ -100,7 +100,8 @@
     "purchase_inv": "Purchase Invoice",
     "receipt": "Receipt",
     "payment": "Payment",
-    "sale_inv": "Sale Invoice"
+    "sale_inv": "Sale Invoice",
+    "advance": "Advance Payment"
   },
   "payStatus": {
     "open": "Open",

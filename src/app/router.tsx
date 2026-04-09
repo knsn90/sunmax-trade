@@ -7,9 +7,7 @@ import { PipelinePage } from '@/pages/PipelinePage';
 import { TradeFilesPage } from '@/pages/TradeFilesPage';
 import { TradeFileDetailPage } from '@/pages/TradeFileDetailPage';
 import { AccountingPage } from '@/pages/AccountingPage';
-import { LedgerPage } from '@/pages/LedgerPage';
 import { FinancialReportsPage } from '@/pages/FinancialReportsPage';
-import { BankReconciliationPage } from '@/pages/BankReconciliationPage';
 import { ContactsPage } from '@/pages/ContactsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
@@ -47,9 +45,7 @@ export const router = createBrowserRouter([
       { path: 'files/:id', element: <TradeFileDetailRoute /> },
       { path: 'documents', element: <DocumentsPage /> },
       { path: 'accounting', element: <AccountingPage /> },
-      { path: 'ledger',     element: <LedgerPage /> },
       { path: 'fin-reports', element: <FinancialReportsPage /> },
-      { path: 'bank-recon', element: <BankReconciliationPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'contacts', element: <ContactsPage /> },
       { path: 'products', element: <ProductsPage /> },

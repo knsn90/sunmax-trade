@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { saleConversionSchema, type SaleConversionFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
+import { journalService } from '@/services/journalService';
 
 interface ToSaleModalProps {
   open: boolean;
@@ -20,6 +21,18 @@ interface ToSaleModalProps {
   file: TradeFile | null;
   editMode?: boolean;
 }
+
+const PAYMENT_TERMS_OPTIONS = [
+  { value: '',                        label: '— Select —' },
+  { value: '100% Prepayment',         label: '100% Prepayment' },
+  { value: 'Downpayment',             label: 'Downpayment' },
+  { value: 'Net 30',                  label: 'Net 30 days' },
+  { value: 'Net 60',                  label: 'Net 60 days' },
+  { value: 'Net 90',                  label: 'Net 90 days' },
+  { value: 'Letter of Credit',        label: 'Letter of Credit (L/C)' },
+  { value: 'Cash Against Documents',  label: 'Cash Against Documents (CAD)' },
+  { value: 'Open Account',            label: 'Open Account' },
+];
 
 const CURRENCY_OPTIONS = (
   <>
@@ -34,6 +47,11 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   const { data: settings } = useSettings();
   const convertToSale = useConvertToSale();
   const updateSaleDetails = useUpdateSaleDetails();
+  const [posting, setPosting] = useState(false);
+  const [advAmtStr,   setAdvAmtStr]   = useState('');
+  const [purchAmtStr, setPurchAmtStr] = useState('');
+  const advFocused   = useRef(false);
+  const purchFocused = useRef(false);
 
   const mutation = editMode ? updateSaleDetails : convertToSale;
 
@@ -52,6 +70,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
       purchase_currency: defCurrency,
       sale_currency: defCurrency,
       payment_terms: settings?.payment_terms ?? '',
+      advance_rate: 0,
+      purchase_advance_rate: 0,
       transport_mode: 'truck',
       eta: '',
       vessel_name: '',
@@ -60,7 +80,58 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
     },
   });
 
-  const { register, handleSubmit, formState: { errors }, reset } = form;
+  const { register, handleSubmit, formState: { errors }, reset, control, setValue } = form;
+  const paymentTerms     = useWatch({ control, name: 'payment_terms' });
+  const sellingPrice     = useWatch({ control, name: 'selling_price' });
+  const purchasePrice    = useWatch({ control, name: 'purchase_price' });
+  const advanceRate      = useWatch({ control, name: 'advance_rate' });
+  const purchAdvanceRate = useWatch({ control, name: 'purchase_advance_rate' });
+  const saleCurrency     = useWatch({ control, name: 'sale_currency' });
+  const purchCurrency    = useWatch({ control, name: 'purchase_currency' });
+  const isDownpayment    = paymentTerms === 'Downpayment';
+
+  const tonnage = Number(file?.tonnage_mt ?? 0);
+
+  // Yüzde değişince → tutar alanını güncelle (kullanıcı tutara odaklanmadıysa)
+  useEffect(() => {
+    if (advFocused.current) return;
+    const base = Number(sellingPrice) * tonnage;
+    const rate = Number(advanceRate ?? 0);
+    const computed = base > 0 && rate > 0 ? (Math.round(base * rate / 100 * 100) / 100).toFixed(2) : '';
+    setAdvAmtStr(computed);
+  }, [advanceRate, sellingPrice, tonnage]);
+
+  useEffect(() => {
+    if (purchFocused.current) return;
+    const base = Number(purchasePrice) * tonnage;
+    const rate = Number(purchAdvanceRate ?? 0);
+    const computed = base > 0 && rate > 0 ? (Math.round(base * rate / 100 * 100) / 100).toFixed(2) : '';
+    setPurchAmtStr(computed);
+  }, [purchAdvanceRate, purchasePrice, tonnage]);
+
+  // Tutar girilince → yüzdeyi hesapla
+  function handleAdvanceAmountChange(val: string) {
+    setAdvAmtStr(val);
+    const amt = parseFloat(val);
+    const base = Number(sellingPrice) * tonnage;
+    if (!isNaN(amt) && base > 0) {
+      setValue('advance_rate', Math.round(amt / base * 10000) / 100);
+    }
+  }
+  function handlePurchAdvanceAmountChange(val: string) {
+    setPurchAmtStr(val);
+    const amt = parseFloat(val);
+    const base = Number(purchasePrice) * tonnage;
+    if (!isNaN(amt) && base > 0) {
+      setValue('purchase_advance_rate', Math.round(amt / base * 10000) / 100);
+    }
+  }
+
+  // Özet satırı için hesaplama
+  const advanceAmount      = tonnage > 0 && Number(sellingPrice) > 0
+    ? Math.round(Number(sellingPrice) * tonnage * Number(advanceRate ?? 0) / 100 * 100) / 100 : 0;
+  const purchAdvanceAmount = tonnage > 0 && Number(purchasePrice) > 0
+    ? Math.round(Number(purchasePrice) * tonnage * Number(purchAdvanceRate ?? 0) / 100 * 100) / 100 : 0;
 
   useEffect(() => {
     if (open && editMode && file) {
@@ -75,6 +146,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         purchase_currency: (file.purchase_currency ?? file.currency ?? 'USD') as SaleConversionFormData['purchase_currency'],
         sale_currency: (file.sale_currency ?? file.currency ?? 'USD') as SaleConversionFormData['sale_currency'],
         payment_terms: file.payment_terms ?? settings?.payment_terms ?? '',
+        advance_rate: file.advance_rate ?? 0,
+        purchase_advance_rate: file.purchase_advance_rate ?? 0,
         transport_mode: (file.transport_mode as SaleConversionFormData['transport_mode']) ?? 'truck',
         eta: file.eta ?? '',
         vessel_name: file.vessel_name ?? '',
@@ -93,6 +166,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         purchase_currency: defCurrency,
         sale_currency: defCurrency,
         payment_terms: settings?.payment_terms ?? '',
+        advance_rate: 0,
+      purchase_advance_rate: 0,
         transport_mode: 'truck',
         eta: '',
         vessel_name: '',
@@ -105,6 +180,50 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   async function onSubmit(data: SaleConversionFormData) {
     if (!file) return;
     await mutation.mutateAsync({ id: file.id, data });
+
+    // Post customer advance receivable (sale side)
+    const rate    = Number(data.advance_rate ?? 0);
+    const selling = Number(data.selling_price ?? 0);
+    const tonnage = Number(file.tonnage_mt ?? 0);
+    if (data.payment_terms === 'Downpayment' && rate > 0 && selling > 0 && tonnage > 0) {
+      const advanceAmt = Math.round(selling * tonnage * rate / 100 * 100) / 100;
+      setPosting(true);
+      try {
+        await journalService.postAdvanceReceivable({
+          tradeFileId: file.id,
+          fileNo:       file.file_no,
+          customerId:   file.customer_id,
+          customerName: (file.customer as any)?.name ?? '',
+          amount:       advanceAmt,
+          currency:     data.sale_currency,
+          advanceRate:  rate,
+        });
+      } finally {
+        setPosting(false);
+      }
+    }
+
+    // Post supplier advance payable (purchase side)
+    const purchaseRate    = Number(data.purchase_advance_rate ?? 0);
+    const purchasePrice   = Number(data.purchase_price ?? 0);
+    if (purchaseRate > 0 && purchasePrice > 0 && tonnage > 0 && data.supplier_id) {
+      const supplierAdvAmt = Math.round(purchasePrice * tonnage * purchaseRate / 100 * 100) / 100;
+      setPosting(true);
+      try {
+        await journalService.postAdvancePayable({
+          tradeFileId:  file.id,
+          fileNo:       file.file_no,
+          supplierId:   data.supplier_id,
+          supplierName: (file.supplier as any)?.name ?? '',
+          amount:       supplierAdvAmt,
+          currency:     data.purchase_currency,
+          advanceRate:  purchaseRate,
+        });
+      } finally {
+        setPosting(false);
+      }
+    }
+
     onOpenChange(false);
   }
 
@@ -207,18 +326,98 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
               <Input {...register('proforma_ref')} />
             </FormGroup>
             <FormGroup label="Payment Terms">
-              <Input {...register('payment_terms')} />
+              <NativeSelect {...register('payment_terms')}>
+                {PAYMENT_TERMS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </NativeSelect>
             </FormGroup>
           </FormRow>
+
+          {isDownpayment && (
+            <div className="space-y-3 mb-3">
+              {/* Müşteri Ön Ödeme */}
+              <div className="border border-green-100 bg-green-50/30 rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 mb-2">
+                  Müşteri Ön Ödeme
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormGroup label="Yüzde (%)" error={errors.advance_rate?.message}>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="örn. 30"
+                      {...register('advance_rate')}
+                    />
+                  </FormGroup>
+                  <FormGroup label={`Tutar (${saleCurrency || 'USD'})`}>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="örn. 75000"
+                      value={advAmtStr}
+                      onFocus={() => { advFocused.current = true; }}
+                      onBlur={() => { advFocused.current = false; }}
+                      onChange={(e) => handleAdvanceAmountChange(e.target.value)}
+                    />
+                  </FormGroup>
+                </div>
+                {tonnage > 0 && Number(sellingPrice) > 0 && Number(advanceRate) > 0 && (
+                  <p className="text-[11px] text-green-700 mt-1.5 font-medium">
+                    = {Number(sellingPrice).toLocaleString()} × {tonnage} MT × %{Number(advanceRate)} = <strong>${advanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  </p>
+                )}
+              </div>
+
+              {/* Satıcı Ön Ödeme */}
+              <div className="border border-blue-100 bg-blue-50/30 rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">
+                  Satıcı Ön Ödeme
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormGroup label="Yüzde (%)" error={errors.purchase_advance_rate?.message}>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="örn. 30"
+                      {...register('purchase_advance_rate')}
+                    />
+                  </FormGroup>
+                  <FormGroup label={`Tutar (${purchCurrency || 'USD'})`}>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="örn. 60000"
+                      value={purchAmtStr}
+                      onFocus={() => { purchFocused.current = true; }}
+                      onBlur={() => { purchFocused.current = false; }}
+                      onChange={(e) => handlePurchAdvanceAmountChange(e.target.value)}
+                    />
+                  </FormGroup>
+                </div>
+                {tonnage > 0 && Number(purchasePrice) > 0 && Number(purchAdvanceRate) > 0 && (
+                  <p className="text-[11px] text-blue-700 mt-1.5 font-medium">
+                    = {Number(purchasePrice).toLocaleString()} × {tonnage} MT × %{Number(purchAdvanceRate)} = <strong>${purchAdvanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending
-                ? (editMode ? 'Saving…' : 'Converting…')
-                : (editMode ? 'Save Changes' : 'Convert to Sale')}
+            <Button type="submit" disabled={mutation.isPending || posting}>
+              {posting
+                ? 'Muhasebeye İşleniyor…'
+                : mutation.isPending
+                  ? (editMode ? 'Saving…' : 'Converting…')
+                  : (editMode ? 'Save Changes' : 'Convert to Sale')}
             </Button>
           </DialogFooter>
         </form>

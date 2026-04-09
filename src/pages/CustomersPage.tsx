@@ -31,14 +31,14 @@ export function CustomersPage() {
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { name: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '' },
+    defaultValues: { name: '', code: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '' },
   });
 
   const { register, handleSubmit, formState: { errors }, reset } = form;
 
   function openNew() {
     setEditing(null);
-    reset({ name: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '' });
+    reset({ name: '', code: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '' });
     setModalOpen(true);
   }
 
@@ -46,6 +46,7 @@ export function CustomersPage() {
     setEditing(c);
     reset({
       name: c.name,
+      code: c.code ?? '',
       country: c.country,
       address: c.address,
       contact_email: c.contact_email,
@@ -130,6 +131,21 @@ export function CustomersPage() {
               <FormGroup label={`${tc('table.name')} *`} error={errors.name?.message}>
                 <Input {...register('name')} />
               </FormGroup>
+              <FormGroup label="Kısa Kod" error={errors.code?.message}>
+                <Input
+                  {...register('code')}
+                  placeholder="ör. PB"
+                  maxLength={6}
+                  className="uppercase"
+                  onChange={(e) => {
+                    e.target.value = e.target.value.toUpperCase();
+                    register('code').onChange(e);
+                  }}
+                />
+                <p className="text-[10px] text-gray-400 mt-1">2-6 karakter, büyük harf. Dosya numarasında kullanılır (ör. PB → PB-P01-2025-04)</p>
+              </FormGroup>
+            </FormRow>
+            <FormRow>
               <FormGroup label={tc('form.country')}>
                 <Input {...register('country')} />
               </FormGroup>

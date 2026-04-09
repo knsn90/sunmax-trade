@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradeFileService } from '@/services/tradeFileService';
+import type { TradeFile } from '@/types/database';
 import type { TradeFileStatus } from '@/types/enums';
 import type { NewTradeFileFormData, SaleConversionFormData, DeliveryFormData } from '@/types/forms';
 import type { PnlData } from '@/types/database';
@@ -26,10 +27,22 @@ export function useTradeFiles(filters?: {
 }
 
 export function useTradeFile(id: string | undefined) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: tradeFileKeys.detail(id!),
     queryFn: () => tradeFileService.getById(id!),
     enabled: !!id,
+    // Show list-cache data instantly while full detail loads in background
+    initialData: (): TradeFile | undefined => {
+      const lists = qc.getQueriesData<TradeFile[]>({ queryKey: tradeFileKeys.lists() });
+      for (const [, data] of lists) {
+        const found = data?.find(f => f.id === id);
+        if (found) return found;
+      }
+      return undefined;
+    },
+    initialDataUpdatedAt: () =>
+      qc.getQueryState(tradeFileKeys.lists())?.dataUpdatedAt,
   });
 }
 

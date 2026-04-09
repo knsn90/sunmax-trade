@@ -5,7 +5,8 @@
     "purchases": "Alımlar",
     "services": "Hizmetler",
     "saleInvoices": "Satış Faturaları",
-    "cashFlow": "Nakit Akışı"
+    "cashFlow": "Nakit Akışı",
+    "ledger": "Yevmiye Defteri"
   },
   "filters": {
     "allTypes": "Tüm Türler",

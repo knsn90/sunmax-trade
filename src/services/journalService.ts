@@ -1,26 +1,120 @@
 import { supabase } from './supabase';
-import type { JournalEntry } from '@/types/database';
+
+export interface PostAdvanceInput {
+  tradeFileId: string;
+  fileNo: string;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  currency: string;
+  advanceRate: number;
+}
+
+export interface PostAdvancePayableInput {
+  tradeFileId: string;
+  fileNo: string;
+  supplierId: string;
+  supplierName: string;
+  amount: number;
+  currency: string;
+  advanceRate: number;
+}
 
 export const journalService = {
-  async list(filters?: { status?: string; dateFrom?: string; dateTo?: string }): Promise<JournalEntry[]> {
-    let q = supabase
-      .from('journal_entries')
-      .select(`
-        *,
-        lines:journal_lines(
-          *,
-          account:accounts(code, name)
-        )
-      `)
-      .order('entry_date', { ascending: false })
-      .order('entry_no', { ascending: false });
+  /**
+   * Returns true when an advance (customer) transaction already exists for this trade file.
+   * Used to prevent duplicate accounting entries.
+   */
+  async advanceAlreadyPosted(tradeFileId: string): Promise<boolean> {
+    const { count } = await supabase
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trade_file_id', tradeFileId)
+      .eq('transaction_type', 'advance')
+      .eq('party_type', 'customer');
+    return (count ?? 0) > 0;
+  },
 
-    if (filters?.status) q = q.eq('status', filters.status);
-    if (filters?.dateFrom) q = q.gte('entry_date', filters.dateFrom);
-    if (filters?.dateTo)   q = q.lte('entry_date', filters.dateTo);
+  /**
+   * Post advance receivable to the transactions table (cari hesap).
+   * Idempotent: skips if already posted for this trade file.
+   */
+  async postAdvanceReceivable(input: PostAdvanceInput): Promise<void> {
+    // Guard: skip if already posted for this trade file
+    const alreadyPosted = await journalService.advanceAlreadyPosted(input.tradeFileId);
+    if (alreadyPosted) return;
 
-    const { data, error } = await q;
+    const desc = `Ön Ödeme Alacak — ${input.fileNo} %${input.advanceRate} (${input.customerName})`;
+
+    const { error } = await supabase.from('transactions').insert({
+      transaction_date: new Date().toISOString().slice(0, 10),
+      transaction_type: 'advance',
+      trade_file_id:    input.tradeFileId,
+      party_type:       'customer',
+      customer_id:      input.customerId,
+      supplier_id:      null,
+      service_provider_id: null,
+      party_name:       input.customerName,
+      description:      desc,
+      reference_no:     input.fileNo,
+      currency:         input.currency,
+      amount:           input.amount,
+      exchange_rate:    1,
+      amount_usd:       input.amount,
+      paid_amount:      0,
+      paid_amount_usd:  0,
+      payment_status:   'open',
+      doc_status:       'draft',
+      notes:            `Ön Ödeme %${input.advanceRate}`,
+    });
+
     if (error) throw new Error(error.message);
-    return (data ?? []) as JournalEntry[];
+  },
+
+  /** Returns true when an advance (supplier) transaction already exists for this trade file. */
+  async supplierAdvanceAlreadyPosted(tradeFileId: string): Promise<boolean> {
+    const { count } = await supabase
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trade_file_id', tradeFileId)
+      .eq('transaction_type', 'advance')
+      .eq('party_type', 'supplier');
+    return (count ?? 0) > 0;
+  },
+
+  /**
+   * Post supplier advance payable to the transactions table (cari hesap).
+   * Creates a purchase_inv transaction representing money we owe the supplier.
+   * Idempotent: skips if already posted for this trade file.
+   */
+  async postAdvancePayable(input: PostAdvancePayableInput): Promise<void> {
+    const alreadyPosted = await journalService.supplierAdvanceAlreadyPosted(input.tradeFileId);
+    if (alreadyPosted) return;
+
+    const desc = `Satıcı Ön Ödeme Borç — ${input.fileNo} %${input.advanceRate} (${input.supplierName})`;
+
+    const { error } = await supabase.from('transactions').insert({
+      transaction_date:    new Date().toISOString().slice(0, 10),
+      transaction_type:    'advance',
+      trade_file_id:       input.tradeFileId,
+      party_type:          'supplier',
+      customer_id:         null,
+      supplier_id:         input.supplierId,
+      service_provider_id: null,
+      party_name:          input.supplierName,
+      description:         desc,
+      reference_no:        input.fileNo,
+      currency:            input.currency,
+      amount:              input.amount,
+      exchange_rate:       1,
+      amount_usd:          input.amount,
+      paid_amount:         0,
+      paid_amount_usd:     0,
+      payment_status:      'open',
+      doc_status:          'draft',
+      notes:               `Satıcı Ön Ödeme %${input.advanceRate}`,
+    });
+
+    if (error) throw new Error(error.message);
   },
 };

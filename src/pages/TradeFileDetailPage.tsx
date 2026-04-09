@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useTradeFile, useChangeStatus, useNoteDelay } from '@/hooks/useTradeFiles';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTradeFile, useChangeStatus, useNoteDelay, tradeFileKeys } from '@/hooks/useTradeFiles';
+import { tradeFileService } from '@/services/tradeFileService';
+import { dropboxService } from '@/services/dropboxService';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate, fCurrency, fUSD } from '@/lib/formatters';
@@ -18,7 +22,7 @@ import { useDeleteInvoice, useDeletePackingList } from '@/hooks/useDocuments';
 import { useDeleteProforma } from '@/hooks/useProformas';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
-import { printInvoice, printPackingList, printProforma } from '@/lib/printDocument';
+import { printInvoice, printPackingList, printProforma, generateProformaHtml, generateInvoiceHtml, generatePackingListHtml } from '@/lib/printDocument';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -26,6 +30,8 @@ import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { TransportPlanSection } from '@/components/transport/TransportPlanSection';
 import { ObligationsSection } from '@/components/trade-files/ObligationsSection';
+import { NotesSection } from '@/components/trade-files/NotesSection';
+import { AttachmentsSection } from '@/components/trade-files/AttachmentsSection';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import {
@@ -173,6 +179,119 @@ export function TradeFileDetailPage() {
   const [delayEta, setDelayEta] = useState('');
   const [delayNotes, setDelayNotes] = useState('');
   const noteDelay = useNoteDelay();
+  const [dropboxLoading, setDropboxLoading] = useState(false);
+  const [dropboxUploadingId, setDropboxUploadingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [editingFileNo, setEditingFileNo] = useState(false);
+  const [fileNoInput, setFileNoInput] = useState('');
+
+  async function handleSaveFileNo() {
+    if (!fileNoInput.trim() || !file) return;
+    try {
+      await tradeFileService.updateFileNo(file.id, fileNoInput.trim());
+      queryClient.invalidateQueries({ queryKey: ['tradeFile', file.id] });
+      queryClient.invalidateQueries({ queryKey: ['tradeFiles'] });
+      setEditingFileNo(false);
+      toast.success('Dosya numarası güncellendi');
+    } catch {
+      toast.error('Güncelleme başarısız');
+    }
+  }
+
+  const handleOpenDropbox = useCallback(async () => {
+    if (!file) return;
+    const customerName = file.customer?.name ?? 'Unknown';
+    const fileNo = file.file_no;
+    if (file.dropbox_folder_url) {
+      window.open(file.dropbox_folder_url, '_blank');
+      return;
+    }
+    setDropboxLoading(true);
+    try {
+      const res = await dropboxService.createTradeFolder(customerName, fileNo);
+      const folderPath = res.folderPath as string;
+      const folderUrl = res.folderUrl as string;
+      await dropboxService.saveFolderToDb(file.id, folderPath, folderUrl);
+      window.open(folderUrl, '_blank');
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Dropbox klasörü açılamadı: ' + (e as Error).message);
+    } finally {
+      setDropboxLoading(false);
+    }
+  }, [file]);
+
+  const handleUploadToDropbox = useCallback(async (docId: string, docName: string, html: string) => {
+    if (!file) return;
+    setDropboxUploadingId(docId);
+    try {
+      const { toast } = await import('sonner');
+      const upRes = await dropboxService.uploadDocument(
+        file.customer?.name ?? 'Unknown',
+        file.file_no,
+        docName,
+        html,
+      );
+      const viewLink = upRes.viewLink as string | undefined;
+      const folderPath = upRes.folderPath as string | undefined;
+      const folderUrl = upRes.folderUrl as string | undefined;
+      // Klasör henüz DB'ye kaydedilmemişse kaydet
+      if (!file.dropbox_folder_url && folderPath && folderUrl) {
+        await dropboxService.saveFolderToDb(file.id, folderPath, folderUrl);
+      }
+      toast.success('Dropbox\'a yüklendi', {
+        action: { label: 'Aç', onClick: () => window.open(viewLink, '_blank') },
+      });
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Dropbox yükleme hatası: ' + (e as Error).message);
+    } finally {
+      setDropboxUploadingId(null);
+    }
+  }, [file]);
+
+  // Auto-create Dropbox folder when file loads without one
+  useEffect(() => {
+    if (!file || file.dropbox_folder_url) return;
+    const customerName = file.customer?.name;
+    if (!customerName) return;
+
+    dropboxService.createTradeFolder(customerName, file.file_no)
+      .then(async (res) => {
+        const folderPath = res.folderPath as string;
+        const folderUrl = res.folderUrl as string;
+        await dropboxService.saveFolderToDb(file.id, folderPath, folderUrl);
+        queryClient.invalidateQueries({ queryKey: tradeFileKeys.detail(file.id) });
+        queryClient.invalidateQueries({ queryKey: tradeFileKeys.lists() });
+      })
+      .catch(() => {
+        // Dropbox bağlı değilse veya hata olursa sessizce geç
+      });
+  }, [file?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for Dropbox upload requests from print preview popups
+  useEffect(() => {
+    const handler = async (event: MessageEvent) => {
+      if (event.data?.type !== 'DROPBOX_UPLOAD_PDF') return;
+      const { pageHtml, customerName, fileNo, documentName } = event.data as {
+        pageHtml: string; customerName: string; fileNo: string; documentName: string;
+      };
+      const src = event.source as Window | null;
+      try {
+        const { toast } = await import('sonner');
+        toast.loading('Dropbox\'a yükleniyor…', { id: 'dbx-upload' });
+        await dropboxService.uploadDocument(customerName, fileNo, documentName, pageHtml);
+        toast.success('Dropbox\'a yüklendi', { id: 'dbx-upload' });
+        src?.postMessage({ type: 'DROPBOX_UPLOAD_DONE' }, '*');
+      } catch (err) {
+        const { toast } = await import('sonner');
+        toast.error('Dropbox hatası: ' + (err as Error).message, { id: 'dbx-upload' });
+        src?.postMessage({ type: 'DROPBOX_UPLOAD_ERROR', error: (err as Error).message }, '*');
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   if (isLoading) return <LoadingSpinner />;
   if (!file) return <div className="text-center py-12 text-gray-400 text-sm">{t('detail.fileNotFound')}</div>;
@@ -272,8 +391,11 @@ export function TradeFileDetailPage() {
         <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{t('detail.actions.title')}</span>
       </div>
       <div className="px-3 py-2">
-        <ActionItem icon={<Pencil className="h-4 w-4" />} label={t('detail.actions.editFile')}
-          onClick={() => { setActionsOpen(false); setEditFileOpen(true); }} />
+        <ActionItem
+          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg>}
+          label={file.dropbox_folder_url ? 'Dropbox ●' : 'Dropbox'}
+          onClick={() => { setActionsOpen(false); handleOpenDropbox(); }}
+        />
         {isSaleOrDel && (
           <>
             <ActionItem icon={<Receipt className="h-4 w-4" />} label={t('detail.actions.saleInvoice')}
@@ -308,7 +430,7 @@ export function TradeFileDetailPage() {
   );
 
   return (
-    <div className="-mx-4 md:mx-0 bg-gray-50 min-h-screen pb-8">
+    <div className="-mx-4 md:mx-0 bg-gray-50 min-h-screen pb-8 md:h-full md:min-h-0 md:pb-0">
 
       {/* Cancel Reason Modal */}
       <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
@@ -363,7 +485,27 @@ export function TradeFileDetailPage() {
               <div className="text-[15px] font-bold text-gray-900 leading-snug">{custName}</div>
               <div className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
               <div className="inline-flex mt-2 bg-gray-100 rounded-lg px-2 py-1">
-                <span className="text-[10px] font-mono text-gray-500 tracking-wider">{file.file_no}</span>
+                {editingFileNo ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      className="text-[11px] font-mono border border-gray-200 rounded px-2 py-0.5 outline-none w-52 bg-white"
+                      value={fileNoInput}
+                      onChange={e => setFileNoInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveFileNo(); if (e.key === 'Escape') setEditingFileNo(false); }}
+                      autoFocus
+                    />
+                    <button onClick={handleSaveFileNo} className="text-[10px] text-green-600 font-semibold px-1">✓</button>
+                    <button onClick={() => setEditingFileNo(false)} className="text-[10px] text-gray-400 px-1">✕</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setFileNoInput(file.file_no); setEditingFileNo(true); }}
+                    className="text-[10px] font-mono text-gray-500 tracking-wider hover:text-gray-700 flex items-center gap-1 group"
+                  >
+                    {file.file_no}
+                    <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -522,6 +664,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
+                {settings && (<button disabled={dropboxUploadingId === pi.id} onClick={() => handleUploadToDropbox(pi.id, `${pi.proforma_no}`, generateProformaHtml(pi, settings, defaultBank, file, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePI.mutate(pi.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
@@ -553,6 +696,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
+                {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
               </DocRow>
             ))}
 
@@ -578,6 +722,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
+                {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
@@ -608,6 +753,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
+                {settings && (<button disabled={dropboxUploadingId === pl.id} onClick={() => handleUploadToDropbox(pl.id, `${pl.packing_list_no}`, generatePackingListHtml(pl, settings, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
@@ -665,205 +811,428 @@ export function TradeFileDetailPage() {
             <TransportPlanSection file={file} writable={writable} />
           </Section>
         )}
+
+        {/* ── Notes + Attachments (split) ──────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3">
+          <NotesSection tradeFileId={file.id} />
+          <AttachmentsSection
+            tradeFileId={file.id}
+            customerName={file.customer?.name ?? ''}
+            fileNo={file.file_no}
+            dropboxFolderUrl={file.dropbox_folder_url}
+          />
+        </div>{/* end notes+attachments grid */}
+
         </div>{/* end px-3 */}
       </div>{/* end md:hidden */}
 
       {/* ══════════════════════════════════════════════════════════════
-          DESKTOP  (≥ md)  — 2-column layout
+          DESKTOP  (≥ md)  — Two-panel fixed layout
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:grid md:grid-cols-[360px_1fr] md:gap-5 md:items-start">
+      <div className="hidden md:flex h-full gap-6">
 
-        {/* ── LEFT column (sticky summary panel) ─────────────────────── */}
-        <div className="space-y-3 sticky top-0 max-h-screen overflow-y-auto pb-6 scrollbar-thin">
-          {/* Back + status */}
-          <div className="flex items-center justify-between pt-1">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-gray-800 transition-colors">
-              <ArrowLeft className="h-4 w-4" /> {tc('btn.back')}
-            </button>
-            <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
-              {tc('status.' + file.status)}
-            </span>
-          </div>
+          {/* ── LEFT panel — truly fixed ────────────────────────────────── */}
+          <div className="w-[320px] shrink-0 overflow-y-auto scrollbar-thin space-y-4">
 
-          {/* Header card */}
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-[18px] font-bold shrink-0 shadow-sm" style={{ background: avatarBg }}>
-                {custInitials}
+            {/* Title block */}
+            <div className="pb-1">
+              <div className="flex items-center gap-2 mb-2">
+                <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-[12px] font-semibold text-gray-400 hover:text-gray-700 transition-colors mr-1">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <span className={cn('px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest', meta.pill)}>
+                  {tc('status.' + file.status)}
+                </span>
+                {editingFileNo ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      className="text-[11px] font-mono border border-gray-200 rounded px-2 py-0.5 outline-none w-52"
+                      value={fileNoInput}
+                      onChange={e => setFileNoInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveFileNo(); if (e.key === 'Escape') setEditingFileNo(false); }}
+                      autoFocus
+                    />
+                    <button onClick={handleSaveFileNo} className="text-[10px] text-green-600 font-semibold px-1">✓</button>
+                    <button onClick={() => setEditingFileNo(false)} className="text-[10px] text-gray-400 px-1">✕</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setFileNoInput(file.file_no); setEditingFileNo(true); }}
+                    className="text-[11px] font-mono text-gray-400 hover:text-gray-600 flex items-center gap-1 group"
+                  >
+                    {file.file_no}
+                    <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
+                {file.revised_eta && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                    <AlertTriangle className="h-3 w-3" /> Gecikme
+                  </span>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[17px] font-bold text-gray-900 leading-snug">{custName}</div>
-                <div className="text-[13px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
-                <div className="inline-flex mt-2 bg-gray-100 rounded-lg px-2.5 py-1.5">
-                  <span className="text-[11px] font-mono text-gray-600 tracking-wider">{file.file_no}</span>
+              <h1 className="text-[24px] font-extrabold text-gray-900 leading-tight tracking-tight">{custName}</h1>
+              <p className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</p>
+            </div>
+
+            {/* Quick info 2×2 */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="grid grid-cols-2 divide-x divide-gray-50">
+                <div className="px-5 py-4 border-b border-gray-50">
+                  <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.date')}</div>
+                  <div className="text-[15px] font-extrabold text-gray-900">{fDate(file.file_date)}</div>
+                </div>
+                <div className="px-5 py-4 border-b border-gray-50">
+                  <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.tonnage')}</div>
+                  <div className="text-[15px] font-extrabold text-gray-900">{fN(file.tonnage_mt, 3)} MT</div>
+                </div>
+                <div className="px-5 py-4">
+                  <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.salePrice')}</div>
+                  <div className="text-[15px] font-extrabold text-gray-900">
+                    {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
+                  </div>
+                </div>
+                <div className="px-5 py-4">
+                  <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.delivered')}</div>
+                  <div className="text-[15px] font-extrabold text-gray-900">
+                    {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
+                  </div>
                 </div>
               </div>
+              {(file.customer_ref || file.notes || file.status === 'cancelled') && (
+                <div className="divide-y divide-gray-50 border-t border-gray-50">
+                  {file.customer_ref && (
+                    <div className="flex justify-between px-5 py-2.5">
+                      <span className="text-[11px] text-gray-400">{t('detail.fileInfo.ref')}</span>
+                      <span className="text-[11px] font-medium text-gray-700">{file.customer_ref}</span>
+                    </div>
+                  )}
+                  {file.notes && (
+                    <div className="flex justify-between gap-4 px-5 py-2.5">
+                      <span className="text-[11px] text-gray-400 shrink-0">{t('detail.fileInfo.notes')}</span>
+                      <span className="text-[11px] text-gray-700 text-right">{file.notes}</span>
+                    </div>
+                  )}
+                  {file.status === 'cancelled' && (
+                    <div className="flex justify-between gap-4 px-5 py-2.5 bg-red-50">
+                      <span className="text-[11px] text-red-500 font-medium shrink-0">{t('detail.fileInfo.cancelReason')}</span>
+                      <span className="text-[11px] text-red-700 text-right">{file.cancel_reason || '—'}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
 
-          {/* Combined file info card */}
-          {fileInfoCard}
+            {/* Operations list */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t('detail.actions.title')}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                <button onClick={handleOpenDropbox} disabled={dropboxLoading} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left disabled:opacity-60">
+                  <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                    {dropboxLoading
+                      ? <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                      : <svg className="h-3.5 w-3.5 text-gray-500 group-hover:text-blue-600" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[13px] font-semibold text-gray-800">Dropbox</span>
+                    {file.dropbox_folder_url
+                      ? <p className="text-[10px] text-green-600 font-medium">● Klasör mevcut</p>
+                      : <p className="text-[10px] text-gray-400">Klasör oluştur / aç</p>}
+                  </div>
+                </button>
+                {isSaleOrDel && writable && (
+                  <>
+                    <button onClick={() => { const e = file.invoices?.find(i => i.invoice_type === 'sale') ?? null; setEditSaleInvoice(e); setSaleInvoiceOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
+                        <Receipt className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
+                      </div>
+                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.saleInvoice')}</span>
+                    </button>
+                    <button onClick={() => { setEditInvoice(null); setInvoiceOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
+                        <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
+                      </div>
+                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.commercialInvoice')}</span>
+                    </button>
+                    <button onClick={() => { setEditPL(null); setPackingOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
+                        <Package className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
+                      </div>
+                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.packingList')}</span>
+                    </button>
+                    <button onClick={() => { setEditPI(null); setProformaOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
+                        <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
+                      </div>
+                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.proformaInvoice')}</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
 
-          {/* Primary action */}
-          {writable && file.status === 'request' && (
-            <button onClick={() => setSaleOpen(true)} className="w-full h-10 rounded-xl text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity" style={{ background: accent }}>
-              <TrendingUp className="h-3.5 w-3.5" /> {t('detail.btn.convertToSale')}
-            </button>
-          )}
-          {writable && file.status === 'sale' && (
-            <button onClick={openDeliveryWithPacking} className="w-full h-10 rounded-xl text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity" style={{ background: accent }}>
-              <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? t('detail.btn.editDelivery') : t('detail.btn.addDelivery')}
-            </button>
-          )}
+          </div>{/* end LEFT */}
 
-          {/* Actions panel */}
-          {writable && actionsPanel(false)}
-        </div>
+          {/* ── RIGHT panel — scrollable ────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin space-y-5 pb-4">
 
-        {/* ── RIGHT column (detail sections) ─────────────────────────── */}
-        <div className="space-y-3 py-1 pb-6">
-          {/* Sale Details */}
-          {file.selling_price ? (
-            <Section title={t('detail.saleDetails.title')} icon={<TrendingUp className="h-3.5 w-3.5" />} accent
-              right={writable ? (
-                <div className="flex items-center gap-2">
-                  {file.eta && !['completed','cancelled'].includes(file.status) && (
-                    <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
-                      <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
+            {/* Action buttons row */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {writable && file.status === 'request' && (
+                  <button onClick={() => setSaleOpen(true)}
+                    className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
+                    style={{ background: accent }}>
+                    <TrendingUp className="h-3.5 w-3.5" /> {t('detail.btn.convertToSale')}
+                  </button>
+                )}
+                {writable && file.status === 'sale' && (
+                  <button onClick={openDeliveryWithPacking}
+                    className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
+                    style={{ background: accent }}>
+                    <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? t('detail.btn.editDelivery') : t('detail.btn.addDelivery')}
+                  </button>
+                )}
+                {writable && (
+                  <button onClick={() => setEditFileOpen(true)}
+                    className="h-9 px-3 rounded-xl text-[13px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition-all flex items-center gap-1.5">
+                    <Pencil className="h-3.5 w-3.5" /> {t('detail.actions.editFile')}
+                  </button>
+                )}
+              </div>
+              {writable && (
+                <div className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer">
+                  <RotateCcw className="h-3 w-3 text-gray-400 shrink-0" />
+                  <NativeSelect
+                    className="text-[12px] font-semibold text-gray-600 bg-transparent border-0 outline-none cursor-pointer"
+                    value={file.status}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                  >
+                    <option value="request">{tc('status.request')}</option>
+                    <option value="sale">{tc('status.sale')}</option>
+                    <option value="delivery">{tc('status.delivery')}</option>
+                    <option value="completed">{tc('status.completed')}</option>
+                    <option value="cancelled">{tc('status.cancelled')}</option>
+                  </NativeSelect>
+                </div>
+              )}
+            </div>
+
+            {/* Sale Details */}
+            {file.selling_price ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+                  <div className="flex items-center gap-2.5">
+                    <TrendingUp className="h-4 w-4 text-gray-400" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.saleDetails.title')}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {writable && file.eta && !['completed','cancelled'].includes(file.status) && (
+                      <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
+                        <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
+                      </button>
+                    )}
+                    {writable && (
+                      <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors">
+                        <Pencil className="h-3 w-3" /> {tc('btn.edit')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="px-6 py-2">
+                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.salePrice')}</span>
+                    <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.selling_price)}/MT</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
+                    <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.purchase_price)}/MT</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
+                    <span className="text-[13px] font-bold text-gray-900">{file.supplier?.name ?? '—'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.incoterms')}</span>
+                    <span className="text-[13px] font-bold text-gray-900">{`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'}</span>
+                  </div>
+                  {file.eta && (
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.eta')}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{fDate(file.eta)}</span>
+                    </div>
+                  )}
+                  {file.revised_eta && (
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.revisedEta')}</span>
+                      <span className="flex items-center gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        <span className="text-[13px] font-bold text-amber-600">{fDate(file.revised_eta)}</span>
+                      </span>
+                    </div>
+                  )}
+                  {file.delay_notes && (
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.delayReason')}</span>
+                      <span className="text-[13px] font-bold text-gray-900 text-right max-w-[60%]">{file.delay_notes}</span>
+                    </div>
+                  )}
+                  {file.vessel_name && (
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100 last:border-0">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.vessel')}</span>
+                      <a href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[13px] font-bold hover:underline" style={{ color: accent }}
+                        onClick={e => e.stopPropagation()}>
+                        {file.vessel_name} <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </div>
+                  )}
+                  {file.register_no && (
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.register')}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{file.register_no}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 text-[12px] text-amber-700 font-medium">
+                {t('detail.saleDetails.noSaleDetails')}
+              </div>
+            )}
+
+            {/* Obligations */}
+            <ObligationsSection file={file} writable={writable} />
+
+            {/* Delivery */}
+            {file.delivered_admt && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+                  <div className="flex items-center gap-2.5">
+                    <Truck className="h-4 w-4 text-gray-400" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.delivery.title')}</span>
+                  </div>
+                  {writable && (
+                    <button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors">
+                      <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                     </button>
                   )}
-                  <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>
                 </div>
-              ) : undefined}>
-              <KV label={t('detail.saleDetails.salePrice')} value={`${fCurrency(file.selling_price)}/MT`} bold />
-              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
-              <KV label={t('detail.saleDetails.supplier')} value={file.supplier?.name ?? '—'} />
-              <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
-              {file.eta && <KV label={t('detail.saleDetails.eta')} value={fDate(file.eta)} />}
-              {file.revised_eta && (
-                <KV label={t('detail.saleDetails.revisedEta')} value={
-                  <span className="flex items-center gap-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                    <span className="font-bold text-amber-600">{fDate(file.revised_eta)}</span>
-                  </span>
-                } />
-              )}
-              {file.delay_notes && <KV label={t('detail.saleDetails.delayReason')} value={file.delay_notes} />}
-              {file.vessel_name && (
-              <KV label={t('detail.saleDetails.vessel')} value={
-                <a
-                  href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-600 hover:underline font-medium"
-                  onClick={e => e.stopPropagation()}
-                >
-                  {file.vessel_name}
-                  <ExternalLink className="h-3 w-3 shrink-0" />
-                </a>
-              } />
+                <div className="px-6 py-3 grid grid-cols-2 gap-x-6">
+                  <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
+                  <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
+                  <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
+                  <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
+                  <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
+                  <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
+                </div>
+              </div>
             )}
-              {file.register_no && <KV label={t('detail.saleDetails.register')} value={file.register_no} />}
-            </Section>
-          ) : (
-            <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-[12px] text-amber-700 font-medium">
-              {t('detail.saleDetails.noSaleDetails')}
+
+            {/* Documents */}
+            {((file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 flex items-center gap-2.5 border-b border-gray-50">
+                  <FileText className="h-4 w-4 text-gray-400" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.documents.title')}</span>
+                </div>
+                <div className="px-4 py-2">
+                  {file.proformas?.map((pi) => (
+                    <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'}>
+                      <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
+                      {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                      {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === pi.id} onClick={() => handleUploadToDropbox(pi.id, `${pi.proforma_no}`, generateProformaHtml(pi, settings, defaultBank, file, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                      {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                    </DocRow>
+                  ))}
+                  {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
+                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
+                      <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                      {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                      {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                    </DocRow>
+                  ))}
+                  {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
+                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
+                      <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
+                      {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                      {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                      {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                    </DocRow>
+                  ))}
+                  {file.packing_lists?.map((pl) => (
+                    <DocRow key={pl.id} no={pl.packing_list_no} date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })} status={pl.doc_status ?? 'draft'}>
+                      <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
+                      {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
+                      {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === pl.id} onClick={() => handleUploadToDropbox(pl.id, `${pl.packing_list_no}`, generatePackingListHtml(pl, settings, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                      {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
+                    </DocRow>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expenses */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+                <div className="flex items-center gap-2.5">
+                  <Receipt className="h-4 w-4 text-gray-400" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.expenses.title')}</span>
+                </div>
+                {writable && (
+                  <div className="flex gap-1.5">
+                    <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
+                    <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-2">
+                {expenses.length === 0 ? (
+                  <div className="text-[12px] text-gray-400 py-4 text-center">{t('detail.expenses.noRecords')}</div>
+                ) : (
+                  expenses.map(txn => (
+                    <div key={txn.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                      <div className="min-w-0">
+                        <div className="text-[12px] font-medium text-gray-800 truncate">{txn.description || '—'}</div>
+                        <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-4">
+                        <span className="text-[13px] font-bold text-gray-800">{fUSD(txn.amount_usd ?? txn.amount)}</span>
+                        <span className={cn('text-[9px] px-2 py-0.5 rounded-full font-bold',
+                          txn.payment_status === 'paid' ? 'bg-green-100 text-green-700'
+                          : txn.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-red-100 text-red-700'
+                        )}>{tc(`payStatus.${txn.payment_status}`)}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          )}
 
-          {/* Obligations */}
-          <ObligationsSection file={file} writable={writable} />
-
-          {/* Delivery */}
-          {file.delivered_admt && (
-            <Section title={t('detail.delivery.title')} icon={<Truck className="h-3.5 w-3.5" />}
-              right={writable ? (<button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>) : undefined}>
-              <div className="grid grid-cols-2 gap-x-4">
-                <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
-                <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
-                <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
-                <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
-                <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
-                <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
-              </div>
-            </Section>
-          )}
-
-          {/* Documents */}
-          {((file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0) && (
-            <Section title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}>
-              {file.proformas?.map((pi) => (
-                <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'}>
-                  <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
-                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
-                  {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                  {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
-                </DocRow>
-              ))}
-              {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
-                <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
-                  <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
-                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                </DocRow>
-              ))}
-              {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
-                <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
-                  <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
-                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
-                  {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                  {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
-                </DocRow>
-              ))}
-              {file.packing_lists?.map((pl) => (
-                <DocRow key={pl.id} no={pl.packing_list_no} date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })} status={pl.doc_status ?? 'draft'}>
-                  <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
-                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
-                  {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                  {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
-                </DocRow>
-              ))}
-            </Section>
-          )}
-
-          {/* Expenses */}
-          <Section title={t('detail.expenses.title')} icon={<Receipt className="h-3.5 w-3.5" />}
-            right={writable ? (
-              <div className="flex gap-1.5">
-                <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
-                <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
-              </div>
-            ) : undefined}>
-            {expenses.length === 0 ? (
-              <div className="text-[12px] text-gray-400 py-2 text-center">{t('detail.expenses.noRecords')}</div>
-            ) : (
-              expenses.map(txn => (
-                <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <div className="min-w-0">
-                    <div className="text-[12px] font-medium text-gray-800 truncate">{txn.description || '—'}</div>
-                    <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <span className="text-[12px] font-bold text-gray-800">{fUSD(txn.amount_usd ?? txn.amount)}</span>
-                    <span className={cn('text-[9px] px-2 py-0.5 rounded-full font-bold',
-                      txn.payment_status === 'paid' ? 'bg-green-100 text-green-700'
-                      : txn.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-red-100 text-red-700'
-                    )}>{tc(`payStatus.${txn.payment_status}`)}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </Section>
-
-          {/* Transport Plan */}
-          {['sale', 'delivery', 'completed'].includes(file.status) && (
-            <Section title={t('detail.transport.title')} icon={<Truck className="h-3.5 w-3.5" />}>
+            {/* Transport Plan */}
+            {['sale', 'delivery', 'completed'].includes(file.status) && (
               <TransportPlanSection file={file} writable={writable} />
-            </Section>
-          )}
-        </div>
-      </div>{/* end desktop grid */}
+            )}
+
+            {/* Notes + Attachments (split) */}
+            <div className="grid grid-cols-2 gap-4">
+              <NotesSection tradeFileId={file.id} />
+              <AttachmentsSection
+                tradeFileId={file.id}
+                customerName={file.customer?.name ?? ''}
+                fileNo={file.file_no}
+                dropboxFolderUrl={file.dropbox_folder_url}
+              />
+            </div>
+
+          </div>{/* end RIGHT */}
+      </div>{/* end desktop two-panel */}
 
       {/* ── Note Delay Modal ─────────────────────────────────────────── */}
       {delayOpen && (

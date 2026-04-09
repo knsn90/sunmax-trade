@@ -110,26 +110,34 @@ function KpiCard({ label, value, sub, trend, icon, accent }: {
   trend?: 'up' | 'down'; icon: React.ReactNode; accent: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-3.5 md:p-5 shadow-sm border border-gray-100 overflow-hidden">
-      <div className="flex flex-col gap-1 md:hidden">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</div>
-        <div className="text-[15px] font-black text-gray-900 leading-tight truncate">{value}</div>
-        {sub && (
-          <div className="flex items-center gap-1">
-            {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-green-500 shrink-0" />}
-            {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-red-500 shrink-0" />}
-            <span className="text-[10px] text-gray-400 truncate">{sub}</span>
-          </div>
-        )}
-      </div>
-      <div className="hidden md:flex items-start gap-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: accent + '18' }}>
+    <div className="bg-white rounded-2xl px-4 py-4 md:px-5 md:py-4 shadow-sm border border-gray-100 overflow-hidden">
+      {/* Mobile */}
+      <div className="flex items-center gap-3 md:hidden">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: accent + '15' }}>
           <span style={{ color: accent }}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{label}</div>
-          <div className="text-2xl font-black text-gray-900 leading-none">{value}</div>
+          <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{label}</div>
+          <div className="text-[15px] font-extrabold text-gray-900 leading-tight truncate">{value}</div>
+          {sub && (
+            <div className="flex items-center gap-1 mt-0.5">
+              {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-green-500 shrink-0" />}
+              {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-red-500 shrink-0" />}
+              <span className="text-[10px] text-gray-400 truncate">{sub}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Desktop */}
+      <div className="hidden md:flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: accent + '15' }}>
+          <span style={{ color: accent }}>{icon}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</div>
+          <div className="text-[22px] font-extrabold text-gray-900 leading-none">{value}</div>
           {sub && (
             <div className="flex items-center gap-1 mt-1.5">
               {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-green-500 shrink-0" />}
@@ -151,9 +159,9 @@ function Card({ title, children, action, actionLabel, className, dragHandleProps
   isFull?: boolean; onToggleSize?: () => void;
 }) {
   return (
-    <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[340px]', className)}>
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</span>
+    <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[340px]', className)}>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 shrink-0">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{title}</span>
         <div className="flex items-center gap-1.5">
           {action && (
             <button onClick={action} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 flex items-center gap-0.5 transition-colors mr-1">
@@ -657,19 +665,20 @@ export function DashboardPage() {
     <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8">
 
       {/* Mobile greeting */}
-      <div className="md:hidden px-4 py-4">
-        <div className="text-[12px] text-gray-400 font-medium">{greeting}, {profile?.full_name?.split(' ')[0]} 👋</div>
+      <div className="md:hidden px-4 pt-4 pb-2">
+        <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{greeting}</div>
+        <div className="text-[17px] font-extrabold text-gray-900 leading-tight">{profile?.full_name?.split(' ')[0]}</div>
       </div>
 
       <div className="px-3 md:px-6 space-y-3 md:space-y-4">
 
         {/* Desktop greeting */}
-        <div className="hidden md:flex items-center justify-between bg-white rounded-2xl shadow-sm px-6 py-4">
+        <div className="hidden md:flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden px-6 py-4">
           <div>
-            <div className="text-[12px] text-gray-400 font-medium">{greeting} 👋</div>
-            <div className="text-xl font-black text-gray-900 mt-0.5">{profile?.full_name ?? 'Dashboard'}</div>
+            <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{greeting}</div>
+            <div className="text-[22px] font-extrabold text-gray-900 leading-tight">{profile?.full_name ?? 'Dashboard'}</div>
           </div>
-          <span className="text-[12px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
+          <span className="text-[11px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
         </div>
 
         {/* ── KPI Row — always fixed at top, not draggable ─────────────────── */}

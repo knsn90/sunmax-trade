@@ -24,7 +24,6 @@ export const NAMESPACES = [
   'profile',
   'ledger',
   'finReports',
-  'bankRecon',
   'activity',
   'reports',
   'priceList',

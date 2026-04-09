@@ -16,7 +16,6 @@ export interface TradeObligation {
   status: 'pending' | 'partial' | 'settled' | 'cancelled';
   due_date?: string | null;
   notes?: string;
-  journal_entry_id?: string | null;
   created_at: string;
 }
 
@@ -65,9 +64,10 @@ export const obligationService = {
 
   /**
    * Record a payment and immediately allocate it fully to the given obligation.
-   * Steps (all within a Postgres transaction via sequential calls):
-   *   1. Insert into `payments`  (triggers: journal entry + sets unallocated_amount)
-   *   2. Insert into `payment_allocations`  (triggers: syncs obligation.paid_amount + payment.unallocated_amount)
+   * Steps:
+   *   1. Insert into `payments`  (trigger sets unallocated_amount)
+   *   2. Insert into `payment_allocations`  (triggers sync obligation.paid_amount + payment.unallocated_amount)
+   * NOTE: No journal entries created — accounting is managed independently.
    */
   async recordPayment(input: RecordPaymentInput): Promise<void> {
     const direction = input.party === 'customer' ? 'inbound' : 'outbound';

@@ -100,7 +100,8 @@
     "purchase_inv": "Satın Alma Faturası",
     "receipt": "Makbuz",
     "payment": "Ödeme",
-    "sale_inv": "Satış Faturası"
+    "sale_inv": "Satış Faturası",
+    "advance": "Ön Ödeme"
   },
   "payStatus": {
     "open": "Açık",

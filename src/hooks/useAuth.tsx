@@ -101,11 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    if (data.user) logEvent(data.user.id, 'login');
+    // Delay logEvent so the Supabase client session is fully propagated before the insert
+    if (data.user) setTimeout(() => logEvent(data.user!.id, 'login'), 100);
   }, []);
 
   const signOut = useCallback(async () => {
-    if (user) logEvent(user.id, 'logout');
+    if (user) await logEvent(user.id, 'logout');
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);

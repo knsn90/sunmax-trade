@@ -4,13 +4,13 @@
 export const TRADE_FILE_STATUSES = ['request', 'sale', 'delivery', 'completed', 'cancelled'] as const;
 export type TradeFileStatus = (typeof TRADE_FILE_STATUSES)[number];
 
-export const TRANSACTION_TYPES = ['svc_inv', 'purchase_inv', 'receipt', 'payment', 'sale_inv'] as const;
+export const TRANSACTION_TYPES = ['svc_inv', 'purchase_inv', 'receipt', 'payment', 'sale_inv', 'advance'] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
 export const PAYMENT_STATUSES = ['open', 'partial', 'paid'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const CURRENCY_CODES = ['USD', 'EUR', 'TRY'] as const;
+export const CURRENCY_CODES = ['USD', 'EUR', 'TRY', 'AED'] as const;
 export type CurrencyCode = (typeof CURRENCY_CODES)[number];
 
 export const TRANSPORT_MODES = ['truck', 'railway', 'sea'] as const;
@@ -46,6 +46,7 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   receipt: 'Receipt',
   payment: 'Payment',
   sale_inv: 'Sale Invoice',
+  advance: 'Ön Ödeme',
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -79,6 +80,7 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   USD: '$',
   EUR: '€',
   TRY: '₺',
+  AED: 'AED',
 };
 
 // ─── Page Permissions ────────────────────────────────────────────────────────

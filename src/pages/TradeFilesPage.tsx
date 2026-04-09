@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHeaderAction } from '@/contexts/HeaderContext';
 import { useNavigate } from 'react-router-dom';
@@ -10,11 +10,14 @@ import { NewFileModal } from '@/components/trade-files/NewFileModal';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { cn } from '@/lib/utils';
 import { fCurrency } from '@/lib/formatters';
-import { Search, Plus, ChevronRight, MoreVertical } from 'lucide-react';
+import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
-// ─── Status meta (styling only, labels resolved via t()) ──────────────────────
+// ─── Status meta ───────────────────────────────────────────────────────────────
 const STATUS_META: Record<string, { dot: string; text: string }> = {
   request:   { dot: 'bg-amber-400',  text: 'text-amber-700' },
   sale:      { dot: 'bg-blue-400',   text: 'text-blue-700' },
@@ -39,8 +42,106 @@ function initials(name: string) {
 
 const PAGE_SIZE = 12;
 
-// ─── List row ──────────────────────────────────────────────────────────────────
-function FileRow({ file, onClick }: { file: TradeFile; onClick: () => void }) {
+const ACCEPTED_PHRASES = ['Sil', 'sil', 'SIL', 'SİL'];
+
+// ─── Delete confirm modal ──────────────────────────────────────────────────────
+function DeleteConfirmModal({
+  open, file, onConfirm, onCancel, isPending,
+}: {
+  open: boolean;
+  file: TradeFile | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  const [phrase, setPhrase] = useState('');
+  useEffect(() => { if (open) setPhrase(''); }, [open]);
+
+  const accepted = ACCEPTED_PHRASES.includes(phrase.trim());
+
+  if (!file) return null;
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v && !isPending) onCancel(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-red-600">Dosyayı Sil</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <p className="text-[13px] text-gray-600">
+            <span className="font-semibold text-gray-900">{file.file_no}</span> — {file.customer?.name} dosyası kalıcı olarak silinecek.
+          </p>
+          <p className="text-[12px] text-gray-500">
+            Onaylamak için aşağıya <span className="font-bold text-red-600">SİL</span> yazın:
+          </p>
+          <Input
+            value={phrase}
+            onChange={e => setPhrase(e.target.value)}
+            placeholder="SİL"
+            autoFocus
+            disabled={isPending}
+            onKeyDown={e => { if (e.key === 'Enter' && accepted) onConfirm(); }}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={isPending}>Vazgeç</Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={!accepted || isPending}>
+            {isPending ? 'Siliniyor…' : 'Kalıcı Olarak Sil'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Mobile row menu ───────────────────────────────────────────────────────────
+function MobileRowMenu({
+  onEdit, onDelete, writable,
+}: {
+  onEdit: () => void; onDelete: () => void; writable: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+  if (!writable) return <ChevronRight className="h-3.5 w-3.5 text-gray-300" />;
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-50 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[120px]">
+          <button
+            onClick={e => { e.stopPropagation(); setOpen(false); onEdit(); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Pencil className="h-3.5 w-3.5 text-gray-400" /> Düzenle
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); setOpen(false); onDelete(); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Sil
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Mobile list row ───────────────────────────────────────────────────────────
+function FileRow({ file, onClick, onEdit, onDelete, writable }: {
+  file: TradeFile; onClick: () => void; onEdit: () => void; onDelete: () => void; writable: boolean;
+}) {
   const { t } = useTranslation('tradeFiles');
   const { t: tc } = useTranslation('common');
   const custName = file.customer?.name ?? t('unknown');
@@ -51,15 +152,12 @@ function FileRow({ file, onClick }: { file: TradeFile; onClick: () => void }) {
       className="flex items-center gap-3 px-4 py-3.5 bg-white active:bg-gray-50 cursor-pointer"
       onClick={onClick}
     >
-      {/* Avatar */}
       <div
         className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white text-[13px] font-bold shadow-sm"
         style={{ background: avatarColor(custName) }}
       >
         {initials(custName)}
       </div>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-[13px] text-gray-900 truncate">{custName}</div>
         <div className="text-[11px] text-gray-400 mt-0.5 truncate">
@@ -78,19 +176,17 @@ function FileRow({ file, onClick }: { file: TradeFile; onClick: () => void }) {
           )}
         </div>
       </div>
-
-      {/* Right side */}
       <div className="flex flex-col items-end gap-1 shrink-0">
         <span className="text-[11px] text-gray-400">{fDate(file.file_date)}</span>
-        <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
+        <MobileRowMenu onEdit={onEdit} onDelete={onDelete} writable={writable} />
       </div>
     </div>
   );
 }
 
 // ─── Desktop table row ─────────────────────────────────────────────────────────
-function DesktopRow({ file, onClick, onDelete, writable }: {
-  file: TradeFile; onClick: () => void; onDelete: () => void; writable: boolean;
+function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
+  file: TradeFile; onClick: () => void; onEdit: () => void; onDelete: () => void; writable: boolean;
 }) {
   const { t } = useTranslation('tradeFiles');
   const { t: tc } = useTranslation('common');
@@ -127,13 +223,21 @@ function DesktopRow({ file, onClick, onDelete, writable }: {
         </div>
       </td>
       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-        {file.status === 'request' && writable && (
-          <button
-            onClick={onDelete}
-            className="text-[11px] text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
-          >
-            {tc('btn.delete')}
-          </button>
+        {writable && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
+            >
+              <Pencil className="h-3 w-3" /> Düzenle
+            </button>
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+            >
+              <Trash2 className="h-3 w-3" /> Sil
+            </button>
+          </div>
         )}
       </td>
     </tr>
@@ -154,6 +258,8 @@ export function TradeFilesPage() {
   const accent = isDonezo ? '#dc2626' : '#2563eb';
 
   const [newFileOpen, setNewFileOpen] = useState(false);
+  const [editFile, setEditFile] = useState<TradeFile | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TradeFile | null>(null);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -201,8 +307,9 @@ export function TradeFilesPage() {
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  function handleDelete(id: string) {
-    if (window.confirm(t('confirm.deleteFile'))) deleteFile.mutate(id);
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    deleteFile.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
   }
 
   if (isLoading) return <LoadingSpinner />;
@@ -210,11 +317,10 @@ export function TradeFilesPage() {
   return (
     <>
       {/* ══════════════════════════════════════════════════════════════
-          MOBILE  (< md)
+          MOBILE
       ══════════════════════════════════════════════════════════════ */}
       <div className="md:hidden flex flex-col min-h-screen -mx-4 bg-gray-50">
 
-        {/* Search bar */}
         <div className="px-4 pb-3">
           {searchOpen ? (
             <div className="flex items-center gap-2 bg-white rounded-full px-4 h-11 shadow-sm border border-gray-100">
@@ -246,12 +352,9 @@ export function TradeFilesPage() {
           )}
         </div>
 
-        {/* Filter pills */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mx-4 mb-3 overflow-x-auto scrollbar-none">
           {STATUS_FILTERS.map(s => {
-            const count = s.key === 'all'
-              ? files.length
-              : files.filter(f => f.status === s.key).length;
+            const count = s.key === 'all' ? files.length : files.filter(f => f.status === s.key).length;
             const active = filter === s.key;
             return (
               <button
@@ -267,7 +370,6 @@ export function TradeFilesPage() {
           })}
         </div>
 
-        {/* List */}
         <div className="flex-1 mx-3 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
           {paged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
@@ -277,16 +379,19 @@ export function TradeFilesPage() {
           ) : (
             paged.map((f, i) => (
               <div key={f.id}>
-                <FileRow file={f} onClick={() => navigate(`/files/${f.id}`)} />
-                {i < paged.length - 1 && (
-                  <div className="h-px bg-gray-50 mx-4" />
-                )}
+                <FileRow
+                  file={f}
+                  onClick={() => navigate(`/files/${f.id}`)}
+                  onEdit={() => setEditFile(f)}
+                  onDelete={() => setDeleteTarget(f)}
+                  writable={writable}
+                />
+                {i < paged.length - 1 && <div className="h-px bg-gray-50 mx-4" />}
               </div>
             ))
           )}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-1.5 py-4">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -295,9 +400,7 @@ export function TradeFilesPage() {
                 onClick={() => setPage(p)}
                 className={cn(
                   'w-7 h-7 rounded-full text-[11px] font-bold transition-all',
-                  p === currentPage
-                    ? 'text-white shadow-sm scale-110'
-                    : 'bg-white text-gray-400 border border-gray-200'
+                  p === currentPage ? 'text-white shadow-sm scale-110' : 'bg-white text-gray-400 border border-gray-200'
                 )}
                 style={p === currentPage ? { background: accent } : {}}
               >
@@ -306,18 +409,14 @@ export function TradeFilesPage() {
             ))}
           </div>
         )}
-
         <div className="h-24" />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          DESKTOP  (≥ md)
+          DESKTOP
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:block">
-
-        {/* Toolbar */}
         <div className="flex items-center gap-3 mb-4">
-          {/* Search */}
           <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
             <input
@@ -328,12 +427,9 @@ export function TradeFilesPage() {
             />
           </div>
 
-          {/* Filter pills */}
           <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
             {STATUS_FILTERS.map(s => {
-              const count = s.key === 'all'
-                ? files.length
-                : files.filter(f => f.status === s.key).length;
+              const count = s.key === 'all' ? files.length : files.filter(f => f.status === s.key).length;
               const active = filter === s.key;
               return (
                 <button
@@ -362,7 +458,6 @@ export function TradeFilesPage() {
           )}
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <table className="w-full">
             <thead>
@@ -387,7 +482,8 @@ export function TradeFilesPage() {
                     key={f.id}
                     file={f}
                     onClick={() => navigate(`/files/${f.id}`)}
-                    onDelete={() => handleDelete(f.id)}
+                    onEdit={() => setEditFile(f)}
+                    onDelete={() => setDeleteTarget(f)}
                     writable={writable}
                   />
                 ))
@@ -395,7 +491,6 @@ export function TradeFilesPage() {
             </tbody>
           </table>
 
-          {/* Desktop pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-1.5 py-4 border-t border-gray-50">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -404,9 +499,7 @@ export function TradeFilesPage() {
                   onClick={() => setPage(p)}
                   className={cn(
                     'w-7 h-7 rounded-full text-[11px] font-bold transition-all',
-                    p === currentPage
-                      ? 'text-white shadow-sm'
-                      : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                    p === currentPage ? 'text-white shadow-sm' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
                   )}
                   style={p === currentPage ? { background: accent } : {}}
                 >
@@ -418,7 +511,21 @@ export function TradeFilesPage() {
         </div>
       </div>
 
+      {/* Modals */}
       <NewFileModal open={newFileOpen} onOpenChange={setNewFileOpen} />
+      <NewFileModal
+        open={!!editFile}
+        onOpenChange={v => { if (!v) setEditFile(null); }}
+        editMode
+        fileToEdit={editFile}
+      />
+      <DeleteConfirmModal
+        open={!!deleteTarget}
+        file={deleteTarget}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+        isPending={deleteFile.isPending}
+      />
     </>
   );
 }

@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Search, FileText, ChevronDown, X, Printer, SlidersHorizontal } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -8,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEntities';
 import { useTransactions, useTransactionsByEntityEnhanced } from '@/hooks/useTransactions';
+import { useSettings } from '@/hooks/useSettings';
 import { fDate, fCurrency, fN, fUSD } from '@/lib/formatters';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
@@ -27,7 +30,7 @@ function openPrint(html: string, title: string) {
   win.document.close();
 }
 
-type RepTab = 'sales' | 'pnl' | 'cari' | 'analytics' | 'eta';
+type RepTab = 'sales' | 'analytics' | 'eta';
 
 // ─── Sales Report ──────────────────────────────────────────────────────────
 
@@ -270,7 +273,7 @@ function SalesReportTab() {
 
 // ─── P&L Report ────────────────────────────────────────────────────────────
 
-function PnlReportTab() {
+export function PnlReportTab() {
   const { t } = useTranslation('reports');
   const { data: files = [] } = useTradeFiles();
   const [selectedFileId, setSelectedFileId] = useState('');
@@ -409,53 +412,99 @@ function PnlReportTab() {
 type StatementLang = 'en' | 'tr' | 'fa';
 
 const STMT_LABELS: Record<StatementLang, {
-  title: string; totalDebit: string; totalCredit: string; netBalance: string;
-  date: string; type: string; ref: string; desc: string; debit: string; credit: string; balance: string;
+  title: string; entity: string; period: string; currency: string;
+  totalDebit: string; totalCredit: string; netBalance: string; txnCount: string;
+  date: string; type: string; ref: string; desc: string; debit: string; credit: string; balance: string; curr: string;
+  outstanding: string; settled: string;
+  openingBalance: string; recordCount: string; grandTotal: string;
   printBtn: string; dir: 'ltr' | 'rtl'; font?: string;
 }> = {
   en: {
-    title: 'Account Statement', totalDebit: 'Total Debit', totalCredit: 'Total Credit',
-    netBalance: 'Net Balance', date: 'Date', type: 'Type', ref: 'Ref',
-    desc: 'Description', debit: 'Debit', credit: 'Credit', balance: 'Balance',
+    title: 'Account Statement',
+    entity: 'Account', period: 'Period', currency: 'Currency',
+    totalDebit: 'Total Debit', totalCredit: 'Total Credit', netBalance: 'Net Balance', txnCount: 'transactions',
+    date: 'Date', type: 'Transaction Type', ref: 'Ref. No', desc: 'Description',
+    debit: 'Debit', credit: 'Credit', balance: 'Balance', curr: 'Curr.',
+    outstanding: 'Outstanding', settled: 'Settled',
+    openingBalance: 'Opening Balance', recordCount: 'Records', grandTotal: 'GRAND TOTAL',
     printBtn: 'Print / PDF', dir: 'ltr',
   },
   tr: {
-    title: 'Cari Hesap Ekstresi', totalDebit: 'Toplam Borç', totalCredit: 'Toplam Alacak',
-    netBalance: 'Net Bakiye', date: 'Tarih', type: 'Tür', ref: 'Ref',
-    desc: 'Açıklama', debit: 'Borç', credit: 'Alacak', balance: 'Bakiye',
+    title: 'Cari Hesap Ekstresi',
+    entity: 'Cari Unvan', period: 'Tarihler', currency: 'Para Birimi',
+    totalDebit: 'Toplam Borç', totalCredit: 'Toplam Alacak', netBalance: 'Net Bakiye', txnCount: 'işlem',
+    date: 'Tarih', type: 'İşlem Türü', ref: 'İşlem No', desc: 'Açıklama',
+    debit: 'Borç', credit: 'Alacak', balance: 'Bakiye', curr: 'Döviz',
+    outstanding: 'Bakiye Borç', settled: 'Kapandı',
+    openingBalance: 'Rapor Öncesi Bakiye', recordCount: 'Kayıt Sayısı', grandTotal: 'GENEL TOPLAM',
     printBtn: 'Yazdır / PDF', dir: 'ltr',
   },
   fa: {
-    title: 'صورتحساب جاری', totalDebit: 'مجموع بدهکاری', totalCredit: 'مجموع بستانکاری',
-    netBalance: 'موجودی خالص', date: 'تاریخ', type: 'نوع', ref: 'مرجع',
-    desc: 'توضیحات', debit: 'بدهکاری', credit: 'بستانکاری', balance: 'موجودی',
+    title: 'صورتحساب جاری',
+    entity: 'نام طرف حساب', period: 'دوره', currency: 'ارز',
+    totalDebit: 'مجموع بدهکاری', totalCredit: 'مجموع بستانکاری', netBalance: 'موجودی خالص', txnCount: 'تراکنش',
+    date: 'تاریخ', type: 'نوع معامله', ref: 'شماره سند', desc: 'توضیحات',
+    debit: 'بدهکاری', credit: 'بستانکاری', balance: 'موجودی', curr: 'ارز',
+    outstanding: 'مانده بدهی', settled: 'تسویه',
+    openingBalance: 'مانده قبل از دوره', recordCount: 'تعداد سطر', grandTotal: 'جمع کل',
     printBtn: 'چاپ / PDF', dir: 'rtl',
     font: 'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap',
   },
 };
 
-function AccountStatementTab() {
-  const { t } = useTranslation('reports');
+/** True → BORÇ (increases what they owe us / we owe them).  Entity-type aware. */
+function isBorç(txnType: string, entityType: 'customer' | 'supplier' | 'service_provider'): boolean {
+  if (entityType === 'customer') {
+    // sale_inv / advance / any non-receipt = borç (customer owes us)
+    return txnType !== 'receipt';
+  }
+  // supplier / service_provider: purchase_inv / svc_inv = borç (we owe them); payment = alacak
+  return txnType !== 'payment';
+}
+
+const TXN_TYPE_OPTIONS = [
+  { value: '',             label: 'Tüm İşlemler' },
+  { value: 'sale_inv',     label: 'Satış Faturası' },
+  { value: 'purchase_inv', label: 'Alım Faturası' },
+  { value: 'svc_inv',      label: 'Hizmet Faturası' },
+  { value: 'receipt',      label: 'Tahsilat' },
+  { value: 'payment',      label: 'Ödeme' },
+];
+
+const STATUS_OPTIONS = [
+  { value: '',        label: 'Tüm Durumlar' },
+  { value: 'open',    label: 'Açık' },
+  { value: 'partial', label: 'Kısmi' },
+  { value: 'paid',    label: 'Ödendi' },
+];
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  customer: 'Müşteri',
+  supplier: 'Tedarikçi',
+  service_provider: 'Hizmet Sağlayıcı',
+};
+
+export function AccountStatementTab() {
   const { t: tc } = useTranslation('common');
-  const { data: customers = [] } = useCustomers();
-  const { data: suppliers = [] } = useSuppliers();
-  const { data: serviceProviders = [] } = useServiceProviders();
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+
+  const { data: customers = [], isLoading: loadingC, error: errC } = useCustomers();
+  const { data: suppliers = [], isLoading: loadingS, error: errS } = useSuppliers();
+  const { data: serviceProviders = [], isLoading: loadingSP, error: errSP } = useServiceProviders();
 
   const [entityType, setEntityType] = useState<'customer' | 'supplier' | 'service_provider'>('customer');
   const [entityId, setEntityId] = useState('');
+  const [entityOpen, setEntityOpen] = useState(false);
+  const [entitySearch, setEntitySearch] = useState('');
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const entityDropdownRef = useRef<HTMLDivElement>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [lang] = useState<StatementLang>('en');
+  const [txnTypeFilter, setTxnTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
-  const { data: rawTxns = [] } = useTransactionsByEntityEnhanced(entityType, entityId || undefined);
-
-  const txns = useMemo(() => {
-    return rawTxns.filter((txn) => {
-      if (dateFrom && txn.transaction_date < dateFrom) return false;
-      if (dateTo && txn.transaction_date > dateTo) return false;
-      return true;
-    });
-  }, [rawTxns, dateFrom, dateTo]);
+  const { data: rawTxns = [], isLoading } = useTransactionsByEntityEnhanced(entityType, entityId || undefined);
 
   const entityOptions = entityType === 'customer'
     ? customers
@@ -463,182 +512,559 @@ function AccountStatementTab() {
       ? suppliers
       : serviceProviders;
 
-  // Running balance
-  const txnsWithBalance = useMemo(() => {
-    let balance = 0;
-    return txns.map((txn) => {
-      const isDebit = txn.transaction_type !== 'receipt';
-      const amt = txn.amount_usd ?? txn.amount ?? 0;
-      if (isDebit) balance -= amt; else balance += amt;
-      return { ...txn, isDebit, amt, balance };
-    });
-  }, [txns]);
+  // Seçili tür için ilk yükleme hâlâ devam ediyor mu?
+  const loadingEntities = (entityType === 'customer' && loadingC)
+    || (entityType === 'supplier' && loadingS)
+    || (entityType === 'service_provider' && loadingSP);
+  const entityError = (entityType === 'customer' && errC)
+    || (entityType === 'supplier' && errS)
+    || (entityType === 'service_provider' && errSP);
 
-  const totalDebit = txnsWithBalance.reduce((s, txn) => s + (txn.isDebit ? txn.amt : 0), 0);
-  const totalCredit = txnsWithBalance.reduce((s, txn) => s + (!txn.isDebit ? txn.amt : 0), 0);
-  const netBalance = totalCredit - totalDebit;
+  const filteredEntityOptions = useMemo(() =>
+    entitySearch.trim()
+      ? entityOptions.filter(e => e.name.toLowerCase().includes(entitySearch.toLowerCase()))
+      : entityOptions,
+    [entityOptions, entitySearch],
+  );
 
   const entityName = entityOptions.find((e) => e.id === entityId)?.name ?? '';
 
-  function printStatement(printLang: StatementLang = lang) {
+  // Close entity dropdown on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      // Trigger butonu (entityDropdownRef) veya portal içindeki element değilse kapat
+      const inTrigger = entityDropdownRef.current?.contains(target);
+      const inPortal  = (target as Element)?.closest?.('[data-entity-portal]');
+      if (!inTrigger && !inPortal) {
+        setEntityOpen(false);
+        setEntitySearch('');
+      }
+    }
+    if (entityOpen) document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [entityOpen]);
+
+  // Filter panel state
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterBtnRef = useRef<HTMLDivElement>(null);
+  const [filterPos, setFilterPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    function handler(e: MouseEvent) {
+      const t = e.target as Element;
+      if (!filterBtnRef.current?.contains(t) && !t.closest('[data-filter-portal]')) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [filterOpen]);
+
+  // Filter by date + type + status, sort ascending for running balance
+  const txns = useMemo(() => {
+    return rawTxns
+      .filter((txn) => {
+        if (dateFrom && txn.transaction_date < dateFrom) return false;
+        if (dateTo   && txn.transaction_date > dateTo)   return false;
+        if (txnTypeFilter && txn.transaction_type !== txnTypeFilter) return false;
+        if (statusFilter  && txn.payment_status  !== statusFilter)   return false;
+        return true;
+      })
+      .sort((a, b) => a.transaction_date.localeCompare(b.transaction_date));
+  }, [rawTxns, dateFrom, dateTo, txnTypeFilter, statusFilter]);
+
+  // Running balance: positive = they owe us (customer) / we owe them (supplier)
+  const txnsWithBalance = useMemo(() => {
+    let balance = 0;
+    return txns.map((txn) => {
+      const debit = isBorç(txn.transaction_type, entityType);
+      const amt   = txn.amount ?? 0;
+      balance     = debit ? balance + amt : balance - amt;
+      return { ...txn, isDebit: debit, amt, balance };
+    });
+  }, [txns, entityType]);
+
+  const totalBorç   = txnsWithBalance.reduce((s, t) =>  s + ( t.isDebit ? t.amt : 0), 0);
+  const totalAlacak = txnsWithBalance.reduce((s, t) =>  s + (!t.isDebit ? t.amt : 0), 0);
+  const netBakiye   = totalBorç - totalAlacak;   // positive = net borç (they owe us / we owe them)
+
+  // ── Print ─────────────────────────────────────────────────────────────────
+  function printStatement(printLang: StatementLang) {
     const L = STMT_LABELS[printLang];
     const isRtl = L.dir === 'rtl';
-    const fontFamily = isRtl ? 'Vazirmatn, Arial, sans-serif' : 'Arial, sans-serif';
-    const thAlign = isRtl ? 'right' : 'left';
+    const ff    = isRtl ? 'Vazirmatn, Arial, sans-serif' : 'Arial, sans-serif';
 
-    const rows = txnsWithBalance.map((txn) => `
-      <tr style="border-bottom:1px solid #e5e7eb">
-        <td style="padding:4px 6px">${fDate(txn.transaction_date)}</td>
-        <td style="padding:4px 6px">${txn.transaction_type.replace('_',' ')}</td>
-        <td style="padding:4px 6px">${txn.reference_no||'—'}</td>
-        <td style="padding:4px 6px">${txn.description}</td>
-        <td style="padding:4px 6px;text-align:right;color:#dc2626">${txn.isDebit?fUSD(txn.amt):'—'}</td>
-        <td style="padding:4px 6px;text-align:right;color:#10b981">${!txn.isDebit?fUSD(txn.amt):'—'}</td>
-        <td style="padding:4px 6px;text-align:right;font-weight:600;color:${txn.balance>=0?'#10b981':'#dc2626'}">${fUSD(txn.balance)}</td>
+    // Dominant currency in this statement
+    const currCounts: Record<string, number> = {};
+    txnsWithBalance.forEach((t) => { if (t.currency) currCounts[t.currency] = (currCounts[t.currency] ?? 0) + 1; });
+    const mainCurrency = Object.entries(currCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'USD';
+
+    const periodLabel = (dateFrom || dateTo)
+      ? `${dateFrom ? fDate(dateFrom) : '…'}  –  ${dateTo ? fDate(dateTo) : '…'}`
+      : '—';
+
+    // (A) = Alacak, (B) = Borç suffix on running balance
+    const balSuffix = (b: number) => b > 0 ? ' (B)' : b < 0 ? ' (A)' : '';
+    const netSuffix = netBakiye > 0 ? ' (B)' : netBakiye < 0 ? ' (A)' : '';
+
+    // Transaction type labels for print (no React hook inside)
+    const TYPE_TR: Record<string, string> = {
+      sale_inv: 'Satış Faturası', purchase_inv: 'Alım Faturası',
+      svc_inv: 'Hizmet Faturası', receipt: 'Tahsilat', payment: 'Ödeme',
+    };
+    const TYPE_EN: Record<string, string> = {
+      sale_inv: 'Sales Invoice', purchase_inv: 'Purchase Invoice',
+      svc_inv: 'Service Invoice', receipt: 'Receipt', payment: 'Payment',
+    };
+    const TYPE_FA: Record<string, string> = {
+      sale_inv: 'فاکتور فروش', purchase_inv: 'فاکتور خرید',
+      svc_inv: 'فاکتور خدمات', receipt: 'دریافت', payment: 'پرداخت',
+    };
+    const TYPE_LABEL = printLang === 'fa' ? TYPE_FA : printLang === 'en' ? TYPE_EN : TYPE_TR;
+
+    const rows = txnsWithBalance.map((txn, i) => `
+      <tr style="border-bottom:1px solid #e8e8e8;background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+        <td style="padding:4px 7px;white-space:nowrap">${fDate(txn.transaction_date)}</td>
+        <td style="padding:4px 7px">${TYPE_LABEL[txn.transaction_type] ?? txn.transaction_type}</td>
+        <td style="padding:4px 7px;font-family:monospace">${txn.reference_no || ''}</td>
+        <td style="padding:4px 7px">${txn.description || ''}</td>
+        <td style="padding:4px 7px;text-align:right;color:#b91c1c">${txn.isDebit  ? fN(txn.amt) : ''}</td>
+        <td style="padding:4px 7px;text-align:right;color:#065f46">${!txn.isDebit ? fN(txn.amt) : ''}</td>
+        <td style="padding:4px 7px;text-align:right;font-weight:700">${fN(Math.abs(txn.balance))}${balSuffix(txn.balance)}</td>
       </tr>`).join('');
 
     const fontLink = L.font ? `<link rel="stylesheet" href="${L.font}">` : '';
-    const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:${fontFamily};font-size:11px;background:#888;padding:20px;color:#111;direction:${L.dir}}.page{background:#fff;width:210mm;margin:0 auto;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.4)}.np{text-align:center;margin-bottom:14px}@media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;width:100%;padding:10mm;margin:0}}`;
-    const printBar = `<div class="np"><button onclick="window.print()" style="background:#374151;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #ccc;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer">✕</button></div>`;
+    const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:${ff};font-size:11px;background:#888;padding:20px;color:#111;direction:${L.dir}}.page{background:#fff;width:210mm;margin:0 auto;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.4)}.np{text-align:center;margin-bottom:14px}@media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;width:100%;padding:10mm;margin:0}}`;
+    const printBar = `<div class="np"><button onclick="window.print()" style="background:#1e40af;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #ccc;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer">✕</button></div>`;
+
+    const LBL = 'color:#555;padding:3px 0;width:130px';
+    const SEP = 'color:#555;padding:3px 4px;width:12px';
+    const VAL = 'color:#111;font-weight:700;padding:3px 0';
 
     const html = `
-      <div style="font-size:18px;font-weight:700;color:#111;margin-bottom:2px">${L.title}</div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:16px">${entityName}${dateFrom||dateTo ? ` · ${dateFrom||''}${dateFrom&&dateTo?' – ':''}${dateTo||''}` : ''}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
-        <div style="background:#fee2e2;border-radius:6px;padding:10px"><div style="font-size:9px;color:#991b1b;text-transform:uppercase;margin-bottom:3px">${L.totalDebit}</div><div style="font-size:15px;font-weight:700;color:#991b1b">${fUSD(totalDebit)}</div></div>
-        <div style="background:#d1fae5;border-radius:6px;padding:10px"><div style="font-size:9px;color:#065f46;text-transform:uppercase;margin-bottom:3px">${L.totalCredit}</div><div style="font-size:15px;font-weight:700;color:#065f46">${fUSD(totalCredit)}</div></div>
-        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px"><div style="font-size:9px;color:#374151;text-transform:uppercase;margin-bottom:3px">${L.netBalance}</div><div style="font-size:15px;font-weight:700;color:${netBalance>=0?'#10b981':'#dc2626'}">${fUSD(netBalance)}</div></div>
-      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">
+        <tr>
+          <td style="${LBL}">${L.entity}</td>
+          <td style="${SEP}">:</td>
+          <td style="${VAL}">${entityName}</td>
+          <td style="text-align:right;color:#555">${L.openingBalance} :</td>
+          <td style="text-align:right;font-weight:700;width:90px">0,00</td>
+        </tr>
+        <tr>
+          <td style="${LBL}">${L.currency}</td>
+          <td style="${SEP}">:</td>
+          <td style="color:#111;padding:3px 0">${mainCurrency}</td>
+        </tr>
+        <tr>
+          <td style="${LBL}">${L.period}</td>
+          <td style="${SEP}">:</td>
+          <td style="color:#111;padding:3px 0">${periodLabel}</td>
+        </tr>
+      </table>
+      <hr style="border:none;border-top:1px solid #aaa;margin:8px 0 10px">
       <table style="width:100%;border-collapse:collapse;font-size:10px">
-        <thead><tr style="background:#374151;color:#fff">${[L.date,L.type,L.ref,L.desc,L.debit,L.credit,L.balance].map(h=>`<th style="padding:6px;text-align:${thAlign}">${h}</th>`).join('')}</tr></thead>
+        <thead>
+          <tr style="border-bottom:1px solid #999;background:#f2f2f2">
+            <th style="padding:5px 7px;text-align:left;white-space:nowrap">${L.date}</th>
+            <th style="padding:5px 7px;text-align:left">${L.type}</th>
+            <th style="padding:5px 7px;text-align:left">${L.ref}</th>
+            <th style="padding:5px 7px;text-align:left">${L.desc}</th>
+            <th style="padding:5px 7px;text-align:right">${L.debit}</th>
+            <th style="padding:5px 7px;text-align:right">${L.credit}</th>
+            <th style="padding:5px 7px;text-align:right">${L.balance}</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
+        <tfoot>
+          <tr style="border-top:2px solid #555">
+            <td colspan="2" style="padding:6px 7px;font-size:10px;color:#555">
+              ${L.recordCount} : ${txnsWithBalance.length}
+            </td>
+            <td colspan="2" style="padding:6px 7px;text-align:right;font-weight:700;font-size:11px">
+              ${L.grandTotal} :
+            </td>
+            <td style="padding:6px 7px;text-align:right;font-weight:700;color:#b91c1c">${fN(totalBorç)}</td>
+            <td style="padding:6px 7px;text-align:right;font-weight:700;color:#065f46">${fN(totalAlacak)}</td>
+            <td style="padding:6px 7px;text-align:right;font-weight:700">${fN(Math.abs(netBakiye))}${netSuffix}</td>
+          </tr>
+        </tfoot>
       </table>`;
 
-    const win = window.open('', '_blank', 'width=1010,height=860');
+    const win = window.open('', '_blank', 'width=1050,height=860');
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html dir="${L.dir}"><head><meta charset="UTF-8">${fontLink}<title>${L.title} — ${entityName}</title><style>${css}</style></head><body>${printBar}<div class="page">${html}</div></body></html>`);
     win.document.close();
   }
 
+  // ── Excel export ──────────────────────────────────────────────────────────
+  function exportExcel() {
+    const rows = txnsWithBalance.map((txn) => ({
+      'Tarih / Date':        txn.transaction_date,
+      'Tür / Type':          txn.transaction_type,
+      'Referans / Ref':      txn.reference_no || '',
+      'Açıklama / Desc':     txn.description  || '',
+      'Döviz / Currency':    txn.currency     || '',
+      'Borç / Debit':        txn.isDebit  ? txn.amt : '',
+      'Alacak / Credit':    !txn.isDebit  ? txn.amt : '',
+      'Bakiye / Balance':    txn.balance,
+      'Durum / Status':      txn.payment_status || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, entityName.slice(0, 31) || 'Statement');
+    XLSX.writeFile(wb, `cari-${entityName.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  const hasData = entityId && txnsWithBalance.length > 0;
+  const activeFilterCount = [txnTypeFilter, statusFilter, dateFrom, dateTo].filter(Boolean).length;
+
   return (
-    <div>
-      <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.entity_type')}</label>
-            <NativeSelect value={entityType} onChange={(e) => { setEntityType(e.target.value as typeof entityType); setEntityId(''); }}>
-              <option value="customer">{t('statement.entity_type_customer')}</option>
-              <option value="supplier">{t('statement.entity_type_supplier')}</option>
-              <option value="service_provider">{t('statement.entity_type_service_provider')}</option>
-            </NativeSelect>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.entity')}</label>
-            <NativeSelect value={entityId} onChange={(e) => setEntityId(e.target.value)}>
-              <option value="">{t('statement.select_entity')}</option>
-              {entityOptions.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </NativeSelect>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.date_from')}</label>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('statement.date_to')}</label>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </div>
+    <div className="space-y-4">
+
+      {/* ── Filtre kartı (overflow-hidden KULLANMA — dropdown kırpılır) ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+
+        {/* Kişi türü tab bar */}
+        <div className="flex border-b border-gray-50">
+          {(['customer', 'supplier', 'service_provider'] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => { setEntityType(type); setEntityId(''); setEntityOpen(false); setEntitySearch(''); }}
+              className={cn(
+                'flex-1 py-2.5 text-[12px] font-semibold transition-all border-b-2 -mb-px',
+                entityType === type ? '' : 'border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50',
+              )}
+              style={entityType === type ? { borderBottomColor: accent, color: accent } : {}}
+            >
+              {ENTITY_TYPE_LABELS[type]}
+            </button>
+          ))}
         </div>
-        {entityId && txns.length > 0 && (
-          <div className="mt-4 flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-gray-500 font-medium">{t('statement.print_language')}</span>
+
+        {/* Toolbar */}
+        <div className="px-4 py-3 flex items-center gap-2">
+
+          {/* Kişi seçimi */}
+          <div ref={entityDropdownRef} className="relative flex-1 min-w-[200px]">
             <button
-              onClick={() => printStatement('en')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              type="button"
+              onClick={() => {
+                if (!entityOpen && entityDropdownRef.current) {
+                  const r = entityDropdownRef.current.getBoundingClientRect();
+                  setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+                }
+                setEntityOpen((v) => !v);
+              }}
+              className={cn(
+                'w-full h-9 rounded-xl border px-3 text-[12px] font-medium transition-colors flex items-center gap-2 bg-white',
+                entityId ? 'text-gray-900' : 'text-gray-400',
+              )}
+              style={{ borderColor: entityId ? `${accent}50` : '#e5e7eb' }}
             >
-              {t('statement.print_english')}
+              <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+              <span className="flex-1 truncate text-left">
+                {entityId ? entityName : `${ENTITY_TYPE_LABELS[entityType]} seçin…`}
+              </span>
+              {entityId
+                ? <X className="h-3.5 w-3.5 text-gray-300 hover:text-red-400 shrink-0 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setEntityId(''); setEntityOpen(false); }} />
+                : <ChevronDown className="h-3.5 w-3.5 text-gray-300 shrink-0" />
+              }
             </button>
-            <button
-              onClick={() => printStatement('tr')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-            >
-              {t('statement.print_turkish')}
-            </button>
-            <button
-              onClick={() => printStatement('fa')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-            >
-              {t('statement.print_farsi')}
-            </button>
+
+            {entityOpen && dropdownPos && createPortal(
+              <div
+                data-entity-portal
+                style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: Math.max(dropdownPos.width, 240), zIndex: 9999 }}
+                className="bg-white border border-gray-200 rounded-xl shadow-xl"
+              >
+                <div className="p-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                    <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                    <input autoFocus type="text" value={entitySearch}
+                      onChange={(e) => setEntitySearch(e.target.value)}
+                      placeholder="Ara…" className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400" />
+                    {entitySearch && <button type="button" onClick={() => setEntitySearch('')}><X className="h-3 w-3 text-gray-400" /></button>}
+                  </div>
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {entityError ? (
+                    <div className="px-3 py-4 text-[12px] text-red-500 text-center">Hata: {(entityError as Error).message}</div>
+                  ) : loadingEntities && entityOptions.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 py-5 text-[12px] text-gray-400">
+                      <div className="w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: accent }} />
+                      Yükleniyor…
+                    </div>
+                  ) : filteredEntityOptions.length === 0 ? (
+                    <div className="px-3 py-5 text-[12px] text-gray-400 text-center">
+                      {entityOptions.length === 0 ? 'Kayıt bulunamadı' : 'Sonuç yok'}
+                    </div>
+                  ) : filteredEntityOptions.map((e) => (
+                    <button key={e.id} type="button"
+                      onClick={() => { setEntityId(e.id); setEntityOpen(false); setEntitySearch(''); }}
+                      className="w-full text-left px-3 py-2.5 text-[13px] transition-colors hover:bg-gray-50 border-b border-gray-50 last:border-0"
+                      style={entityId === e.id ? { color: accent, background: `${accent}08`, fontWeight: 600 } : {}}>
+                      {e.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            , document.body)}
           </div>
-        )}
+
+          {/* Filtre butonu */}
+          <div ref={filterBtnRef} className="relative shrink-0">
+            <button
+              onClick={() => {
+                if (!filterOpen && filterBtnRef.current) {
+                  const r = filterBtnRef.current.getBoundingClientRect();
+                  const popW = 288; // w-72
+                  const left = r.left + popW > window.innerWidth ? r.right - popW : r.left;
+                  setFilterPos({ top: r.bottom + 4, left });
+                }
+                setFilterOpen((v) => !v);
+              }}
+              className="h-9 px-3 rounded-xl border text-[12px] font-semibold flex items-center gap-1.5 transition-colors bg-white"
+              style={
+                activeFilterCount > 0 || filterOpen
+                  ? { borderColor: `${accent}50`, background: `${accent}08`, color: accent }
+                  : { borderColor: '#e5e7eb', color: '#6b7280' }
+              }
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filtrele
+              {activeFilterCount > 0 && (
+                <span
+                  className="w-4 h-4 rounded-full text-white text-[9px] font-extrabold flex items-center justify-center"
+                  style={{ background: accent }}
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {filterOpen && filterPos && createPortal(
+              <div
+                data-filter-portal
+                style={{ position: 'fixed', top: filterPos.top, left: filterPos.left, zIndex: 9999 }}
+                className="w-72 bg-white border border-gray-200 rounded-2xl shadow-xl"
+              >
+                {/* Header */}
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Filtreler</span>
+                  <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
+                    <X className="h-3.5 w-3.5 text-gray-400" />
+                  </button>
+                </div>
+
+                {/* Filter fields */}
+                <div className="px-4 py-3 space-y-3">
+                  {/* Tarih aralığı */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Tarih Aralığı</label>
+                    <div className="flex items-center gap-1.5">
+                      <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                      <span className="text-gray-300 text-[11px]">—</span>
+                      <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                    </div>
+                  </div>
+
+                  {/* İşlem türü */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">İşlem Türü</label>
+                    <select value={txnTypeFilter} onChange={(e) => setTxnTypeFilter(e.target.value)}
+                      className="h-8 w-full rounded-lg border border-gray-200 px-2 text-[12px] text-gray-700 outline-none focus:border-gray-300 bg-white">
+                      {TXN_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Durum */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Durum</label>
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                      className="h-8 w-full rounded-lg border border-gray-200 px-2 text-[12px] text-gray-700 outline-none focus:border-gray-300 bg-white">
+                      {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Temizle */}
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => { setDateFrom(''); setDateTo(''); setTxnTypeFilter(''); setStatusFilter(''); setFilterOpen(false); }}
+                      className="w-full h-8 rounded-xl text-[11px] font-semibold text-red-500 border border-red-100 bg-red-50 hover:bg-red-100 transition-colors"
+                    >
+                      Filtreleri Temizle
+                    </button>
+                  )}
+                </div>
+              </div>,
+              document.body
+            )}
+          </div>
+
+          {/* Print / Excel */}
+          {hasData && (
+            <div className="flex items-center gap-1 ml-auto">
+              {(['tr', 'en', 'fa'] as StatementLang[]).map((lang) => (
+                <button key={lang} onClick={() => printStatement(lang)}
+                  className="h-9 px-3 rounded-xl text-[11px] font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors border border-gray-200">
+                  {lang.toUpperCase()}
+                </button>
+              ))}
+              <button onClick={exportExcel}
+                className="h-9 px-3 rounded-xl text-[11px] font-semibold text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200 whitespace-nowrap">
+                ↓ Excel
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {entityId && txns.length > 0 && (
+      {/* Loading */}
+      {isLoading && entityId && (
+        <div className="flex items-center justify-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100 gap-2 text-[13px] text-gray-400">
+          <div className="w-5 h-5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: accent }} />
+          Yükleniyor…
+        </div>
+      )}
+
+      {/* Empty — seçim yapılmadı */}
+      {!entityId && !isLoading && (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
+          <Search className="h-8 w-8 mb-2 opacity-20" />
+          <p className="text-[13px] font-medium text-gray-500">Hesap ekstresi görüntüle</p>
+          <p className="text-[11px] mt-0.5 text-gray-400">Müşteri, tedarikçi veya hizmet sağlayıcı seçin</p>
+        </div>
+      )}
+
+      {/* Empty — kayıt yok */}
+      {entityId && !isLoading && txnsWithBalance.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
+          <FileText className="h-8 w-8 mb-2 opacity-20" />
+          <p className="text-[13px] font-medium text-gray-500">İşlem bulunamadı</p>
+          <p className="text-[11px] mt-0.5 text-gray-400">
+            {activeFilterCount > 0 ? 'Filtrelerinizi değiştirmeyi deneyin' : 'Bu hesapta henüz işlem yok'}
+          </p>
+        </div>
+      )}
+
+      {hasData && !isLoading && (
         <>
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t('statement.total_debit')}</div>
-              <div className="text-lg font-black text-red-600">{fUSD(totalDebit)}</div>
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t('statement.total_credit')}</div>
-              <div className="text-lg font-black text-green-600">{fUSD(totalCredit)}</div>
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t('statement.net_balance')}</div>
-              <div className="text-lg font-black" style={{ color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>{fUSD(netBalance)}</div>
+          {/* Özet — 3 sütun quick info */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="grid grid-cols-3 divide-x divide-gray-50">
+              <div className="px-5 py-4">
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Borç</div>
+                <div className="text-[17px] font-extrabold text-red-600">{fN(totalBorç)}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5 truncate">{entityName}</div>
+              </div>
+              <div className="px-5 py-4">
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Alacak</div>
+                <div className="text-[17px] font-extrabold text-green-700">{fN(totalAlacak)}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5">{txnsWithBalance.length} işlem</div>
+              </div>
+              <div className="px-5 py-4" style={netBakiye !== 0 ? { background: netBakiye > 0 ? '#fffbeb' : '#f0fdf4' } : {}}>
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Net Bakiye</div>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-[17px] font-extrabold"
+                    style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#15803d' : '#6b7280' }}>
+                    {fN(Math.abs(netBakiye))}
+                  </span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest"
+                    style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#15803d' : '#9ca3af' }}>
+                    {netBakiye > 0 ? 'Borçlu' : netBakiye < 0 ? 'Alacaklı' : 'Sıfır'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          {/* İşlem tablosu */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Hesap Ekstresi</span>
+                {(dateFrom || dateTo) && (
+                  <span className="text-[10px] text-gray-400 font-mono">
+                    {dateFrom || '…'} – {dateTo || '…'}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-gray-400">{txnsWithBalance.length} kayıt</span>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {[
-                      t('statement.col_date'),
-                      t('statement.col_type'),
-                      t('statement.col_reference'),
-                      t('statement.col_description'),
-                      t('statement.col_debit'),
-                      t('statement.col_credit'),
-                      t('statement.col_balance'),
-                    ].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                    {['Tarih', 'İşlem Türü', 'İşlem No', 'Açıklama', 'Borç', 'Alacak', 'Bakiye'].map((h, i) => (
+                      <th key={h} className={cn(
+                        'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap',
+                        i >= 4 ? 'text-right' : 'text-left',
+                      )}>
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {txnsWithBalance.map((txn) => (
-                    <tr key={txn.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                      <td className="px-4 py-3 text-[12px]">{fDate(txn.transaction_date)}</td>
-                      <td className="px-4 py-3 text-[12px]">{tc(`txType.${txn.transaction_type}`)}</td>
-                      <td className="px-4 py-3 text-[12px]">{txn.reference_no || '—'}</td>
-                      <td className="px-4 py-3 text-[12px]">{txn.description}</td>
-                      <td className="px-4 py-3 text-[12px] text-right text-red-600">
-                        {txn.isDebit ? fUSD(txn.amt) : '—'}
+                  {txnsWithBalance.map((txn, i) => (
+                    <tr key={txn.id} className={cn(
+                      'border-b border-gray-50 hover:bg-gray-50/60 transition-colors',
+                      i % 2 === 1 && 'bg-gray-50/40',
+                    )}>
+                      <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{fDate(txn.transaction_date)}</td>
+                      <td className="px-4 py-3 text-[12px] text-gray-700">{tc(`txType.${txn.transaction_type}`)}</td>
+                      <td className="px-4 py-3 text-[11px] font-mono text-gray-400">{txn.reference_no || '—'}</td>
+                      <td className="px-4 py-3 text-[12px] text-gray-600 max-w-[200px] truncate">{txn.description || '—'}</td>
+                      <td className="px-4 py-3 text-[12px] text-right font-semibold text-red-600">
+                        {txn.isDebit ? fN(txn.amt) : ''}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-right text-green-600">
-                        {!txn.isDebit ? fUSD(txn.amt) : '—'}
+                      <td className="px-4 py-3 text-[12px] text-right font-semibold text-green-700">
+                        {!txn.isDebit ? fN(txn.amt) : ''}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-right font-semibold" style={{ color: txn.balance >= 0 ? '#10b981' : '#ef4444' }}>
-                        {fUSD(txn.balance)}
+                      <td className="px-4 py-3 text-[12px] text-right font-bold whitespace-nowrap">
+                        <span style={{ color: txn.balance > 0 ? '#b45309' : txn.balance < 0 ? '#16a34a' : '#9ca3af' }}>
+                          {fN(Math.abs(txn.balance))}
+                        </span>
+                        {txn.balance !== 0 && (
+                          <span className="ml-1 text-[10px] font-black"
+                            style={{ color: txn.balance > 0 ? '#b45309' : '#16a34a' }}>
+                            ({txn.balance > 0 ? 'B' : 'A'})
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-100 bg-gray-50/60">
+                    <td colSpan={3} className="px-4 py-3 text-[11px] text-gray-400">{txnsWithBalance.length} kayıt</td>
+                    <td className="px-4 py-3 text-[10px] font-bold text-gray-500 text-right uppercase tracking-widest">Genel Toplam</td>
+                    <td className="px-4 py-3 text-[13px] text-right font-black text-red-600">{fN(totalBorç)}</td>
+                    <td className="px-4 py-3 text-[13px] text-right font-black text-green-700">{fN(totalAlacak)}</td>
+                    <td className="px-4 py-3 text-[13px] text-right font-black whitespace-nowrap">
+                      <span style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#16a34a' : '#9ca3af' }}>
+                        {fN(Math.abs(netBakiye))}
+                      </span>
+                      {netBakiye !== 0 && (
+                        <span className="ml-1 text-[10px] font-black"
+                          style={{ color: netBakiye > 0 ? '#b45309' : '#16a34a' }}>
+                          ({netBakiye > 0 ? 'B' : 'A'})
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
         </>
-      )}
-
-      {entityId && txns.length === 0 && (
-        <div className="text-center py-8 text-gray-400 text-sm">{t('statement.no_records')}</div>
-      )}
-      {!entityId && (
-        <div className="text-center py-12 text-gray-400 text-sm">{t('statement.select_prompt')}</div>
       )}
     </div>
   );
@@ -1066,14 +1492,857 @@ function EtaReportTab() {
 
 // ─── Main Reports Page ─────────────────────────────────────────────────────
 
+// ─── Customer Report Tab ───────────────────────────────────────────────────
+
+const FARSI_FONTS = [
+  { id: 'nazanin',   label: 'Nazanin',            family: 'Nazanin',             link: null },
+  { id: 'vazirmatn', label: 'Vazirmatn',           family: 'Vazirmatn',            link: 'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap' },
+  { id: 'sahel',     label: 'Sahel',               family: 'Sahel',               link: 'https://cdn.jsdelivr.net/gh/rastikerdar/sahel-font@v4.2.0/dist/font-face.css' },
+  { id: 'shabnam',   label: 'Shabnam',             family: 'Shabnam',             link: 'https://cdn.jsdelivr.net/gh/rastikerdar/shabnam-font@v5.0.1/dist/font-face.css' },
+  { id: 'samim',     label: 'Samim',               family: 'Samim',               link: 'https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.1.0/dist/font-face.css' },
+  { id: 'parastoo',  label: 'Parastoo',            family: 'Parastoo',            link: 'https://cdn.jsdelivr.net/gh/rastikerdar/parastoo-font@v4.1.0/dist/font-face.css' },
+  { id: 'kalameh',   label: 'Kalameh',             family: 'Kalameh',             link: 'https://cdn.jsdelivr.net/gh/rastikerdar/kalameh-font@v1.1.0/dist/font-face.css' },
+  { id: 'lalezar',   label: 'Lalezar',             family: 'Lalezar',             link: 'https://fonts.googleapis.com/css2?family=Lalezar&display=swap' },
+  { id: 'amiri',     label: 'Amiri',               family: 'Amiri',               link: 'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap' },
+  { id: 'noto',      label: 'Noto Naskh Arabic',   family: 'Noto Naskh Arabic',   link: 'https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap' },
+  { id: 'scheher',   label: 'Scheherazade New',    family: 'Scheherazade New',    link: 'https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap' },
+  { id: 'lateef',    label: 'Lateef',              family: 'Lateef',              link: 'https://fonts.googleapis.com/css2?family=Lateef:wght@400;700&display=swap' },
+] as const;
+type FarsiFontId = typeof FARSI_FONTS[number]['id'];
+
+export function CustomerReportTab() {
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { data: customers = [], isLoading: loadingC } = useCustomers();
+  const { data: allFiles = [] } = useTradeFiles();
+  const { data: settings } = useSettings();
+
+  const [customerId, setCustomerId] = useState('');
+  const [custOpen, setCustOpen] = useState(false);
+  const [custSearch, setCustSearch] = useState('');
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const custDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Report options
+  const [reportLang, setReportLang] = useState<'tr' | 'en' | 'fa'>('tr');
+  const [farsiFont] = useState<FarsiFontId>('vazirmatn');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [advDetail, setAdvDetail] = useState(true); // true = full list, false = total only
+
+  // Hitap bilgileri (raporun kime hitap ettiği)
+  const [toTitle, setToTitle] = useState<'agha' | 'khanom'>('agha');
+  const [toName, setToName]   = useState(''); // kişi adı
+
+  const LABELS = {
+    tr: {
+      payments: 'Ödemeler', products: 'Satın Alınan Ürünler', advances: 'Ön Ödemeler',
+      infoOnly: 'Bilgi Amaçlı', totalPayments: 'Ödemeler Toplamı', totalProducts: 'Toplam Satın Alım',
+      totalAdvances: 'Ön Ödemeler Toplamı', total: 'Toplam',
+      balanceText: 'Satın alımlar eksi ödemeler sonrası net bakiye:',
+      debtor: 'Borçlu', creditor: 'Alacaklı', closed: 'Kapalı',
+      dear: 'Sayın', reportTitle: 'Müşteri Raporu',
+      salutComp: 'Sayın', salutNameAgha: 'Sayın Bay', salutNameKhanom: 'Sayın Bayan',
+      greeting: 'Hesap dökümünü saygılarımızla bilgilerinize sunarız:',
+      payHdr: ['#', 'Tarih', 'Tutar', 'Para Birimi', 'USD Karşılığı', 'Açıklama'],
+      prdHdr: ['#', 'Ürün', 'Birim Fiyat (USD)', 'Tonaj (ADMT)', 'Toplam (USD)', 'Dosya No'],
+      advHdr: ['#', 'Tarih', 'Tutar', 'Para Birimi', 'USD Karşılığı', 'Açıklama'],
+      noPayment: 'Ödeme yok', noProduct: 'Kayıt yok', noAdvance: 'Ön ödeme yok',
+      dateLabel: 'Tarih', clientLabel: 'MÜŞTERİ', printBtn: 'Yazdır / PDF',
+      dateFilter: 'Tarih:', advLabel: 'Ön ödemeler:', fullList: 'Tam liste', totalOnly: 'Sadece toplam',
+      records: 'kayıt',
+    },
+    en: {
+      payments: 'Payments', products: 'Products Purchased', advances: 'Advance Payments',
+      infoOnly: 'Informational Only', totalPayments: 'Total Payments', totalProducts: 'Total Purchases',
+      totalAdvances: 'Total Advances', total: 'Total',
+      balanceText: 'Net balance after deducting payments from purchases:',
+      debtor: 'Outstanding', creditor: 'Credit', closed: 'Settled',
+      dear: 'Dear', reportTitle: 'Customer Report',
+      salutComp: 'Dear', salutNameAgha: 'Dear Mr.', salutNameKhanom: 'Dear Ms.',
+      greeting: 'Please find below our account statement:',
+      payHdr: ['#', 'Date', 'Amount', 'Currency', 'USD Equiv.', 'Description'],
+      prdHdr: ['#', 'Product', 'Unit Price (USD)', 'Tonnage (ADMT)', 'Total (USD)', 'File No'],
+      advHdr: ['#', 'Date', 'Amount', 'Currency', 'USD Equiv.', 'Description'],
+      noPayment: 'No payments', noProduct: 'No records', noAdvance: 'No advances',
+      dateLabel: 'Date', clientLabel: 'CLIENT', printBtn: 'Print / PDF',
+      dateFilter: 'Date:', advLabel: 'Advances:', fullList: 'Full list', totalOnly: 'Total only',
+      records: 'records',
+    },
+    fa: {
+      payments: 'پرداخت‌ها', products: 'محصولات خریداری‌شده', advances: 'پیش‌پرداخت‌ها',
+      infoOnly: 'اطلاعاتی', totalPayments: 'جمع پرداخت‌ها', totalProducts: 'جمع خرید',
+      totalAdvances: 'جمع پیش‌پرداخت‌ها', total: 'جمع',
+      balanceText: 'ﻣﺎﻧﺪه ﺣﺴﺎب ﺷﻤﺎ ﺑﺎ در ﻧﻈﺮ ﮔﺮﻓﺘﻦ ﭘﺮداﺧﺘﯽ ﻫﺎی اﻧﺠﺎم ﺷﺪه و ﭘﯿﺶ ﭘﺮداﺧﺖ ﻫﺎ:',
+      debtor: 'بدهکار', creditor: 'بستانکار', closed: 'تسویه',
+      dear: 'جناب', reportTitle: 'صورتحساب',
+      salutComp: 'مدیریت محترم شرکت', salutNameAgha: 'جناب آقای', salutNameKhanom: 'سرکار خانم',
+      greeting: 'ﺑﺎ ﺳﻼم و ﻋﺮض ادب، ﺻﻮرت ﺣﺴﺎب ﻓﯽ ﻣﺎﺑﯿﻦ ﺑﻪ ﺷﺮح ذﯾﻞ ﺗﻘﺪﯾﻢ ﻣﯽ ﮔﺮدد:',
+      payHdr: ['#', 'تاریخ', 'مبلغ', 'ارز', 'معادل دلار', 'توضیحات'],
+      prdHdr: ['#', 'محصول', 'قیمت واحد (USD)', 'تناژ (ADMT)', 'جمع (USD)', 'شماره پرونده'],
+      advHdr: ['#', 'تاریخ', 'مبلغ', 'ارز', 'معادل دلار', 'توضیحات'],
+      noPayment: 'پرداختی موجود نیست', noProduct: 'رکوردی موجود نیست', noAdvance: 'پیش‌پرداختی موجود نیست',
+      dateLabel: 'تاریخ', clientLabel: 'مشتری', printBtn: 'چاپ / PDF',
+      dateFilter: 'تاریخ:', advLabel: 'پیش‌پرداخت‌ها:', fullList: 'لیست کامل', totalOnly: 'فقط جمع',
+      records: 'رکورد',
+    },
+  };
+  // UI always in Turkish; print output uses reportLang (see printReport below)
+  const L = LABELS['tr'];
+
+  const selectedCustomer = customers.find((c) => c.id === customerId);
+  const customerName = selectedCustomer?.name ?? '';
+
+  const filteredCustomers = useMemo(
+    () => customers.filter((c) => c.name.toLowerCase().includes(custSearch.toLowerCase())),
+    [customers, custSearch],
+  );
+
+  const { data: rawTxns = [], isLoading: txnLoading } = useTransactionsByEntityEnhanced(
+    'customer', customerId || undefined,
+  );
+
+  // Date-filtered transactions
+  const filteredTxns = useMemo(() => rawTxns.filter((t) => {
+    if (dateFrom && t.transaction_date < dateFrom) return false;
+    if (dateTo && t.transaction_date > dateTo) return false;
+    return true;
+  }), [rawTxns, dateFrom, dateTo]);
+
+  // Table 1: Regular payments (receipts only, no advances)
+  const payments = useMemo(
+    () => filteredTxns.filter((t) => t.transaction_type === 'receipt'),
+    [filteredTxns],
+  );
+
+  // Satış faturası (sale_inv) oluşturulmuş dosyaların ID seti
+  const invoicedFileIds = useMemo(
+    () => new Set(
+      rawTxns
+        .filter((t) => t.transaction_type === 'sale_inv' && t.trade_file_id)
+        .map((t) => t.trade_file_id as string),
+    ),
+    [rawTxns],
+  );
+
+  // Table 2: Yalnızca satış faturası oluşturulmuş ticaret dosyaları
+  const customerFiles = useMemo(
+    () => allFiles.filter((f) => f.customer_id === customerId && f.selling_price && invoicedFileIds.has(f.id)),
+    [allFiles, customerId, invoicedFileIds],
+  );
+
+  // Table 3: Ön ödemeler — faturası kesilmiş dosyalara ait olanlar hariç
+  const advances = useMemo(
+    () => filteredTxns.filter(
+      (t) => t.transaction_type === 'advance' &&
+             t.party_type === 'customer' &&
+             !invoicedFileIds.has(t.trade_file_id ?? ''),
+    ),
+    [filteredTxns, invoicedFileIds],
+  );
+
+  const totalPayments = payments.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
+  const totalProducts = customerFiles.reduce((s, f) => {
+    const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
+    return s + qty * (f.selling_price ?? 0);
+  }, 0);
+  const totalAdvances = advances.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
+  // balance > 0: customer still owes us (borçlu); < 0: overpaid (alacaklı)
+  // balance = (products + advances) - payments
+  const balance = totalProducts + totalAdvances - totalPayments;
+
+  // Outside-click handler — customer dropdown
+  useEffect(() => {
+    if (!custOpen) return;
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (!custDropdownRef.current?.contains(target) && !(target as Element)?.closest?.('[data-cr-portal]')) {
+        setCustOpen(false);
+        setCustSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [custOpen]);
+
+  // Filter panel
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterBtnRef = useRef<HTMLDivElement>(null);
+  const [filterPos, setFilterPos] = useState<{ top: number; left: number } | null>(null);
+  const activeFilterCount = [dateFrom, dateTo].filter(Boolean).length;
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    function handler(e: MouseEvent) {
+      const t = e.target as Element;
+      if (!filterBtnRef.current?.contains(t) && !t.closest('[data-cr-filter-portal]')) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [filterOpen]);
+
+  const isLoading = txnLoading && !!customerId;
+
+  // ── Print ─────────────────────────────────────────────────────────────────
+  function printReport() {
+    // Print uses the selected language; UI always stays in Turkish (L = LABELS['tr'])
+    const L = LABELS[reportLang];
+    // fa-IR-u-nu-latn: Farsça ay adları ama Latin (İngilizce) rakamlar
+    const locale = reportLang === 'tr' ? 'tr-TR' : reportLang === 'fa' ? 'fa-IR-u-nu-latn' : 'en-GB';
+    const isRtl = reportLang === 'fa';
+
+    // Translate common Turkish trade terms in descriptions for EN/FA output
+    const TR_DICT: Record<string, Record<'en' | 'fa', string>> = {
+      'ön ödeme':    { en: 'advance payment', fa: 'پیش پرداخت' },
+      'peşinat':     { en: 'down payment',    fa: 'پیش پرداخت' },
+      'avans':       { en: 'advance',          fa: 'پیش پرداخت' },
+      'ödeme':       { en: 'payment',          fa: 'پرداخت' },
+      'tahsilat':    { en: 'collection',       fa: 'وصول' },
+      'fatura':      { en: 'invoice',          fa: 'فاکتور' },
+      'navlun':      { en: 'freight',          fa: 'کرایه حمل' },
+      'sigorta':     { en: 'insurance',        fa: 'بیمه' },
+      'gümrük':      { en: 'customs',          fa: 'گمرک' },
+      'depo':        { en: 'warehouse',        fa: 'انبار' },
+      'liman':       { en: 'port',             fa: 'بندر' },
+      'nakliye':     { en: 'shipping',         fa: 'حمل و نقل' },
+      'teslim':      { en: 'delivery',         fa: 'تحویل' },
+      'bakiye':      { en: 'balance',          fa: 'مانده' },
+      'alacak':      { en: 'credit',           fa: 'بستانکار' },
+      'borç':        { en: 'debit',            fa: 'بدهی' },
+      'kargo':       { en: 'cargo',            fa: 'بار' },
+    };
+    const translateDesc = (desc: string): string => {
+      if (reportLang === 'tr' || !desc) return desc;
+      let result = desc;
+      // longer phrases first to avoid partial replacements
+      const sorted = Object.entries(TR_DICT).sort((a, b) => b[0].length - a[0].length);
+      for (const [tr, map] of sorted) {
+        const translated = map[reportLang as 'en' | 'fa'];
+        if (translated) result = result.replace(new RegExp(tr, 'gi'), translated);
+      }
+      return result;
+    };
+    const today = new Date().toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
+    const companyName = settings?.company_name ?? 'SUNPLUS KİMYA';
+    const companyTagline = 'SUNPLUS KİMYA SAN. TİC. LTD.';
+    const logoHtml = settings?.logo_url
+      ? `<div><img src="${settings.logo_url}" style="max-height:52px;max-width:150px;object-fit:contain;display:block"><div style="font-size:8px;color:#94a3b8;font-weight:500;letter-spacing:.04em;margin-top:3px">${companyTagline}</div></div>`
+      : `<div><div style="font-size:20px;font-weight:900;letter-spacing:-0.5px;color:#111">${companyName}</div><div style="font-size:8px;color:#94a3b8;font-weight:500;letter-spacing:.04em;margin-top:2px">${companyTagline}</div></div>`;
+
+    // Styles — Farsça için daha büyük font
+    const fsBase  = isRtl ? '13.5px' : '10.5px';
+    const fsHead  = isRtl ? '12px'   : '9px';
+    const fsSec   = isRtl ? '15px'   : '12px';
+    const fsCirc  = isRtl ? '13px'   : '11px';
+    const circSz  = isRtl ? '28px'   : '24px';
+    const fsDesc  = isRtl ? '12.5px' : '9.5px';   // tablo açıklama hücresi
+    const fsTfLbl = isRtl ? '12.5px' : '10px';    // tfoot label
+    const fsTfVal = isRtl ? '14px'   : '11px';    // tfoot value
+    const TH = `padding:7px 10px;text-align:left;font-size:${fsHead};font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;white-space:nowrap;background:#f8fafc;border-bottom:1px solid #e2e8f0`;
+    const TD = `padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:${fsBase};color:#374151`;
+    const TDZ = TD + ';background:#fafbfc'; // zebra
+    const hdr = (cols: string[], aligns: string[] = []) =>
+      `<tr>${cols.map((c, i) => { const a = aligns[i] ?? (isRtl ? 'right' : 'left'); const ea = isRtl ? (a === 'left' ? 'right' : a === 'right' ? 'left' : a) : a; return `<th style="${TH};text-align:${ea}">${c}</th>`; }).join('')}</tr>`;
+
+    const sectionHead = (num: number, title: string, color: string, badge?: string) =>
+      `<div style="display:flex;align-items:center;gap:8px;margin:22px 0 8px">
+        <div style="width:${circSz};height:${circSz};border-radius:50%;background:${color};color:#fff;font-size:${fsCirc};font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${num}</div>
+        <div style="font-size:${fsSec};font-weight:800;color:#1e293b">${title}</div>
+        ${badge ? `<div style="font-size:${fsHead};font-weight:600;color:${color};border:1px solid ${color}30;background:${color}10;padding:2px 7px;border-radius:12px">${badge}</div>` : ''}
+      </div>`;
+
+    const payRows = payments.map((t, i) =>
+      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#1d4ed8">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${translateDesc(t.description ?? '')}</td></tr>`
+    ).join('');
+
+    const prdRows = customerFiles.map((f, i) => {
+      const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
+      const tot = qty * (f.selling_price ?? 0);
+      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};font-weight:600;color:#1e293b">${f.product?.name ?? '—'}</td><td style="${i%2?TDZ:TD};text-align:right">${fN(f.selling_price ?? 0)}</td><td style="${i%2?TDZ:TD};text-align:right">${fN(qty, 3)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#15803d">${fUSD(tot)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${f.file_no}</td></tr>`;
+    }).join('');
+
+    const advRows = advances.map((t, i) => {
+      const admt = t.trade_file?.delivered_admt ?? t.trade_file?.tonnage_mt;
+      const product = t.trade_file?.product?.name;
+      const fileInfo = [product, admt != null ? `${fN(admt, 3)} MT` : null].filter(Boolean).join(' — ');
+      const desc = [fileInfo, t.description].filter(Boolean).join(' · ');
+      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#6d28d9">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#374151;font-size:${fsDesc}">${translateDesc(desc) || '—'}</td></tr>`;
+    }).join('');
+
+    const tfootRow = (label: string, value: string, color: string, colspan = 4) =>
+      `<tr style="background:#f8fafc"><td colspan="${colspan}" style="padding:7px 10px;font-size:${fsTfLbl};font-weight:700;color:#374151;text-align:right;border-top:2px solid #e2e8f0">${label}</td><td style="padding:7px 10px;font-size:${fsTfVal};font-weight:800;color:${color};text-align:right;border-top:2px solid #e2e8f0">${value}</td><td style="border-top:2px solid #e2e8f0"></td></tr>`;
+
+    const balanceColor = balance > 0 ? '#b45309' : balance < 0 ? '#15803d' : '#6b7280';
+    const balanceBg    = balance > 0 ? '#fffbeb' : balance < 0 ? '#f0fdf4' : '#f8fafc';
+    const balanceBdr   = balance > 0 ? '#f59e0b' : balance < 0 ? '#22c55e' : '#cbd5e1';
+    const balanceIcon  = balance > 0 ? '⚠' : balance < 0 ? '✓' : '–';
+    const balanceLabel = balance > 0 ? L.debtor : balance < 0 ? L.creditor : L.closed;
+
+    // $ simgesini küçük ve ince göster
+    const dollarSz = isRtl ? '14px' : '11px';
+    const fmtUSD = (v: number) =>
+      fUSD(v).replace('$', `<span style="font-size:${dollarSz};font-weight:300;letter-spacing:-.01em">$</span>`);
+
+    const advSection = advDetail
+      ? `<table style="width:100%;border-collapse:collapse">
+          <thead>${hdr(L.advHdr, ['center','left','right','left','right','left'])}</thead>
+          <tbody>${advRows || `<tr><td colspan="6" style="padding:12px;color:#94a3b8;text-align:center;font-size:10px">${L.noAdvance}</td></tr>`}</tbody>
+          <tfoot>${tfootRow(L.totalAdvances, fUSD(totalAdvances), '#6d28d9')}</tfoot>
+        </table>`
+      : `<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px">
+          <span style="font-size:10px;color:#6b7280;font-weight:600">${L.totalAdvances}:</span>
+          <span style="font-size:13px;font-weight:800;color:#6d28d9">${fUSD(totalAdvances)}</span>
+        </div>`;
+
+    const dateRange = (dateFrom || dateTo)
+      ? `<span style="font-size:9px;color:#94a3b8;margin-left:8px">${dateFrom || '…'} → ${dateTo || '…'}</span>`
+      : '';
+
+    const origin = window.location.origin;
+    // Font seçimi (sadece Farsça rapor için)
+    const fontDef = FARSI_FONTS.find(f => f.id === farsiFont) ?? FARSI_FONTS[0];
+    const nazaninRange = 'U+0600-06FF,U+200C-200F,U+FB50-FDFF,U+FE70-FEFF';
+    const iranSansLink = isRtl
+      ? fontDef.link === null
+        ? `<style>@font-face{font-family:'Nazanin';src:url('${origin}/fonts/nazanin.ttf') format('truetype');font-weight:400;unicode-range:${nazaninRange}}@font-face{font-family:'Nazanin';src:url('${origin}/fonts/nazanin.ttf') format('truetype');font-weight:700;unicode-range:${nazaninRange}}</style>`
+        : `<link rel="stylesheet" href="${fontDef.link}">`
+      : '';
+    const farsiFontStack = isRtl ? `'${fontDef.family}',Arial,'Tahoma'` : "'Helvetica Neue',Arial";
+    const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:${farsiFontStack},sans-serif;font-size:11px;background:#e2e8f0;padding:24px;color:#111;direction:${isRtl ? 'rtl' : 'ltr'}}.page{background:#fff;width:210mm;margin:0 auto;padding:16mm 18mm;box-shadow:0 8px 32px rgba(0,0,0,.18);border-radius:2px}.np{text-align:center;margin-bottom:18px}@media print{body{background:#fff;padding:0}.np{display:none}.page{box-shadow:none;width:100%;padding:12mm;margin:0}}`;
+
+    const html = `
+      <div class="page">
+        <!-- HEADER -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #1e293b">
+          <div>${logoHtml}</div>
+          <div style="text-align:right">
+            <div style="font-size:16px;font-weight:800;letter-spacing:-.3px;color:#1e293b;margin-bottom:3px">${L.reportTitle.toUpperCase()}</div>
+            <div style="font-size:${isRtl ? '12px' : '10px'};color:#64748b">${L.dateLabel}: <strong style="color:#1e293b">${today}</strong>${dateRange}</div>
+          </div>
+        </div>
+
+        <!-- TO / SALUTATION BLOCK -->
+        <div style="margin-bottom:20px;${isRtl ? 'direction:rtl;text-align:right' : ''}">
+          <div style="font-size:15px;font-weight:1000;color:#1e293b;margin-bottom:2px">${L.salutComp} ${customerName}</div>
+          ${toName ? `<div style="font-size:15px;font-weight:1000;color:#1e293b;margin-bottom:4px">${toTitle === 'agha' ? L.salutNameAgha : L.salutNameKhanom} ${toName}</div>` : ''}
+          <div style="font-size:14px;font-weight:1000;color:#374151">${L.greeting}</div>
+        </div>
+
+        <!-- TABLE 1: PAYMENTS -->
+        ${sectionHead(1, L.payments, '#2563eb')}
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+          <thead>${hdr(L.payHdr, ['center','left','right','left','right','left'])}</thead>
+          <tbody>${payRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noPayment}</td></tr>`}</tbody>
+          <tfoot>${tfootRow(L.totalPayments, fUSD(totalPayments), '#1d4ed8')}</tfoot>
+        </table>
+
+        <!-- TABLE 2: PRODUCTS -->
+        ${sectionHead(2, L.products, '#16a34a')}
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+          <thead>${hdr(L.prdHdr, ['center','left','right','right','right','left'])}</thead>
+          <tbody>${prdRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noProduct}</td></tr>`}</tbody>
+          <tfoot>${tfootRow(L.totalProducts, fUSD(totalProducts), '#15803d')}</tfoot>
+        </table>
+
+        <!-- TABLE 3: ADVANCES -->
+        ${sectionHead(3, L.advances, '#7c3aed')}
+        ${advSection}
+
+        <!-- BALANCE -->
+        <div style="margin-top:20px;border-radius:8px;border:1.5px solid ${balanceBdr};background:${balanceBg};overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:13px;color:${balanceColor};margin-top:1px;flex-shrink:0">${balanceIcon}</span>
+              <div>
+                <div style="font-size:${isRtl ? '13px' : '9.5px'};color:#475569;font-weight:600;margin-bottom:5px">${L.balanceText}</div>
+                <div style="display:flex;gap:14px;flex-wrap:wrap">
+                  <span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">${L.products}: <strong style="color:#15803d;font-weight:1000">${fUSD(totalProducts)}</strong></span>
+                  ${totalAdvances > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">+ ${L.advances}: <strong style="color:#7c3aed;font-weight:1000">${fUSD(totalAdvances)}</strong></span>` : ''}
+                  <span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.payments}: <strong style="color:#1d4ed8;font-weight:1000">${fUSD(totalPayments)}</strong></span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:${isRtl ? 'flex-start' : 'flex-end'};gap:3px;flex-shrink:0">
+              <div style="font-size:${isRtl ? '12px' : '9px'};color:${balanceColor};font-weight:1000;text-transform:uppercase;letter-spacing:.04em">${balanceLabel}</div>
+              <div style="font-size:${isRtl ? '16px' : '14px'};font-weight:1000;color:${balanceColor}">${fmtUSD(Math.abs(balance))}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="margin-top:28px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:9px;color:#94a3b8">${companyName}</div>
+          <div style="font-size:9px;color:#cbd5e1">${today}</div>
+        </div>
+      </div>`;
+
+    const win = window.open('', '_blank', 'width=1000,height=850');
+    if (!win) return;
+    const printBar = `<div class="np" style="text-align:center;margin-bottom:18px"><button onclick="window.print()" style="background:#1e293b;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px">${L.printBtn}</button><button onclick="window.close()" style="background:#f1f5f9;color:#374151;border:1px solid #cbd5e1;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer">${isRtl ? 'بستن' : reportLang === 'tr' ? 'Kapat' : 'Close'}</button></div>`;
+    win.document.write(`<!DOCTYPE html><html dir="${isRtl ? 'rtl' : 'ltr'}"><head><meta charset="UTF-8">${iranSansLink}<title>${customerName} — ${L.reportTitle}</title><style>${css}</style></head><body>${printBar}${html}</body></html>`);
+    win.document.close();
+  }
+
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── Toolbar kartı (overflow-hidden KULLANMA — dropdown kırpılır) ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div className="px-4 py-3 flex items-center gap-2">
+
+          {/* Müşteri seçimi */}
+          <div ref={custDropdownRef} className="relative flex-1 min-w-[200px]">
+            <button
+              type="button"
+              onClick={() => {
+                if (!custOpen && custDropdownRef.current) {
+                  const r = custDropdownRef.current.getBoundingClientRect();
+                  setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+                }
+                setCustOpen((v) => !v);
+              }}
+              className={cn(
+                'w-full h-9 rounded-xl border px-3 text-[12px] font-medium transition-colors flex items-center gap-2 bg-white',
+                customerId ? 'text-gray-900' : 'text-gray-400',
+              )}
+              style={{ borderColor: customerId ? `${accent}50` : '#e5e7eb' }}
+            >
+              <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+              <span className="flex-1 truncate text-left">{customerId ? customerName : 'Müşteri seçin…'}</span>
+              {customerId
+                ? <X className="h-3.5 w-3.5 text-gray-300 hover:text-red-400 shrink-0 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setCustomerId(''); setCustOpen(false); }} />
+                : <ChevronDown className="h-3.5 w-3.5 text-gray-300 shrink-0" />}
+            </button>
+
+            {custOpen && dropdownPos && createPortal(
+              <div
+                data-cr-portal
+                style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: Math.max(dropdownPos.width, 240), zIndex: 9999 }}
+                className="bg-white border border-gray-200 rounded-xl shadow-xl"
+              >
+                <div className="p-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                    <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                    <input autoFocus type="text" value={custSearch} onChange={(e) => setCustSearch(e.target.value)}
+                      placeholder="Ara…" className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400" />
+                    {custSearch && <button type="button" onClick={() => setCustSearch('')}><X className="h-3 w-3 text-gray-400" /></button>}
+                  </div>
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {loadingC && customers.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 py-5 text-[12px] text-gray-400">
+                      <div className="w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: accent }} />
+                      Yükleniyor…
+                    </div>
+                  ) : filteredCustomers.length === 0 ? (
+                    <div className="px-3 py-5 text-[12px] text-gray-400 text-center">Sonuç yok</div>
+                  ) : filteredCustomers.map((c) => (
+                    <button key={c.id} type="button"
+                      onClick={() => { setCustomerId(c.id); setCustOpen(false); setCustSearch(''); }}
+                      className="w-full text-left px-3 py-2.5 text-[13px] transition-colors hover:bg-gray-50 border-b border-gray-50 last:border-0"
+                      style={customerId === c.id ? { color: accent, background: `${accent}08`, fontWeight: 600 } : {}}>
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            , document.body)}
+          </div>
+
+          {/* Filtre butonu */}
+          <div ref={filterBtnRef} className="relative shrink-0">
+            <button
+              onClick={() => {
+                if (!filterOpen && filterBtnRef.current) {
+                  const r = filterBtnRef.current.getBoundingClientRect();
+                  const popW = 288;
+                  const left = r.left + popW > window.innerWidth ? r.right - popW : r.left;
+                  setFilterPos({ top: r.bottom + 4, left });
+                }
+                setFilterOpen((v) => !v);
+              }}
+              className="h-9 px-3 rounded-xl border text-[12px] font-semibold flex items-center gap-1.5 transition-colors bg-white"
+              style={
+                activeFilterCount > 0 || filterOpen
+                  ? { borderColor: `${accent}50`, background: `${accent}08`, color: accent }
+                  : { borderColor: '#e5e7eb', color: '#6b7280' }
+              }
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filtrele
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full text-white text-[9px] font-extrabold flex items-center justify-center"
+                  style={{ background: accent }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {filterOpen && filterPos && createPortal(
+              <div
+                data-cr-filter-portal
+                style={{ position: 'fixed', top: filterPos.top, left: filterPos.left, zIndex: 9999 }}
+                className="w-72 bg-white border border-gray-200 rounded-2xl shadow-xl"
+              >
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Rapor Seçenekleri</span>
+                  <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
+                    <X className="h-3.5 w-3.5 text-gray-400" />
+                  </button>
+                </div>
+                <div className="px-4 py-3 space-y-3">
+
+                  {/* Tarih aralığı */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Tarih Aralığı</label>
+                    <div className="flex items-center gap-1.5">
+                      <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                      <span className="text-gray-300 text-[11px]">—</span>
+                      <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                    </div>
+                  </div>
+
+                  {/* Ön ödemeler */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Ön Ödemeler</label>
+                    <div className="flex gap-1">
+                      {[{ val: true, label: L.fullList }, { val: false, label: L.totalOnly }].map(({ val, label }) => (
+                        <button key={String(val)} type="button"
+                          onClick={() => setAdvDetail(val)}
+                          className={cn('px-3 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap flex-1',
+                            advDetail === val ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')}
+                          style={advDetail === val ? { background: accent } : {}}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rapor dili */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Rapor Dili</label>
+                    <div className="flex gap-1">
+                      {(['tr', 'en', 'fa'] as const).map((lang) => (
+                        <button key={lang} type="button"
+                          onClick={() => setReportLang(lang)}
+                          className={cn('flex-1 h-8 rounded-xl text-[11px] font-bold transition-all',
+                            reportLang === lang ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')}
+                          style={reportLang === lang ? { background: accent } : {}}>
+                          {lang.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hitap */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Hitap</label>
+                    <div className="flex gap-1 mb-1.5">
+                      {([['agha', 'جناب آقای'], ['khanom', 'سرکار خانم']] as const).map(([val, label]) => (
+                        <button key={val} type="button"
+                          onClick={() => setToTitle(val)}
+                          className={cn('flex-1 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
+                            toTitle === val ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')}
+                          style={toTitle === val ? { background: accent } : {}}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Ad Soyad (örn: محسن زرین)"
+                      value={toName}
+                      onChange={(e) => setToName(e.target.value)}
+                      dir="auto"
+                      className="h-8 w-full rounded-lg border border-gray-200 px-2.5 text-[12px] outline-none focus:border-gray-300 placeholder:text-gray-300"
+                    />
+                  </div>
+
+                  {/* Temizle (sadece tarih filtresi için) */}
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => { setDateFrom(''); setDateTo(''); setFilterOpen(false); }}
+                      className="w-full h-8 rounded-xl text-[11px] font-semibold text-red-500 border border-red-100 bg-red-50 hover:bg-red-100 transition-colors"
+                    >
+                      Tarih Filtresini Temizle
+                    </button>
+                  )}
+                </div>
+              </div>,
+              document.body
+            )}
+          </div>
+
+          {/* Yazdır */}
+          {customerId && (
+            <button
+              onClick={printReport}
+              className="h-9 px-3 rounded-xl text-[11px] font-semibold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity shrink-0 ml-auto"
+              style={{ background: accent }}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              {L.printBtn}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {!customerId && (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <FileText className="h-8 w-8 mb-2 opacity-30" />
+          <p className="text-sm font-medium text-gray-500">Müşteri seçin</p>
+          <p className="text-xs mt-1">Raporu görüntülemek için yukarıdan bir müşteri seçin</p>
+        </div>
+      )}
+
+      {/* Loading */}
+      {customerId && isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-6 h-6 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: accent }} />
+        </div>
+      )}
+
+      {customerId && !isLoading && (
+        <>
+          {/* Quick info 2×2 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="grid grid-cols-2 divide-x divide-gray-50">
+              <div className="px-5 py-4 border-b border-gray-50">
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Ödemeler</div>
+                <div className="text-[18px] font-extrabold text-blue-700">{fUSD(totalPayments)}</div>
+              </div>
+              <div className="px-5 py-4 border-b border-gray-50">
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Satın Alım</div>
+                <div className="text-[18px] font-extrabold text-green-700">{fUSD(totalProducts)}</div>
+              </div>
+              <div className="px-5 py-4">
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Ön Ödemeler</div>
+                <div className="text-[18px] font-extrabold text-violet-700">{fUSD(totalAdvances)}</div>
+              </div>
+              <div className="px-5 py-4" style={balance !== 0 ? { background: balance > 0 ? '#fffbeb' : '#f0fdf4' } : {}}>
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Net Bakiye</div>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-[18px] font-extrabold" style={{ color: balance > 0 ? '#b45309' : balance < 0 ? '#15803d' : '#6b7280' }}>
+                    {fUSD(Math.abs(balance))}
+                  </span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest" style={{ color: balance > 0 ? '#b45309' : balance < 0 ? '#15803d' : '#9ca3af' }}>
+                    {balance > 0 ? 'Borçlu' : balance < 0 ? 'Alacaklı' : 'Kapalı'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table 1: Payments */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-[9px] font-extrabold flex items-center justify-center shrink-0">1</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.payments}</span>
+              </div>
+              <span className="text-[10px] text-gray-400">{payments.length} {L.records}</span>
+            </div>
+            {payments.length === 0 ? (
+              <div className="px-5 py-10 text-center text-[12px] text-gray-400">{L.noPayment}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {L.payHdr.map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map((t, i) => (
+                      <tr key={t.id} className={cn('border-b border-gray-50 transition-colors', i % 2 === 1 ? 'bg-gray-50/40' : 'hover:bg-gray-50/60')}>
+                        <td className="px-4 py-3 text-[11px] text-gray-400 text-center font-mono">{i + 1}</td>
+                        <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(t.transaction_date)}</td>
+                        <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
+                        <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
+                        <td className="px-4 py-3 text-[13px] font-bold text-blue-700 text-right">{fUSD(t.amount_usd ?? 0)}</td>
+                        <td className="px-4 py-3 text-[11px] text-gray-400">{t.description ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-blue-50/60 border-t-2 border-blue-100">
+                      <td colSpan={4} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalPayments}</td>
+                      <td className="px-4 py-3 text-[14px] font-black text-blue-700 text-right">{fUSD(totalPayments)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Table 2: Products */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-green-100 text-green-700 text-[9px] font-extrabold flex items-center justify-center shrink-0">2</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.products}</span>
+              </div>
+              <span className="text-[10px] text-gray-400">{customerFiles.length} {reportLang === 'fa' ? 'پرونده' : reportLang === 'tr' ? 'dosya' : 'files'}</span>
+            </div>
+            {customerFiles.length === 0 ? (
+              <div className="px-5 py-10 text-center text-[12px] text-gray-400">{L.noProduct}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {L.prdHdr.map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customerFiles.map((f, i) => {
+                      const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
+                      const tot = qty * (f.selling_price ?? 0);
+                      return (
+                        <tr key={f.id} className={cn('border-b border-gray-50 transition-colors', i % 2 === 1 ? 'bg-gray-50/40' : 'hover:bg-gray-50/60')}>
+                          <td className="px-4 py-3 text-[11px] text-gray-400 text-center font-mono">{i + 1}</td>
+                          <td className="px-4 py-3 text-[12px] font-semibold text-gray-900">{f.product?.name ?? '—'}</td>
+                          <td className="px-4 py-3 text-[12px] text-gray-600 text-right">{fN(f.selling_price ?? 0)}</td>
+                          <td className="px-4 py-3 text-[12px] text-gray-600 text-right">{fN(qty, 3)}</td>
+                          <td className="px-4 py-3 text-[13px] font-bold text-green-700 text-right">{fUSD(tot)}</td>
+                          <td className="px-4 py-3 text-[10px] font-mono text-gray-400">{f.file_no}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-green-50/60 border-t-2 border-green-100">
+                      <td colSpan={4} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalProducts}</td>
+                      <td className="px-4 py-3 text-[14px] font-black text-green-700 text-right">{fUSD(totalProducts)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Table 3: Advances */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-600 text-[9px] font-extrabold flex items-center justify-center shrink-0">3</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.advances}</span>
+              </div>
+              <span className="text-[10px] text-gray-400">{advances.length} {L.records}</span>
+            </div>
+            {advances.length === 0 ? (
+              <div className="px-5 py-10 text-center text-[12px] text-gray-400">{L.noAdvance}</div>
+            ) : advDetail ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {L.advHdr.map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {advances.map((t, i) => {
+                      const admt = t.trade_file?.delivered_admt ?? t.trade_file?.tonnage_mt;
+                      const product = t.trade_file?.product?.name;
+                      const fileInfo = [product, admt != null ? `${fN(admt, 3)} MT` : null].filter(Boolean).join(' — ');
+                      return (
+                        <tr key={t.id} className={cn('border-b border-gray-50 transition-colors', i % 2 === 1 ? 'bg-gray-50/40' : 'hover:bg-gray-50/60')}>
+                          <td className="px-4 py-3 text-[11px] text-gray-400 text-center font-mono">{i + 1}</td>
+                          <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(t.transaction_date)}</td>
+                          <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
+                          <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
+                          <td className="px-4 py-3 text-[13px] font-bold text-violet-700 text-right">{fUSD(t.amount_usd ?? 0)}</td>
+                          <td className="px-4 py-3 text-[11px] text-gray-600">
+                            {fileInfo && <span className="font-medium">{fileInfo}</span>}
+                            {fileInfo && t.description ? <span className="text-gray-400"> · </span> : null}
+                            {t.description || (!fileInfo ? '—' : null)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-violet-50/60 border-t-2 border-violet-100">
+                      <td colSpan={4} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalAdvances}</td>
+                      <td className="px-4 py-3 text-[14px] font-black text-violet-700 text-right">{fUSD(totalAdvances)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="px-5 py-4 flex items-center gap-3">
+                <span className="text-[12px] text-gray-500 font-medium">{L.totalAdvances}:</span>
+                <span className="text-[16px] font-black text-violet-700">{fUSD(totalAdvances)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Net balance KV card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/60 flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Hesap Özeti</span>
+            </div>
+            <div className="px-5 py-1">
+              <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                <span className="text-[12px] text-gray-500">{L.products}</span>
+                <span className="text-[13px] font-bold text-green-700">+{fUSD(totalProducts)}</span>
+              </div>
+              {totalAdvances > 0 && (
+                <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                  <span className="text-[12px] text-gray-500">{L.advances}</span>
+                  <span className="text-[13px] font-bold text-violet-700">+{fUSD(totalAdvances)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                <span className="text-[12px] text-gray-500">{L.payments}</span>
+                <span className="text-[13px] font-bold text-blue-700">−{fUSD(totalPayments)}</span>
+              </div>
+              <div className="flex justify-between items-center py-3">
+                <span className="text-[13px] font-bold text-gray-900">Net Bakiye</span>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    'text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full',
+                    balance > 0 ? 'bg-amber-50 text-amber-700' : balance < 0 ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500',
+                  )}>
+                    {balance > 0 ? L.debtor : balance < 0 ? L.creditor : L.closed}
+                  </span>
+                  <span className="text-[16px] font-extrabold" style={{ color: balance > 0 ? '#b45309' : balance < 0 ? '#15803d' : '#6b7280' }}>
+                    {fUSD(Math.abs(balance))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ReportsPage() {
   const { t } = useTranslation('reports');
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const [activeTab, setActiveTab] = useState<RepTab>('sales');
 
   const TAB_LABELS: [RepTab, string][] = [
     ['sales',     t('tabs.sales')],
-    ['pnl',       t('tabs.pnl')],
-    ['cari',      t('tabs.cari')],
     ['analytics', t('tabs.analytics')],
     ['eta',       t('tabs.eta')],
   ];
@@ -1081,14 +2350,16 @@ export function ReportsPage() {
   return (
     <>
       {/* Tab bar */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit mb-6 overflow-x-auto scrollbar-none">
+      <div className="flex border-b border-gray-100 mb-6 overflow-x-auto scrollbar-none">
         {TAB_LABELS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`shrink-0 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
-              activeTab === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
+            className={cn(
+              'shrink-0 px-4 py-2.5 text-[12px] font-semibold transition-all border-b-2 -mb-px whitespace-nowrap',
+              activeTab === key ? 'text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50',
+            )}
+            style={activeTab === key ? { borderBottomColor: accent, color: accent } : {}}
           >
             {label}
           </button>
@@ -1096,8 +2367,6 @@ export function ReportsPage() {
       </div>
 
       {activeTab === 'sales'     && <SalesReportTab />}
-      {activeTab === 'pnl'       && <PnlReportTab />}
-      {activeTab === 'cari'      && <AccountStatementTab />}
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'eta'       && <EtaReportTab />}
     </>

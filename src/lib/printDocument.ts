@@ -1,5 +1,5 @@
 import type { CompanySettings, BankAccount, TradeFile, PackingList, Invoice, Proforma, Transaction } from '@/types/database';
-import { fDate, fN } from './formatters';
+import { fDate, fDateDMY, fN } from './formatters';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -20,68 +20,295 @@ const BASE_CSS = `
   body {
     font-family: Arial, sans-serif;
     font-size: 11px;
-    background: #888;
-    padding: 20px;
+    background: #f1f5f9;
     color: #000;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: #fff;
+    border-left: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px 20px;
+    gap: 8px;
+    order: 2;
+    box-shadow: -2px 0 12px rgba(0,0,0,0.06);
+    z-index: 10;
+  }
+  .sidebar-logo {
+    font-size: 13px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.3px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .sidebar-logo span { color: #dc2626; }
+  .sidebar-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #9ca3af;
+    margin-top: 12px;
+    margin-bottom: 4px;
+  }
+  .btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: #111827;
+    color: #fff;
+    border: none;
+    padding: 11px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-ghost {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: #f9fafb;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    padding: 9px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+  }
+  .btn-ghost:hover { background: #f3f4f6; }
+  .zoom-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .zoom-btn {
+    flex: 1;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 7px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    font-weight: 600;
+    color: #374151;
+    transition: background 0.15s;
+    text-align: center;
+  }
+  .zoom-btn:hover { background: #e5e7eb; }
+  .zoom-val {
+    flex: 1.2;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 7px 4px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dashed #f3f4f6;
+    font-size: 10px;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: #9ca3af; font-weight: 500; }
+  .info-val { color: #111827; font-weight: 700; }
+
+  /* ── Document scroll area ── */
+  .doc-area {
+    flex: 1;
+    overflow: auto;
+    padding: 40px 40px 60px;
+    order: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .doc-scale-wrapper {
+    transform-origin: top center;
+    transition: transform 0.2s ease;
   }
   .page {
     background: #fff;
     width: 210mm;
-    margin: 0 auto;
     padding: 14mm 14mm 12mm 14mm;
-    box-shadow: 0 4px 24px rgba(0,0,0,.4);
+    box-shadow: 0 8px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
     position: relative;
   }
-  .np { text-align: center; margin-bottom: 14px; }
-  @media print {
-    body { background: #fff; padding: 0; }
-    .np { display: none; }
-    .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  }
+
   /* DRAFT watermark */
-  .draft-watermark {
-    position: relative;
-  }
+  .draft-watermark { position: relative; }
   .draft-watermark::before {
     content: 'DRAFT';
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 50%; left: 50%;
     transform: translate(-50%, -50%) rotate(-45deg);
     font-size: 140px;
     font-weight: 900;
-    color: rgba(0,0,0,0.07);
+    color: rgba(0,0,0,0.06);
     letter-spacing: 20px;
     pointer-events: none;
     z-index: 9999;
     white-space: nowrap;
     user-select: none;
   }
+
   @media print {
-    .draft-watermark::before {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-    }
+    body { background: #fff; display: block; height: auto; overflow: visible; }
+    .sidebar { display: none; }
+    .doc-area { padding: 0; overflow: visible; }
+    .doc-scale-wrapper { transform: none !important; }
+    .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .draft-watermark::before { position: fixed; top: 50%; left: 50%; }
   }
 `;
 
 const DRAFT_WATERMARK_ATTR = 'draft-watermark';
 
-const PRINT_BAR = `<div class="np">
-  <button onclick="window.print()" style="background:#333;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">🖨 Print / PDF</button>
-  <button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #ccc;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer">✕ Close</button>
-</div>`;
+interface DropboxMeta { customerName: string; fileNo: string; documentName: string; }
+
+function buildFullHtml(html: string, title: string, isDraft = false, dropboxMeta?: DropboxMeta): string {
+  const draftClass = isDraft ? ` ${DRAFT_WATERMARK_ATTR}` : '';
+  const draftBadge = isDraft
+    ? `<div class="info-row"><span class="info-label">Durum</span><span class="info-val" style="color:#dc2626">TASLAK</span></div>`
+    : `<div class="info-row"><span class="info-label">Durum</span><span class="info-val" style="color:#16a34a">Onaylı</span></div>`;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${esc(title)}${isDraft ? ' [DRAFT]' : ''}</title>
+  <style>${BASE_CSS}</style>
+</head>
+<body>
+  <div class="doc-area">
+    <div class="doc-scale-wrapper" id="scaleWrap">
+      <div class="page${draftClass}">${html}</div>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-logo">Sun<span>plus</span> Trade</div>
+
+    <div class="sidebar-label">İşlemler</div>
+    <button class="btn-primary" onclick="window.print()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / PDF
+    </button>
+    <button class="btn-ghost" onclick="window.close()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Kapat
+    </button>
+
+    <div class="sidebar-label">Yakınlaştırma</div>
+    <div class="zoom-row">
+      <button class="zoom-btn" onclick="zoomOut()">−</button>
+      <div class="zoom-val" id="zoomVal">100%</div>
+      <button class="zoom-btn" onclick="zoomIn()">+</button>
+    </div>
+    <button class="btn-ghost" onclick="zoomReset()" style="font-size:11px;padding:6px 12px">Sıfırla</button>
+
+    <div class="sidebar-label">Belge</div>
+    <div class="info-row">
+      <span class="info-label">Başlık</span>
+      <span class="info-val" style="max-width:120px;text-align:right;word-break:break-all;font-size:9px">${esc(title)}</span>
+    </div>
+    ${draftBadge}
+    <div class="info-row">
+      <span class="info-label">Format</span>
+      <span class="info-val">A4</span>
+    </div>
+    ${dropboxMeta ? `
+    <div class="sidebar-label" style="margin-top:20px">Bulut</div>
+    <button id="dbxBtn" class="btn-ghost" onclick="uploadToDropbox()" style="gap:6px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg>
+      Dropbox'a Kaydet
+    </button>
+    ` : ''}
+  </div>
+
+  <script>
+    var scale = 1;
+    var wrap = document.getElementById('scaleWrap');
+    var valEl = document.getElementById('zoomVal');
+    function applyZoom() {
+      wrap.style.transform = 'scale(' + scale + ')';
+      valEl.textContent = Math.round(scale * 100) + '%';
+    }
+    function zoomIn()   { scale = Math.min(scale + 0.1, 2.5); applyZoom(); }
+    function zoomOut()  { scale = Math.max(scale - 0.1, 0.3); applyZoom(); }
+    function zoomReset(){ scale = 1; applyZoom(); }
+    // Ctrl/Cmd + scroll to zoom
+    document.addEventListener('wheel', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) zoomIn(); else zoomOut();
+      }
+    }, { passive: false });
+    // Otomatik sığdır
+    (function() {
+      var docW = 794; // 210mm ≈ 794px
+      var availW = document.querySelector('.doc-area').clientWidth - 80;
+      if (availW < docW) { scale = Math.max(availW / docW, 0.5); applyZoom(); }
+    })();
+  </script>
+  ${dropboxMeta ? `
+  <script>
+    var _DBX_CUSTOMER = ${JSON.stringify(dropboxMeta.customerName)};
+    var _DBX_FILENO   = ${JSON.stringify(dropboxMeta.fileNo)};
+    var _DBX_DOCNAME  = ${JSON.stringify(dropboxMeta.documentName)};
+    function uploadToDropbox() {
+      if (!window.opener) { alert('Ana uygulama penceresi kapalı.'); return; }
+      var btn = document.getElementById('dbxBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="opacity:.6">Yükleniyor…</span>';
+      window.opener.postMessage({
+        type: 'DROPBOX_UPLOAD_PDF',
+        pageHtml: document.querySelector('.page').innerHTML,
+        customerName: _DBX_CUSTOMER,
+        fileNo: _DBX_FILENO,
+        documentName: _DBX_DOCNAME,
+      }, '*');
+      function onMsg(e) {
+        if (e.data && e.data.type === 'DROPBOX_UPLOAD_DONE') {
+          btn.innerHTML = '<span style="color:#16a34a;font-weight:700">✓ Yüklendi</span>';
+          window.removeEventListener('message', onMsg);
+        } else if (e.data && e.data.type === 'DROPBOX_UPLOAD_ERROR') {
+          btn.textContent = "Dropbox'a Kaydet";
+          btn.disabled = false;
+          alert('Hata: ' + e.data.error);
+          window.removeEventListener('message', onMsg);
+        }
+      }
+      window.addEventListener('message', onMsg);
+    }
+  </script>
+  ` : ''}
+</body>
+</html>`;
+}
 
 function openPrintWindow(html: string, title: string, isDraft = false) {
-  const win = window.open('', '_blank', 'width=1010,height=860');
+  const win = window.open('', '_blank', 'width=1100,height=860');
   if (!win) return;
-  const draftClass = isDraft ? ` ${DRAFT_WATERMARK_ATTR}` : '';
-  win.document.write(
-    `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}${isDraft ? ' [DRAFT]' : ''}</title>` +
-    `<style>${BASE_CSS}</style></head><body>${PRINT_BAR}<div class="page${draftClass}">${html}</div></body></html>`
-  );
+  win.document.write(buildFullHtml(html, title, isDraft));
   win.document.close();
 }
 
@@ -111,7 +338,7 @@ function footerHTML(s: CompanySettings, showSeal = false): string {
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 
-export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false) {
+function _buildInvoiceBody(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false): string {
   void bank; // bank details shown in comments if needed
   const curr = inv.currency || 'USD';
   const custName = esc(inv.customer?.name || '');
@@ -227,12 +454,27 @@ export function printInvoice(inv: Invoice, settings: CompanySettings, bank: Bank
     ${footerHTML(settings, !isDraft)}
   `;
 
-  openPrintWindow(body, `Invoice ${inv.invoice_no}`, isDraft);
+  return buildFullHtml(body, `Invoice ${inv.invoice_no}`, isDraft, {
+    customerName: inv.customer?.name ?? '',
+    fileNo: (inv.trade_file as unknown as { file_no?: string } | null)?.file_no ?? '',
+    documentName: inv.invoice_no,
+  });
+}
+
+export function generateInvoiceHtml(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false): string {
+  return _buildInvoiceBody(inv, settings, bank, isDraft);
+}
+
+export function printInvoice(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false) {
+  const win = window.open('', '_blank', 'width=1010,height=860');
+  if (!win) return;
+  win.document.write(_buildInvoiceBody(inv, settings, bank, isDraft));
+  win.document.close();
 }
 
 // ─── Packing List ─────────────────────────────────────────────────────────────
 
-export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false) {
+function _buildPackingListBody(pl: PackingList, settings: CompanySettings, isDraft = false): string {
   const items = pl.packing_list_items ?? [];
   const isTruck = pl.transport_mode === 'truck';
   const isRailway = pl.transport_mode === 'railway';
@@ -352,18 +594,44 @@ export function printPackingList(pl: PackingList, settings: CompanySettings, isD
     ${footerHTML(settings, !isDraft)}
   `;
 
-  openPrintWindow(body, `Packing List ${pl.packing_list_no}`, isDraft);
+  return buildFullHtml(body, `Packing List ${pl.packing_list_no}`, isDraft, {
+    customerName: pl.customer?.name ?? '',
+    fileNo: (pl.trade_file as unknown as { file_no?: string } | null)?.file_no ?? '',
+    documentName: pl.packing_list_no,
+  });
+}
+
+export function generatePackingListHtml(pl: PackingList, settings: CompanySettings, isDraft = false): string {
+  return _buildPackingListBody(pl, settings, isDraft);
+}
+
+export function printPackingList(pl: PackingList, settings: CompanySettings, isDraft = false) {
+  const win = window.open('', '_blank', 'width=1010,height=860');
+  if (!win) return;
+  win.document.write(_buildPackingListBody(pl, settings, isDraft));
+  win.document.close();
 }
 
 // ─── Proforma ────────────────────────────────────────────────────────────────
 
-export function printProforma(
+export function generateProformaHtml(
   pi: Proforma,
   settings: CompanySettings,
   bank: BankAccount | null,
   file?: TradeFile | null,
   isDraft = false,
-) {
+): string {
+  // delegates to printProforma internals — built inline below
+  return _buildProformaBody(pi, settings, bank, file, isDraft);
+}
+
+function _buildProformaBody(
+  pi: Proforma,
+  settings: CompanySettings,
+  bank: BankAccount | null,
+  file?: TradeFile | null,
+  isDraft = false,
+): string {
   const curr = pi.currency || 'USD';
   const piTfAny = (pi.trade_file as unknown as Record<string,unknown> | null);
   const customerRaw = file?.customer ?? (piTfAny?.['customer'] as Record<string,unknown> | null) ?? null;
@@ -444,8 +712,8 @@ export function printProforma(
         <td colspan="3" style="${lS};text-align:center">Validity date / days of PI</td>
       </tr>
       <tr>
-        <td colspan="4" style="${vS};font-weight:700;text-align:center">${fDate(pi.proforma_date)}</td>
-        <td colspan="3" style="${vS};font-weight:700;text-align:center">${pi.validity_date ? fDate(pi.validity_date) : '—'}</td>
+        <td colspan="4" style="${vS};font-weight:700;text-align:center">${fDateDMY(pi.proforma_date)}</td>
+        <td colspan="3" style="${vS};font-weight:700;text-align:center">${pi.validity_date ? fDateDMY(pi.validity_date) : '—'}</td>
       </tr>
       <tr>
         <td colspan="5" style="${lS}">Buyer's reference / Buyer Commercial ID No.:</td>
@@ -477,7 +745,7 @@ export function printProforma(
       </tr>
       <tr>
         <td colspan="7" style="${vS};font-size:9.5px">${bankBlock || '&nbsp;'}</td>
-        <td colspan="4" style="${vS}"><strong>Country of origin:</strong> ${esc(pi.country_of_origin || '')}</td>
+        <td colspan="4" style="${vS}"><strong>Country of origin:</strong> ${esc(pi.country_of_origin || (file?.product as Record<string,unknown> | null | undefined)?.['origin_country'] as string || '')}</td>
         <td colspan="3" style="${vS}"><strong>Country of destination:</strong> ${custCountry || '—'}</td>
       </tr>
 
@@ -548,10 +816,10 @@ export function printProforma(
       <!-- data row -->
       <tr>
         <td colspan="1" style="${vS};text-align:center">1</td>
-        <td colspan="4" style="${vS};text-align:center;font-weight:700">${esc(pi.description || '')}</td>
+        <td colspan="4" style="${vS};text-align:center;font-weight:700">${esc(pi.description || (file?.product as Record<string,unknown> | null | undefined)?.['name'] as string || '')}</td>
         <td colspan="2" style="${vS};text-align:center">${pi.net_weight_kg ? fN(pi.net_weight_kg, 0) : ''}</td>
         <td colspan="2" style="${vS};text-align:center">${pi.gross_weight_kg ? fN(pi.gross_weight_kg, 0) : ''}</td>
-        <td colspan="2" style="${vS};text-align:center">${fN3(pi.quantity_admt)}</td>
+        <td colspan="2" style="${vS};text-align:center">${fN(pi.quantity_admt, 0)}</td>
         <td colspan="1" style="${vS};text-align:center">${tF(pi.unit_price)}</td>
         <td colspan="2" style="${vS};text-align:center">${tF(pi.subtotal)}</td>
       </tr>
@@ -609,7 +877,7 @@ export function printProforma(
       </tr>
       <tr>
         <td colspan="3" style="${lS}">PLACE AND DATE OF ISSUE:</td>
-        <td colspan="2" style="${vS}">TURKEY &nbsp; ${fDate(pi.proforma_date)}</td>
+        <td colspan="2" style="${vS}">TURKEY &nbsp; ${fDateDMY(pi.proforma_date)}</td>
       </tr>
       <tr>
         <td colspan="5" style="${lS}">SEAL AND SIGNATURE:</td>
@@ -633,7 +901,25 @@ export function printProforma(
     </div>
   `;
 
-  openPrintWindow(body, `Proforma Invoice ${pi.proforma_no}`, isDraft);
+  const rawCustomerName = (customerAny?.['name'] as string) ?? '';
+  return buildFullHtml(body, `Proforma Invoice ${pi.proforma_no}`, isDraft, {
+    customerName: rawCustomerName,
+    fileNo: file?.file_no ?? pi.proforma_no,
+    documentName: pi.proforma_no,
+  });
+}
+
+export function printProforma(
+  pi: Proforma,
+  settings: CompanySettings,
+  bank: BankAccount | null,
+  file?: TradeFile | null,
+  isDraft = false,
+) {
+  const win = window.open('', '_blank', 'width=1010,height=860');
+  if (!win) return;
+  win.document.write(_buildProformaBody(pi, settings, bank, file, isDraft));
+  win.document.close();
 }
 
 // ─── Receipt / Payment Voucher ───────────────────────────────────────────────

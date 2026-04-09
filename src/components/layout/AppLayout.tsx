@@ -1,9 +1,29 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { BottomNav } from './BottomNav';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HeaderProvider, useHeaderAction } from '@/contexts/HeaderContext';
+import { useSettings } from '@/hooks/useSettings';
+
+/** Points favicon + apple-touch-icon to the company logo URL */
+function useDynamicAppIcon(logoUrl: string | undefined | null) {
+  useEffect(() => {
+    if (!logoUrl) return;
+
+    // Update favicon (browser tab)
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    link.type = 'image/png';
+    link.href = logoUrl;
+
+    // Update apple-touch-icon (iOS "Add to Home Screen")
+    let apple = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+    if (!apple) { apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; document.head.appendChild(apple); }
+    apple.href = logoUrl;
+  }, [logoUrl]);
+}
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard':        'Dashboard',
@@ -38,6 +58,8 @@ function MobilePageHeader() {
 
 function LayoutInner() {
   const { theme } = useTheme();
+  const { data: settings } = useSettings();
+  useDynamicAppIcon(settings?.logo_url);
   const bg = theme === 'donezo' ? '#f5f7fa' : '#eef2ff';
 
   return (
@@ -47,8 +69,7 @@ function LayoutInner() {
         <Topbar />
         <MobilePageHeader />
         <main
-          className="flex-1 overflow-y-auto px-4 pb-4 md:p-6 md:bg-gray-50 scrollbar-thin"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 4rem + 8px)' }}
+          className="flex-1 overflow-y-auto overflow-x-hidden px-4 [padding-bottom:calc(env(safe-area-inset-bottom)+4rem+8px)] md:p-6 md:bg-gray-50 scrollbar-thin"
         >
           <Outlet />
         </main>

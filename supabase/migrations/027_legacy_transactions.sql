@@ -82,7 +82,7 @@ CREATE TABLE legacy_transactions (
   ),
 
   -- Prevent double-import: same batch + same source reference = duplicate
-  CONSTRAINT uq_legacy_batch_ref UNIQUE NULLS NOT DISTINCT (import_batch, external_ref)
+  CONSTRAINT uq_legacy_batch_ref UNIQUE (import_batch, external_ref)
 );
 
 -- ─── Performance indexes ──────────────────────────────────────────────────────
@@ -162,8 +162,8 @@ SELECT
   lt.party_type,
   lt.customer_id,
   lt.supplier_id,
-  c.company_name AS customer_name,
-  s.company_name AS supplier_name,
+  c.name AS customer_name,
+  s.name AS supplier_name,
   lt.currency,
   COALESCE(SUM(CASE WHEN lt.type = 'debit'  THEN lt.amount ELSE 0 END), 0) AS total_debit,
   COALESCE(SUM(CASE WHEN lt.type = 'credit' THEN lt.amount ELSE 0 END), 0) AS total_credit,
@@ -179,7 +179,7 @@ LEFT JOIN customers c ON c.id = lt.customer_id
 LEFT JOIN suppliers s ON s.id = lt.supplier_id
 GROUP BY
   lt.party_type, lt.customer_id, lt.supplier_id,
-  c.company_name, s.company_name, lt.currency;
+  c.name, s.name, lt.currency;
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- VIEW: v_combined_statement_customer
@@ -374,7 +374,7 @@ CREATE OR REPLACE VIEW v_party_combined_balance AS
 SELECT
   'customer'::text                              AS party_type,
   agg.party_id,
-  c.company_name                                AS party_name,
+  c.name                                AS party_name,
   agg.currency,
   agg.legacy_debit,
   agg.legacy_credit,
@@ -384,21 +384,21 @@ SELECT
   (agg.journal_debit - agg.journal_credit)      AS net_balance
 FROM (
   SELECT
-    COALESCE(lt.customer_id, jl.party_id)        AS party_id,
-    COALESCE(lt.currency,    je.currency)         AS currency,
+    COALESCE(lt.customer_id, js.party_id)        AS party_id,
+    COALESCE(lt.currency,    js.currency)         AS currency,
     COALESCE(SUM(CASE WHEN lt.type = 'debit'  AND lt.id IS NOT NULL THEN lt.amount ELSE 0 END), 0) AS legacy_debit,
     COALESCE(SUM(CASE WHEN lt.type = 'credit' AND lt.id IS NOT NULL THEN lt.amount ELSE 0 END), 0) AS legacy_credit,
-    COALESCE(SUM(CASE WHEN jl.id IS NOT NULL THEN jl.debit  ELSE 0 END), 0)                        AS journal_debit,
-    COALESCE(SUM(CASE WHEN jl.id IS NOT NULL THEN jl.credit ELSE 0 END), 0)                        AS journal_credit
+    COALESCE(SUM(CASE WHEN js.id IS NOT NULL THEN js.debit  ELSE 0 END), 0)                        AS journal_debit,
+    COALESCE(SUM(CASE WHEN js.id IS NOT NULL THEN js.credit ELSE 0 END), 0)                        AS journal_credit
   FROM legacy_transactions lt
   FULL OUTER JOIN (
     SELECT jl.party_id, je.currency, jl.debit, jl.credit, jl.id
     FROM journal_lines jl
     JOIN journal_entries je ON je.id = jl.journal_entry_id AND je.status = 'posted'
     WHERE jl.party_type = 'customer'
-  ) jl ON jl.party_id = lt.customer_id
+  ) js ON js.party_id = lt.customer_id
   WHERE lt.party_type = 'customer' OR lt.id IS NULL
-  GROUP BY COALESCE(lt.customer_id, jl.party_id), COALESCE(lt.currency, jl.currency)
+  GROUP BY COALESCE(lt.customer_id, js.party_id), COALESCE(lt.currency, js.currency)
 ) agg
 JOIN customers c ON c.id = agg.party_id
 
@@ -408,7 +408,7 @@ UNION ALL
 SELECT
   'supplier'::text,
   agg.party_id,
-  s.company_name,
+  s.name,
   agg.currency,
   agg.legacy_debit,
   agg.legacy_credit,
@@ -418,20 +418,20 @@ SELECT
   (agg.journal_debit - agg.journal_credit)
 FROM (
   SELECT
-    COALESCE(lt.supplier_id, jl.party_id)        AS party_id,
-    COALESCE(lt.currency,    je.currency)         AS currency,
+    COALESCE(lt.supplier_id, js.party_id)        AS party_id,
+    COALESCE(lt.currency,    js.currency)         AS currency,
     COALESCE(SUM(CASE WHEN lt.type = 'debit'  AND lt.id IS NOT NULL THEN lt.amount ELSE 0 END), 0) AS legacy_debit,
     COALESCE(SUM(CASE WHEN lt.type = 'credit' AND lt.id IS NOT NULL THEN lt.amount ELSE 0 END), 0) AS legacy_credit,
-    COALESCE(SUM(CASE WHEN jl.id IS NOT NULL THEN jl.debit  ELSE 0 END), 0)                        AS journal_debit,
-    COALESCE(SUM(CASE WHEN jl.id IS NOT NULL THEN jl.credit ELSE 0 END), 0)                        AS journal_credit
+    COALESCE(SUM(CASE WHEN js.id IS NOT NULL THEN js.debit  ELSE 0 END), 0)                        AS journal_debit,
+    COALESCE(SUM(CASE WHEN js.id IS NOT NULL THEN js.credit ELSE 0 END), 0)                        AS journal_credit
   FROM legacy_transactions lt
   FULL OUTER JOIN (
     SELECT jl.party_id, je.currency, jl.debit, jl.credit, jl.id
     FROM journal_lines jl
     JOIN journal_entries je ON je.id = jl.journal_entry_id AND je.status = 'posted'
     WHERE jl.party_type = 'supplier'
-  ) jl ON jl.party_id = lt.supplier_id
+  ) js ON js.party_id = lt.supplier_id
   WHERE lt.party_type = 'supplier' OR lt.id IS NULL
-  GROUP BY COALESCE(lt.supplier_id, jl.party_id), COALESCE(lt.currency, jl.currency)
+  GROUP BY COALESCE(lt.supplier_id, js.party_id), COALESCE(lt.currency, js.currency)
 ) agg
 JOIN suppliers s ON s.id = agg.party_id;
