@@ -160,6 +160,7 @@ export function AccountingPage() {
 
   const [txnModalOpen, setTxnModalOpen] = useState(false);
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
+  const [pendingTxnType, setPendingTxnType] = useState<string | undefined>(undefined);
   const deleteTxn = useDeleteTransaction();
 
   const { data: saleInvoices = [] } = useSaleInvoices();
@@ -832,7 +833,7 @@ export function AccountingPage() {
         open={txnModalOpen}
         onOpenChange={setTxnModalOpen}
         transaction={editingTxn}
-        defaultType={tabDefaultType[activeTab]}
+        defaultType={pendingTxnType ?? tabDefaultType[activeTab]}
         onSaleInvRedirect={() => { setEditingSaleInv(null); setSaleInvModalOpen(true); }}
       />
       <InvoiceModal
@@ -841,6 +842,12 @@ export function AccountingPage() {
         file={editingSaleInv?.trade_file ?? null}
         invoice={editingSaleInv}
         invoiceType="sale"
+        onSwitchToTransaction={(type) => {
+          setSaleInvModalOpen(false);
+          setPendingTxnType(type);
+          setEditingTxn(null);
+          setTxnModalOpen(true);
+        }}
       />
     </div>
   );
