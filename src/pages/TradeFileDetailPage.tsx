@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFile, tradeFileKeys } from '@/hooks/useTradeFiles';
+import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFile, useUpdateSaleDetails, tradeFileKeys } from '@/hooks/useTradeFiles';
 import { tradeFileService } from '@/services/tradeFileService';
 import { dropboxService } from '@/services/dropboxService';
 import { toast } from 'sonner';
@@ -313,6 +313,9 @@ export function TradeFileDetailPage() {
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const { data: file, isLoading } = useTradeFile(id);
+  // Batch dosyalar için ana dosyayı fetch et (satış detaylarını senkronize edebilmek için)
+  const { data: parentFile } = useTradeFile(file?.parent_file_id ?? undefined);
+  const updateSaleDetails = useUpdateSaleDetails();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
   const changeStatus = useChangeStatus();
@@ -480,6 +483,37 @@ export function TradeFileDetailPage() {
   const allBatchesDone = isPartial && (file.batches ?? []).every(b => b.status === 'completed');
   // Batch file_no = "ANA/P1" → ana dosya no = "ANA"
   const parentFileNo = isBatch ? file.file_no.split('/').slice(0, -1).join('/') : null;
+
+  async function handleSyncFromParent() {
+    if (!parentFile || !file) { toast.error('Ana dosya yüklenemedi'); return; }
+    try {
+      await updateSaleDetails.mutateAsync({
+        id: file.id,
+        data: {
+          supplier_id:           parentFile.supplier_id ?? '',
+          selling_price:         parentFile.selling_price ?? 0,
+          purchase_price:        parentFile.purchase_price ?? 0,
+          freight_cost:          parentFile.freight_cost ?? 0,
+          port_of_loading:       parentFile.port_of_loading ?? '',
+          port_of_discharge:     parentFile.port_of_discharge ?? '',
+          incoterms:             parentFile.incoterms ?? '',
+          purchase_currency:     (parentFile.purchase_currency ?? parentFile.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
+          sale_currency:         (parentFile.sale_currency ?? parentFile.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
+          payment_terms:         parentFile.payment_terms ?? '',
+          advance_rate:          parentFile.advance_rate ?? 0,
+          purchase_advance_rate: parentFile.purchase_advance_rate ?? 0,
+          transport_mode:        (parentFile.transport_mode ?? 'truck') as 'truck' | 'railway' | 'sea',
+          eta:                   parentFile.eta ?? '',
+          vessel_name:           parentFile.vessel_name ?? '',
+          proforma_ref:          parentFile.proforma_ref ?? '',
+          register_no:           parentFile.register_no ?? '',
+        },
+      });
+      toast.success('Satış detayları ana dosyadan kopyalandı');
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   function handlePartialCTA() {
     if (allBatchesDone) {
@@ -921,7 +955,20 @@ export function TradeFileDetailPage() {
               {file.register_no && <KV label={t('detail.saleDetails.register')} value={file.register_no} />}
             </>
           ) : (
-            <p className="text-[12px] text-amber-700 font-medium py-1 text-center">{t('detail.saleDetails.noSaleDetails')}</p>
+            <div className="py-2 text-center">
+              {isBatch && parentFile ? (
+                <button
+                  onClick={handleSyncFromParent}
+                  disabled={updateSaleDetails.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-violet-600 bg-violet-50 border border-violet-100 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                >
+                  <Layers className="h-3 w-3" />
+                  {updateSaleDetails.isPending ? 'Kopyalanıyor…' : 'Ana Dosyadan Kopyala'}
+                </button>
+              ) : (
+                <p className="text-[12px] text-amber-700 font-medium">{t('detail.saleDetails.noSaleDetails')}</p>
+              )}
+            </div>
           )}
         </Section>
 
@@ -1479,8 +1526,19 @@ export function TradeFileDetailPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="px-6 py-4 text-[12px] text-amber-700 font-medium">
-                    {t('detail.saleDetails.noSaleDetails')}
+                  <div className="px-6 py-4 flex items-center justify-center">
+                    {isBatch && parentFile ? (
+                      <button
+                        onClick={handleSyncFromParent}
+                        disabled={updateSaleDetails.isPending}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-violet-600 bg-violet-50 border border-violet-100 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                      >
+                        <Layers className="h-3 w-3" />
+                        {updateSaleDetails.isPending ? 'Kopyalanıyor…' : 'Ana Dosyadan Kopyala'}
+                      </button>
+                    ) : (
+                      <span className="text-[12px] text-amber-700 font-medium">{t('detail.saleDetails.noSaleDetails')}</span>
+                    )}
                   </div>
                 )
               )}
