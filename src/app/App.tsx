@@ -14,7 +14,15 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5,  // 5 minutes — fresh, no refetch on navigate
       gcTime: 1000 * 60 * 30,    // 30 minutes — keep cache alive after unmount
-      retry: 1,
+      // Smart retry: don't retry on JWT/auth errors — Supabase handles refresh,
+      // retrying immediately with the same expired token always fails.
+      retry: (failureCount, error: unknown) => {
+        const msg = (error as Error)?.message ?? '';
+        if (msg.includes('JWT') || msg.includes('expired') || msg.includes('PGRST301')) {
+          return false;
+        }
+        return failureCount < 1;
+      },
       refetchOnWindowFocus: false,
     },
   },
@@ -44,6 +52,31 @@ export function App() {
         loadCompanySettings();
       }
     });
+
+    // ── Idle token refresh ────────────────────────────────────────────────────
+    // After idle (device sleep / tab background), the Supabase JWT may have
+    // expired. autoRefreshToken only fires on a 401, but if the network was
+    // offline the request never even reached the server, so no 401 is returned
+    // and the token is never refreshed → all queries fail silently on resume.
+    // Solution: on window focus check the token age and proactively refresh.
+    const handleFocus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const expiresAt = session.expires_at ?? 0;         // Unix seconds
+        const nowSec    = Math.floor(Date.now() / 1000);
+        const remaining = expiresAt - nowSec;
+        if (remaining < 600) {                             // < 10 min left
+          await supabase.auth.refreshSession();
+          // Invalidate all stale queries so they re-run with the fresh token
+          queryClient.invalidateQueries();
+        }
+      } catch {
+        // Refresh failed (offline?) — queries will show error state normally
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   return (

@@ -57,8 +57,12 @@ i18n
     },
 
     // React options
+    // useSuspense: false → translations load in background; components render
+    // immediately with fallback text instead of blocking the entire UI.
+    // useSuspense: true caused infinite loading when language switched (tr↔en)
+    // because ALL 18 namespaces had to finish loading before ANY component rendered.
     react: {
-      useSuspense: true,
+      useSuspense: false,
     },
 
     interpolation: {

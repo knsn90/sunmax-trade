@@ -332,7 +332,7 @@ export function buildFullHtml(html: string, title: string, isDraft = false, drop
       btn.innerHTML = '<span style="opacity:.6">Yükleniyor…</span>';
       window.opener.postMessage({
         type: 'DROPBOX_UPLOAD_PDF',
-        pageHtml: document.querySelector('.page').innerHTML,
+        pageHtml: document.documentElement.outerHTML,
         customerName: _DBX_CUSTOMER,
         fileNo: _DBX_FILENO,
         documentName: _DBX_DOCNAME,
@@ -538,9 +538,15 @@ function _buildPackingListBody(pl: PackingList, settings: CompanySettings, isDra
   const plAny = pl as unknown as Record<string, unknown>;
   const tfAny = (pl.trade_file as unknown as Record<string, unknown> | null);
   const description = esc(pl.description || (tfAny?.['product'] as Record<string,unknown> | null)?.['name'] as string || '');
-  const custName = esc((plAny?.['customer'] as Record<string,unknown> | null)?.['name'] as string || (tfAny?.['customer'] as Record<string,unknown> | null)?.['name'] as string || '');
-  const custAddr = esc((plAny?.['customer'] as Record<string,unknown> | null)?.['address'] as string || '');
-  const custPhone = esc((plAny?.['customer'] as Record<string,unknown> | null)?.['phone'] as string || '');
+  // Consignee override: if set, use it; otherwise fall back to packing list customer → trade file customer
+  const consigneeAny = (plAny?.['consignee'] as Record<string,unknown> | null);
+  const effectiveCust = consigneeAny
+    ?? (plAny?.['customer'] as Record<string,unknown> | null)
+    ?? (tfAny?.['customer'] as Record<string,unknown> | null)
+    ?? null;
+  const custName  = esc(effectiveCust?.['name']    as string || '');
+  const custAddr  = esc(effectiveCust?.['address'] as string || '');
+  const custPhone = esc(effectiveCust?.['phone']   as string || '');
 
   const rowsHTML = items.map((r, i) => `
     <tr style="border-bottom:1px solid #ddd">
@@ -684,13 +690,18 @@ function _buildProformaBody(
   isDraft = false,
 ): string {
   const curr = pi.currency || 'USD';
+  const piAny   = pi as unknown as Record<string,unknown>;
   const piTfAny = (pi.trade_file as unknown as Record<string,unknown> | null);
-  const customerRaw = file?.customer ?? (piTfAny?.['customer'] as Record<string,unknown> | null) ?? null;
-  const customerAny = customerRaw as unknown as Record<string,unknown> | null;
-  const custName    = esc(customerAny?.['name'] as string ?? '');
+  // Consignee override: if set on proforma, use it; otherwise use trade file's customer
+  const consigneeRaw = piAny?.['consignee'] as Record<string,unknown> | null;
+  const customerAny  = consigneeRaw
+    ?? (file?.customer as unknown as Record<string,unknown> | null)
+    ?? (piTfAny?.['customer'] as Record<string,unknown> | null)
+    ?? null;
+  const custName    = esc(customerAny?.['name']    as string ?? '');
   const custAddr    = esc(customerAny?.['address'] as string ?? '');
   const custCountry = esc(customerAny?.['country'] as string ?? '');
-  const custPhone   = esc(customerAny?.['phone'] as string ?? '');
+  const custPhone   = esc(customerAny?.['phone']   as string ?? '');
 
   const bankBlock = bank
     ? `${esc(bank.bank_name || '')}${bank.swift_bic ? ' SWIFT: ' + esc(bank.swift_bic) : ''}<br>` +

@@ -38,6 +38,7 @@ import {
   ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
   Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
   MoreVertical, X, RotateCcw, Bell, AlertTriangle, ExternalLink,
+  CheckCircle,
 } from 'lucide-react';
 
 // ── Action sheet item ─────────────────────────────────────────────────────────
@@ -202,16 +203,18 @@ export function TradeFileDetailPage() {
     if (!file) return;
     const customerName = file.customer?.name ?? 'Unknown';
     const fileNo = file.file_no;
-    if (file.dropbox_folder_url) {
-      window.open(file.dropbox_folder_url, '_blank');
-      return;
-    }
     setDropboxLoading(true);
     try {
+      // Her zaman createTradeFolder çağır — klasör silinmişse yeniden oluşturur,
+      // zaten varsa Dropbox API sessizce mevcut klasörü döndürür.
       const res = await dropboxService.createTradeFolder(customerName, fileNo);
       const folderPath = res.folderPath as string;
       const folderUrl = res.folderUrl as string;
-      await dropboxService.saveFolderToDb(file.id, folderPath, folderUrl);
+      // DB'deki URL değiştiyse güncelle
+      if (folderUrl !== file.dropbox_folder_url) {
+        await dropboxService.saveFolderToDb(file.id, folderPath, folderUrl);
+        queryClient.invalidateQueries({ queryKey: tradeFileKeys.detail(file.id) });
+      }
       window.open(folderUrl, '_blank');
     } catch (e) {
       const { toast } = await import('sonner');
@@ -300,6 +303,75 @@ export function TradeFileDetailPage() {
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
   const expenses = fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
 
+  // ── Status stepper ─────────────────────────────────────────────────────────
+  const STAGES = [
+    { key: 'request',   label: 'Talep' },
+    { key: 'sale',      label: 'Satış' },
+    { key: 'delivery',  label: 'Teslimat' },
+    { key: 'completed', label: 'Tamamlandı' },
+  ];
+  const isCancelled = file.status === 'cancelled';
+  const currentStageIdx = isCancelled ? -1 : STAGES.findIndex(s => s.key === file.status);
+
+
+  const statusStepper = (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
+      {isCancelled ? (
+        <div className="flex items-center gap-2 text-red-500">
+          <X className="h-3.5 w-3.5" />
+          <span className="text-[11px] font-bold uppercase tracking-wider">İptal Edildi</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-0">
+          {STAGES.map((stage, idx) => {
+            const isDone   = currentStageIdx > idx;
+            const isActive = currentStageIdx === idx;
+            return (
+              <div key={stage.key} className="flex items-center flex-1 last:flex-none">
+                {/* circle + label */}
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  <div
+                    className={cn(
+                      'w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300',
+                      isDone   ? 'text-white'     : '',
+                      isActive ? 'text-white ring-[3px] ring-offset-1' : '',
+                      !isDone && !isActive ? 'bg-gray-100 text-gray-300' : '',
+                    )}
+                    style={{
+                      background: isDone || isActive ? accent : undefined,
+                      ...(isActive ? { '--tw-ring-color': accent + '40' } as React.CSSProperties : {}),
+                    }}
+                  >
+                    {isDone ? (
+                      <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <span className="text-[9px] font-black">{idx + 1}</span>
+                    )}
+                  </div>
+                  <span className={cn(
+                    'text-[9px] font-bold uppercase tracking-wider whitespace-nowrap',
+                    isDone   ? 'text-gray-300' : '',
+                    isActive ? 'text-gray-700' : '',
+                    !isDone && !isActive ? 'text-gray-300' : '',
+                  )}>{stage.label}</span>
+                </div>
+                {/* connector */}
+                {idx < STAGES.length - 1 && (
+                  <div
+                    className="flex-1 h-px mx-2 mb-4 rounded-full transition-all duration-500"
+                    style={{ background: isDone ? accent + '50' : '#e5e7eb' }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   function handleStatusChange(newStatus: string) {
     if (!newStatus || newStatus === file!.status) return;
     if (newStatus === 'cancelled') {
@@ -330,6 +402,8 @@ export function TradeFileDetailPage() {
   }
 
   const custName = file.customer?.name ?? t('unknown');
+  // Alt firma mı? Varsa muhasebe firması (parent) türet
+  const parentCust = (file.customer as any)?.parent as { id: string; name: string } | null ?? null;
   const custInitials = custName.split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
   const avatarColors = ['#dc2626','#2563eb','#7c3aed','#059669','#d97706'];
   let hv = 0; for (let i = 0; i < custName.length; i++) hv = custName.charCodeAt(i) + ((hv << 5) - hv);
@@ -481,6 +555,12 @@ export function TradeFileDetailPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[15px] font-bold text-gray-900 leading-snug">{custName}</div>
+              {parentCust && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide">Muhasebe</span>
+                  <span className="text-[11px] font-semibold text-violet-700">{parentCust.name}</span>
+                </div>
+              )}
               <div className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
               <div className="inline-flex mt-2 bg-gray-100 rounded-lg px-2 py-1">
                 {editingFileNo ? (
@@ -509,6 +589,9 @@ export function TradeFileDetailPage() {
           </div>
         </div>
 
+        {/* Status stepper */}
+        <div className="mx-4 mt-3">{statusStepper}</div>
+
         {/* Combined file info card */}
         <div className="mx-4 mt-3 mb-3">{fileInfoCard}</div>
 
@@ -517,18 +600,26 @@ export function TradeFileDetailPage() {
           <div className="flex gap-2 px-4 pb-4">
             {file.status === 'request' ? (
               <button onClick={() => setSaleOpen(true)} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
-                <TrendingUp className="h-3.5 w-3.5" /> {t('detail.btn.convertToSale')}
+                <TrendingUp className="h-3.5 w-3.5" /> Satışa Çevir
               </button>
             ) : file.status === 'sale' ? (
               <button onClick={openDeliveryWithPacking} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
-                <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? t('detail.btn.editDelivery') : t('detail.btn.addDelivery')}
+                <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
+              </button>
+            ) : file.status === 'delivery' ? (
+              <button
+                onClick={() => { if (window.confirm('Bu dosya tamamlandı olarak işaretlensin mi?')) changeStatus.mutate({ id: file!.id, status: 'completed' }); }}
+                className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80"
+                style={{ background: accent }}
+              >
+                <CheckCircle className="h-3.5 w-3.5" /> Teslimatı Tamamla
               </button>
             ) : (
               <button onClick={() => setActionsOpen(true)} className="flex-1 h-10 rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 flex items-center justify-center gap-2 shadow-sm active:opacity-70">
                 <MoreVertical className="h-4 w-4" /> {t('detail.btn.actions')}
               </button>
             )}
-            {(file.status === 'request' || file.status === 'sale') && (
+            {(file.status === 'request' || file.status === 'sale' || file.status === 'delivery') && (
               <button onClick={() => setActionsOpen(true)} className="h-10 w-10 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm active:opacity-70">
                 <MoreVertical className="h-4 w-4" />
               </button>
@@ -662,7 +753,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
-                {settings && (<button disabled={dropboxUploadingId === pi.id} onClick={() => handleUploadToDropbox(pi.id, `${pi.proforma_no}`, generateProformaHtml(pi, settings, defaultBank, file, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                {settings && (<button disabled={dropboxUploadingId === pi.id} onClick={() => handleUploadToDropbox(pi.id, `${pi.proforma_no}`, generateProformaHtml(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePI.mutate(pi.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
@@ -694,7 +785,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
-                {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
               </DocRow>
             ))}
 
@@ -720,7 +811,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
-                {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
@@ -751,7 +842,7 @@ export function TradeFileDetailPage() {
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
                 )}
-                {settings && (<button disabled={dropboxUploadingId === pl.id} onClick={() => handleUploadToDropbox(pl.id, `${pl.packing_list_no}`, generatePackingListHtml(pl, settings, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                {settings && (<button disabled={dropboxUploadingId === pl.id} onClick={() => handleUploadToDropbox(pl.id, `${pl.packing_list_no}`, generatePackingListHtml(pl, settings, (pl.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
                   <button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1">
@@ -869,6 +960,12 @@ export function TradeFileDetailPage() {
                 )}
               </div>
               <h1 className="text-[24px] font-extrabold text-gray-900 leading-tight tracking-tight">{custName}</h1>
+              {parentCust && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-widest">Muhasebe</span>
+                  <span className="text-[12px] font-semibold text-violet-700">{parentCust.name}</span>
+                </div>
+              )}
               <p className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</p>
             </div>
 
@@ -969,6 +1066,9 @@ export function TradeFileDetailPage() {
           {/* ── RIGHT panel — scrollable ────────────────────────────────── */}
           <div className="flex-1 overflow-y-auto scrollbar-thin space-y-5 pb-4">
 
+            {/* Status stepper */}
+            {statusStepper}
+
             {/* Action buttons row */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -976,14 +1076,22 @@ export function TradeFileDetailPage() {
                   <button onClick={() => setSaleOpen(true)}
                     className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
                     style={{ background: accent }}>
-                    <TrendingUp className="h-3.5 w-3.5" /> {t('detail.btn.convertToSale')}
+                    <TrendingUp className="h-3.5 w-3.5" /> Satışa Çevir
                   </button>
                 )}
                 {writable && file.status === 'sale' && (
                   <button onClick={openDeliveryWithPacking}
                     className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
                     style={{ background: accent }}>
-                    <Truck className="h-3.5 w-3.5" /> {file.delivered_admt ? t('detail.btn.editDelivery') : t('detail.btn.addDelivery')}
+                    <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
+                  </button>
+                )}
+                {writable && file.status === 'delivery' && (
+                  <button
+                    onClick={() => { if (window.confirm('Bu dosya tamamlandı olarak işaretlensin mi?')) changeStatus.mutate({ id: file!.id, status: 'completed' }); }}
+                    className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
+                    style={{ background: accent }}>
+                    <CheckCircle className="h-3.5 w-3.5" /> Teslimatı Tamamla
                   </button>
                 )}
                 {writable && (
@@ -1135,7 +1243,7 @@ export function TradeFileDetailPage() {
                       <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
                       {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                      {settings && (<button disabled={dropboxUploadingId === pi.id} onClick={() => handleUploadToDropbox(pi.id, `${pi.proforma_no}`, generateProformaHtml(pi, settings, defaultBank, file, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === pi.id} onClick={() => handleUploadToDropbox(pi.id, `${pi.proforma_no}`, generateProformaHtml(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                       {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePI.mutate(pi.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                     </DocRow>
                   ))}
@@ -1144,7 +1252,7 @@ export function TradeFileDetailPage() {
                       <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                      {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                     </DocRow>
                   ))}
                   {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
@@ -1152,7 +1260,7 @@ export function TradeFileDetailPage() {
                       <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                      {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === inv.id} onClick={() => handleUploadToDropbox(inv.id, `${inv.invoice_no}`, generateInvoiceHtml(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                     </DocRow>
                   ))}
@@ -1161,7 +1269,7 @@ export function TradeFileDetailPage() {
                       <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
                       {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
-                      {settings && (<button disabled={dropboxUploadingId === pl.id} onClick={() => handleUploadToDropbox(pl.id, `${pl.packing_list_no}`, generatePackingListHtml(pl, settings, false))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
+                      {settings && (<button disabled={dropboxUploadingId === pl.id} onClick={() => handleUploadToDropbox(pl.id, `${pl.packing_list_no}`, generatePackingListHtml(pl, settings, (pl.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                       {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                     </DocRow>
                   ))}

@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { deliverySchema, type DeliveryFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
 import { useConvertToDelivery } from '@/hooks/useTradeFiles';
-import { useUpsertSaleInvoice } from '@/hooks/useDocuments';
 import { today } from '@/lib/formatters';
 import { invoiceService } from '@/services/invoiceService';
 import {
@@ -22,7 +21,6 @@ interface DeliveryModalProps {
 
 export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) {
   const convertToDelivery = useConvertToDelivery();
-  const upsertSaleInvoice = useUpsertSaleInvoice();
 
   const form = useForm<DeliveryFormData>({
     resolver: zodResolver(deliverySchema),
@@ -60,30 +58,6 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
     if (!file) return;
     try {
     await convertToDelivery.mutateAsync({ id: file.id, data });
-
-    // Auto-create/update Sale Invoice: ADMT × selling_price (use sale_currency)
-    const saleCurrency = (file.sale_currency ?? file.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY';
-    if (file.customer_id && file.selling_price) {
-      await upsertSaleInvoice.mutateAsync({
-        tradeFileId: file.id,
-        customerId: file.customer_id,
-        productName: file.product?.name ?? '',
-        data: {
-          invoice_date: today(),
-          currency: saleCurrency,
-          incoterms: file.incoterms ?? '',
-          proforma_no: file.proforma_ref ?? '',
-          cb_no: '',
-          insurance_no: '',
-          quantity_admt: data.delivered_admt,
-          unit_price: file.selling_price,
-          freight: file.freight_cost ?? 0,
-          gross_weight_kg: data.gross_weight_kg ?? undefined,
-          packing_info: '',
-          payment_terms: file.payment_terms ?? '',
-        },
-      });
-    }
 
     // Auto-create/update Purchase Transaction: ADMT × purchase_price (use purchase_currency)
     const purchaseCurrency = (file.purchase_currency ?? file.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY';
