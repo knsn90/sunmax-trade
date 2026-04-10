@@ -49,7 +49,7 @@ export function useTradeFile(id: string | undefined) {
 export function useCreateTradeFile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: NewTradeFileFormData & { file_no: string }) =>
+    mutationFn: (data: NewTradeFileFormData & { file_no: string; parent_file_id?: string | null; batch_no?: number | null; initialStatus?: import('@/types/enums').TradeFileStatus }) =>
       tradeFileService.create(data),
     onSuccess: (file) => {
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });

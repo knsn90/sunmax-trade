@@ -449,13 +449,41 @@ export function TradeFileDetailPage() {
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
   const expenses = fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
 
+  // ── Parti / kısmi sevkiyat hesaplamaları ────────────────────────────────────
+  const isBatch    = !!file.parent_file_id;                          // bu dosya bir alt parti mi?
+  const isPartial  = !isBatch && (file.batches?.length ?? 0) > 0;   // ana dosyada parti var mı?
+  const allBatchesDone = isPartial && (file.batches ?? []).every(b => b.status === 'completed');
+
+  function handlePartialCTA() {
+    if (allBatchesDone) {
+      if (window.confirm('Tüm partiler tamamlandı. Ana dosya tamamlandı olarak işaretlensin mi?')) {
+        changeStatus.mutate({ id: file!.id, status: 'completed' });
+      }
+    } else {
+      const remaining = (file!.batches ?? []).filter(b => b.status !== 'completed').length;
+      toast.warning(`${remaining} parti henüz tamamlanmadı — önce tüm teslimat partilerini tamamlayın`);
+    }
+  }
+
+  function handleBatchComplete() {
+    if (window.confirm('Bu parti tamamlandı olarak işaretlensin mi?')) {
+      changeStatus.mutate({ id: file!.id, status: 'completed' });
+    }
+  }
+
   // ── Status stepper ─────────────────────────────────────────────────────────
-  const STAGES = [
-    { key: 'request',   label: 'Talep' },
-    { key: 'sale',      label: 'Satış' },
-    { key: 'delivery',  label: 'Teslimat' },
-    { key: 'completed', label: 'Tamamlandı' },
-  ];
+  // Batch dosyalar için 2 adımlı basit stepper; ana dosyalar için 4 adımlı standart
+  const STAGES = isBatch
+    ? [
+        { key: 'sale',      label: 'Belgeler' },
+        { key: 'completed', label: 'Tamamlandı' },
+      ]
+    : [
+        { key: 'request',   label: 'Talep' },
+        { key: 'sale',      label: 'Satış' },
+        { key: 'delivery',  label: 'Teslimat' },
+        { key: 'completed', label: 'Tamamlandı' },
+      ];
   const isCancelled = file.status === 'cancelled';
   const currentStageIdx = isCancelled ? -1 : STAGES.findIndex(s => s.key === file.status);
 
@@ -749,9 +777,22 @@ export function TradeFileDetailPage() {
                 <TrendingUp className="h-3.5 w-3.5" /> Satışa Çevir
               </button>
             ) : file.status === 'sale' ? (
-              <button onClick={openDeliveryWithPacking} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
-                <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
-              </button>
+              isBatch ? (
+                // Alt parti dosyası → doğrudan Tamamlandı
+                <button onClick={handleBatchComplete} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
+                  <CheckCircle className="h-3.5 w-3.5" /> Tamamlandı
+                </button>
+              ) : isPartial ? (
+                // Ana dosya + partiler var
+                <button onClick={handlePartialCTA} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: allBatchesDone ? accent : '#6b7280' }}>
+                  <CheckCircle className="h-3.5 w-3.5" /> {allBatchesDone ? 'Tamamlandı' : 'Teslimat Partilerini Tamamla'}
+                </button>
+              ) : (
+                // Tek teslimat → standart akış
+                <button onClick={openDeliveryWithPacking} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
+                  <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
+                </button>
+              )
             ) : file.status === 'delivery' ? (
               <button
                 onClick={() => { if (window.confirm('Bu dosya tamamlandı olarak işaretlensin mi?')) changeStatus.mutate({ id: file!.id, status: 'completed' }); }}
@@ -1254,11 +1295,29 @@ export function TradeFileDetailPage() {
                   </button>
                 )}
                 {writable && file.status === 'sale' && (
-                  <button onClick={openDeliveryWithPacking}
-                    className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
-                    style={{ background: accent }}>
-                    <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
-                  </button>
+                  isBatch ? (
+                    // Alt parti → doğrudan Tamamlandı
+                    <button onClick={handleBatchComplete}
+                      className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
+                      style={{ background: accent }}>
+                      <CheckCircle className="h-3.5 w-3.5" /> Tamamlandı
+                    </button>
+                  ) : isPartial ? (
+                    // Ana dosya + kısmi sevkiyat
+                    <button onClick={handlePartialCTA}
+                      className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
+                      style={{ background: allBatchesDone ? accent : '#6b7280' }}>
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      {allBatchesDone ? 'Tamamlandı' : 'Teslimat Partilerini Tamamla'}
+                    </button>
+                  ) : (
+                    // Tek teslimat → standart akış
+                    <button onClick={openDeliveryWithPacking}
+                      className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
+                      style={{ background: accent }}>
+                      <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
+                    </button>
+                  )
                 )}
                 {writable && file.status === 'delivery' && (
                   <button

@@ -76,6 +76,7 @@ export const tradeFileService = {
       file_no: string;
       parent_file_id?: string | null;
       batch_no?: number | null;
+      initialStatus?: TradeFileStatus;
     },
   ): Promise<TradeFile> {
     const { data, error } = await supabase
@@ -89,7 +90,7 @@ export const tradeFileService = {
         customer_ref: input.customer_ref,
         notes: input.notes,
         eta: input.eta || null,
-        status: 'request' as TradeFileStatus,
+        status: (input.initialStatus ?? 'request') as TradeFileStatus,
         parent_file_id: input.parent_file_id ?? null,
         batch_no: input.batch_no ?? null,
       })

@@ -68,6 +68,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
         eta: values.eta ?? '',
         parent_file_id: parent.id,
         batch_no: nextBatchNo,
+        initialStatus: 'sale', // partiler doğrudan belgeler/satış aşamasından başlar
       });
       toast.success(`Parti ${batchFileNo} oluşturuldu`);
       reset();
