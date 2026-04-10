@@ -16,8 +16,12 @@ import { LoadingSpinner } from '@/components/ui/shared';
 import {
   Upload, Trash2, Eye, EyeOff, Download, RotateCcw, AlertTriangle, CheckCircle2,
   Building2, Users, Database, Key, CreditCard, ImageIcon, ShieldCheck,
-  Check, X, UserPlus, Lock,
+  Check, X, UserPlus, Lock, Mail, Clock,
 } from 'lucide-react';
+import {
+  getBackupSettings, saveBackupSettings, sendBackupEmail,
+  type BackupSchedule,
+} from '@/hooks/useAutoBackupEmail';
 import { getApiKeyFromCache, saveApiKeyToDb, deleteApiKeyFromDb, type ApiService } from '@/services/companySettingsService';
 import { supabase } from '@/services/supabase';
 import { setLanguage, SUPPORTED_LANGUAGES } from '@/i18n';
@@ -768,6 +772,132 @@ const BACKUP_TABLES = [
 
 type BackupStatus = 'idle' | 'loading' | 'success' | 'error';
 
+function BackupEmailCard() {
+  const saved = getBackupSettings();
+  const [email,    setEmail]    = useState(saved.email);
+  const [schedule, setSchedule] = useState<BackupSchedule>(saved.schedule);
+  const [lastSent, setLastSent] = useState<string | null>(saved.lastSent);
+  const [sending,  setSending]  = useState(false);
+  const [saveMsg,  setSaveMsg]  = useState('');
+
+  function handleSave() {
+    saveBackupSettings(email, schedule);
+    setSaveMsg('Kaydedildi');
+    setTimeout(() => setSaveMsg(''), 2000);
+  }
+
+  async function handleSendNow() {
+    setSending(true);
+    try {
+      const ok = await sendBackupEmail('manual');
+      if (ok) {
+        const now = new Date().toISOString();
+        setLastSent(now);
+        toast.success(`Yedek ${email} adresine gönderildi`);
+      } else {
+        toast.error('Gönderilemedi — Edge Function kurulumunu kontrol edin');
+      }
+    } catch {
+      toast.error('Bağlantı hatası');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const scheduleLabels: Record<BackupSchedule, string> = {
+    session_end: 'Her oturum kapandığında',
+    daily:       'Günlük (her gün 00:00)',
+    manual:      'Manuel (sadece butona basınca)',
+  };
+
+  const lastSentFormatted = lastSent
+    ? new Date(lastSent).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+    : null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <SectionHeader icon={Mail} title="E-posta Yedekleme" description="Yedek dosyası otomatik olarak mail ile gönderilsin" />
+
+      <div className="space-y-3">
+        {/* Email input */}
+        <div>
+          <FieldLabel>Yedek Gönderilecek E-posta</FieldLabel>
+          <Input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="ornek@gmail.com"
+            className="h-9 text-sm"
+          />
+        </div>
+
+        {/* Schedule */}
+        <div>
+          <FieldLabel>Ne Zaman Gönderilsin</FieldLabel>
+          <NativeSelect
+            value={schedule}
+            onChange={e => setSchedule(e.target.value as BackupSchedule)}
+            className="h-9 text-sm"
+          >
+            {(Object.entries(scheduleLabels) as [BackupSchedule, string][]).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </NativeSelect>
+          {schedule === 'daily' && (
+            <p className="text-[11px] text-amber-600 mt-1.5 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Günlük gönderim için Supabase Cron Job kurulumu gerekir — belgeler için destek alın
+            </p>
+          )}
+          {schedule === 'session_end' && (
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              Tarayıcı/sekme kapatıldığında veya çıkış yapıldığında otomatik gönderilir
+            </p>
+          )}
+        </div>
+
+        {/* Son gönderim */}
+        {lastSentFormatted && (
+          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+            <Clock className="h-3 w-3" />
+            Son gönderim: <span className="font-medium text-gray-600">{lastSentFormatted}</span>
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1.5 px-4 h-9 rounded-xl bg-gray-900 text-white text-[13px] font-semibold hover:bg-gray-800 transition-colors"
+          >
+            <Check className="h-3.5 w-3.5" />
+            {saveMsg || 'Ayarları Kaydet'}
+          </button>
+          <button
+            onClick={handleSendNow}
+            disabled={sending}
+            className="flex items-center gap-1.5 px-4 h-9 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            {sending
+              ? <><span className="h-3.5 w-3.5 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />Gönderiliyor…</>
+              : <><Mail className="h-3.5 w-3.5" />Şimdi Gönder</>}
+          </button>
+        </div>
+
+        {/* Setup info */}
+        <div className="mt-2 p-3 rounded-xl bg-blue-50 border border-blue-100">
+          <p className="text-[11px] font-semibold text-blue-700 mb-1">İlk kurulum için gerekli adımlar:</p>
+          <ol className="text-[11px] text-blue-600 space-y-0.5 list-decimal list-inside">
+            <li>resend.com → ücretsiz hesap aç → API Key al</li>
+            <li className="font-mono">supabase secrets set RESEND_API_KEY=re_xxx</li>
+            <li className="font-mono">supabase functions deploy send-backup-email</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BackupTab() {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
@@ -841,6 +971,9 @@ function BackupTab() {
 
   return (
     <div className="space-y-4">
+      {/* Email Backup Settings */}
+      <BackupEmailCard />
+
       {/* Export */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
         <SectionHeader icon={Download} title={t('backup.exportTitle')} description={t('backup.exportDesc')} />

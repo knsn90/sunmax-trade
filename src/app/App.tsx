@@ -8,6 +8,7 @@ import { router } from './router';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
 import { supabase } from '@/services/supabase';
 import { loadCompanySettings } from '@/services/companySettingsService';
+import { useAutoBackupEmail } from '@/hooks/useAutoBackupEmail';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,8 @@ const queryClient = new QueryClient({
 });
 
 export function App() {
+  useAutoBackupEmail();
+
   useEffect(() => {
     applyTheme(getStoredTheme());
 
