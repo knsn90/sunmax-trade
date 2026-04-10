@@ -918,6 +918,7 @@ export function AccountingPage() {
         defaultType={pendingTxnType ?? tabDefaultType[activeTab]}
         onSaleInvRedirect={() => { setEditingSaleInv(null); setSaleInvModalOpen(true); }}
         onPurchaseInvRedirect={() => { setPurchaseInvModalOpen(true); }}
+        onSvcInvRedirect={() => { setEditingSvcInv(null); setSvcInvModalOpen(true); }}
       />
       <InvoiceModal
         open={saleInvModalOpen}

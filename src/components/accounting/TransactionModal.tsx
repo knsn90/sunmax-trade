@@ -67,6 +67,8 @@ interface TransactionModalProps {
   onSaleInvRedirect?: () => void;
   /** Satın alma faturası seçilince çağrılır — AccountingPage PurchaseInvoiceModal'ı açar */
   onPurchaseInvRedirect?: () => void;
+  /** Hizmet faturası seçilince çağrılır — AccountingPage ServiceInvoiceModal'ı açar */
+  onSvcInvRedirect?: () => void;
 }
 
 /** Para bize geliyor mu? (etiket metni için)
@@ -103,7 +105,7 @@ function partyFromTransaction(t: Transaction): SelectedParty | null {
 }
 
 export function TransactionModal({
-  open, onOpenChange, transaction, defaultType, defaultTradeFileId, onSaleInvRedirect, onPurchaseInvRedirect,
+  open, onOpenChange, transaction, defaultType, defaultTradeFileId, onSaleInvRedirect, onPurchaseInvRedirect, onSvcInvRedirect,
 }: TransactionModalProps) {
   const { t } = useTranslation('accounting');
   const { t: tc } = useTranslation('common');
@@ -250,6 +252,14 @@ export function TransactionModal({
     if (txnType === 'purchase_inv' && onPurchaseInvRedirect && !transaction) {
       onOpenChange(false);
       onPurchaseInvRedirect();
+    }
+  }, [txnType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Kullanıcı "Hizmet Faturası" seçince ServiceInvoiceModal'a yönlendir
+  useEffect(() => {
+    if (txnType === 'svc_inv' && onSvcInvRedirect && !transaction) {
+      onOpenChange(false);
+      onSvcInvRedirect();
     }
   }, [txnType]); // eslint-disable-line react-hooks/exhaustive-deps
 
