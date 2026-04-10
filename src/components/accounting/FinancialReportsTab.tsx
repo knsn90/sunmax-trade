@@ -302,6 +302,19 @@ export function FinancialReportsTab() {
     }
   }
 
+  // ── Seçili hesap bilgileri (ledgerRows'dan önce tanımlanmalı) ────────────────
+  const selectedName = selectedAccount
+    ? selectedAccount.kind === 'kasa'
+      ? selectedAccount.kasa.name
+      : `${selectedAccount.bank.bank_name}${selectedAccount.bank.account_name ? ` — ${selectedAccount.bank.account_name}` : ''}`
+    : '';
+
+  const selectedCurrency = selectedAccount
+    ? selectedAccount.kind === 'kasa'
+      ? selectedAccount.kasa.currency
+      : (selectedAccount.bank.currency ?? 'USD')
+    : 'USD';
+
   // ── Kümülatif dizi (txn + transfer satırları birleşik) ─────────────────────
   const ledgerRows = useMemo((): LedgerRow[] => {
     const { incoming, outgoing } = ledgerTransfers;
@@ -353,18 +366,6 @@ export function FinancialReportsTab() {
     const amt = r.kind === 'txn' ? pickAmt(r.txn, selectedCurrency) : (selectedCurrency === 'USD' ? r.transfer.amount_usd : r.transfer.amount);
     return s + amt;
   }, 0);
-
-  const selectedName = selectedAccount
-    ? selectedAccount.kind === 'kasa'
-      ? selectedAccount.kasa.name
-      : `${selectedAccount.bank.bank_name}${selectedAccount.bank.account_name ? ` — ${selectedAccount.bank.account_name}` : ''}`
-    : '';
-
-  const selectedCurrency = selectedAccount
-    ? selectedAccount.kind === 'kasa'
-      ? selectedAccount.kasa.currency
-      : selectedAccount.bank.currency
-    : 'USD';
 
   return (
     <div className="space-y-5">
