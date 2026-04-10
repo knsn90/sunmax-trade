@@ -56,8 +56,11 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
   const [kdvOrani,    setKdvOrani]    = useState(0);
 
   // ── Para Birimi & Kur ─────────────────────────────────────────────────
-  const [currency,  setCurrency]  = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
-  const [dovizKuru, setDovizKuru] = useState(1);
+  const [currency,      setCurrency]      = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
+  const [dovizKuru,     setDovizKuru]     = useState(1);
+  // 'direct'  → 1 EUR = X USD  (toplamYerel × kur)
+  // 'inverse' → 1 USD = X EUR  (toplamYerel / kur)
+  const [kurYon, setKurYon] = useState<'direct' | 'inverse'>('direct');
 
   // ── Ödeme ─────────────────────────────────────────────────────────────
   const [paymentMethod,  setPaymentMethod]  = useState<'' | 'nakit' | 'banka_havalesi' | 'kredi_karti'>('');
@@ -71,10 +74,12 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
   const araToplam    = miktar * birimFiyat;
   const kdvTutari    = araToplam * kdvOrani / 100;
   const toplamYerel  = araToplam + kdvTutari;           // seçili dövizde toplam
-  const toplamUsd    = currency === 'USD'
-    ? toplamYerel
-    : toplamYerel * dovizKuru;                          // muhasebe USD karşılığı
   const isNonUsd     = currency !== 'USD';
+  const toplamUsd    = !isNonUsd
+    ? toplamYerel
+    : kurYon === 'direct'
+      ? toplamYerel * dovizKuru                         // 1 EUR = X USD
+      : dovizKuru > 0 ? toplamYerel / dovizKuru : 0;   // 1 USD = X EUR
 
   // ── Reset / Pre-fill ──────────────────────────────────────────────────
   useEffect(() => {
@@ -116,9 +121,11 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
       if (notesObj.original_currency) {
         setCurrency(notesObj.original_currency as typeof currency);
         setDovizKuru(Number(notesObj.usd_rate ?? 1));
+        setKurYon((notesObj.kur_yon as 'direct' | 'inverse') ?? 'direct');
       } else {
         setCurrency('USD');
         setDovizKuru(transaction.exchange_rate ?? 1);
+        setKurYon('direct');
       }
 
       if (notesObj.miktar) {
@@ -134,7 +141,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
       setFaturaNo(''); setFaturaTarihi(today());
       setParty(null); setFileId(defaultTradeFileId ?? '');
       setAciklama(''); setMiktar(0); setBirim('Adet'); setBirimFiyat(0); setKdvOrani(0);
-      setCurrency('USD'); setDovizKuru(1);
+      setCurrency('USD'); setDovizKuru(1); setKurYon('direct');
       setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru('');
       setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
     }
@@ -154,6 +161,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
       original_currency: isNonUsd ? currency : undefined,
       original_amount:   isNonUsd ? toplamYerel : undefined,
       usd_rate:          isNonUsd ? dovizKuru : undefined,
+      kur_yon:           isNonUsd ? kurYon : undefined,
     };
 
     const payload = {
@@ -311,12 +319,29 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                 </NativeSelect>
               </FormGroup>
               {isNonUsd ? (
-                <FormGroup label={`Kur (${currency} → USD)`}>
+                <FormGroup label="Kur">
+                  {/* Yön toggle */}
+                  <div className="flex gap-1 mb-1.5">
+                    <button type="button"
+                      onClick={() => setKurYon('direct')}
+                      className={cn('flex-1 py-1 rounded-lg text-[10px] font-bold transition-all border',
+                        kurYon === 'direct'
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-400 border-gray-200 hover:text-gray-600')}
+                    >1 {currency} = ? USD</button>
+                    <button type="button"
+                      onClick={() => setKurYon('inverse')}
+                      className={cn('flex-1 py-1 rounded-lg text-[10px] font-bold transition-all border',
+                        kurYon === 'inverse'
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-400 border-gray-200 hover:text-gray-600')}
+                    >1 USD = ? {currency}</button>
+                  </div>
                   <Input
                     type="number" step="0.0001"
                     value={dovizKuru || ''}
                     onChange={e => setDovizKuru(Number(e.target.value))}
-                    placeholder="1.0000"
+                    placeholder={kurYon === 'direct' ? `1 ${currency} = kaç USD` : `1 USD = kaç ${currency}`}
                   />
                 </FormGroup>
               ) : <div />}
@@ -342,7 +367,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
               </div>
               {isNonUsd && dovizKuru > 0 && (
                 <div className="flex justify-between text-gray-400 text-[11px]">
-                  <span>USD Karşılığı (Kur: {fN(dovizKuru, 4)})</span>
+                  <span>USD Karşılığı ({kurYon === 'direct' ? `1 ${currency} = ${fN(dovizKuru,4)} USD` : `1 USD = ${fN(dovizKuru,4)} ${currency}`})</span>
                   <span className="font-semibold text-gray-600">{fCurrency(toplamUsd, 'USD')}</span>
                 </div>
               )}

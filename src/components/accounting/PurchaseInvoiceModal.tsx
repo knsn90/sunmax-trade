@@ -75,6 +75,9 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const [currency,   setCurrency]   = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
   const [birimFiyat, setBirimFiyat] = useState(0);
   const [dovizKuru,  setDovizKuru]  = useState(1);
+  // 'direct'  → 1 EUR = X USD  (tutar × kur)
+  // 'inverse' → 1 USD = X EUR  (tutar / kur)
+  const [kurYon, setKurYon] = useState<'direct' | 'inverse'>('direct');
 
   // ── Vergi ─────────────────────────────────────────────────────────────
   const [kdvOrani, setKdvOrani] = useState(0);
@@ -90,8 +93,14 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   // ── Hesaplamalar ──────────────────────────────────────────────────────
   const malHizmetTutari = netAgirlik * birimFiyat;
   const kdvTutari       = malHizmetTutari * kdvOrani / 100;
-  const toplamUsd       = malHizmetTutari + kdvTutari;
-  const toplamTry       = toplamUsd * dovizKuru;
+  const toplamYerel     = malHizmetTutari + kdvTutari;   // seçili dövizde toplam
+  const isNonUsd        = currency !== 'USD';
+  const toplamUsd       = !isNonUsd
+    ? toplamYerel
+    : kurYon === 'direct'
+      ? toplamYerel * dovizKuru                          // 1 EUR = X USD
+      : dovizKuru > 0 ? toplamYerel / dovizKuru : 0;    // 1 USD = X EUR
+  const toplamTry       = toplamUsd * dovizKuru;         // eski uyumluluk (notesObj)
 
   // ── Reset / Pre-fill ──────────────────────────────────────────────────
   useEffect(() => {
@@ -124,6 +133,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       setBrutAgirlik(Number(notesObj.brut_agirlik_kg ?? 0));
       setKapAdeti(Number(notesObj.kap_adeti ?? 0));
       setMensei(String(notesObj.mensei ?? ''));
+      setKurYon((notesObj.kur_yon as 'direct' | 'inverse') ?? 'direct');
 
       // net_agirlik: önce notes'tan al, yoksa amount'tan hesapla
       if (notesObj.net_agirlik) {
@@ -139,7 +149,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       setFaturaNo(''); setFaturaTarihi(today());
       setSupplierId(''); setFileId(defaultTradeFileId ?? '');
       setAciklama(''); setNetAgirlik(0); setBrutAgirlik(0); setKapAdeti(0); setMensei('');
-      setCurrency('USD'); setBirimFiyat(0); setDovizKuru(1);
+      setCurrency('USD'); setBirimFiyat(0); setDovizKuru(1); setKurYon('direct');
       setKdvOrani(0);
       setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru('');
       setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
@@ -178,6 +188,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       kdv_orani:       kdvOrani,
       kdv_tutari:      kdvTutari,
       toplam_try:      toplamTry    || undefined,
+      kur_yon:         isNonUsd ? kurYon : undefined,
     };
 
     const payload = {
@@ -192,8 +203,8 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       description:         aciklama || 'Satın Alma Faturası',
       reference_no:        faturaNo,
       currency,
-      amount:              toplamUsd,
-      exchange_rate:       dovizKuru,
+      amount:              toplamYerel,    // orijinal dövizde tutar; exchange_rate ile USD'ye çevrilir
+      exchange_rate:       isNonUsd ? dovizKuru : 1,
       paid_amount:         transaction?.paid_amount ?? 0,
       payment_status:      (transaction?.payment_status ?? 'open') as 'open' | 'partial' | 'paid',
       payment_method:      paymentMethod,
@@ -373,14 +384,31 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
               </FormGroup>
             </FormRow>
 
-            {currency !== 'TRY' && (
+            {isNonUsd && (
               <FormRow cols={2}>
-                <FormGroup label={`Döviz Kuru (${currency} → TRY)`}>
+                <FormGroup label="Döviz Kuru">
+                  {/* Yön toggle */}
+                  <div className="flex gap-1 mb-1.5">
+                    <button type="button"
+                      onClick={() => setKurYon('direct')}
+                      className={cn('flex-1 py-1 rounded-lg text-[10px] font-bold transition-all border',
+                        kurYon === 'direct'
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-400 border-gray-200 hover:text-gray-600')}
+                    >1 {currency} = ? USD</button>
+                    <button type="button"
+                      onClick={() => setKurYon('inverse')}
+                      className={cn('flex-1 py-1 rounded-lg text-[10px] font-bold transition-all border',
+                        kurYon === 'inverse'
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-400 border-gray-200 hover:text-gray-600')}
+                    >1 USD = ? {currency}</button>
+                  </div>
                   <Input
                     type="number" step="0.0001"
                     value={dovizKuru || ''}
                     onChange={e => setDovizKuru(Number(e.target.value))}
-                    placeholder="1.0000"
+                    placeholder={kurYon === 'direct' ? `1 ${currency} = kaç USD` : `1 USD = kaç ${currency}`}
                   />
                 </FormGroup>
               </FormRow>
@@ -400,12 +428,12 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
               )}
               <div className="flex justify-between font-extrabold text-gray-900 pt-1 border-t border-gray-200">
                 <span>Toplam ({currency})</span>
-                <span>{fCurrency(toplamUsd, currency)}</span>
+                <span>{fCurrency(toplamYerel, currency)}</span>
               </div>
-              {currency !== 'TRY' && dovizKuru > 1 && (
+              {isNonUsd && dovizKuru > 0 && (
                 <div className="flex justify-between text-gray-400 text-[11px]">
-                  <span>TL Karşılığı (Kur: {fN(dovizKuru, 4)})</span>
-                  <span>{fCurrency(toplamTry, 'TRY')}</span>
+                  <span>USD Karşılığı ({kurYon === 'direct' ? `1 ${currency} = ${fN(dovizKuru,4)} USD` : `1 USD = ${fN(dovizKuru,4)} ${currency}`})</span>
+                  <span className="font-semibold text-gray-600">{fCurrency(toplamUsd, 'USD')}</span>
                 </div>
               )}
             </div>
