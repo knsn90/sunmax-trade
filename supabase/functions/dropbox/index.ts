@@ -191,9 +191,11 @@ serve(async (req) => {
     }
 
     // Full Dropbox erişimi — hedef path: /Family Room/01-SELÜLOZ/Sunplus Trade/{müşteri}/{dosyaNo}
+    // fileNo, batch dosyalar için "/" içerebilir (ör. "ABC123/P1") → iç içe klasör olarak oluştur
     const ROOT = "/Family Room/01-SELÜLOZ/Sunplus Trade";
-    const safeName = (s: string) => s.replace(/[<>:"/\\|?*]/g, "_");
-    const folderPath = `${ROOT}/${safeName(customerName ?? "")}/${safeName(fileNo ?? "")}`;
+    const safeName = (s: string) => s.replace(/[<>:"\\|?*]/g, "_");  // "/" hariç tutuldu
+    const fileSegments = (fileNo ?? "").split("/").map((s) => safeName(s));
+    const folderPath = `${ROOT}/${safeName(customerName ?? "")}/${fileSegments.join("/")}`;
 
     // ── createTradeFolder ─────────────────────────────────────────────────────
     if (action === "createTradeFolder") {
@@ -204,7 +206,12 @@ serve(async (req) => {
       await createFolder(token, "/Family Room/01-SELÜLOZ");
       await createFolder(token, ROOT);
       await createFolder(token, `${ROOT}/${safeName(customerName)}`);
-      await createFolder(token, folderPath);
+      // fileNo "/" içeriyorsa (batch dosya) her segmenti ayrı ayrı oluştur
+      let segPath = `${ROOT}/${safeName(customerName)}`;
+      for (const seg of fileSegments) {
+        segPath = `${segPath}/${seg}`;
+        await createFolder(token, segPath);
+      }
 
       const folderUrl = await getOrCreateSharedLink(token, folderPath);
       return new Response(JSON.stringify({ success: true, folderPath, folderUrl }), {
@@ -217,12 +224,16 @@ serve(async (req) => {
       if (!customerName || !fileNo || !documentName || (!htmlContent && !pdfContent)) {
         throw new Error("customerName, fileNo, documentName, and htmlContent or pdfBase64 required");
       }
-      // Klasörü hazır et
+      // Klasörü hazır et (batch dosyalar için iç içe klasörler)
       await createFolder(token, "/Family Room");
       await createFolder(token, "/Family Room/01-SELÜLOZ");
       await createFolder(token, ROOT);
       await createFolder(token, `${ROOT}/${safeName(customerName)}`);
-      await createFolder(token, folderPath);
+      let docSegPath = `${ROOT}/${safeName(customerName)}`;
+      for (const seg of fileSegments) {
+        docSegPath = `${docSegPath}/${seg}`;
+        await createFolder(token, docSegPath);
+      }
 
       const ext = isPdf ? "pdf" : "html";
       const filePath = `${folderPath}/${documentName}.${ext}`;
@@ -298,15 +309,20 @@ serve(async (req) => {
       if (!cn || !fn || !fileName || !fileBase64) {
         throw new Error("customerName, fileNo, fileName, and fileBase64 required");
       }
-      const safeCn = (s: string) => s.replace(/[<>:"/\\|?*]/g, "_");
-      const attFolderPath = `${ROOT}/${safeCn(cn)}/${safeCn(fn)}`;
+      // fileNo "/" içeriyorsa (batch dosya) iç içe klasör oluştur
+      const attSegs = fn.split("/").map((s: string) => safeName(s));
+      const attFolderPath = `${ROOT}/${safeName(cn)}/${attSegs.join("/")}`;
       const attFilePath = `${attFolderPath}/${fileName}`;
       // Ensure folder exists
       await createFolder(token, "/Family Room");
       await createFolder(token, "/Family Room/01-SELÜLOZ");
       await createFolder(token, ROOT);
-      await createFolder(token, `${ROOT}/${safeCn(cn)}`);
-      await createFolder(token, attFolderPath);
+      await createFolder(token, `${ROOT}/${safeName(cn)}`);
+      let attSegPath = `${ROOT}/${safeName(cn)}`;
+      for (const seg of attSegs) {
+        attSegPath = `${attSegPath}/${seg}`;
+        await createFolder(token, attSegPath);
+      }
       const fileBytes = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
       const viewLink = await uploadBytes(token, attFilePath, fileBytes);
       return new Response(JSON.stringify({ success: true, viewLink, filePath: attFilePath }), {
