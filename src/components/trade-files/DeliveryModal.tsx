@@ -124,10 +124,7 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
               {/* Kısmi sevkiyat */}
               <button
                 type="button"
-                onClick={() => {
-                  onOpenChange(false);
-                  onPartialShipment?.();
-                }}
+                onClick={() => onPartialShipment?.()}
                 className="flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 border-blue-100 hover:border-blue-300 hover:bg-blue-50 transition-all group"
               >
                 <div className="w-11 h-11 rounded-xl bg-blue-50 group-hover:bg-white flex items-center justify-center transition-colors">
