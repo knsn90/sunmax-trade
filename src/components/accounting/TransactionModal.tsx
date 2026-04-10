@@ -131,11 +131,14 @@ export function TransactionModal({
   const [itToType,   setItToType]   = useState<'kasa' | 'bank'>('bank');
   const [itToId,     setItToId]     = useState('');
 
+  // Kullanıcının tip dropdown'ını aktif olarak değiştirip değiştirmediğini takip et
+  const userChangedType = useRef(false);
+
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       transaction_date: today(),
-      transaction_type: 'svc_inv',
+      transaction_type: 'receipt',
       trade_file_id: '',
       customer_id: '',
       supplier_id: '',
@@ -174,6 +177,7 @@ export function TransactionModal({
     setMasrafOpen(!!transaction && (transaction.masraf_tutar ?? 0) > 0);
     setItFromType('kasa'); setItFromId('');
     setItToType('bank');   setItToId('');
+    userChangedType.current = false;
     if (transaction) {
       reset({
         transaction_date: transaction.transaction_date,
@@ -208,7 +212,7 @@ export function TransactionModal({
     } else {
       reset({
         transaction_date: today(),
-        transaction_type: (defaultType as TransactionFormData['transaction_type']) ?? 'svc_inv',
+        transaction_type: (defaultType as TransactionFormData['transaction_type']) ?? 'receipt',
         currency: 'USD',
         amount: undefined,
         exchange_rate: 1,
@@ -239,27 +243,20 @@ export function TransactionModal({
 
   const txnType       = useWatch({ control, name: 'transaction_type' });
 
-  // Kullanıcı "Satış Faturası" seçince InvoiceModal'a yönlendir
+  // Kullanıcı dropdown'dan tip DEĞİŞTİRİNCE özel modallara yönlendir
+  // (userChangedType.current === false ise modal henüz ilk açıldı, redirect tetikleme)
   useEffect(() => {
-    if (txnType === 'sale_inv' && onSaleInvRedirect && !transaction) {
-      onOpenChange(false);
-      onSaleInvRedirect();
-    }
-  }, [txnType]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Kullanıcı "Satın Alma Faturası" seçince PurchaseInvoiceModal'a yönlendir
-  useEffect(() => {
-    if (txnType === 'purchase_inv' && onPurchaseInvRedirect && !transaction) {
-      onOpenChange(false);
-      onPurchaseInvRedirect();
-    }
-  }, [txnType]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Kullanıcı "Hizmet Faturası" seçince ServiceInvoiceModal'a yönlendir
-  useEffect(() => {
-    if (txnType === 'svc_inv' && onSvcInvRedirect && !transaction) {
-      onOpenChange(false);
-      onSvcInvRedirect();
+    if (!userChangedType.current) return;
+    if (!transaction) {
+      if (txnType === 'sale_inv' && onSaleInvRedirect) {
+        onOpenChange(false); onSaleInvRedirect(); return;
+      }
+      if (txnType === 'purchase_inv' && onPurchaseInvRedirect) {
+        onOpenChange(false); onPurchaseInvRedirect(); return;
+      }
+      if (txnType === 'svc_inv' && onSvcInvRedirect) {
+        onOpenChange(false); onSvcInvRedirect(); return;
+      }
     }
   }, [txnType]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -427,7 +424,13 @@ export function TransactionModal({
         <form onSubmit={handleSubmit(onSubmit)}>
           <FormRow>
             <FormGroup label={`${t('transaction.modal.type')} *`} error={errors.transaction_type?.message}>
-              <NativeSelect {...register('transaction_type')}>
+              <NativeSelect
+                {...register('transaction_type')}
+                onChange={(e) => {
+                  userChangedType.current = true;
+                  register('transaction_type').onChange(e);
+                }}
+              >
                 {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance','ic_transfer'] as const).map(k => (
                   <option key={k} value={k}>{tc('txType.' + k)}</option>
                 ))}

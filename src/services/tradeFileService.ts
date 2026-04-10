@@ -281,10 +281,32 @@ export const tradeFileService = {
       .from('trade_files')
       .update(patch)
       .eq('id', id)
-      .select(MUTATION_SELECT)
+      .select('id, file_no, status, parent_file_id')
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Parti tamamlandığında / iptal edildiğinde ana dosyanın delivered_admt'sini güncelle
+    const parentId = (data as TradeFile & { parent_file_id: string | null }).parent_file_id;
+    if (parentId) {
+      // Tüm kardeş partileri çek
+      const { data: siblings } = await supabase
+        .from('trade_files')
+        .select('id, status, tonnage_mt')
+        .eq('parent_file_id', parentId);
+
+      if (siblings) {
+        const delivered = siblings
+          .filter((b) => b.status === 'completed')
+          .reduce((s: number, b: { tonnage_mt: number | null }) => s + (b.tonnage_mt ?? 0), 0);
+
+        await supabase
+          .from('trade_files')
+          .update({ delivered_admt: delivered > 0 ? delivered : null })
+          .eq('id', parentId);
+      }
+    }
+
     return data as TradeFile;
   },
 };

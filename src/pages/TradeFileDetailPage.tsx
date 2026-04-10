@@ -491,6 +491,10 @@ export function TradeFileDetailPage() {
     && (file.batches ?? []).every(b => b.status === 'completed');
   // Batch file_no = "ANA/P1" → ana dosya no = "ANA"
   const parentFileNo = isBatch ? file.file_no.split('/').slice(0, -1).join('/') : null;
+  // Teslim edilen: partili dosyada tamamlanan partilerin tonnage toplamı, değilse delivered_admt
+  const deliveredTonnage = isPartial
+    ? (file.batches ?? []).filter(b => b.status === 'completed').reduce((s, b) => s + (b.tonnage_mt ?? 0), 0)
+    : (file.delivered_admt ?? null);
 
   async function handleSyncFromParent() {
     if (!parentFile || !file) { toast.error('Ana dosya yüklenemedi'); return; }
@@ -670,7 +674,7 @@ export function TradeFileDetailPage() {
         <div className="px-4 py-3 border-b border-gray-50">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.delivered')}</div>
           <div className="text-[13px] font-bold text-gray-900">
-            {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
+            {deliveredTonnage ? fN(deliveredTonnage, 0) + ' MT' : '—'}
           </div>
         </div>
       </div>
@@ -1304,7 +1308,7 @@ export function TradeFileDetailPage() {
                 <div className="px-5 py-4">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.delivered')}</div>
                   <div className="text-[15px] font-extrabold text-gray-900">
-                    {file.delivered_admt ? fN(file.delivered_admt, 0) + ' ADMT' : '—'}
+                    {deliveredTonnage ? fN(deliveredTonnage, 0) + ' MT' : '—'}
                   </div>
                 </div>
               </div>
