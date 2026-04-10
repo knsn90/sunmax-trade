@@ -78,6 +78,10 @@ export interface Customer extends Timestamps {
   notes: string;
   is_active: boolean;
   created_by: string | null;
+  /** Alt firma ilişkisi — dolu ise bu müşteri bir alt firmadır */
+  parent_customer_id: string | null;
+  /** Joined — sadece trade file sorgularında dolu gelir */
+  parent?: Pick<Customer, 'id' | 'name' | 'code' | 'country' | 'address' | 'contact_phone'>;
 }
 
 export interface Supplier extends Timestamps {
@@ -287,8 +291,11 @@ export interface Proforma extends Timestamps {
   approved_by: string | null;
   approved_at: string | null;
   created_by: string | null;
+  /** Evrak bazında alıcı firma — NULL ise trade_file.customer kullanılır */
+  consignee_customer_id: string | null;
   // Joined
   trade_file?: TradeFile;
+  consignee?: Customer;
 }
 
 export interface Invoice extends Timestamps {
@@ -317,9 +324,12 @@ export interface Invoice extends Timestamps {
   approved_by: string | null;
   approved_at: string | null;
   created_by: string | null;
+  /** Evrak bazında alıcı firma — NULL ise trade_file.customer kullanılır */
+  consignee_customer_id: string | null;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;
+  consignee?: Customer;
 }
 
 export interface PackingList extends Timestamps {
@@ -342,9 +352,12 @@ export interface PackingList extends Timestamps {
   approved_by: string | null;
   approved_at: string | null;
   created_by: string | null;
+  /** Evrak bazında alıcı firma — NULL ise trade_file.customer kullanılır */
+  consignee_customer_id: string | null;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;
+  consignee?: Customer;
   packing_list_items?: PackingListItem[];
 }
 

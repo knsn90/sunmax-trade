@@ -5,7 +5,8 @@ import type { PackingListFormData } from '@/types/forms';
 const PL_SELECT = `
   *,
   trade_file:trade_files!trade_file_id(file_no, status),
-  customer:customers!customer_id(name),
+  customer:customers!customer_id(*),
+  consignee:customers!consignee_customer_id(*),
   packing_list_items(*)
 `;
 
@@ -47,6 +48,7 @@ export const packingListService = {
     customerId: string,
     plNo: string,
     input: PackingListFormData,
+    consigneeId?: string,
   ): Promise<PackingList> {
     const totalReels = input.items.reduce((s, r) => s + (r.reels ?? 0), 0);
     const totalAdmt = input.items.reduce((s, r) => s + (r.admt ?? 0), 0);
@@ -69,6 +71,7 @@ export const packingListService = {
         total_reels: totalReels,
         total_admt: totalAdmt,
         total_gross_kg: totalGross,
+        consignee_customer_id: consigneeId || null,
       })
       .select()
       .single();
@@ -96,7 +99,7 @@ export const packingListService = {
     return pl as PackingList;
   },
 
-  async update(id: string, input: PackingListFormData): Promise<PackingList> {
+  async update(id: string, input: PackingListFormData, consigneeId?: string): Promise<PackingList> {
     const totalReels = input.items.reduce((s, r) => s + (r.reels ?? 0), 0);
     const totalAdmt = input.items.reduce((s, r) => s + (r.admt ?? 0), 0);
     const totalGross = input.items.reduce((s, r) => s + (r.gross_weight_kg ?? 0), 0);
@@ -115,6 +118,7 @@ export const packingListService = {
         total_reels: totalReels,
         total_admt: totalAdmt,
         total_gross_kg: totalGross,
+        consignee_customer_id: consigneeId || null,
       })
       .eq('id', id)
       .select()

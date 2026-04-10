@@ -65,6 +65,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
     name: '', code: '', country: '', city: '', address: '',
     contact_email: '', contact_phone: '',
     tax_id: '', website: '', payment_terms: '', notes: '',
+    parent_customer_id: '',
   };
 
   const form = useForm<CustomerFormData>({
@@ -72,6 +73,10 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
     defaultValues: EMPTY,
   });
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue: setVal } = form;
+
+  const parentCustomerId = watch('parent_customer_id');
+  // Ana firmalar: parent_customer_id olmayan müşteriler
+  const parentCustomers = customers.filter(c => !c.parent_customer_id);
 
   // Auto-generate code from name when creating (if code still empty)
   const watchedName = watch('name');
@@ -103,6 +108,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
       contact_email: c.contact_email, contact_phone: c.contact_phone,
       tax_id: c.tax_id ?? '', website: c.website ?? '',
       payment_terms: c.payment_terms ?? '', notes: c.notes,
+      parent_customer_id: c.parent_customer_id ?? '',
     });
     setModalOpen(true);
   }
@@ -175,7 +181,17 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     <ContactAvatar name={c.name} color={color} />
-                    <span className="text-sm font-semibold text-gray-900 truncate">{c.name}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {c.parent_customer_id && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide shrink-0">Alt</span>
+                        )}
+                        <span className="text-sm font-semibold text-gray-900 truncate">{c.name}</span>
+                      </div>
+                      {c.parent_customer_id && (
+                        <div className="text-[10px] text-gray-400">↳ {customers.find(p => p.id === c.parent_customer_id)?.name ?? ''}</div>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-600">{[c.city, c.country].filter(Boolean).join(', ') || '—'}</td>
@@ -238,6 +254,29 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
               <FormGroup label={tc('form.payment_terms')}><Input {...register('payment_terms')} placeholder="e.g. Net 30, L/C 90 days" /></FormGroup>
             </FormRow>
             <FormGroup label={tc('form.notes')} className="mb-2.5"><Textarea rows={2} {...register('notes')} /></FormGroup>
+
+            {/* ── Alt Firma ── */}
+            <div className="mb-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
+                Alt Firma (Opsiyonel)
+              </label>
+              <NativeSelect
+                value={parentCustomerId ?? ''}
+                onChange={e => setVal('parent_customer_id', e.target.value)}
+                className="text-[12px]"
+              >
+                <option value="">— Bağımsız firma (alt firma değil) —</option>
+                {parentCustomers
+                  .filter(p => p.id !== editing?.id)
+                  .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </NativeSelect>
+              {parentCustomerId && (
+                <p className="text-[10px] text-violet-600 mt-1.5">
+                  Bu firma bir alt şirkettir. Muhasebe ana firmadan yürür; evraklarda alıcı firma olarak seçilebilir.
+                </p>
+              )}
+            </div>
+
             <DialogFooter>
               <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">{tc('btn.cancel')}</button>
               <button type="submit" disabled={create.isPending || update.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>{tc('btn.save')}</button>

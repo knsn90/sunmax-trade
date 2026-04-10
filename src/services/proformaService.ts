@@ -4,6 +4,7 @@ import type { ProformaFormData } from '@/types/forms';
 
 const PI_SELECT = `
   *,
+  consignee:customers!consignee_customer_id(*),
   trade_file:trade_files!trade_file_id(file_no, status, customer:customers!customer_id(*), product:products!product_id(*))
 `;
 
@@ -44,6 +45,7 @@ export const proformaService = {
     tradeFileId: string,
     proformaNo: string,
     input: ProformaFormData,
+    consigneeId?: string,
   ): Promise<Proforma> {
     const subtotal = input.quantity_admt * input.unit_price;
     const total = subtotal + (input.freight ?? 0) - (input.discount ?? 0) + (input.other_charges ?? 0);
@@ -83,6 +85,7 @@ export const proformaService = {
         total,
         signatory: input.signatory,
         notes: input.notes,
+        consignee_customer_id: consigneeId || null,
       })
       .select(PI_SELECT)
       .single();
@@ -91,7 +94,7 @@ export const proformaService = {
     return data as Proforma;
   },
 
-  async update(id: string, input: ProformaFormData): Promise<Proforma> {
+  async update(id: string, input: ProformaFormData, consigneeId?: string): Promise<Proforma> {
     const subtotal = input.quantity_admt * input.unit_price;
     const total = subtotal + (input.freight ?? 0) - (input.discount ?? 0) + (input.other_charges ?? 0);
 
@@ -128,6 +131,7 @@ export const proformaService = {
         total,
         signatory: input.signatory,
         notes: input.notes,
+        consignee_customer_id: consigneeId || null,
       })
       .eq('id', id)
       .select(PI_SELECT)

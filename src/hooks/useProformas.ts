@@ -22,8 +22,8 @@ export function useProformasByTradeFile(tradeFileId: string | undefined) {
 export function useCreateProforma() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { tradeFileId: string; proformaNo: string; data: ProformaFormData }) =>
-      proformaService.create(params.tradeFileId, params.proformaNo, params.data),
+    mutationFn: (params: { tradeFileId: string; proformaNo: string; data: ProformaFormData; consigneeId?: string }) =>
+      proformaService.create(params.tradeFileId, params.proformaNo, params.data, params.consigneeId),
     onSuccess: (pi) => {
       qc.invalidateQueries({ queryKey: ['proformas'] });
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
@@ -36,8 +36,8 @@ export function useCreateProforma() {
 export function useUpdateProforma() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: ProformaFormData }) =>
-      proformaService.update(id, data),
+    mutationFn: ({ id, data, consigneeId }: { id: string; data: ProformaFormData; consigneeId?: string }) =>
+      proformaService.update(id, data, consigneeId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['proformas'] });
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });

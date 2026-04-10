@@ -37,7 +37,7 @@ export const customerService = {
 
     const { data, error } = await supabase
       .from('customers')
-      .insert({ ...input, code })
+      .insert({ ...input, code, parent_customer_id: input.parent_customer_id || null })
       .select()
       .single();
 
@@ -53,6 +53,8 @@ export const customerService = {
     } else {
       delete patch.code; // don't send empty string to DB
     }
+    // Normalize parent_customer_id: empty string → null
+    patch.parent_customer_id = input.parent_customer_id || null;
 
     const { data, error } = await supabase
       .from('customers')

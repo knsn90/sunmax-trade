@@ -140,12 +140,14 @@ export function useCreatePackingList() {
       customerId: string;
       plNo: string;
       data: PackingListFormData;
+      consigneeId?: string;
     }) =>
       packingListService.create(
         params.tradeFileId,
         params.customerId,
         params.plNo,
         params.data,
+        params.consigneeId,
       ),
     onSuccess: (pl) => {
       qc.invalidateQueries({ queryKey: ['packing-lists'] });
@@ -159,8 +161,8 @@ export function useCreatePackingList() {
 export function useUpdatePackingList() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: PackingListFormData }) =>
-      packingListService.update(id, data),
+    mutationFn: ({ id, data, consigneeId }: { id: string; data: PackingListFormData; consigneeId?: string }) =>
+      packingListService.update(id, data, consigneeId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['packing-lists'] });
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });

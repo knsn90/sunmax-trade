@@ -10,7 +10,7 @@ import type {
 // Used for list queries — joins resolved by PostgREST
 const FILE_SELECT = `
   *,
-  customer:customers!customer_id(*),
+  customer:customers!customer_id(*, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
   product:products!product_id(*),
   supplier:suppliers!supplier_id(*),
   creator:profiles!created_by(id,full_name)
@@ -19,7 +19,7 @@ const FILE_SELECT = `
 // Used for detail page — includes sub-documents
 const FILE_DETAIL_SELECT = `
   *,
-  customer:customers!customer_id(*),
+  customer:customers!customer_id(*, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
   product:products!product_id(*),
   supplier:suppliers!supplier_id(*),
   invoices(*),

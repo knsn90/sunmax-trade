@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '@/hooks/useEntities';
 import { useAuth } from '@/hooks/useAuth';
+import { NativeSelect } from '@/components/ui/form-elements';
 import { canWrite, isAdmin } from '@/lib/permissions';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,14 +32,17 @@ export function CustomersPage() {
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { name: '', code: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '' },
+    defaultValues: { name: '', code: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '', parent_customer_id: '' },
   });
 
-  const { register, handleSubmit, formState: { errors }, reset } = form;
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = form;
+  const parentCustomerId = watch('parent_customer_id');
+  // Ana firmalar (parent_customer_id === null)
+  const parentCustomers = customers.filter(c => !c.parent_customer_id);
 
   function openNew() {
     setEditing(null);
-    reset({ name: '', code: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '' });
+    reset({ name: '', code: '', country: '', address: '', contact_email: '', contact_phone: '', notes: '', parent_customer_id: '' });
     setModalOpen(true);
   }
 
@@ -52,6 +56,7 @@ export function CustomersPage() {
       contact_email: c.contact_email,
       contact_phone: c.contact_phone,
       notes: c.notes,
+      parent_customer_id: c.parent_customer_id ?? '',
     });
     setModalOpen(true);
   }
@@ -98,7 +103,19 @@ export function CustomersPage() {
                 customers.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50/50">
                     <td className="px-2.5 py-2 text-xs font-bold border-b border-border">{c.code}</td>
-                    <td className="px-2.5 py-2 text-xs border-b border-border">{c.name}</td>
+                    <td className="px-2.5 py-2 text-xs border-b border-border">
+                      <div className="flex items-center gap-1.5">
+                        {c.parent_customer_id && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide shrink-0">Alt</span>
+                        )}
+                        {c.name}
+                      </div>
+                      {c.parent_customer_id && (
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          ↳ {customers.find(p => p.id === c.parent_customer_id)?.name ?? '—'}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-2.5 py-2 text-xs border-b border-border">{c.country}</td>
                     <td className="px-2.5 py-2 text-xs text-muted-foreground border-b border-border">
                       {c.contact_email || c.contact_phone || '—'}
@@ -164,6 +181,31 @@ export function CustomersPage() {
             <FormGroup label={tc('form.notes')} className="mb-2.5">
               <Textarea rows={2} {...register('notes')} />
             </FormGroup>
+
+            {/* ── Alt Firma ── */}
+            <div className="mb-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
+                Alt Firma (Opsiyonel)
+              </label>
+              <NativeSelect
+                value={parentCustomerId ?? ''}
+                onChange={e => setValue('parent_customer_id', e.target.value)}
+                className="text-[12px]"
+              >
+                <option value="">— Bağımsız firma (alt firma değil) —</option>
+                {parentCustomers
+                  .filter(p => p.id !== editing?.id)
+                  .map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+              </NativeSelect>
+              {parentCustomerId && (
+                <p className="text-[10px] text-violet-600 mt-1">
+                  Bu firma seçilen ana firmanın alt şirketidir. Muhasebe ana firmadan yürür; evraklarda bu firma seçilebilir.
+                </p>
+              )}
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>{tc('btn.cancel')}</Button>
               <Button type="submit" disabled={createCustomer.isPending || updateCustomer.isPending}>

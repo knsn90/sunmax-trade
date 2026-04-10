@@ -65,6 +65,8 @@ interface TransactionModalProps {
   defaultTradeFileId?: string;
   /** Satış faturası seçilince çağrılır — AccountingPage InvoiceModal'ı açar */
   onSaleInvRedirect?: () => void;
+  /** Satın alma faturası seçilince çağrılır — AccountingPage PurchaseInvoiceModal'ı açar */
+  onPurchaseInvRedirect?: () => void;
 }
 
 /** Para bize geliyor mu? (etiket metni için)
@@ -101,7 +103,7 @@ function partyFromTransaction(t: Transaction): SelectedParty | null {
 }
 
 export function TransactionModal({
-  open, onOpenChange, transaction, defaultType, defaultTradeFileId, onSaleInvRedirect,
+  open, onOpenChange, transaction, defaultType, defaultTradeFileId, onSaleInvRedirect, onPurchaseInvRedirect,
 }: TransactionModalProps) {
   const { t } = useTranslation('accounting');
   const { t: tc } = useTranslation('common');
@@ -240,6 +242,14 @@ export function TransactionModal({
     if (txnType === 'sale_inv' && onSaleInvRedirect && !transaction) {
       onOpenChange(false);
       onSaleInvRedirect();
+    }
+  }, [txnType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Kullanıcı "Satın Alma Faturası" seçince PurchaseInvoiceModal'a yönlendir
+  useEffect(() => {
+    if (txnType === 'purchase_inv' && onPurchaseInvRedirect && !transaction) {
+      onOpenChange(false);
+      onPurchaseInvRedirect();
     }
   }, [txnType]); // eslint-disable-line react-hooks/exhaustive-deps
 

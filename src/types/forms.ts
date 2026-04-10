@@ -3,17 +3,18 @@ import { z } from 'zod';
 // ─── Master Data Forms ──────────────────────────────────────────────────────
 
 export const customerSchema = z.object({
-  name:           z.string().min(1, 'Customer name is required').max(200),
-  code:           z.string().min(2).max(6).regex(/^[A-Z0-9]+$/, 'Sadece büyük harf ve rakam').optional().or(z.literal('')),
-  country:        z.string().max(100).default(''),
-  city:           z.string().max(100).default(''),
-  address:        z.string().max(500).default(''),
-  contact_email:  z.string().email('Invalid email').or(z.literal('')).default(''),
-  contact_phone:  z.string().max(50).default(''),
-  tax_id:         z.string().max(100).default(''),
-  website:        z.string().max(200).default(''),
-  payment_terms:  z.string().max(200).default(''),
-  notes:          z.string().max(2000).default(''),
+  name:               z.string().min(1, 'Customer name is required').max(200),
+  code:               z.string().min(2).max(6).regex(/^[A-Z0-9]+$/, 'Sadece büyük harf ve rakam').optional().or(z.literal('')),
+  country:            z.string().max(100).default(''),
+  city:               z.string().max(100).default(''),
+  address:            z.string().max(500).default(''),
+  contact_email:      z.string().email('Invalid email').or(z.literal('')).default(''),
+  contact_phone:      z.string().max(50).default(''),
+  tax_id:             z.string().max(100).default(''),
+  website:            z.string().max(200).default(''),
+  payment_terms:      z.string().max(200).default(''),
+  notes:              z.string().max(2000).default(''),
+  parent_customer_id: z.string().uuid().optional().or(z.literal('')),
 });
 export type CustomerFormData = z.infer<typeof customerSchema>;
 

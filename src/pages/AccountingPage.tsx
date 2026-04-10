@@ -16,6 +16,7 @@ import { TransactionModal } from '@/components/accounting/TransactionModal';
 import { KasaManager } from '@/components/accounting/KasaManager';
 import { BankAccountManager } from '@/components/accounting/BankAccountManager';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
+import { PurchaseInvoiceModal } from '@/components/accounting/PurchaseInvoiceModal';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
 import { LoadingSpinner } from '@/components/ui/shared';
@@ -167,6 +168,7 @@ export function AccountingPage() {
   const deleteInvoice = useDeleteInvoice();
   const [editingSaleInv, setEditingSaleInv] = useState<Invoice | null>(null);
   const [saleInvModalOpen, setSaleInvModalOpen] = useState(false);
+  const [purchaseInvModalOpen, setPurchaseInvModalOpen] = useState(false);
 
   const tabDefaultType: Record<AccTab, string | undefined> = {
     all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', ayarlar: undefined,
@@ -404,11 +406,13 @@ export function AccountingPage() {
                     if (activeTab === 'sale') {
                       setEditingSaleInv(null);
                       setSaleInvModalOpen(true);
+                    } else if (activeTab === 'buy') {
+                      setPurchaseInvModalOpen(true);
                     } else {
                       openNew();
                     }
                   }}
-                  title={activeTab === 'sale' ? 'Yeni Satış Faturası' : 'New Transaction'}
+                  title={activeTab === 'sale' ? 'Yeni Satış Faturası' : activeTab === 'buy' ? 'Yeni Satın Alma Faturası' : 'New Transaction'}
                   className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity shrink-0"
                   style={{ background: accent }}
                 >
@@ -835,6 +839,7 @@ export function AccountingPage() {
         transaction={editingTxn}
         defaultType={pendingTxnType ?? tabDefaultType[activeTab]}
         onSaleInvRedirect={() => { setEditingSaleInv(null); setSaleInvModalOpen(true); }}
+        onPurchaseInvRedirect={() => { setPurchaseInvModalOpen(true); }}
       />
       <InvoiceModal
         open={saleInvModalOpen}
@@ -844,6 +849,16 @@ export function AccountingPage() {
         invoiceType="sale"
         onSwitchToTransaction={(type) => {
           setSaleInvModalOpen(false);
+          setPendingTxnType(type);
+          setEditingTxn(null);
+          setTxnModalOpen(true);
+        }}
+      />
+      <PurchaseInvoiceModal
+        open={purchaseInvModalOpen}
+        onOpenChange={setPurchaseInvModalOpen}
+        onSwitchToTransaction={(type) => {
+          setPurchaseInvModalOpen(false);
           setPendingTxnType(type);
           setEditingTxn(null);
           setTxnModalOpen(true);
