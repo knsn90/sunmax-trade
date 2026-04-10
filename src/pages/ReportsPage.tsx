@@ -2590,33 +2590,59 @@ export function CustomerReportTab() {
               /* Yedek görünüm: ticaret dosyası tutarları */
               <div className="overflow-x-auto">
                 <table className="w-full">
+                  <colgroup>
+                    <col className="w-10" />
+                    <col />
+                    <col className="w-36" />
+                    <col className="w-32" />
+                    <col className="w-36" />
+                    <col className="w-40" />
+                  </colgroup>
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      {L.prdHdr.map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                    <tr className="bg-gray-50/80 border-b border-gray-100">
+                      {L.prdHdr.map((h, hi) => (
+                        <th
+                          key={h}
+                          className={cn(
+                            'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap',
+                            hi === 0 ? 'text-center' : hi >= 2 && hi <= 4 ? 'text-right' : 'text-left',
+                          )}
+                        >{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-50">
                     {customerFiles.map((f, i) => {
                       const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
                       const tot = qty * (f.selling_price ?? 0);
                       return (
-                        <tr key={f.id} className={cn('border-b border-gray-50 transition-colors', i % 2 === 1 ? 'bg-gray-50/40' : 'hover:bg-gray-50/60')}>
-                          <td className="px-4 py-3 text-[11px] text-gray-400 text-center font-mono">{i + 1}</td>
-                          <td className="px-4 py-3 text-[12px] font-semibold text-gray-900">{f.product?.name ?? '—'}</td>
-                          <td className="px-4 py-3 text-[12px] text-gray-600 text-right">{fN(f.selling_price ?? 0)}</td>
-                          <td className="px-4 py-3 text-[12px] text-gray-600 text-right">{fN(qty, 3)}</td>
-                          <td className="px-4 py-3 text-[13px] font-bold text-green-700 text-right">{fUSD(tot)}</td>
-                          <td className="px-4 py-3 text-[10px] font-mono text-gray-400">{f.file_no}</td>
+                        <tr key={f.id} className={cn('transition-colors', i % 2 === 1 ? 'bg-gray-50/30' : 'hover:bg-gray-50/60')}>
+                          <td className="px-4 py-3.5 text-[11px] text-gray-300 text-center font-mono tabular-nums">{i + 1}</td>
+                          <td className="px-4 py-3.5">
+                            <span className="text-[13px] font-bold text-gray-900">{f.product?.name ?? '—'}</span>
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <span className="text-[12px] font-semibold text-gray-700 tabular-nums">{fN(f.selling_price ?? 0, 3)}</span>
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <span className="text-[13px] font-bold text-gray-800 tabular-nums">{fN(qty, 3)}</span>
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <span className="text-[14px] font-extrabold text-green-700 tabular-nums">{fUSD(tot)}</span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-[10px] font-mono font-semibold text-gray-500 tracking-wide">{f.file_no}</span>
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-green-50/60 border-t-2 border-green-100">
-                      <td colSpan={4} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalProducts}</td>
-                      <td className="px-4 py-3 text-[14px] font-black text-green-700 text-right">{fUSD(totalProducts)}</td>
+                    <tr className="bg-green-50 border-t-2 border-green-100">
+                      <td colSpan={4} className="px-4 py-3.5 text-[11px] font-bold text-right text-gray-500 uppercase tracking-wider">{L.totalProducts}</td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span className="text-[15px] font-black text-green-700 tabular-nums">{fUSD(totalProducts)}</span>
+                      </td>
                       <td />
                     </tr>
                   </tfoot>
