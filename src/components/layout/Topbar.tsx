@@ -9,6 +9,7 @@ import { useExchangeRates } from '@/hooks/useExchangeRate';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { useSettings } from '@/hooks/useSettings';
 
 const PATH_TITLE_KEYS: Record<string, string> = {
   '/dashboard': 'topbar.pageTitles.dashboard',
@@ -71,6 +72,8 @@ export function Topbar() {
   const { profile, signOut } = useAuth();
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
+  const { data: settings } = useSettings();
+  const companyLogo = settings?.logo_url?.trim() || null;
 
   const basePath = '/' + location.pathname.split('/').filter(Boolean)[0];
   const titleKey = PATH_TITLE_KEYS[basePath];
@@ -88,11 +91,21 @@ export function Topbar() {
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
       >
         {/* Mobile logo */}
-        <div className="md:hidden flex items-center gap-2 flex-1">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#dc2626' }}>
-            <span className="font-black text-xs text-white">S</span>
-          </div>
-          <span className="font-black text-sm tracking-tight text-gray-900">{t('brand.name')}</span>
+        <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
+          {companyLogo ? (
+            <img
+              src={companyLogo}
+              alt={t('brand.name')}
+              className="h-8 max-w-[160px] object-contain shrink-0"
+            />
+          ) : (
+            <>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#dc2626' }}>
+                <span className="font-black text-xs text-white">S</span>
+              </div>
+              <span className="font-black text-sm tracking-tight text-gray-900">{t('brand.name')}</span>
+            </>
+          )}
         </div>
 
         <ExchangeRateBar isDonezo={isDonezo} />
