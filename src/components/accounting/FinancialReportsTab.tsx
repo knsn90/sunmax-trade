@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useKasalar } from '@/hooks/useKasalar';
 import { useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -6,8 +6,48 @@ import { useTransfers } from '@/hooks/useTransfers';
 import type { Transaction, Kasa, BankAccount, AccountTransfer } from '@/types/database';
 import { fCurrency, fDate } from '@/lib/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Banknote, Landmark, TrendingUp, CalendarDays, ArrowDownLeft, ArrowUpRight, ArrowLeftRight } from 'lucide-react';
+import { Banknote, Landmark, TrendingUp, CalendarDays, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Sparkles, X, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { streamFinanceAnalysis } from '@/lib/financeAI';
+
+/** Basit markdown renderer — ##, **, - destekler */
+function AiMarkdown({ text }: { text: string }) {
+  const lines = text.split('\n');
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, i) => {
+        if (line.startsWith('## ')) {
+          return (
+            <h3 key={i} className="text-[13px] font-bold text-gray-900 mt-4 first:mt-0">
+              {line.slice(3)}
+            </h3>
+          );
+        }
+        if (line.startsWith('### ')) {
+          return (
+            <h4 key={i} className="text-[12px] font-bold text-gray-700 mt-3">
+              {line.slice(4)}
+            </h4>
+          );
+        }
+        if (line.startsWith('- ') || line.startsWith('* ')) {
+          return (
+            <div key={i} className="flex gap-2 text-[12px] text-gray-600">
+              <span className="text-gray-300 shrink-0 mt-0.5">•</span>
+              <span dangerouslySetInnerHTML={{ __html: line.slice(2).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+            </div>
+          );
+        }
+        if (line.trim() === '') return <div key={i} className="h-1" />;
+        return (
+          <p key={i} className="text-[12px] text-gray-600 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 /** Para bize geliyor mu? — TransactionModal ile aynı mantık */
 function isMoneyIn(txnType: string, partyType: string | null): boolean {
@@ -120,6 +160,13 @@ export function FinancialReportsTab() {
   const [selectedAccount, setSelectedAccount] = useState<AccountOption | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  // ── AI Analizi state ───────────────────────────────────────────────────────
+  const [aiText, setAiText] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiOpen, setAiOpen] = useState(false);
+  const abortRef = useRef(false);
 
   // ── Hesap başına bağlı işlemleri ayır ─────────────────────────────────────
   const txnsByKasa = useMemo(() => {
@@ -367,6 +414,58 @@ export function FinancialReportsTab() {
     return s + amt;
   }, 0);
 
+  // ── AI analizi tetikle ─────────────────────────────────────────────────────
+  async function handleAiAnalysis() {
+    setAiOpen(true);
+    setAiText('');
+    setAiError('');
+    setAiLoading(true);
+    abortRef.current = false;
+
+    // Kur verisi — Topbar'dan zaten çekiliyor, localStorage'dan oku veya sabit fallback
+    let eurRate = 1.12;
+    let tryRate = 38;
+    try {
+      const stored = localStorage.getItem('sunmax_rates');
+      if (stored) {
+        const parsed = JSON.parse(stored) as { EUR?: number; TRY?: number };
+        if (parsed.EUR) eurRate = parsed.EUR;
+        if (parsed.TRY) tryRate = parsed.TRY;
+      }
+    } catch { /* fallback */ }
+
+    try {
+      const gen = streamFinanceAnalysis({
+        today: new Date().toISOString().slice(0, 10),
+        kasaBalances: kasaBalances.map(({ kasa, balance }) => ({
+          name: kasa.name,
+          currency: kasa.currency,
+          balance,
+        })),
+        bankBalances: bankBalances.map(({ bank, balance }) => ({
+          name: `${bank.bank_name}${bank.account_name ? ` — ${bank.account_name}` : ''}`,
+          currency: bank.currency ?? 'USD',
+          balance,
+        })),
+        recentTxns: allTxns,
+        allTxns,
+        kasalar,
+        bankAccounts,
+        eurRate,
+        tryRate,
+      });
+
+      for await (const chunk of gen) {
+        if (abortRef.current) break;
+        setAiText(prev => prev + chunk);
+      }
+    } catch (e) {
+      setAiError((e as Error).message);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
 
@@ -377,6 +476,17 @@ export function FinancialReportsTab() {
           <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
             Nakit Pozisyonu
           </span>
+          <button
+            onClick={handleAiAnalysis}
+            disabled={aiLoading}
+            className="ml-auto flex items-center gap-1.5 px-3 h-7 rounded-xl text-[11px] font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+            style={{ background: accent }}
+          >
+            {aiLoading
+              ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analiz Ediliyor…</>
+              : <><Sparkles className="h-3 w-3" /> AI Analizi</>
+            }
+          </button>
         </div>
         <div className="p-4 space-y-4">
 
@@ -437,6 +547,51 @@ export function FinancialReportsTab() {
           )}
         </div>
       </div>
+
+      {/* ── BÖLÜM 1.5: AI Analiz Paneli ──────────────────────────────────── */}
+      {aiOpen && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60 flex items-center gap-2">
+            <Sparkles className="h-4 w-4" style={{ color: accent }} />
+            <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">AI Finansal Analiz</span>
+            <div className="ml-auto flex items-center gap-2">
+              {!aiLoading && aiText && (
+                <button
+                  onClick={handleAiAnalysis}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50"
+                >
+                  <RefreshCw className="h-3 w-3" /> Yenile
+                </button>
+              )}
+              <button
+                onClick={() => { abortRef.current = true; setAiOpen(false); }}
+                className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-50"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            {aiError ? (
+              <div className="flex items-start gap-3 p-4 bg-red-50 rounded-xl">
+                <span className="text-red-500 text-[12px]">⚠ {aiError}</span>
+              </div>
+            ) : aiText ? (
+              <div className="prose prose-sm max-w-none text-gray-700">
+                <AiMarkdown text={aiText} />
+                {aiLoading && (
+                  <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse rounded-sm ml-0.5" />
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 py-6 text-gray-400">
+                <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
+                <span className="text-[13px]">Finansal veriler analiz ediliyor…</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── BÖLÜM 2: Hesap Defteri ────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
