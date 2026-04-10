@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useSuppliers } from '@/hooks/useEntities';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
-import { useCreateTransaction } from '@/hooks/useTransactions';
+import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { today, fCurrency, fN } from '@/lib/formatters';
 import { toast } from 'sonner';
+import type { Transaction } from '@/types/database';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -36,13 +37,17 @@ const PAYMENT_METHODS = [
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Mevcut işlem — varsa düzenleme modu */
+  transaction?: Transaction | null;
   onSwitchToTransaction?: (type: string) => void;
 }
 
-export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction }: Props) {
+export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitchToTransaction }: Props) {
   const { data: suppliers = [] } = useSuppliers();
   const { data: allFiles  = [] } = useTradeFiles();
   const createTxn = useCreateTransaction();
+  const updateTxn = useUpdateTransaction();
+  const isEdit = !!transaction;
 
   // ── Fatura Bilgileri ──────────────────────────────────────────────────
   const [faturaNo,     setFaturaNo]     = useState('');
@@ -65,7 +70,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction
   const [mensei,      setMensei]      = useState('');
 
   // ── Fiyat ve Döviz ────────────────────────────────────────────────────
-  const [currency,   setCurrency]   = useState<'USD' | 'EUR' | 'TRY'>('USD');
+  const [currency,   setCurrency]   = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
   const [birimFiyat, setBirimFiyat] = useState(0);
   const [dovizKuru,  setDovizKuru]  = useState(1);
 
@@ -86,9 +91,49 @@ export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction
   const toplamUsd       = malHizmetTutari + kdvTutari;
   const toplamTry       = toplamUsd * dovizKuru;
 
-  // ── Reset ─────────────────────────────────────────────────────────────
+  // ── Reset / Pre-fill ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!open) {
+    if (!open) return;
+
+    if (transaction) {
+      // Düzenleme modu: mevcut veriyi doldur
+      setFaturaTarihi(transaction.transaction_date);
+      setFaturaNo(transaction.reference_no ?? '');
+      setSupplierId(transaction.supplier_id ?? '');
+      setFileId(transaction.trade_file_id ?? '');
+      setAciklama(transaction.description ?? '');
+      setCurrency((transaction.currency ?? 'USD') as typeof currency);
+      setDovizKuru(transaction.exchange_rate ?? 1);
+      setPaymentMethod((transaction.payment_method ?? '') as typeof paymentMethod);
+      setMasrafTuru(transaction.masraf_turu ?? '');
+      setMasrafTutar(transaction.masraf_tutar ?? 0);
+      setMasrafCurrency((transaction.masraf_currency ?? 'USD') as 'USD' | 'EUR' | 'TRY');
+      setMasrafRate(transaction.masraf_rate ?? 1);
+      setMasrafOpen((transaction.masraf_tutar ?? 0) > 0);
+
+      // notes alanından ek bilgileri çıkar
+      let notesObj: Record<string, number | string> = {};
+      try { notesObj = JSON.parse(transaction.notes ?? '{}'); } catch { /* ignore */ }
+
+      const bp = Number(notesObj.birim_fiyat ?? 0);
+      const kv = Number(notesObj.kdv_orani ?? 0);
+      setBirimFiyat(bp);
+      setKdvOrani(kv);
+      setBrutAgirlik(Number(notesObj.brut_agirlik_kg ?? 0));
+      setKapAdeti(Number(notesObj.kap_adeti ?? 0));
+      setMensei(String(notesObj.mensei ?? ''));
+
+      // net_agirlik: önce notes'tan al, yoksa amount'tan hesapla
+      if (notesObj.net_agirlik) {
+        setNetAgirlik(Number(notesObj.net_agirlik));
+      } else if (bp > 0) {
+        const divisor = bp * (1 + kv / 100);
+        setNetAgirlik(divisor > 0 ? parseFloat((transaction.amount / divisor).toFixed(3)) : 0);
+      } else {
+        setNetAgirlik(0);
+      }
+    } else {
+      // Yeni kayıt: formu sıfırla
       setFaturaNo(''); setFaturaTarihi(today());
       setSupplierId(''); setFileId('');
       setAciklama(''); setNetAgirlik(0); setBrutAgirlik(0); setKapAdeti(0); setMensei('');
@@ -97,19 +142,23 @@ export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction
       setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru('');
       setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
     }
-  }, [open]);
-
-  useEffect(() => { setFileId(''); }, [supplierId]);
+  }, [open, transaction]);
 
   useEffect(() => {
-    if (!pickedFile) return;
+    // Yeni kayıt modunda tedarikçi değişince dosyayı sıfırla
+    if (!transaction) setFileId('');
+  }, [supplierId, transaction]);
+
+  useEffect(() => {
+    // Dosya seçilince ürün bilgilerini otomatik doldur (sadece yeni kayıt modunda)
+    if (!pickedFile || transaction) return;
     setAciklama(pickedFile.product?.name ?? '');
     setNetAgirlik(pickedFile.delivered_admt ?? pickedFile.tonnage_mt ?? 0);
     setBrutAgirlik(pickedFile.gross_weight_kg ?? 0);
     setKapAdeti(pickedFile.packages ?? 0);
     setBirimFiyat(pickedFile.purchase_price ?? 0);
-    setCurrency((pickedFile.purchase_currency as 'USD' | 'EUR' | 'TRY') ?? 'USD');
-  }, [pickedFile]);
+    setCurrency((pickedFile.purchase_currency as typeof currency) ?? 'USD');
+  }, [pickedFile, transaction]);
 
   // ── Submit ────────────────────────────────────────────────────────────
   async function handleSubmit() {
@@ -119,20 +168,21 @@ export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction
 
     const supplier = suppliers.find(s => s.id === supplierId);
     const notesObj = {
-      brut_agirlik_kg: brutAgirlik || undefined,
-      kap_adeti:       kapAdeti    || undefined,
-      mensei:          mensei      || undefined,
+      net_agirlik:     netAgirlik   || undefined,
+      brut_agirlik_kg: brutAgirlik  || undefined,
+      kap_adeti:       kapAdeti     || undefined,
+      mensei:          mensei       || undefined,
       birim_fiyat:     birimFiyat,
       kdv_orani:       kdvOrani,
       kdv_tutari:      kdvTutari,
-      toplam_try:      toplamTry   || undefined,
+      toplam_try:      toplamTry    || undefined,
     };
 
-    await createTxn.mutateAsync({
+    const payload = {
       transaction_date:    faturaTarihi,
-      transaction_type:    'purchase_inv',
+      transaction_type:    'purchase_inv' as const,
       trade_file_id:       fileId || undefined,
-      party_type:          'supplier',
+      party_type:          'supplier' as const,
       customer_id:         '',
       supplier_id:         supplierId,
       service_provider_id: '',
@@ -142,38 +192,47 @@ export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction
       currency,
       amount:              toplamUsd,
       exchange_rate:       dovizKuru,
-      paid_amount:         0,
-      payment_status:      'open',
+      paid_amount:         transaction?.paid_amount ?? 0,
+      payment_status:      (transaction?.payment_status ?? 'open') as 'open' | 'partial' | 'paid',
       payment_method:      paymentMethod,
       bank_name:           '',
       bank_account_no:     '',
       swift_bic:           '',
-      card_type:           '',
+      card_type:           '' as const,
       cash_receiver:       '',
       masraf_turu:         masrafTuru,
       masraf_tutar:        masrafTutar,
-      masraf_currency:     masrafCurrency,
+      masraf_currency:     masrafCurrency as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
       masraf_rate:         masrafRate,
       notes:               JSON.stringify(notesObj),
       kasa_id:             '',
       bank_account_id:     '',
-    });
+    };
 
-    toast.success('Fatura kaydedildi');
+    if (isEdit && transaction) {
+      await updateTxn.mutateAsync({ id: transaction.id, data: payload });
+      toast.success('Fatura güncellendi');
+    } else {
+      await createTxn.mutateAsync(payload);
+      toast.success('Fatura kaydedildi');
+    }
+
     onOpenChange(false);
   }
+
+  const isSaving = createTxn.isPending || updateTxn.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Satın Alma Faturası</DialogTitle>
+          <DialogTitle>{isEdit ? 'Satın Alma Faturasını Düzenle' : 'Satın Alma Faturası'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
 
-          {/* ── İşlem Türü ── */}
-          {onSwitchToTransaction && (
+          {/* ── İşlem Türü (sadece yeni kayıt modunda, tür değiştirme için) ── */}
+          {!isEdit && onSwitchToTransaction && (
             <FormRow cols={2}>
               <FormGroup label="İşlem Türü">
                 <NativeSelect
@@ -297,6 +356,8 @@ export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction
                 <NativeSelect value={currency} onChange={e => setCurrency(e.target.value as typeof currency)}>
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
+                  <option value="AED">AED</option>
+                  <option value="GBP">GBP</option>
                   <option value="TRY">TRY</option>
                 </NativeSelect>
               </FormGroup>
@@ -414,9 +475,9 @@ export function PurchaseInvoiceModal({ open, onOpenChange, onSwitchToTransaction
           <Button
             variant="secondary"
             onClick={handleSubmit}
-            disabled={createTxn.isPending}
+            disabled={isSaving}
           >
-            {createTxn.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            {isSaving ? 'Kaydediliyor…' : isEdit ? 'Güncelle' : 'Kaydet'}
           </Button>
         </DialogFooter>
       </DialogContent>

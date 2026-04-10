@@ -198,6 +198,7 @@ export function AccountingPage() {
   const [editingSaleInv, setEditingSaleInv] = useState<Invoice | null>(null);
   const [saleInvModalOpen, setSaleInvModalOpen] = useState(false);
   const [purchaseInvModalOpen, setPurchaseInvModalOpen] = useState(false);
+  const [editingPurchaseInv, setEditingPurchaseInv] = useState<Transaction | null>(null);
 
   const tabDefaultType: Record<AccTab, string | undefined> = {
     all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', ayarlar: undefined,
@@ -322,7 +323,15 @@ export function AccountingPage() {
   }
 
   function openNew() { setEditingTxn(null); setTxnModalOpen(true); }
-  function openEdit(txn: Transaction) { setEditingTxn(txn); setTxnModalOpen(true); }
+  function openEdit(txn: Transaction) {
+    if (txn.transaction_type === 'purchase_inv') {
+      setEditingPurchaseInv(txn);
+      setPurchaseInvModalOpen(true);
+    } else {
+      setEditingTxn(txn);
+      setTxnModalOpen(true);
+    }
+  }
   function handleDelete(id: string) {
     if (window.confirm(t('confirm.deleteTransaction'))) deleteTxn.mutate(id);
   }
@@ -915,9 +924,11 @@ export function AccountingPage() {
       />
       <PurchaseInvoiceModal
         open={purchaseInvModalOpen}
-        onOpenChange={setPurchaseInvModalOpen}
+        onOpenChange={(v) => { setPurchaseInvModalOpen(v); if (!v) setEditingPurchaseInv(null); }}
+        transaction={editingPurchaseInv}
         onSwitchToTransaction={(type) => {
           setPurchaseInvModalOpen(false);
+          setEditingPurchaseInv(null);
           setPendingTxnType(type);
           setEditingTxn(null);
           setTxnModalOpen(true);
