@@ -386,31 +386,30 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
 
             {isNonUsd && (
               <FormRow cols={2}>
-                <FormGroup label="Döviz Kuru">
-                  {/* Yön toggle */}
-                  <div className="flex gap-1 mb-1.5">
-                    <button type="button"
-                      onClick={() => setKurYon('direct')}
-                      className={cn('flex-1 py-1 rounded-lg text-[10px] font-bold transition-all border',
-                        kurYon === 'direct'
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-white text-gray-400 border-gray-200 hover:text-gray-600')}
-                    >1 {currency} = ? USD</button>
-                    <button type="button"
-                      onClick={() => setKurYon('inverse')}
-                      className={cn('flex-1 py-1 rounded-lg text-[10px] font-bold transition-all border',
-                        kurYon === 'inverse'
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-white text-gray-400 border-gray-200 hover:text-gray-600')}
-                    >1 USD = ? {currency}</button>
+                <div className="flex flex-col gap-1">
+                  <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Döviz Kuru</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg shrink-0">
+                      <button type="button" onClick={() => setKurYon('direct')}
+                        className={cn('px-2 h-7 rounded-md text-[9px] font-bold transition-all whitespace-nowrap',
+                          kurYon === 'direct' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
+                        {currency}→USD
+                      </button>
+                      <button type="button" onClick={() => setKurYon('inverse')}
+                        className={cn('px-2 h-7 rounded-md text-[9px] font-bold transition-all whitespace-nowrap',
+                          kurYon === 'inverse' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
+                        USD→{currency}
+                      </button>
+                    </div>
+                    <Input
+                      type="number" step="0.0001"
+                      value={dovizKuru || ''}
+                      onChange={e => setDovizKuru(Number(e.target.value))}
+                      placeholder="0.0000"
+                      className="min-w-0"
+                    />
                   </div>
-                  <Input
-                    type="number" step="0.0001"
-                    value={dovizKuru || ''}
-                    onChange={e => setDovizKuru(Number(e.target.value))}
-                    placeholder={kurYon === 'direct' ? `1 ${currency} = kaç USD` : `1 USD = kaç ${currency}`}
-                  />
-                </FormGroup>
+                </div>
               </FormRow>
             )}
 
