@@ -31,8 +31,8 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
     resolver: zodResolver(deliverySchema),
     defaultValues: {
       delivered_admt: file?.tonnage_mt ?? 0,
-      gross_weight_kg: 0,
-      packages: 0,
+      gross_weight_kg: undefined,
+      packages: undefined,
       arrival_date: '',
       bl_number: '',
       septi_ref: '',
@@ -52,8 +52,8 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
       setStep(isBatch || hasBatches ? 'form' : 'ask');
       reset({
         delivered_admt: file.delivered_admt ?? file.tonnage_mt ?? 0,
-        gross_weight_kg: file.gross_weight_kg ?? 0,
-        packages: file.packages ?? 0,
+        gross_weight_kg: file.gross_weight_kg ?? undefined,
+        packages: file.packages ?? undefined,
         arrival_date: file.arrival_date ?? '',
         bl_number: file.bl_number ?? '',
         septi_ref: file.septi_ref ?? file.register_no ?? '',

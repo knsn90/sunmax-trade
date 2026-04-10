@@ -121,8 +121,8 @@ export type SaleConversionFormData = z.infer<typeof saleConversionSchema>;
 
 export const deliverySchema = z.object({
   delivered_admt: z.coerce.number().positive('ADMT is required'),
-  gross_weight_kg: z.coerce.number().min(0).default(0),
-  packages: z.coerce.number().int().min(0).default(0),
+  gross_weight_kg: z.coerce.number().min(0).catch(0),
+  packages: z.coerce.number().int().min(0).catch(0),
   arrival_date: z.string().optional(),
   bl_number: z.string().default(''),
   septi_ref: z.string().default(''),
@@ -216,7 +216,7 @@ export const transactionSchema = z.object({
   currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
   amount: z.coerce.number().positive('Amount required'),
   exchange_rate: z.coerce.number().positive().default(1),
-  paid_amount: z.coerce.number().min(0).default(0),
+  paid_amount: z.coerce.number().min(0).catch(0),
   payment_status: z.enum(['open', 'partial', 'paid']).default('open'),
   payment_method: z.enum(['nakit', 'banka_havalesi', 'kredi_karti', '']).default(''),
   bank_name: z.string().default(''),
@@ -225,7 +225,7 @@ export const transactionSchema = z.object({
   card_type: z.enum(['visa', 'mastercard', 'amex', 'troy', '']).default(''),
   cash_receiver: z.string().default(''),
   masraf_turu: z.string().default(''),
-  masraf_tutar: z.coerce.number().min(0).default(0),
+  masraf_tutar: z.coerce.number().min(0).catch(0),
   masraf_currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
   masraf_rate: z.coerce.number().positive().default(1),
   notes: z.string().default(''),

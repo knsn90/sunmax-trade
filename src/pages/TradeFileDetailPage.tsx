@@ -480,7 +480,13 @@ export function TradeFileDetailPage() {
   // ── Parti / kısmi sevkiyat hesaplamaları ────────────────────────────────────
   const isBatch    = !!file.parent_file_id;                          // bu dosya bir alt parti mi?
   const isPartial  = !isBatch && (file.batches?.length ?? 0) > 0;   // ana dosyada parti var mı?
-  const allBatchesDone = isPartial && (file.batches ?? []).every(b => b.status === 'completed');
+  // Kalan tonaj: tüm parti tonajları ana dosyadan düşülür
+  const usedTonnage   = (file.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const remainingTonnage = Math.max(0, file.tonnage_mt - usedTonnage);
+  // Tamamlandı butonu: tüm partiler completed VE tüm tonaj dağıtılmış olmalı
+  const allBatchesDone = isPartial
+    && remainingTonnage === 0
+    && (file.batches ?? []).every(b => b.status === 'completed');
   // Batch file_no = "ANA/P1" → ana dosya no = "ANA"
   const parentFileNo = isBatch ? file.file_no.split('/').slice(0, -1).join('/') : null;
 
