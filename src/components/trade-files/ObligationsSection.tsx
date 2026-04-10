@@ -373,7 +373,9 @@ function PartyPanel({
 }
 
 // ─── Main section ──────────────────────────────────────────────────────────────
-export function ObligationsSection({ file, writable }: { file: TradeFile; writable: boolean }) {
+export function ObligationsSection({
+  file, writable, collapsed = false, onToggle,
+}: { file: TradeFile; writable: boolean; collapsed?: boolean; onToggle?: () => void }) {
   const { t } = useTranslation('tradeFiles');
   const { data: obligations = [], isLoading } = useTradeObligations(file.id);
 
@@ -394,59 +396,72 @@ export function ObligationsSection({ file, writable }: { file: TradeFile; writab
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
       {/* Header */}
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+      <div
+        className={cn('px-6 py-4 flex items-center justify-between border-b border-gray-50', onToggle ? 'cursor-pointer select-none' : '')}
+        onClick={onToggle}
+      >
         <div className="flex items-center gap-2.5">
           <Wallet className="h-4 w-4 text-gray-400" />
           <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
             {t('obligations.title')}
           </span>
         </div>
-        {obligations.length > 0 && (
-          <div className="flex items-center gap-3">
-            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full bg-green-500 transition-all duration-500"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <span className="text-[11px] font-semibold text-gray-400 tabular-nums">
-              {pct}% {t('obligations.collected')}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Advance rate summary strip */}
-      {advanceAmt > 0 && (
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-50 bg-blue-50/30">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Ön Ödeme</span>
-            <span className="text-[11px] font-extrabold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-              %{advanceRate}
-            </span>
-          </div>
-          <span className="text-[14px] font-extrabold text-gray-900">
-            {fCurrency(advanceAmt, currency)}
-          </span>
+        <div className="flex items-center gap-3">
+          {obligations.length > 0 && !collapsed && (
+            <>
+              <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-green-500 transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-semibold text-gray-400 tabular-nums">
+                {pct}% {t('obligations.collected')}
+              </span>
+            </>
+          )}
+          {onToggle && (collapsed
+            ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+          )}
         </div>
-      )}
-
-      {/* Content */}
-      <div className="px-5 py-4">
-        {isLoading ? (
-          <div className="text-[12px] text-gray-400 py-3 text-center">{t('obligations.loading')}</div>
-        ) : obligations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-6 text-gray-400">
-            <Wallet className="h-6 w-6 mb-2 opacity-20" />
-            <p className="text-[12px] font-medium text-gray-500">{t('obligations.noObligations')}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <PartyPanel party="customer" obligations={obligations} file={file} writable={writable} />
-            <PartyPanel party="supplier" obligations={obligations} file={file} writable={writable} />
-          </div>
-        )}
       </div>
+
+      {!collapsed && (
+        <>
+          {/* Advance rate summary strip */}
+          {advanceAmt > 0 && (
+            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-50 bg-blue-50/30">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Ön Ödeme</span>
+                <span className="text-[11px] font-extrabold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                  %{advanceRate}
+                </span>
+              </div>
+              <span className="text-[14px] font-extrabold text-gray-900">
+                {fCurrency(advanceAmt, currency)}
+              </span>
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="px-5 py-4">
+            {isLoading ? (
+              <div className="text-[12px] text-gray-400 py-3 text-center">{t('obligations.loading')}</div>
+            ) : obligations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-gray-400">
+                <Wallet className="h-6 w-6 mb-2 opacity-20" />
+                <p className="text-[12px] font-medium text-gray-500">{t('obligations.noObligations')}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <PartyPanel party="customer" obligations={obligations} file={file} writable={writable} />
+                <PartyPanel party="supplier" obligations={obligations} file={file} writable={writable} />
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

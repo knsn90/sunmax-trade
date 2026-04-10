@@ -13,6 +13,7 @@ import { fCurrency } from '@/lib/formatters';
 import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
+import { FileActivityPopover } from '@/components/trade-files/FileActivityPopover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -179,9 +180,12 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
           )}
         </div>
       </div>
-      <div className="flex flex-col items-end gap-1 shrink-0">
+      <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
         <span className="text-[11px] text-gray-400">{fDate(file.file_date)}</span>
-        <MobileRowMenu onEdit={onEdit} onDelete={onDelete} writable={writable} />
+        <div className="flex items-center gap-1">
+          <FileActivityPopover file={file} />
+          <MobileRowMenu onEdit={onEdit} onDelete={onDelete} writable={writable} />
+        </div>
       </div>
     </div>
   );
@@ -229,22 +233,27 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
         </div>
       </td>
       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-        {writable && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
-            >
-              <Pencil className="h-3 w-3" /> Düzenle
-            </button>
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
-            >
-              <Trash2 className="h-3 w-3" /> Sil
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          {/* Activity info icon — always visible */}
+          <FileActivityPopover file={file} />
+
+          {writable && (
+            <>
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
+              >
+                <Pencil className="h-3 w-3" /> Düzenle
+              </button>
+              <button
+                onClick={onDelete}
+                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+              >
+                <Trash2 className="h-3 w-3" /> Sil
+              </button>
+            </>
+          )}
+        </div>
       </td>
     </tr>
   );

@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/services/supabase';
 import { journalService } from '@/services/journalService';
-import { useTransactions, useTransactionSummary, useDeleteTransaction } from '@/hooks/useTransactions';
+import { useTransactions, useInfiniteTransactions, useTransactionSummary, useDeleteTransaction } from '@/hooks/useTransactions';
 import { useSaleInvoices, useDeleteInvoice } from '@/hooks/useDocuments';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -139,17 +140,45 @@ export function AccountingPage() {
     { key: 'ayarlar', label: 'Ayarlar' },
   ];
 
-  const [activeTab, setActiveTab] = useState<AccTab>('all');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<AccTab>(() => {
+    const t = (location.state as { tab?: string } | null)?.tab;
+    return (['all','buy','svc','sale','cash','ayarlar'].includes(t ?? '') ? t : 'all') as AccTab;
+  });
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
-  const txnTab = (activeTab === 'sale' || activeTab === 'ayarlar') ? 'all' : activeTab;
-  const { data: txns = [], isLoading } = useTransactions({
-    tab: txnTab,
+  // 'all' tab loads everything at once (for client-side search)
+  // buy / svc / cash / sale tabs use paginated infinite loading
+  const isPaginatedTab = activeTab === 'buy' || activeTab === 'svc' || activeTab === 'cash';
+  const paginatedFilters = {
+    tab: activeTab as 'buy' | 'svc' | 'cash',
     type: typeFilter as TransactionType | undefined || undefined,
     status: statusFilter as PaymentStatus | undefined || undefined,
-  });
+  };
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: infiniteLoading,
+  } = useInfiniteTransactions(paginatedFilters);
+
+  const { data: allTxns = [], isLoading: allLoading } = useTransactions(
+    activeTab === 'all' ? {
+      type: typeFilter as TransactionType | undefined || undefined,
+      status: statusFilter as PaymentStatus | undefined || undefined,
+    } : undefined,
+  );
+
+  const isLoading = isPaginatedTab ? infiniteLoading : allLoading;
+  const txns = useMemo(() => {
+    if (isPaginatedTab) return infiniteData?.pages.flatMap(p => p.data) ?? [];
+    return allTxns;
+  }, [isPaginatedTab, infiniteData, allTxns]);
+  const totalCount = isPaginatedTab ? (infiniteData?.pages[0]?.count ?? 0) : txns.length;
+
   // sale_inv transactions (advance receivables) shown separately in sale tab
   const { data: saleInvTxns = [] } = useTransactions(
     activeTab === 'sale' ? { tab: 'sale' } : undefined,
@@ -699,6 +728,15 @@ export function AccountingPage() {
               ))}
             </div>
 
+            {/* Kayıt sayacı — paginated tablarda göster */}
+            {isPaginatedTab && txns.length > 0 && (
+              <div className="flex items-center justify-between px-2 py-1">
+                <span className="text-[11px] text-gray-400">
+                  {txns.length} / {totalCount} kayıt gösteriliyor
+                </span>
+              </div>
+            )}
+
             {/* Desktop — responsive register table, no horizontal scroll */}
             <div className="hidden md:block bg-white rounded-2xl shadow-sm">
               <table className="w-full table-fixed">
@@ -820,6 +858,27 @@ export function AccountingPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* ── Daha Fazla Yükle ──────────────────────────────────────── */}
+            {isPaginatedTab && hasNextPage && (
+              <div className="flex flex-col items-center py-4 gap-1">
+                <button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white shadow-sm disabled:opacity-60 transition-opacity hover:opacity-90"
+                  style={{ background: accent }}
+                >
+                  {isFetchingNextPage
+                    ? 'Yükleniyor…'
+                    : `Daha Fazla Yükle (${totalCount - txns.length} kaldı)`}
+                </button>
+              </div>
+            )}
+            {isPaginatedTab && !hasNextPage && txns.length > 0 && totalCount > 30 && (
+              <p className="text-center text-[11px] text-gray-400 py-3">
+                Tüm {totalCount} kayıt yüklendi
+              </p>
+            )}
           </>
         )}
 

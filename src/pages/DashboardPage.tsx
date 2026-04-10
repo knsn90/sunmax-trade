@@ -17,16 +17,18 @@ import { CSS } from '@dnd-kit/utilities';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useTransactions, useTransactionSummary } from '@/hooks/useTransactions';
 import { useAuth } from '@/hooks/useAuth';
+import { canWrite } from '@/lib/permissions';
 import { fUSD, fDate } from '@/lib/formatters';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { usePriceList } from '@/hooks/useEntities';
 import { saveDashboardPrefs } from '@/services/userService';
+import { NewFileModal } from '@/components/trade-files/NewFileModal';
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet, Tag,
-  GripVertical, Maximize2, Minimize2,
+  GripVertical, Maximize2, Minimize2, Plus,
 } from 'lucide-react';
 
 // ─── Widget order & sizes ─────────────────────────────────────────────────────
@@ -105,12 +107,16 @@ function initials(name: string) {
 }
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, trend, icon, accent }: {
+function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
   label: string; value: string; sub?: string;
   trend?: 'up' | 'down'; icon: React.ReactNode; accent: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl px-4 py-4 md:px-5 md:py-4 shadow-sm border border-gray-100 overflow-hidden">
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-2xl px-4 py-4 md:px-5 md:py-4 shadow-sm border border-gray-100 overflow-hidden${onClick ? ' cursor-pointer hover:shadow-md hover:border-gray-200 active:scale-[0.98] transition-all' : ''}`}
+    >
       {/* Mobile */}
       <div className="flex items-center gap-3 md:hidden">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
@@ -235,6 +241,8 @@ export function DashboardPage() {
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
   const accent = isDonezo ? '#dc2626' : '#2563eb';
+  const writable = canWrite(profile?.role);
+  const [newFileOpen, setNewFileOpen] = useState(false);
 
   const userId = profile?.id ?? 'default';
   const dbPrefs = profile?.dashboard_prefs;
@@ -665,9 +673,21 @@ export function DashboardPage() {
     <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8">
 
       {/* Mobile greeting */}
-      <div className="md:hidden px-4 pt-4 pb-2">
-        <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{greeting}</div>
-        <div className="text-[17px] font-extrabold text-gray-900 leading-tight">{profile?.full_name?.split(' ')[0]}</div>
+      <div className="md:hidden px-4 pt-4 pb-2 flex items-center justify-between">
+        <div>
+          <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{greeting}</div>
+          <div className="text-[17px] font-extrabold text-gray-900 leading-tight">{profile?.full_name?.split(' ')[0]}</div>
+        </div>
+        {writable && (
+          <button
+            onClick={() => setNewFileOpen(true)}
+            className="flex items-center gap-1.5 h-9 px-4 rounded-full text-white text-[12px] font-semibold shadow-sm active:opacity-80"
+            style={{ background: accent }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Yeni Dosya
+          </button>
+        )}
       </div>
 
       <div className="px-3 md:px-6 space-y-3 md:space-y-4">
@@ -678,19 +698,35 @@ export function DashboardPage() {
             <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{greeting}</div>
             <div className="text-[22px] font-extrabold text-gray-900 leading-tight">{profile?.full_name ?? 'Dashboard'}</div>
           </div>
-          <span className="text-[11px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
+          <div className="flex items-center gap-4">
+            {writable && (
+              <button
+                onClick={() => setNewFileOpen(true)}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity"
+                style={{ background: accent }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Yeni Dosya
+              </button>
+            )}
+            <span className="text-[11px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
+          </div>
         </div>
 
         {/* ── KPI Row — always fixed at top, not draggable ─────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <KpiCard label={t('kpi.activeFiles')} value={String(activeFiles)} sub={t('kpi.newThisMonth', { count: thisMonth })}
-            icon={<Package className="h-5 w-5" />} accent={accent} />
+            icon={<Package className="h-5 w-5" />} accent={accent}
+            onClick={() => navigate('/pipeline')} />
           <KpiCard label={t('kpi.totalProfit')} value={fUSD(totalProfit)} sub={t('kpi.completed', { count: byStatus.completed })}
-            trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981" />
+            trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981"
+            onClick={() => navigate('/fin-reports')} />
           <KpiCard label={t('kpi.receivable')} value={fUSD(summary?.totalReceivable ?? 0)} sub={t('kpi.fromCustomers')}
-            icon={<DollarSign className="h-5 w-5" />} accent="#2563eb" />
+            icon={<DollarSign className="h-5 w-5" />} accent="#2563eb"
+            onClick={() => navigate('/accounting', { state: { tab: 'sale' } })} />
           <KpiCard label={t('kpi.payable')} value={fUSD(summary?.totalPayable ?? 0)} sub={t('kpi.toSuppliers')}
-            icon={<Wallet className="h-5 w-5" />} accent="#f59e0b" />
+            icon={<Wallet className="h-5 w-5" />} accent="#f59e0b"
+            onClick={() => navigate('/accounting', { state: { tab: 'buy' } })} />
         </div>
 
         {/* Drag-and-drop sortable widget grid */}
@@ -727,6 +763,9 @@ export function DashboardPage() {
         </DndContext>
 
       </div>
+
+      {/* Modals */}
+      <NewFileModal open={newFileOpen} onOpenChange={setNewFileOpen} />
     </div>
   );
 }

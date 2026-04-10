@@ -144,12 +144,12 @@ export function SettingsPage() {
       </div>
 
       {/* Pill tabs */}
-      <div className="flex gap-1.5 bg-gray-100 p-1 rounded-2xl w-fit">
+      <div className="flex gap-1.5 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-1.5 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all ${
+            className={`shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all ${
               activeTab === key
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'

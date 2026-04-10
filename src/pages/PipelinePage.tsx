@@ -15,7 +15,7 @@ import { PackingListModal } from '@/components/documents/PackingListModal';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { cn } from '@/lib/utils';
 import { fN, fDate } from '@/lib/formatters';
-import { Search, Plus, MoreVertical, ChevronRight, TrendingUp, Truck, FileText, BarChart2, AlertTriangle } from 'lucide-react';
+import { Search, Plus, MoreVertical, TrendingUp, Truck, FileText, BarChart2, AlertTriangle } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -42,6 +42,83 @@ function initials(name: string) {
 }
 
 const PAGE_SIZE = 10;
+
+// ─── Progress helpers ─────────────────────────────────────────────────────────
+function getProgress(f: TradeFile): number {
+  if (f.status === 'completed') return 100;
+  if (f.status === 'cancelled') return 0;
+  if (f.status === 'delivery') {
+    if (f.delivered_admt && f.tonnage_mt) {
+      const ratio = Math.min(f.delivered_admt / f.tonnage_mt, 1);
+      return Math.round(50 + ratio * 25); // 50–75
+    }
+    return 55;
+  }
+  if (f.status === 'sale') return 33;
+  return 12; // request
+}
+
+function getProgressColor(status: string): string {
+  if (status === 'completed') return '#16a34a';
+  if (status === 'delivery')  return '#7c3aed';
+  if (status === 'sale')      return '#2563eb';
+  return '#f59e0b'; // request
+}
+
+// Dairesel ilerleme göstergesi — ortasında % yazısı
+function CircleProgress({ pct, color, size = 52 }: { pct: number; color: string; size?: number }) {
+  const stroke = size * 0.115; // ~6px for 52px
+  const r      = (size - stroke) / 2;
+  const circ   = 2 * Math.PI * r;
+  const dash   = (pct / 100) * circ;
+  const cx     = size / 2;
+  // stable gradient id per instance
+  const gradId = `cpg-${color.replace('#', '')}-${size}`;
+  const fontSize = size <= 44 ? 9 : size <= 52 ? 11 : 12;
+
+  return (
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
+      {/* White circle with shadow */}
+      <div
+        className="absolute inset-0 rounded-full bg-white"
+        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}
+      />
+      <svg width={size} height={size} className="absolute inset-0">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={color} stopOpacity="1" />
+          </linearGradient>
+        </defs>
+        {/* Track */}
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="#f0f2f5" strokeWidth={stroke} />
+        {/* Progress arc */}
+        {pct > 0 && (
+          <circle
+            cx={cx} cy={cx} r={r}
+            fill="none"
+            stroke={`url(#${gradId})`}
+            strokeWidth={stroke}
+            strokeDasharray={`${dash} ${circ}`}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${cx} ${cx})`}
+            style={{ transition: 'stroke-dasharray 0.5s ease' }}
+          />
+        )}
+      </svg>
+      {/* Percentage text */}
+      <span
+        className="relative font-black leading-none"
+        style={{ fontSize, color }}
+      >
+        {pct}%
+      </span>
+    </div>
+  );
+}
 
 // ─── Delay helpers ────────────────────────────────────────────────────────────
 function getDelayStatus(file: TradeFile): 'overdue' | 'delayed' | null {
@@ -113,15 +190,14 @@ function PipelineRow({ file, onClick }: { file: TradeFile; onClick: () => void }
         </div>
       </div>
 
-      {/* Right side */}
-      <div className="flex flex-col items-end gap-1 shrink-0">
+      {/* Right side: progress + date */}
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <CircleProgress pct={getProgress(file)} color={getProgressColor(file.status)} size={44} />
         {file.eta && (
           <span className={cn('text-[10px] font-medium', delay === 'overdue' ? 'text-red-500' : delay === 'delayed' ? 'text-amber-500' : 'text-gray-400')}>
             ETA {fDate(file.revised_eta ?? file.eta)}
           </span>
         )}
-        <span className="text-[11px] text-gray-400">{fDate(file.file_date)}</span>
-        <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
       </div>
     </div>
   );
@@ -380,13 +456,16 @@ export function PipelinePage() {
                           className="px-4 py-3 hover:bg-gray-50/60 cursor-pointer transition-colors group"
                           onClick={() => navigate(`/files/${f.id}`)}
                         >
+                          {/* Top row: avatar + info + progress widget */}
                           <div className="flex items-start gap-2.5">
+                            {/* Avatar */}
                             <div
                               className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[11px] font-bold shrink-0 mt-0.5"
                               style={{ background: avatarColor(custName) }}
                             >
                               {initials(custName)}
                             </div>
+                            {/* Info */}
                             <div className="flex-1 min-w-0">
                               <div className="text-[13px] font-semibold text-gray-900 truncate">{custName}</div>
                               <div className="text-[10px] font-mono text-gray-400">{f.file_no}</div>
@@ -412,6 +491,8 @@ export function PipelinePage() {
                                 </span>
                               )}
                             </div>
+                            {/* Progress widget */}
+                            <CircleProgress pct={getProgress(f)} color={getProgressColor(f.status)} size={48} />
                           </div>
                           {/* Action buttons */}
                           {writable && (

@@ -414,15 +414,15 @@ export function PnlReportTab() {
       {viewMode === 'ozet' && (
         <>
           {/* KPI kartlar */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 md:gap-3">
             {[
-              { label: 'Toplam Hasılat',  value: fUSD(totalRevenue), color: '#1e40af' },
-              { label: 'Toplam Net Kar',  value: fUSD(totalProfit),  color: col(totalProfit) },
-              { label: 'Ort. Kar Marjı',  value: avgMargin.toFixed(1) + '%', color: col(totalProfit) },
+              { label: 'Toplam Hasılat', value: fUSD(totalRevenue), color: '#1e40af' },
+              { label: 'Toplam Net Kar', value: fUSD(totalProfit),  color: col(totalProfit) },
+              { label: 'Ort. Kar Marjı', value: avgMargin.toFixed(1) + '%', color: col(totalProfit) },
             ].map(card => (
-              <div key={card.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
-                <div className="text-xl font-black" style={{ color: card.color }}>{card.value}</div>
+              <div key={card.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 px-2 py-3 md:p-4 text-center overflow-hidden">
+                <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 leading-tight">{card.label}</div>
+                <div className="text-[13px] md:text-xl font-black leading-tight break-all" style={{ color: card.color }}>{card.value}</div>
               </div>
             ))}
           </div>
@@ -482,7 +482,8 @@ export function PnlReportTab() {
             {allFilesRows.length === 0 ? (
               <div className="py-14 text-center text-sm text-gray-400">Hesaplanmış P&L verisi bulunamadı</div>
             ) : (
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Dosya / Müşteri</th>
@@ -559,6 +560,7 @@ export function PnlReportTab() {
                   </tr>
                 </tfoot>
               </table>
+              </div>
             )}
           </div>
         </>
@@ -572,7 +574,7 @@ export function PnlReportTab() {
               <NativeSelect
                 value={selectedFileId}
                 onChange={(e) => setSelectedFileId(e.target.value)}
-                className="min-w-[300px]"
+                className="w-full md:min-w-[300px] md:w-auto"
               >
                 <option value="">{t('pnl.select_file')}</option>
                 {files.map((f) => (
@@ -599,16 +601,16 @@ export function PnlReportTab() {
 
           {selectedFile && pnl && (
             <>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
                 {[
                   { label: t('pnl.revenue'),    value: fUSD(pnl.revenue), color: '#1e40af' },
                   { label: t('pnl.cost'),        value: fUSD(pnl.costs),  color: '#374151' },
                   { label: t('pnl.net_profit'),  value: fUSD(pnl.profit), color: col(pnl.profit) },
                   { label: t('pnl.margin'),      value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
                 ].map((card) => (
-                  <div key={card.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
-                    <div className="text-xl font-black" style={{ color: card.color }}>{card.value}</div>
+                  <div key={card.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 px-2 py-3 md:p-4 text-center overflow-hidden">
+                    <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
+                    <div className="text-[13px] md:text-xl font-black break-all leading-tight" style={{ color: card.color }}>{card.value}</div>
                   </div>
                 ))}
               </div>
@@ -1069,10 +1071,10 @@ export function AccountStatementTab() {
         </div>
 
         {/* Toolbar */}
-        <div className="px-4 py-3 flex items-center gap-2">
+        <div className="px-4 py-3 flex flex-wrap items-center gap-2">
 
           {/* Kişi seçimi */}
-          <div ref={entityDropdownRef} className="relative flex-1 min-w-[200px]">
+          <div ref={entityDropdownRef} className="relative flex-1 min-w-0" style={{ minWidth: 160 }}>
             <button
               type="button"
               onClick={() => {
@@ -1233,7 +1235,7 @@ export function AccountStatementTab() {
 
           {/* Print / Excel */}
           {hasData && (
-            <div className="flex items-center gap-1 ml-auto">
+            <div className="flex items-center gap-1 ml-auto shrink-0">
               {(['tr', 'en', 'fa'] as StatementLang[]).map((lang) => (
                 <button key={lang} onClick={() => printStatement(lang)}
                   className="h-9 px-3 rounded-xl text-[11px] font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors border border-gray-200">
@@ -1282,20 +1284,20 @@ export function AccountStatementTab() {
           {/* Özet — 3 sütun quick info */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="grid grid-cols-3 divide-x divide-gray-50">
-              <div className="px-5 py-4">
-                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Borç</div>
-                <div className="text-[17px] font-extrabold text-red-600">{fUSD(totalBorç)}</div>
-                <div className="text-[11px] text-gray-400 mt-0.5 truncate">{entityName}</div>
+              <div className="px-3 md:px-5 py-3 md:py-4">
+                <div className="text-[8px] md:text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Borç</div>
+                <div className="text-[13px] md:text-[17px] font-extrabold text-red-600 break-all leading-tight">{fUSD(totalBorç)}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5 truncate">{entityName}</div>
               </div>
-              <div className="px-5 py-4">
-                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Alacak</div>
-                <div className="text-[17px] font-extrabold text-green-700">{fUSD(totalAlacak)}</div>
-                <div className="text-[11px] text-gray-400 mt-0.5">{txnsWithBalance.length} işlem</div>
+              <div className="px-3 md:px-5 py-3 md:py-4">
+                <div className="text-[8px] md:text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Alacak</div>
+                <div className="text-[13px] md:text-[17px] font-extrabold text-green-700 break-all leading-tight">{fUSD(totalAlacak)}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">{txnsWithBalance.length} işlem</div>
               </div>
-              <div className="px-5 py-4" style={netBakiye !== 0 ? { background: netBakiye > 0 ? '#fffbeb' : '#f0fdf4' } : {}}>
-                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Net Bakiye</div>
-                <div className="flex items-baseline gap-1.5 flex-wrap">
-                  <span className="text-[17px] font-extrabold"
+              <div className="px-3 md:px-5 py-3 md:py-4" style={netBakiye !== 0 ? { background: netBakiye > 0 ? '#fffbeb' : '#f0fdf4' } : {}}>
+                <div className="text-[8px] md:text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Net Bakiye</div>
+                <div className="flex items-baseline gap-1 flex-wrap">
+                  <span className="text-[13px] md:text-[17px] font-extrabold break-all leading-tight"
                     style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#15803d' : '#6b7280' }}>
                     {fUSD(Math.abs(netBakiye))}
                   </span>
@@ -1542,7 +1544,7 @@ function AnalyticsTab() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
         {[
           { label: t('analytics.kpi_total_files'), value: filteredFiles.length.toString(), color: 'text-blue-700' },
           { label: t('analytics.kpi_total_admt'), value: fN(totalAdmt, 0), color: 'text-purple-700' },
@@ -1550,9 +1552,9 @@ function AnalyticsTab() {
           { label: t('analytics.kpi_total_cost'), value: fUSD(totalCost), color: 'text-red-600' },
           { label: t('analytics.kpi_net_profit_margin'), value: `${fUSD(totalProfit)} / ${avgMargin.toFixed(1)}%`, color: totalProfit >= 0 ? 'text-green-700' : 'text-red-600' },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white rounded-2xl shadow-sm p-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{kpi.label}</div>
-            <div className={`text-sm font-black ${kpi.color}`}>{kpi.value}</div>
+          <div key={kpi.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm px-2 py-3 md:p-3 overflow-hidden">
+            <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 leading-tight">{kpi.label}</div>
+            <div className={`text-[12px] md:text-sm font-black break-all leading-tight ${kpi.color}`}>{kpi.value}</div>
           </div>
         ))}
       </div>
@@ -1597,9 +1599,9 @@ function AnalyticsTab() {
             </div>
           </div>
 
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Customer revenue bar */}
-            <div className="bg-white rounded-2xl shadow-sm p-5 col-span-3">
+            <div className="bg-white rounded-2xl shadow-sm p-5 md:col-span-3">
               <div className="text-sm font-bold text-gray-800 mb-4">{t('analytics.chart_customer_title')}</div>
               {customerData.length === 0 ? (
                 <div className="text-center py-8 text-gray-400 text-xs">{t('analytics.no_data_short')}</div>
@@ -2240,10 +2242,10 @@ export function CustomerReportTab() {
 
       {/* ── Toolbar kartı (overflow-hidden KULLANMA — dropdown kırpılır) ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div className="px-4 py-3 flex items-center gap-2">
+        <div className="px-4 py-3 flex flex-wrap items-center gap-2">
 
           {/* Müşteri seçimi */}
-          <div ref={custDropdownRef} className="relative flex-1 min-w-[200px]">
+          <div ref={custDropdownRef} className="relative flex-1 min-w-0">
             <button
               type="button"
               onClick={() => {

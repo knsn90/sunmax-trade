@@ -69,23 +69,34 @@ const STATUS_META: Record<string, { bg: string; text: string; dot: string; pill:
 // ── Section card ──────────────────────────────────────────────────────────────
 function Section({
   title, icon, right, children, accent = false,
+  collapsible = false, isCollapsed = false, onToggle,
 }: {
   title: string; icon?: React.ReactNode; right?: React.ReactNode;
   children: React.ReactNode; accent?: boolean;
+  collapsible?: boolean; isCollapsed?: boolean; onToggle?: () => void;
 }) {
   return (
     <div className={cn(
       'rounded-2xl bg-white shadow-sm overflow-hidden mb-3',
       accent ? 'ring-1 ring-brand-200' : '',
     )}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+      <div
+        className={cn('flex items-center justify-between px-4 py-3 border-b border-gray-50', collapsible ? 'cursor-pointer select-none' : '')}
+        onClick={collapsible ? onToggle : undefined}
+      >
         <div className="flex items-center gap-2">
           {icon && <span className="text-gray-400">{icon}</span>}
           <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</span>
         </div>
-        {right}
+        <div className="flex items-center gap-2">
+          {right && <div onClick={e => e.stopPropagation()}>{right}</div>}
+          {collapsible && (isCollapsed
+            ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+          )}
+        </div>
       </div>
-      <div className="px-4 py-3">{children}</div>
+      {!isCollapsed && <div className="px-4 py-3">{children}</div>}
     </div>
   );
 }
@@ -144,12 +155,14 @@ const TRANSPORT_LABEL: Record<string, string> = {
 };
 
 function PartilerCard({
-  file, writable, accent, onNewBatch,
+  file, writable, accent, onNewBatch, collapsed = false, onToggle,
 }: {
   file: import('@/types/database').TradeFile;
   writable: boolean;
   accent: string;
   onNewBatch: () => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }) {
   const navigate = useNavigate();
   const batches = file.batches ?? [];
@@ -168,87 +181,100 @@ function PartilerCard({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
-        <Layers className="h-4 w-4 text-gray-400" />
-        <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
-          Partiler
-        </span>
-        {batches.length > 0 && (
-          <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-            {batches.length}
-          </span>
-        )}
-        {writable && (
-          <button
-            onClick={onNewBatch}
-            disabled={remaining <= 0 && totalTon > 0}
-            className="ml-auto flex items-center gap-1.5 px-3 h-7 rounded-xl text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
-            style={{ background: accent }}
-          >
-            <Plus className="h-3 w-3" /> Yeni Parti
-          </button>
-        )}
+      <div
+        className={cn('px-6 py-4 border-b border-gray-50 flex items-center justify-between', onToggle ? 'cursor-pointer select-none' : '')}
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-2.5">
+          <Layers className="h-4 w-4 text-gray-400" />
+          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Partiler</span>
+          {batches.length > 0 && (
+            <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+              {batches.length}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {writable && (
+            <button
+              onClick={e => { e.stopPropagation(); onNewBatch(); }}
+              disabled={remaining <= 0 && totalTon > 0}
+              className="flex items-center gap-1.5 px-3 h-7 rounded-xl text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
+              style={{ background: accent }}
+            >
+              <Plus className="h-3 w-3" /> Yeni Parti
+            </button>
+          )}
+          {onToggle && (collapsed
+            ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+          )}
+        </div>
       </div>
 
-      {/* Progress bar */}
-      {totalTon > 0 && (
-        <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/40">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-semibold text-gray-500">
-              Yüklenen: <strong className="text-gray-900">{usedTon.toLocaleString('tr-TR')} MT</strong>
-            </span>
-            <span className="text-[11px] font-semibold text-gray-500">
-              Kalan: <strong className={remaining > 0 ? 'text-amber-600' : 'text-green-600'}>
-                {remaining.toLocaleString('tr-TR')} MT
-              </strong>
-            </span>
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${pct}%`, background: pct === 100 ? '#16a34a' : accent }}
-            />
-          </div>
-          <p className="text-[10px] text-gray-400 mt-1 text-right">{pct}% tamamlandı</p>
-        </div>
-      )}
-
-      {/* Batch listesi */}
-      {batches.length === 0 ? (
-        <div className="flex flex-col items-center py-8 text-gray-400">
-          <Layers className="h-7 w-7 mb-1.5 opacity-20" />
-          <p className="text-[12px] font-medium text-gray-400">Henüz parti yok</p>
-          <p className="text-[11px] text-gray-300 mt-0.5">Yeni Parti butonu ile ekleyin</p>
-        </div>
-      ) : (
-        <div className="divide-y divide-gray-50">
-          {batches
-            .slice()
-            .sort((a, b) => (a.batch_no ?? 0) - (b.batch_no ?? 0))
-            .map(b => (
-              <button
-                key={b.id}
-                onClick={() => navigate(`/files/${b.id}`)}
-                className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
-              >
+      {!collapsed && (
+        <>
+          {/* Progress bar */}
+          {totalTon > 0 && (
+            <div className="px-6 py-3 border-b border-gray-50 bg-gray-50/40">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-semibold text-gray-500">
+                  Yüklenen: <strong className="text-gray-900">{usedTon.toLocaleString('tr-TR')} MT</strong>
+                </span>
+                <span className="text-[11px] font-semibold text-gray-500">
+                  Kalan: <strong className={remaining > 0 ? 'text-amber-600' : 'text-green-600'}>
+                    {remaining.toLocaleString('tr-TR')} MT
+                  </strong>
+                </span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
-                  style={{ background: accent + 'dd' }}
-                >
-                  P{b.batch_no}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-gray-800">{b.file_no}</p>
-                  <p className="text-[11px] text-gray-400">
-                    {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} MT` : '—'}
-                    {b.transport_mode ? ` · ${TRANSPORT_LABEL[b.transport_mode] ?? b.transport_mode}` : ''}
-                    {b.eta ? ` · ETA ${b.eta}` : ''}
-                  </p>
-                </div>
-                <span className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT[b.status] ?? 'bg-gray-300')} />
-              </button>
-            ))}
-        </div>
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${pct}%`, background: pct === 100 ? '#16a34a' : accent }}
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1 text-right">{pct}% tamamlandı</p>
+            </div>
+          )}
+
+          {/* Batch listesi */}
+          {batches.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-gray-400">
+              <Layers className="h-7 w-7 mb-1.5 opacity-20" />
+              <p className="text-[12px] font-medium text-gray-400">Henüz parti yok</p>
+              <p className="text-[11px] text-gray-300 mt-0.5">Yeni Parti butonu ile ekleyin</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {batches
+                .slice()
+                .sort((a, b) => (a.batch_no ?? 0) - (b.batch_no ?? 0))
+                .map(b => (
+                  <button
+                    key={b.id}
+                    onClick={() => navigate(`/files/${b.id}`)}
+                    className="w-full flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
+                      style={{ background: accent + 'dd' }}
+                    >
+                      P{b.batch_no}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-gray-800">{b.file_no}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} MT` : '—'}
+                        {b.transport_mode ? ` · ${TRANSPORT_LABEL[b.transport_mode] ?? b.transport_mode}` : ''}
+                        {b.eta ? ` · ETA ${b.eta}` : ''}
+                      </p>
+                    </div>
+                    <span className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT[b.status] ?? 'bg-gray-300')} />
+                  </button>
+                ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -295,6 +321,8 @@ export function TradeFileDetailPage() {
   const [cancelReasonText, setCancelReasonText] = useState('');
   const [delayOpen, setDelayOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleCard = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
   const [delayEta, setDelayEta] = useState('');
   const [delayNotes, setDelayNotes] = useState('');
   const noteDelay = useNoteDelay();
@@ -765,68 +793,79 @@ export function TradeFileDetailPage() {
         <div className="px-3">
 
         {/* ── Sale Details ─────────────────────────────────────────────── */}
-        {file.selling_price ? (
-          <Section
-            title={t('detail.saleDetails.title')}
-            icon={<TrendingUp className="h-3.5 w-3.5" />}
-            accent
-            right={writable ? (
-              <div className="flex items-center gap-2">
-                {file.eta && !['completed','cancelled'].includes(file.status) && (
-                  <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
-                    <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
-                  </button>
-                )}
-                <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-                  <Pencil className="h-3 w-3" /> {tc('btn.edit')}
+        <Section
+          title={t('detail.saleDetails.title')}
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          accent
+          collapsible
+          isCollapsed={!!collapsed.m_saleDetails}
+          onToggle={() => toggleCard('m_saleDetails')}
+          right={writable && file.selling_price ? (
+            <div className="flex items-center gap-2">
+              {file.eta && !['completed','cancelled'].includes(file.status) && (
+                <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
+                  <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
                 </button>
-              </div>
-            ) : undefined}
-          >
-            <KV label={t('detail.saleDetails.salePrice')} value={`${fCurrency(file.selling_price)}/MT`} bold />
-            <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
-            <KV label={t('detail.saleDetails.supplier')} value={file.supplier?.name ?? '—'} />
-            <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
-            {file.eta && <KV label={t('detail.saleDetails.eta')} value={fDate(file.eta)} />}
-            {file.revised_eta && (
-              <KV label={t('detail.saleDetails.revisedEta')} value={
-                <span className="flex items-center gap-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                  <span className="font-bold text-amber-600">{fDate(file.revised_eta)}</span>
-                </span>
-              } />
-            )}
-            {file.delay_notes && <KV label={t('detail.saleDetails.delayReason')} value={file.delay_notes} />}
-            {file.vessel_name && (
-              <KV label={t('detail.saleDetails.vessel')} value={
-                <a
-                  href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-600 hover:underline font-medium"
-                  onClick={e => e.stopPropagation()}
-                >
-                  {file.vessel_name}
-                  <ExternalLink className="h-3 w-3 shrink-0" />
-                </a>
-              } />
-            )}
-            {file.register_no && <KV label={t('detail.saleDetails.register')} value={file.register_no} />}
-          </Section>
-        ) : (
-          <div className="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 mb-3 text-[12px] text-amber-700 font-medium">
-            {t('detail.saleDetails.noSaleDetails')}
-          </div>
-        )}
+              )}
+              <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
+                <Pencil className="h-3 w-3" /> {tc('btn.edit')}
+              </button>
+            </div>
+          ) : undefined}
+        >
+          {file.selling_price ? (
+            <>
+              <KV label={t('detail.saleDetails.salePrice')} value={`${fCurrency(file.selling_price)}/MT`} bold />
+              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
+              <KV label={t('detail.saleDetails.supplier')} value={file.supplier?.name ?? '—'} />
+              <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
+              {file.eta && <KV label={t('detail.saleDetails.eta')} value={fDate(file.eta)} />}
+              {file.revised_eta && (
+                <KV label={t('detail.saleDetails.revisedEta')} value={
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span className="font-bold text-amber-600">{fDate(file.revised_eta)}</span>
+                  </span>
+                } />
+              )}
+              {file.delay_notes && <KV label={t('detail.saleDetails.delayReason')} value={file.delay_notes} />}
+              {file.vessel_name && (
+                <KV label={t('detail.saleDetails.vessel')} value={
+                  <a
+                    href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-600 hover:underline font-medium"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {file.vessel_name}
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                } />
+              )}
+              {file.register_no && <KV label={t('detail.saleDetails.register')} value={file.register_no} />}
+            </>
+          ) : (
+            <p className="text-[12px] text-amber-700 font-medium py-1 text-center">{t('detail.saleDetails.noSaleDetails')}</p>
+          )}
+        </Section>
 
         {/* ── Obligations ──────────────────────────────────────────────── */}
-        <ObligationsSection file={file} writable={writable} />
+        <ObligationsSection
+          file={file}
+          writable={writable}
+          collapsed={!!collapsed.m_obligations}
+          onToggle={() => toggleCard('m_obligations')}
+        />
 
         {/* ── Delivery ─────────────────────────────────────────────────── */}
         {file.delivered_admt && (
           <Section
             title={t('detail.delivery.title')}
             icon={<Truck className="h-3.5 w-3.5" />}
+            collapsible
+            isCollapsed={!!collapsed.m_delivery}
+            onToggle={() => toggleCard('m_delivery')}
             right={writable ? (
               <button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
                 <Pencil className="h-3 w-3" /> {tc('btn.edit')}
@@ -848,7 +887,8 @@ export function TradeFileDetailPage() {
         {((file.proformas?.length ?? 0) > 0 ||
           (file.invoices?.length ?? 0) > 0 ||
           (file.packing_lists?.length ?? 0) > 0) && (
-          <Section title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}>
+          <Section title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}
+            collapsible isCollapsed={!!collapsed.m_docs} onToggle={() => toggleCard('m_docs')}>
             {/* Proformas */}
             {file.proformas?.map((pi) => (
               <DocRow
@@ -976,6 +1016,9 @@ export function TradeFileDetailPage() {
         <Section
           title={t('detail.expenses.title')}
           icon={<Receipt className="h-3.5 w-3.5" />}
+          collapsible
+          isCollapsed={!!collapsed.m_expenses}
+          onToggle={() => toggleCard('m_expenses')}
           right={writable ? (
             <div className="flex gap-1.5">
               <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })}
@@ -1019,12 +1062,15 @@ export function TradeFileDetailPage() {
             writable={writable}
             accent={accent}
             onNewBatch={() => setBatchOpen(true)}
+            collapsed={!!collapsed.m_partiler}
+            onToggle={() => toggleCard('m_partiler')}
           />
         )}
 
         {/* ── Transport Plan ───────────────────────────────────────────── */}
         {['sale', 'delivery', 'completed'].includes(file.status) && (
-          <Section title={t('detail.transport.title')} icon={<Truck className="h-3.5 w-3.5" />}>
+          <Section title={t('detail.transport.title')} icon={<Truck className="h-3.5 w-3.5" />}
+            collapsible isCollapsed={!!collapsed.m_transport} onToggle={() => toggleCard('m_transport')}>
             <TransportPlanSection file={file} writable={writable} />
           </Section>
         )}
@@ -1247,6 +1293,95 @@ export function TradeFileDetailPage() {
               )}
             </div>
 
+            {/* ── Sale Details — always first ────────────────────────────── */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div
+                className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none"
+                onClick={() => toggleCard('saleDetails')}
+              >
+                <div className="flex items-center gap-2.5">
+                  <TrendingUp className="h-4 w-4 text-gray-400" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.saleDetails.title')}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {writable && file.selling_price && file.eta && !['completed','cancelled'].includes(file.status) && (
+                    <button onClick={e => { e.stopPropagation(); setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
+                      <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
+                    </button>
+                  )}
+                  {writable && file.selling_price && (
+                    <button onClick={e => { e.stopPropagation(); setEditSaleOpen(true); }} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors">
+                      <Pencil className="h-3 w-3" /> {tc('btn.edit')}
+                    </button>
+                  )}
+                  {collapsed.saleDetails ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+                </div>
+              </div>
+              {!collapsed.saleDetails && (
+                file.selling_price ? (
+                  <div className="px-6 py-2">
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.salePrice')}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.selling_price)}/MT</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.purchase_price)}/MT</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{file.supplier?.name ?? '—'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.incoterms')}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'}</span>
+                    </div>
+                    {file.eta && (
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                        <span className="text-[12px] text-gray-500">{t('detail.saleDetails.eta')}</span>
+                        <span className="text-[13px] font-bold text-gray-900">{fDate(file.eta)}</span>
+                      </div>
+                    )}
+                    {file.revised_eta && (
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                        <span className="text-[12px] text-gray-500">{t('detail.saleDetails.revisedEta')}</span>
+                        <span className="flex items-center gap-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                          <span className="text-[13px] font-bold text-amber-600">{fDate(file.revised_eta)}</span>
+                        </span>
+                      </div>
+                    )}
+                    {file.delay_notes && (
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                        <span className="text-[12px] text-gray-500">{t('detail.saleDetails.delayReason')}</span>
+                        <span className="text-[13px] font-bold text-gray-900 text-right max-w-[60%]">{file.delay_notes}</span>
+                      </div>
+                    )}
+                    {file.vessel_name && (
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100 last:border-0">
+                        <span className="text-[12px] text-gray-500">{t('detail.saleDetails.vessel')}</span>
+                        <a href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-[13px] font-bold hover:underline" style={{ color: accent }}
+                          onClick={e => e.stopPropagation()}>
+                          {file.vessel_name} <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      </div>
+                    )}
+                    {file.register_no && (
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-[12px] text-gray-500">{t('detail.saleDetails.register')}</span>
+                        <span className="text-[13px] font-bold text-gray-900">{file.register_no}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="px-6 py-4 text-[12px] text-amber-700 font-medium">
+                    {t('detail.saleDetails.noSaleDetails')}
+                  </div>
+                )
+              )}
+            </div>
+
             {/* ── Partiler — sadece en az 1 parti varsa göster ───────────── */}
             {!file.parent_file_id && (file.batches?.length ?? 0) > 0 && (
               <PartilerCard
@@ -1254,128 +1389,60 @@ export function TradeFileDetailPage() {
                 writable={writable}
                 accent={accent}
                 onNewBatch={() => setBatchOpen(true)}
+                collapsed={!!collapsed.partiler}
+                onToggle={() => toggleCard('partiler')}
               />
             )}
 
-            {/* Sale Details */}
-            {file.selling_price ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
-                  <div className="flex items-center gap-2.5">
-                    <TrendingUp className="h-4 w-4 text-gray-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.saleDetails.title')}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {writable && file.eta && !['completed','cancelled'].includes(file.status) && (
-                      <button onClick={() => { setDelayEta(file.revised_eta ?? ''); setDelayNotes(file.delay_notes ?? ''); setDelayOpen(true); }} className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
-                        <Bell className="h-3 w-3" /> {t('detail.btn.delay')}
-                      </button>
-                    )}
-                    {writable && (
-                      <button onClick={() => setEditSaleOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors">
-                        <Pencil className="h-3 w-3" /> {tc('btn.edit')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="px-6 py-2">
-                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.salePrice')}</span>
-                    <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.selling_price)}/MT</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
-                    <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.purchase_price)}/MT</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
-                    <span className="text-[13px] font-bold text-gray-900">{file.supplier?.name ?? '—'}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-[12px] text-gray-500">{t('detail.saleDetails.incoterms')}</span>
-                    <span className="text-[13px] font-bold text-gray-900">{`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'}</span>
-                  </div>
-                  {file.eta && (
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.eta')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{fDate(file.eta)}</span>
-                    </div>
-                  )}
-                  {file.revised_eta && (
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.revisedEta')}</span>
-                      <span className="flex items-center gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                        <span className="text-[13px] font-bold text-amber-600">{fDate(file.revised_eta)}</span>
-                      </span>
-                    </div>
-                  )}
-                  {file.delay_notes && (
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.delayReason')}</span>
-                      <span className="text-[13px] font-bold text-gray-900 text-right max-w-[60%]">{file.delay_notes}</span>
-                    </div>
-                  )}
-                  {file.vessel_name && (
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100 last:border-0">
-                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.vessel')}</span>
-                      <a href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[13px] font-bold hover:underline" style={{ color: accent }}
-                        onClick={e => e.stopPropagation()}>
-                        {file.vessel_name} <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </div>
-                  )}
-                  {file.register_no && (
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.register')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{file.register_no}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 text-[12px] text-amber-700 font-medium">
-                {t('detail.saleDetails.noSaleDetails')}
-              </div>
-            )}
-
             {/* Obligations */}
-            <ObligationsSection file={file} writable={writable} />
+            <ObligationsSection
+              file={file}
+              writable={writable}
+              collapsed={!!collapsed.obligations}
+              onToggle={() => toggleCard('obligations')}
+            />
 
             {/* Delivery */}
             {file.delivered_admt && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none" onClick={() => toggleCard('delivery')}>
                   <div className="flex items-center gap-2.5">
                     <Truck className="h-4 w-4 text-gray-400" />
                     <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.delivery.title')}</span>
                   </div>
-                  {writable && (
-                    <button onClick={() => setDeliveryOpen(true)} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors">
-                      <Pencil className="h-3 w-3" /> {tc('btn.edit')}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {writable && (
+                      <button onClick={e => { e.stopPropagation(); setDeliveryOpen(true); }} className="text-[11px] font-semibold text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors">
+                        <Pencil className="h-3 w-3" /> {tc('btn.edit')}
+                      </button>
+                    )}
+                    {collapsed.delivery ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+                  </div>
                 </div>
-                <div className="px-6 py-3 grid grid-cols-2 gap-x-6">
-                  <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
-                  <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
-                  <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
-                  <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
-                  <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
-                  <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
-                </div>
+                {!collapsed.delivery && (
+                  <div className="px-6 py-3 grid grid-cols-2 gap-x-6">
+                    <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
+                    <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
+                    <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
+                    <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
+                    <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
+                    <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
+                  </div>
+                )}
               </div>
             )}
 
             {/* Documents */}
             {((file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0) && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 flex items-center gap-2.5 border-b border-gray-50">
-                  <FileText className="h-4 w-4 text-gray-400" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.documents.title')}</span>
+                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none" onClick={() => toggleCard('documents')}>
+                  <div className="flex items-center gap-2.5">
+                    <FileText className="h-4 w-4 text-gray-400" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.documents.title')}</span>
+                  </div>
+                  {collapsed.documents ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
                 </div>
-                <div className="px-4 py-2">
+                {!collapsed.documents && <div className="px-4 py-2">
                   {file.proformas?.map((pi) => (
                     <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'}>
                       <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
@@ -1411,25 +1478,28 @@ export function TradeFileDetailPage() {
                       {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                     </DocRow>
                   ))}
-                </div>
+                </div>}
               </div>
             )}
 
             {/* Expenses */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+              <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none" onClick={() => toggleCard('expenses')}>
                 <div className="flex items-center gap-2.5">
                   <Receipt className="h-4 w-4 text-gray-400" />
                   <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.expenses.title')}</span>
                 </div>
-                {writable && (
-                  <div className="flex gap-1.5">
-                    <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
-                    <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {writable && (
+                    <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
+                      <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
+                    </div>
+                  )}
+                  {collapsed.expenses ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+                </div>
               </div>
-              <div className="px-6 py-2">
+              {!collapsed.expenses && <div className="px-6 py-2">
                 {expenses.length === 0 ? (
                   <div className="text-[12px] text-gray-400 py-4 text-center">{t('detail.expenses.noRecords')}</div>
                 ) : (
@@ -1450,12 +1520,28 @@ export function TradeFileDetailPage() {
                     </div>
                   ))
                 )}
-              </div>
+              </div>}
             </div>
 
             {/* Transport Plan */}
             {['sale', 'delivery', 'completed'].includes(file.status) && (
-              <TransportPlanSection file={file} writable={writable} />
+              <div>
+                {/* Thin divider-style toggle — no extra card since TransportPlanSection renders its own cards */}
+                <button
+                  className="w-full flex items-center justify-between px-2 py-2 mb-2 rounded-xl hover:bg-gray-100/60 transition-colors group"
+                  onClick={() => toggleCard('transport')}
+                >
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-400 transition-colors" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300 group-hover:text-gray-400 transition-colors">{t('detail.transport.title')}</span>
+                  </div>
+                  {collapsed.transport
+                    ? <ChevronDown className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-400" />
+                    : <ChevronUp className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-400" />
+                  }
+                </button>
+                {!collapsed.transport && <TransportPlanSection file={file} writable={writable} />}
+              </div>
             )}
 
             {/* Notes + Attachments (split) */}

@@ -1,7 +1,21 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { transactionService, type TransactionFilters } from '@/services/transactionService';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { transactionService, type TransactionFilters, PAGE_SIZE } from '@/services/transactionService';
 import type { TransactionFormData } from '@/types/forms';
 import { toast } from 'sonner';
+
+/** Infinite / paginated hook — use for buy / svc / cash / sale tabs */
+export function useInfiniteTransactions(filters: TransactionFilters) {
+  return useInfiniteQuery({
+    queryKey: ['transactions', 'infinite', filters],
+    queryFn: ({ pageParam }) =>
+      transactionService.listPage(filters, pageParam as number, PAGE_SIZE),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((s, p) => s + p.data.length, 0);
+      return loaded < lastPage.count ? allPages.length : undefined;
+    },
+    initialPageParam: 0,
+  });
+}
 
 export function useTransactions(filters?: TransactionFilters) {
   return useQuery({

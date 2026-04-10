@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   Home, BarChart3, FileText, LayoutDashboard, MoreHorizontal,
-  Receipt, LineChart, Users, Box, Settings, X, Activity, Tag,
+  Receipt, Users, Box, Settings, X, Activity, Tag, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,12 +17,12 @@ const mainTabs = [
 ];
 
 const moreItems = [
-  { to: '/documents',  label: 'Documents',   icon: Receipt },
-  { to: '/reports',    label: 'Reports',     icon: LineChart },
-  { to: '/contacts',   label: 'Contacts',   icon: Users },
-  { to: '/products',   label: 'Products',   icon: Box },
-  { to: '/price-list', label: 'Price List', icon: Tag },
-  { to: '/settings',   label: 'Settings',   icon: Settings },
+  { to: '/documents',   label: 'Belgeler',      icon: Receipt },
+  { to: '/fin-reports', label: 'Mali Raporlar', icon: TrendingUp },
+  { to: '/contacts',    label: 'Kişiler',       icon: Users },
+  { to: '/products',    label: 'Ürünler',       icon: Box },
+  { to: '/price-list',  label: 'Fiyat Listesi', icon: Tag },
+  { to: '/settings',    label: 'Ayarlar',       icon: Settings },
 ];
 
 const adminItems = [
