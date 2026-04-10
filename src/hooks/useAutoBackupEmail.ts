@@ -25,36 +25,44 @@ export function saveBackupSettings(email: string, schedule: BackupSchedule) {
   localStorage.setItem(LS_SCHEDULE, schedule);
 }
 
-/** Calls the Supabase Edge Function to send backup email. */
+/** Calls the Supabase Edge Function to send backup email.
+ *  Returns { ok: true } on success, or { ok: false, error: string } on failure. */
 export async function sendBackupEmail(trigger: 'session_end' | 'manual' | 'daily' = 'manual') {
   const { email } = getBackupSettings();
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return; // not logged in, skip
+  if (!session) return { ok: false, error: 'Oturum bulunamadı' };
 
   const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL as string;
   const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
   const functionUrl  = `${supabaseUrl}/functions/v1/send-backup-email`;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000); // 30 sn timeout
+  const timeout = setTimeout(() => controller.abort(), 30_000);
 
-  const res = await fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-      'apikey':        supabaseKey,
-    },
-    body: JSON.stringify({ to: email, trigger }),
-    keepalive: true,  // works even when page is unloading
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeout));
+  try {
+    const res = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey':        supabaseKey,
+      },
+      body: JSON.stringify({ to: email, trigger }),
+      keepalive: true,
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
 
-  if (res.ok) {
-    localStorage.setItem(LS_LAST, new Date().toISOString());
+    const body = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; rows?: number };
+
+    if (res.ok && body.ok) {
+      localStorage.setItem(LS_LAST, new Date().toISOString());
+      return { ok: true, rows: body.rows };
+    }
+    return { ok: false, error: body.error ?? `HTTP ${res.status}` };
+  } catch (err) {
+    const msg = (err as Error).message ?? 'Bağlantı hatası';
+    return { ok: false, error: msg.includes('abort') ? 'Zaman aşımı (30sn)' : msg };
   }
-
-  return res.ok;
 }
 
 /** Register a beforeunload handler that fires the backup if schedule = session_end.

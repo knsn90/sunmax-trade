@@ -789,16 +789,16 @@ function BackupEmailCard() {
   async function handleSendNow() {
     setSending(true);
     try {
-      const ok = await sendBackupEmail('manual');
-      if (ok) {
-        const now = new Date().toISOString();
-        setLastSent(now);
+      const result = await sendBackupEmail('manual');
+      if (result && result.ok) {
+        setLastSent(new Date().toISOString());
         toast.success(`Yedek ${email} adresine gönderildi`);
       } else {
-        toast.error('Gönderilemedi — Edge Function kurulumunu kontrol edin');
+        const errMsg = (result && result.error) ? result.error : 'Bilinmeyen hata';
+        toast.error(`Gönderilemedi: ${errMsg}`);
       }
-    } catch {
-      toast.error('Bağlantı hatası');
+    } catch (err) {
+      toast.error(`Hata: ${(err as Error).message}`);
     } finally {
       setSending(false);
     }
