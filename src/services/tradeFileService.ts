@@ -40,6 +40,7 @@ export const tradeFileService = {
     let query = supabase
       .from('trade_files')
       .select(FILE_SELECT)
+      .is('parent_file_id', null)          // sadece ana dosyalar — parti/batch'ler hariç
       .order('created_at', { ascending: false });
 
     if (filters?.status) {
