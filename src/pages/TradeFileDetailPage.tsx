@@ -1012,8 +1012,8 @@ export function TradeFileDetailPage() {
           )}
         </Section>
 
-        {/* ── Partiler (mobil) ─────────────────────────────────────────── */}
-        {!file.parent_file_id && ['sale', 'delivery', 'completed'].includes(file.status) && (
+        {/* ── Partiler (mobil) — sadece en az 1 parti varsa göster ───── */}
+        {!file.parent_file_id && (file.batches?.length ?? 0) > 0 && (
           <PartilerCard
             file={file}
             writable={writable}
@@ -1247,8 +1247,8 @@ export function TradeFileDetailPage() {
               )}
             </div>
 
-            {/* ── Partiler (Kısmi Sevkiyat) ──────────────────────────────── */}
-            {!file.parent_file_id && ['sale', 'delivery', 'completed'].includes(file.status) && (
+            {/* ── Partiler — sadece en az 1 parti varsa göster ───────────── */}
+            {!file.parent_file_id && (file.batches?.length ?? 0) > 0 && (
               <PartilerCard
                 file={file}
                 writable={writable}
