@@ -488,17 +488,13 @@ export function TradeFileDetailPage() {
     }
   }
 
-  function handleBatchComplete() {
-    if (window.confirm('Bu parti tamamlandı olarak işaretlensin mi?')) {
-      changeStatus.mutate({ id: file!.id, status: 'completed' });
-    }
-  }
 
   // ── Status stepper ─────────────────────────────────────────────────────────
-  // Batch dosyalar için 2 adımlı basit stepper; ana dosyalar için 4 adımlı standart
+  // Batch dosyalar için 3 adımlı stepper (request adımı yok); ana dosyalar için 4 adımlı standart
   const STAGES = isBatch
     ? [
         { key: 'sale',      label: 'Belgeler' },
+        { key: 'delivery',  label: 'Teslimat' },
         { key: 'completed', label: 'Tamamlandı' },
       ]
     : [
@@ -801,9 +797,9 @@ export function TradeFileDetailPage() {
               </button>
             ) : file.status === 'sale' ? (
               isBatch ? (
-                // Alt parti dosyası → doğrudan Tamamlandı
-                <button onClick={handleBatchComplete} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
-                  <CheckCircle className="h-3.5 w-3.5" /> Tamamlandı
+                // Alt parti dosyası → Teslimat Bilgisi Gir (DeliveryModal'ı açar)
+                <button onClick={openDeliveryWithPacking} className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80" style={{ background: accent }}>
+                  <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
                 </button>
               ) : isPartial ? (
                 // Ana dosya + partiler var
@@ -1319,11 +1315,11 @@ export function TradeFileDetailPage() {
                 )}
                 {writable && file.status === 'sale' && (
                   isBatch ? (
-                    // Alt parti → doğrudan Tamamlandı
-                    <button onClick={handleBatchComplete}
+                    // Alt parti → Teslimat Bilgisi Gir (DeliveryModal'ı açar)
+                    <button onClick={openDeliveryWithPacking}
                       className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
                       style={{ background: accent }}>
-                      <CheckCircle className="h-3.5 w-3.5" /> Tamamlandı
+                      <Truck className="h-3.5 w-3.5" /> Teslimat Bilgisi Gir
                     </button>
                   ) : isPartial ? (
                     // Ana dosya + kısmi sevkiyat

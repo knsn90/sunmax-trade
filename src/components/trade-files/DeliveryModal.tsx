@@ -46,9 +46,10 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
   // Pre-fill existing delivery data when editing; sync septi_ref ↔ register_no
   useEffect(() => {
     if (open && file) {
-      // Her açılışta: daha önce parti oluşturulmuşsa direkt forma git
+      // Batch dosyalar ve partisi olan dosyalar için direkt forma git (soru adımı yok)
+      const isBatch = !!file.parent_file_id;
       const hasBatches = (file.batches?.length ?? 0) > 0;
-      setStep(hasBatches ? 'form' : 'ask');
+      setStep(isBatch || hasBatches ? 'form' : 'ask');
       reset({
         delivered_admt: file.delivered_admt ?? file.tonnage_mt ?? 0,
         gross_weight_kg: file.gross_weight_kg ?? 0,
