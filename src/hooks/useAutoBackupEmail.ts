@@ -26,42 +26,27 @@ export function saveBackupSettings(email: string, schedule: BackupSchedule) {
 }
 
 /** Calls the Supabase Edge Function to send backup email.
+ *  Uses supabase.functions.invoke() — handles JWT auth automatically.
  *  Returns { ok: true } on success, or { ok: false, error: string } on failure. */
 export async function sendBackupEmail(trigger: 'session_end' | 'manual' | 'daily' = 'manual') {
   const { email } = getBackupSettings();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { ok: false, error: 'Oturum bulunamadı' };
 
-  const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL as string;
-  const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-  const functionUrl  = `${supabaseUrl}/functions/v1/send-backup-email`;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
-
   try {
-    const res = await fetch(functionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey':        supabaseKey,
-      },
-      body: JSON.stringify({ to: email, trigger }),
-      keepalive: true,
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timeout));
+    const { data, error } = await supabase.functions.invoke('send-backup-email', {
+      body: { to: email, trigger },
+    });
 
-    const body = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; rows?: number };
+    if (error) return { ok: false, error: error.message };
 
-    if (res.ok && body.ok) {
+    if (data?.ok) {
       localStorage.setItem(LS_LAST, new Date().toISOString());
-      return { ok: true, rows: body.rows };
+      return { ok: true as const, rows: data.rows as number };
     }
-    return { ok: false, error: body.error ?? `HTTP ${res.status}` };
+    return { ok: false, error: (data?.error as string) ?? 'Bilinmeyen hata' };
   } catch (err) {
-    const msg = (err as Error).message ?? 'Bağlantı hatası';
-    return { ok: false, error: msg.includes('abort') ? 'Zaman aşımı (30sn)' : msg };
+    return { ok: false, error: (err as Error).message ?? 'Bağlantı hatası' };
   }
 }
 
