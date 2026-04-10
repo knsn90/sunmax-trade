@@ -1013,7 +1013,7 @@ export function TradeFileDetailPage() {
         </Section>
 
         {/* ── Partiler (mobil) ─────────────────────────────────────────── */}
-        {!file.parent_file_id && (
+        {!file.parent_file_id && ['sale', 'delivery', 'completed'].includes(file.status) && (
           <PartilerCard
             file={file}
             writable={writable}
@@ -1248,7 +1248,7 @@ export function TradeFileDetailPage() {
             </div>
 
             {/* ── Partiler (Kısmi Sevkiyat) ──────────────────────────────── */}
-            {!file.parent_file_id && (
+            {!file.parent_file_id && ['sale', 'delivery', 'completed'].includes(file.status) && (
               <PartilerCard
                 file={file}
                 writable={writable}
@@ -1534,7 +1534,12 @@ export function TradeFileDetailPage() {
       <NewFileModal open={editFileOpen} onOpenChange={setEditFileOpen} editMode fileToEdit={file} />
       <ToSaleModal open={saleOpen} onOpenChange={setSaleOpen} file={file} />
       <ToSaleModal open={editSaleOpen} onOpenChange={setEditSaleOpen} file={file} editMode />
-      <DeliveryModal open={deliveryOpen} onOpenChange={handleDeliveryClose} file={file} />
+      <DeliveryModal
+        open={deliveryOpen}
+        onOpenChange={handleDeliveryClose}
+        file={file}
+        onPartialShipment={() => { setDeliveryOpen(false); setBatchOpen(true); }}
+      />
       <InvoiceModal open={invoiceOpen} onOpenChange={setInvoiceOpen} file={file} invoice={editInvoice} />
       <InvoiceModal open={saleInvoiceOpen} onOpenChange={setSaleInvoiceOpen} file={file} invoice={editSaleInvoice} invoiceType="sale" />
       <ProformaModal open={proformaOpen} onOpenChange={setProformaOpen} file={file} proforma={editPI} />

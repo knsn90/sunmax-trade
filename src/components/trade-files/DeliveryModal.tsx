@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { deliverySchema, type DeliveryFormData } from '@/types/forms';
@@ -12,15 +12,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormRow, FormGroup } from '@/components/ui/shared';
+import { Package, Layers } from 'lucide-react';
 
 interface DeliveryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   file: TradeFile | null;
+  /** Kısmi sevkiyat seçildiğinde çağrılır — ana bileşen BatchModal'ı açar */
+  onPartialShipment?: () => void;
 }
 
-export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) {
+export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: DeliveryModalProps) {
   const convertToDelivery = useConvertToDelivery();
+  // step: 'ask' = ilk soru | 'form' = teslimat formu
+  const [step, setStep] = useState<'ask' | 'form'>('ask');
 
   const form = useForm<DeliveryFormData>({
     resolver: zodResolver(deliverySchema),
@@ -41,6 +46,9 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
   // Pre-fill existing delivery data when editing; sync septi_ref ↔ register_no
   useEffect(() => {
     if (open && file) {
+      // Her açılışta: daha önce parti oluşturulmuşsa direkt forma git
+      const hasBatches = (file.batches?.length ?? 0) > 0;
+      setStep(hasBatches ? 'form' : 'ask');
       reset({
         delivered_admt: file.delivered_admt ?? file.tonnage_mt ?? 0,
         gross_weight_kg: file.gross_weight_kg ?? 0,
@@ -87,13 +95,64 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delivery Details</DialogTitle>
+          <DialogTitle>Teslimat Bilgileri</DialogTitle>
           <DialogDescription>
             {file.file_no} — {file.customer?.name}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        {/* ── Adım 0: Yükleme tipi sorusu ─────────────────────────── */}
+        {step === 'ask' && (
+          <div className="py-2 space-y-3">
+            <p className="text-[13px] text-gray-600 font-medium">Bu sevkiyat nasıl gerçekleşecek?</p>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Tek yükleme */}
+              <button
+                type="button"
+                onClick={() => setStep('form')}
+                className="flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-gray-100 group-hover:bg-white flex items-center justify-center transition-colors">
+                  <Package className="h-5 w-5 text-gray-500" />
+                </div>
+                <div className="text-center">
+                  <p className="text-[13px] font-bold text-gray-800">Tek Yükleme</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Tüm mal tek seferde</p>
+                </div>
+              </button>
+
+              {/* Kısmi sevkiyat */}
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  onPartialShipment?.();
+                }}
+                className="flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 border-blue-100 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-blue-50 group-hover:bg-white flex items-center justify-center transition-colors">
+                  <Layers className="h-5 w-5 text-blue-500" />
+                </div>
+                <div className="text-center">
+                  <p className="text-[13px] font-bold text-gray-800">Kısmi Sevkiyat</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Parça parça yükleme</p>
+                </div>
+              </button>
+            </div>
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="text-[12px] text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+              >
+                İptal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Adım 1: Teslimat formu ────────────────────────────────── */}
+        {step === 'form' && <form onSubmit={handleSubmit(onSubmit)}>
           <FormRow>
             <FormGroup label="ADMT *" error={errors.delivered_admt?.message}>
               <Input type="number" step="0.001" {...register('delivered_admt')} />
@@ -132,13 +191,13 @@ export function DeliveryModal({ open, onOpenChange, file }: DeliveryModalProps) 
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              İptal
             </Button>
             <Button type="submit" disabled={convertToDelivery.isPending}>
-              {convertToDelivery.isPending ? 'Saving…' : 'Save Delivery'}
+              {convertToDelivery.isPending ? 'Kaydediliyor…' : 'Teslimatı Kaydet'}
             </Button>
           </DialogFooter>
-        </form>
+        </form>}
       </DialogContent>
     </Dialog>
   );
