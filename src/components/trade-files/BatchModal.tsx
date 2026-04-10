@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
-import { useCreateTradeFile } from '@/hooks/useTradeFiles';
+import { useCreateTradeFile, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -42,6 +42,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const navigate = useNavigate();
   const createFile = useCreateTradeFile();
+  const updateSaleDetails = useUpdateSaleDetails();
 
   const batchFileNo = `${parent.file_no}/P${nextBatchNo}`;
 
@@ -68,8 +69,36 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
         eta: values.eta ?? '',
         parent_file_id: parent.id,
         batch_no: nextBatchNo,
-        initialStatus: 'sale', // partiler doğrudan belgeler/satış aşamasından başlar
+        initialStatus: 'sale',
       });
+
+      // Ana dosyanın satış detaylarını kopyala
+      // ETA ve taşıma şekli batch'in kendi değerlerini korur
+      if (parent.supplier_id || parent.selling_price) {
+        await updateSaleDetails.mutateAsync({
+          id: created.id,
+          data: {
+            supplier_id:          parent.supplier_id ?? '',
+            selling_price:        parent.selling_price ?? 0,
+            purchase_price:       parent.purchase_price ?? 0,
+            freight_cost:         parent.freight_cost ?? 0,
+            port_of_loading:      parent.port_of_loading ?? '',
+            port_of_discharge:    parent.port_of_discharge ?? '',
+            incoterms:            parent.incoterms ?? '',
+            purchase_currency:    (parent.purchase_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
+            sale_currency:        (parent.sale_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
+            payment_terms:        parent.payment_terms ?? '',
+            advance_rate:         parent.advance_rate ?? 0,
+            purchase_advance_rate: parent.purchase_advance_rate ?? 0,
+            transport_mode:       (values.transport_mode || parent.transport_mode || 'truck') as 'truck' | 'railway' | 'sea',
+            eta:                  values.eta ?? parent.eta ?? '',
+            vessel_name:          parent.vessel_name ?? '',
+            proforma_ref:         parent.proforma_ref ?? '',
+            register_no:          parent.register_no ?? '',
+          },
+        });
+      }
+
       toast.success(`Parti ${batchFileNo} oluşturuldu`);
       reset();
       onClose();
