@@ -18,7 +18,8 @@ import { BatchModal } from '@/components/trade-files/BatchModal';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
-import { TransactionModal } from '@/components/accounting/TransactionModal';
+import { PurchaseInvoiceModal } from '@/components/accounting/PurchaseInvoiceModal';
+import { ServiceInvoiceModal } from '@/components/accounting/ServiceInvoiceModal';
 import { useDeleteInvoice, useDeletePackingList } from '@/hooks/useDocuments';
 import { useDeleteProforma } from '@/hooks/useProformas';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
@@ -332,7 +333,8 @@ export function TradeFileDetailPage() {
   const [editSaleOpen, setEditSaleOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [editFileOpen, setEditFileOpen] = useState(false);
-  const [txnModal, setTxnModal] = useState<{ open: boolean; type: 'purchase_inv' | 'svc_inv' }>({ open: false, type: 'purchase_inv' });
+  const [purchaseInvOpen, setPurchaseInvOpen] = useState(false);
+  const [svcInvOpen, setSvcInvOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [proformaOpen, setProformaOpen] = useState(false);
   const [packingOpen, setPackingOpen] = useState(false);
@@ -1149,11 +1151,11 @@ export function TradeFileDetailPage() {
           onToggle={() => toggleCard('m_expenses')}
           right={writable ? (
             <div className="flex gap-1.5">
-              <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })}
+              <button onClick={() => setPurchaseInvOpen(true)}
                 className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
                 <Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}
               </button>
-              <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })}
+              <button onClick={() => setSvcInvOpen(true)}
                 className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
                 <Plus className="h-3 w-3" /> {t('detail.expenses.addService')}
               </button>
@@ -1660,8 +1662,8 @@ export function TradeFileDetailPage() {
                 <div className="flex items-center gap-2">
                   {writable && (
                     <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setTxnModal({ open: true, type: 'purchase_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
-                      <button onClick={() => setTxnModal({ open: true, type: 'svc_inv' })} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
+                      <button onClick={() => setPurchaseInvOpen(true)} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
+                      <button onClick={() => setSvcInvOpen(true)} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
                     </div>
                   )}
                   {collapsed.expenses ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
@@ -1798,10 +1800,14 @@ export function TradeFileDetailPage() {
       <InvoiceModal open={saleInvoiceOpen} onOpenChange={setSaleInvoiceOpen} file={file} invoice={editSaleInvoice} invoiceType="sale" />
       <ProformaModal open={proformaOpen} onOpenChange={setProformaOpen} file={file} proforma={editPI} />
       <PackingListModal open={packingOpen} onOpenChange={setPackingOpen} file={file} packingList={editPL} />
-      <TransactionModal
-        open={txnModal.open}
-        onOpenChange={(v) => setTxnModal(m => ({ ...m, open: v }))}
-        defaultType={txnModal.type}
+      <PurchaseInvoiceModal
+        open={purchaseInvOpen}
+        onOpenChange={setPurchaseInvOpen}
+        defaultTradeFileId={file.id}
+      />
+      <ServiceInvoiceModal
+        open={svcInvOpen}
+        onOpenChange={setSvcInvOpen}
         defaultTradeFileId={file.id}
       />
     </div>

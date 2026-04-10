@@ -18,6 +18,7 @@ import { KasaManager } from '@/components/accounting/KasaManager';
 import { BankAccountManager } from '@/components/accounting/BankAccountManager';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { PurchaseInvoiceModal } from '@/components/accounting/PurchaseInvoiceModal';
+import { ServiceInvoiceModal } from '@/components/accounting/ServiceInvoiceModal';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
 import { LoadingSpinner } from '@/components/ui/shared';
@@ -199,6 +200,8 @@ export function AccountingPage() {
   const [saleInvModalOpen, setSaleInvModalOpen] = useState(false);
   const [purchaseInvModalOpen, setPurchaseInvModalOpen] = useState(false);
   const [editingPurchaseInv, setEditingPurchaseInv] = useState<Transaction | null>(null);
+  const [svcInvModalOpen, setSvcInvModalOpen] = useState(false);
+  const [editingSvcInv, setEditingSvcInv] = useState<Transaction | null>(null);
 
   const tabDefaultType: Record<AccTab, string | undefined> = {
     all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', ayarlar: undefined,
@@ -327,6 +330,9 @@ export function AccountingPage() {
     if (txn.transaction_type === 'purchase_inv') {
       setEditingPurchaseInv(txn);
       setPurchaseInvModalOpen(true);
+    } else if (txn.transaction_type === 'svc_inv') {
+      setEditingSvcInv(txn);
+      setSvcInvModalOpen(true);
     } else {
       setEditingTxn(txn);
       setTxnModalOpen(true);
@@ -445,7 +451,11 @@ export function AccountingPage() {
                       setEditingSaleInv(null);
                       setSaleInvModalOpen(true);
                     } else if (activeTab === 'buy') {
+                      setEditingPurchaseInv(null);
                       setPurchaseInvModalOpen(true);
+                    } else if (activeTab === 'svc') {
+                      setEditingSvcInv(null);
+                      setSvcInvModalOpen(true);
                     } else {
                       openNew();
                     }
@@ -933,6 +943,11 @@ export function AccountingPage() {
           setEditingTxn(null);
           setTxnModalOpen(true);
         }}
+      />
+      <ServiceInvoiceModal
+        open={svcInvModalOpen}
+        onOpenChange={(v) => { setSvcInvModalOpen(v); if (!v) setEditingSvcInv(null); }}
+        transaction={editingSvcInv}
       />
     </div>
   );
