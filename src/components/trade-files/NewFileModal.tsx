@@ -189,17 +189,17 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                   {(() => {
                     const parents = customers.filter(c => !c.parent_customer_id);
                     const subs    = customers.filter(c =>  c.parent_customer_id);
-                    const hasSubs = subs.length > 0;
                     return parents.map((p) => {
                       const children = subs.filter(s => s.parent_customer_id === p.id);
-                      return hasSubs ? (
+                      return children.length > 0 ? (
+                        // Ana firma optgroup başlığı (seçilemeyen), alt firmalar ↳ ile
                         <optgroup key={p.id} label={p.name}>
-                          <option value={p.id}>{p.name}</option>
                           {children.map(s => (
                             <option key={s.id} value={s.id}>↳ {s.name}</option>
                           ))}
                         </optgroup>
                       ) : (
+                        // Alt firması olmayan ana firma — normal seçenek
                         <option key={p.id} value={p.id}>{p.name}</option>
                       );
                     });
