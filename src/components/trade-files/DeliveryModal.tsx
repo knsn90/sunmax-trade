@@ -4,8 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { deliverySchema, type DeliveryFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
 import { useConvertToDelivery } from '@/hooks/useTradeFiles';
-import { today } from '@/lib/formatters';
-import { invoiceService } from '@/services/invoiceService';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -66,23 +64,7 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
   async function onSubmit(data: DeliveryFormData) {
     if (!file) return;
     try {
-    await convertToDelivery.mutateAsync({ id: file.id, data });
-
-    // Auto-create/update Purchase Transaction: ADMT × purchase_price (use purchase_currency)
-    const purchaseCurrency = (file.purchase_currency ?? file.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY';
-    if (file.supplier_id && file.purchase_price) {
-      await invoiceService.upsertPurchaseTransaction(
-        file.id,
-        file.supplier_id,
-        file.file_no,
-        data.delivered_admt,
-        file.purchase_price,
-        file.freight_cost ?? 0,
-        purchaseCurrency,
-        today(),
-      );
-    }
-
+      await convertToDelivery.mutateAsync({ id: file.id, data });
       reset();
       onOpenChange(false);
     } catch {
