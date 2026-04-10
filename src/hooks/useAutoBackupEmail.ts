@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '@/services/supabase';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 const LS_EMAIL    = 'sunmax_backup_email';
 const LS_SCHEDULE = 'sunmax_backup_schedule';
@@ -38,7 +39,14 @@ export async function sendBackupEmail(trigger: 'session_end' | 'manual' | 'daily
       body: { to: email, trigger },
     });
 
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      // FunctionsHttpError içinde gerçek Resend/function hatası var
+      if (error instanceof FunctionsHttpError) {
+        const body = await error.context.json().catch(() => ({})) as { error?: string };
+        return { ok: false, error: body.error ?? error.message };
+      }
+      return { ok: false, error: error.message };
+    }
 
     if (data?.ok) {
       localStorage.setItem(LS_LAST, new Date().toISOString());
