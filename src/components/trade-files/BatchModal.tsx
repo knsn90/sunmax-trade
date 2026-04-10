@@ -3,8 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/form-elements';
-import { FormRow, FormGroup } from '@/components/ui/shared';
+import { FormGroup } from '@/components/ui/shared';
 import { useCreateTradeFile, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -14,9 +13,6 @@ import { Layers } from 'lucide-react';
 
 const schema = z.object({
   tonnage_mt: z.number({ invalid_type_error: 'Ton giriniz' }).positive('Pozitif olmalı'),
-  transport_mode: z.string().optional(),
-  eta: z.string().optional(),
-  notes: z.string().optional(),
 });
 
 type Form = z.infer<typeof schema>;
@@ -27,13 +23,6 @@ interface Props {
   open: boolean;
   onClose: () => void;
 }
-
-const TRANSPORT_OPTIONS = [
-  { value: '',         label: '— Seçin —' },
-  { value: 'truck',    label: 'Kara (TIR)' },
-  { value: 'railway',  label: 'Demiryolu (Vagon)' },
-  { value: 'sea',      label: 'Deniz (Gemi)' },
-];
 
 export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
   const { theme } = useTheme();
@@ -46,12 +35,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      tonnage_mt: undefined,
-      transport_mode: '',
-      eta: '',
-      notes: '',
-    },
+    defaultValues: { tonnage_mt: undefined },
   });
 
   async function onSubmit(values: Form) {
@@ -63,36 +47,35 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
         product_id: parent.product_id,
         tonnage_mt: values.tonnage_mt,
         customer_ref: parent.customer_ref ?? '',
-        notes: values.notes ?? '',
-        eta: values.eta ?? '',
+        notes: '',
+        eta: parent.eta ?? '',
         parent_file_id: parent.id,
         batch_no: nextBatchNo,
         initialStatus: 'sale',
       });
 
-      // Ana dosyanın satış detaylarını kopyala
-      // ETA ve taşıma şekli batch'in kendi değerlerini korur
+      // Ana dosyanın tüm satış detaylarını kopyala
       if (parent.supplier_id || parent.selling_price != null || parent.incoterms || parent.payment_terms) {
         await updateSaleDetails.mutateAsync({
           id: created.id,
           data: {
-            supplier_id:          parent.supplier_id ?? '',
-            selling_price:        parent.selling_price ?? 0,
-            purchase_price:       parent.purchase_price ?? 0,
-            freight_cost:         parent.freight_cost ?? 0,
-            port_of_loading:      parent.port_of_loading ?? '',
-            port_of_discharge:    parent.port_of_discharge ?? '',
-            incoterms:            parent.incoterms ?? '',
-            purchase_currency:    (parent.purchase_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
-            sale_currency:        (parent.sale_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
-            payment_terms:        parent.payment_terms ?? '',
-            advance_rate:         parent.advance_rate ?? 0,
+            supplier_id:           parent.supplier_id ?? '',
+            selling_price:         parent.selling_price ?? 0,
+            purchase_price:        parent.purchase_price ?? 0,
+            freight_cost:          parent.freight_cost ?? 0,
+            port_of_loading:       parent.port_of_loading ?? '',
+            port_of_discharge:     parent.port_of_discharge ?? '',
+            incoterms:             parent.incoterms ?? '',
+            purchase_currency:     (parent.purchase_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
+            sale_currency:         (parent.sale_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
+            payment_terms:         parent.payment_terms ?? '',
+            advance_rate:          parent.advance_rate ?? 0,
             purchase_advance_rate: parent.purchase_advance_rate ?? 0,
-            transport_mode:       (values.transport_mode || parent.transport_mode || 'truck') as 'truck' | 'railway' | 'sea',
-            eta:                  values.eta ?? parent.eta ?? '',
-            vessel_name:          parent.vessel_name ?? '',
-            proforma_ref:         parent.proforma_ref ?? '',
-            register_no:          parent.register_no ?? '',
+            transport_mode:        (parent.transport_mode ?? 'truck') as 'truck' | 'railway' | 'sea',
+            eta:                   parent.eta ?? '',
+            vessel_name:           parent.vessel_name ?? '',
+            proforma_ref:          parent.proforma_ref ?? '',
+            register_no:           parent.register_no ?? '',
           },
         });
       }
@@ -112,7 +95,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[15px] font-bold text-gray-900">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: accent + '18' }}>
@@ -139,30 +122,14 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
-          <FormRow cols={2}>
-            <FormGroup label="Tonaj (MT) *" error={errors.tonnage_mt?.message}>
-              <Input
-                type="number"
-                step="0.001"
-                placeholder={`max ${remainingTon}`}
-                {...register('tonnage_mt', { valueAsNumber: true })}
-              />
-            </FormGroup>
-            <FormGroup label="Taşıma Şekli">
-              <NativeSelect {...register('transport_mode')}>
-                {TRANSPORT_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </NativeSelect>
-            </FormGroup>
-          </FormRow>
-
-          <FormGroup label="Tahmini Varış (ETA)">
-            <Input type="date" {...register('eta')} />
-          </FormGroup>
-
-          <FormGroup label="Notlar">
-            <Input placeholder="İsteğe bağlı..." {...register('notes')} />
+          <FormGroup label="Tonaj (MT) *" error={errors.tonnage_mt?.message}>
+            <Input
+              type="number"
+              step="0.001"
+              placeholder={`max ${remainingTon}`}
+              autoFocus
+              {...register('tonnage_mt', { valueAsNumber: true })}
+            />
           </FormGroup>
 
           <DialogFooter className="pt-2">
