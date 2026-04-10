@@ -68,10 +68,13 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
   const [masrafRate,     setMasrafRate]     = useState(1);
 
   // ── Hesaplamalar ──────────────────────────────────────────────────────
-  const araToplam  = miktar * birimFiyat;
-  const kdvTutari  = araToplam * kdvOrani / 100;
-  const toplamUsd  = araToplam + kdvTutari;
-  const toplamTry  = toplamUsd * dovizKuru;
+  const araToplam    = miktar * birimFiyat;
+  const kdvTutari    = araToplam * kdvOrani / 100;
+  const toplamYerel  = araToplam + kdvTutari;           // seçili dövizde toplam
+  const toplamUsd    = currency === 'USD'
+    ? toplamYerel
+    : toplamYerel * dovizKuru;                          // muhasebe USD karşılığı
+  const isNonUsd     = currency !== 'USD';
 
   // ── Reset / Pre-fill ──────────────────────────────────────────────────
   useEffect(() => {
@@ -83,8 +86,6 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
       setFaturaNo(transaction.reference_no ?? '');
       setFileId(transaction.trade_file_id ?? '');
       setAciklama(transaction.description ?? '');
-      setCurrency((transaction.currency ?? 'USD') as typeof currency);
-      setDovizKuru(transaction.exchange_rate ?? 1);
       setPaymentMethod((transaction.payment_method ?? '') as typeof paymentMethod);
       setMasrafTuru(transaction.masraf_turu ?? '');
       setMasrafTutar(transaction.masraf_tutar ?? 0);
@@ -111,6 +112,15 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
       setKdvOrani(kv);
       setBirim(String(notesObj.birim ?? 'Adet'));
 
+      // Orijinal döviz bilgisi (yeni format)
+      if (notesObj.original_currency) {
+        setCurrency(notesObj.original_currency as typeof currency);
+        setDovizKuru(Number(notesObj.usd_rate ?? 1));
+      } else {
+        setCurrency('USD');
+        setDovizKuru(transaction.exchange_rate ?? 1);
+      }
+
       if (notesObj.miktar) {
         setMiktar(Number(notesObj.miktar));
       } else if (bp > 0) {
@@ -132,16 +142,18 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
 
   // ── Submit ────────────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!party)           { toast.error('Lütfen hizmet sağlayıcı seçin'); return; }
-    if (toplamUsd <= 0)   { toast.error('Tutar sıfırdan büyük olmalı'); return; }
+    if (!party)        { toast.error('Lütfen hizmet sağlayıcı seçin'); return; }
+    if (toplamUsd <= 0) { toast.error('Tutar sıfırdan büyük olmalı'); return; }
 
     const notesObj = {
-      miktar:      miktar      || undefined,
-      birim:       birim       || undefined,
-      birim_fiyat: birimFiyat  || undefined,
-      kdv_orani:   kdvOrani,
-      kdv_tutari:  kdvTutari   || undefined,
-      toplam_try:  toplamTry   || undefined,
+      miktar:           miktar       || undefined,
+      birim:            birim        || undefined,
+      birim_fiyat:      birimFiyat   || undefined,
+      kdv_orani:        kdvOrani,
+      kdv_tutari:       kdvTutari    || undefined,
+      original_currency: isNonUsd ? currency : undefined,
+      original_amount:   isNonUsd ? toplamYerel : undefined,
+      usd_rate:          isNonUsd ? dovizKuru : undefined,
     };
 
     const payload = {
@@ -155,9 +167,9 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
       party_name:          party.name,
       description:         aciklama || 'Hizmet Faturası',
       reference_no:        faturaNo,
-      currency,
-      amount:              toplamUsd,
-      exchange_rate:       dovizKuru,
+      currency:            'USD' as const,   // muhasebe her zaman USD
+      amount:              toplamUsd,         // USD karşılığı
+      exchange_rate:       isNonUsd ? dovizKuru : 1,
       paid_amount:         transaction?.paid_amount ?? 0,
       payment_status:      (transaction?.payment_status ?? 'open') as 'open' | 'partial' | 'paid',
       payment_method:      paymentMethod,
@@ -298,8 +310,8 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                   <option value="TRY">TRY</option>
                 </NativeSelect>
               </FormGroup>
-              {currency !== 'TRY' ? (
-                <FormGroup label={`Kur (${currency} → TRY)`}>
+              {isNonUsd ? (
+                <FormGroup label={`Kur (${currency} → USD)`}>
                   <Input
                     type="number" step="0.0001"
                     value={dovizKuru || ''}
@@ -326,12 +338,12 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
               )}
               <div className="flex justify-between font-extrabold text-gray-900 pt-1 border-t border-gray-200">
                 <span>Toplam ({currency})</span>
-                <span>{fCurrency(toplamUsd, currency)}</span>
+                <span>{fCurrency(toplamYerel, currency)}</span>
               </div>
-              {currency !== 'TRY' && dovizKuru > 1 && (
+              {isNonUsd && dovizKuru > 0 && (
                 <div className="flex justify-between text-gray-400 text-[11px]">
-                  <span>TL Karşılığı (Kur: {fN(dovizKuru, 4)})</span>
-                  <span>{fCurrency(toplamTry, 'TRY')}</span>
+                  <span>USD Karşılığı (Kur: {fN(dovizKuru, 4)})</span>
+                  <span className="font-semibold text-gray-600">{fCurrency(toplamUsd, 'USD')}</span>
                 </div>
               )}
             </div>
