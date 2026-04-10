@@ -180,61 +180,6 @@ export const invoiceService = {
     }
   },
 
-  async upsertPurchaseTransaction(
-    tradeFileId: string,
-    supplierId: string,
-    fileNo: string,
-    deliveredAdmt: number,
-    purchasePrice: number,
-    freightCost: number,
-    currency: string,
-    invoiceDate: string,
-  ): Promise<void> {
-    const subtotal = deliveredAdmt * purchasePrice;
-    const total = subtotal + (freightCost ?? 0);
-
-    // Find existing purchase_inv transaction for this trade file (auto-generated)
-    const { data: existingTxn } = await supabase
-      .from('transactions')
-      .select('id')
-      .eq('trade_file_id', tradeFileId)
-      .eq('transaction_type', 'purchase_inv')
-      .eq('supplier_id', supplierId)
-      .maybeSingle();
-
-    if (existingTxn?.id) {
-      await supabase
-        .from('transactions')
-        .update({
-          transaction_date: invoiceDate,
-          description: `Purchase Invoice - ${fileNo}`,
-          currency,
-          amount: total,
-          amount_usd: total,
-        })
-        .eq('id', existingTxn.id);
-    } else {
-      await supabase
-        .from('transactions')
-        .insert({
-          transaction_date: invoiceDate,
-          transaction_type: 'purchase_inv',
-          trade_file_id: tradeFileId,
-          party_type: 'supplier',
-          supplier_id: supplierId,
-          description: `Purchase Invoice - ${fileNo}`,
-          reference_no: fileNo,
-          currency,
-          amount: total,
-          exchange_rate: 1,
-          amount_usd: total,
-          paid_amount: 0,
-          paid_amount_usd: 0,
-          payment_status: 'open',
-        });
-    }
-  },
-
   async listSaleInvoices(): Promise<Invoice[]> {
     const { data, error } = await supabase
       .from('invoices')

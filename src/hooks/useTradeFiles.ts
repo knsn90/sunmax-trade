@@ -41,8 +41,7 @@ export function useTradeFile(id: string | undefined) {
       }
       return undefined;
     },
-    initialDataUpdatedAt: () =>
-      qc.getQueryState(tradeFileKeys.lists())?.dataUpdatedAt,
+    initialDataUpdatedAt: () => 0,
   });
 }
 
