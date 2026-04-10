@@ -478,6 +478,8 @@ export function TradeFileDetailPage() {
   const isBatch    = !!file.parent_file_id;                          // bu dosya bir alt parti mi?
   const isPartial  = !isBatch && (file.batches?.length ?? 0) > 0;   // ana dosyada parti var mı?
   const allBatchesDone = isPartial && (file.batches ?? []).every(b => b.status === 'completed');
+  // Batch file_no = "ANA/P1" → ana dosya no = "ANA"
+  const parentFileNo = isBatch ? file.file_no.split('/').slice(0, -1).join('/') : null;
 
   function handlePartialCTA() {
     if (allBatchesDone) {
@@ -744,6 +746,17 @@ export function TradeFileDetailPage() {
               {tc('status.' + file.status)}
             </span>
           </div>
+          {/* Alt Parti badge — mobil */}
+          {isBatch && (
+            <button
+              onClick={() => navigate(`/files/${file.parent_file_id}`)}
+              className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-100 w-full active:bg-violet-100 transition-colors"
+            >
+              <Layers className="h-3 w-3 text-violet-500 shrink-0" />
+              <span className="text-[10px] font-bold text-violet-500 uppercase tracking-wide">Alt Parti</span>
+              <span className="text-[10px] font-mono text-violet-700 font-semibold ml-0.5">← {parentFileNo}</span>
+            </button>
+          )}
           <div className="flex items-start gap-3">
             <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[14px] font-bold shrink-0 shadow-sm mt-0.5" style={{ background: avatarBg }}>
               {custInitials}
@@ -1168,6 +1181,17 @@ export function TradeFileDetailPage() {
                 <span className={cn('px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest', meta.pill)}>
                   {tc('status.' + file.status)}
                 </span>
+                {isBatch && (
+                  <button
+                    onClick={() => navigate(`/files/${file.parent_file_id}`)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-violet-50 border border-violet-100 hover:bg-violet-100 transition-colors"
+                    title="Ana dosyaya git"
+                  >
+                    <Layers className="h-2.5 w-2.5 text-violet-500" />
+                    <span className="text-[9px] font-bold text-violet-500 uppercase tracking-wide">Alt Parti</span>
+                    <span className="text-[9px] font-mono text-violet-700 font-semibold">← {parentFileNo}</span>
+                  </button>
+                )}
                 {editingFileNo ? (
                   <div className="flex items-center gap-1">
                     <input
