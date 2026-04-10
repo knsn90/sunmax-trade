@@ -186,7 +186,24 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               <div className="flex gap-1.5">
                 <NativeSelect {...register('customer_id')} className="flex-1">
                   <option value="">— Seçin —</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {(() => {
+                    const parents = customers.filter(c => !c.parent_customer_id);
+                    const subs    = customers.filter(c =>  c.parent_customer_id);
+                    const hasSubs = subs.length > 0;
+                    return parents.map((p) => {
+                      const children = subs.filter(s => s.parent_customer_id === p.id);
+                      return hasSubs ? (
+                        <optgroup key={p.id} label={p.name}>
+                          <option value={p.id}>{p.name}</option>
+                          {children.map(s => (
+                            <option key={s.id} value={s.id}>↳ {s.name}</option>
+                          ))}
+                        </optgroup>
+                      ) : (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      );
+                    });
+                  })()}
                 </NativeSelect>
                 <button
                   type="button"
