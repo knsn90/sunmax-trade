@@ -35,6 +35,9 @@ export async function sendBackupEmail(trigger: 'session_end' | 'manual' | 'daily
   const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
   const functionUrl  = `${supabaseUrl}/functions/v1/send-backup-email`;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000); // 30 sn timeout
+
   const res = await fetch(functionUrl, {
     method: 'POST',
     headers: {
@@ -44,7 +47,8 @@ export async function sendBackupEmail(trigger: 'session_end' | 'manual' | 'daily
     },
     body: JSON.stringify({ to: email, trigger }),
     keepalive: true,  // works even when page is unloading
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (res.ok) {
     localStorage.setItem(LS_LAST, new Date().toISOString());

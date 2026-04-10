@@ -12,6 +12,16 @@ const BACKUP_TABLES = [
   "transactions", "company_settings", "bank_accounts",
 ] as const;
 
+/** Safely base64-encodes a Uint8Array in chunks — avoids call stack overflow on large payloads */
+function toBase64(bytes: Uint8Array): string {
+  const CHUNK = 8192;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
@@ -21,37 +31,35 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY secret is not set in Supabase.");
 
-    const supabaseUrl       = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const { to, trigger } = await req.json() as { to: string; trigger?: string };
     if (!to) throw new Error("Missing 'to' email address.");
 
-    // Use service role to read all backup tables (bypasses RLS)
+    // Service role client — bypasses RLS for all tables
     const sb = createClient(supabaseUrl, serviceRoleKey);
 
-    const tables: Record<string, unknown[]> = {};
-    for (const table of BACKUP_TABLES) {
-      const { data, error } = await sb.from(table).select("*");
-      if (error) {
-        console.warn(`Skipping ${table}: ${error.message}`);
-        tables[table] = [];
-      } else {
-        tables[table] = data ?? [];
-      }
-    }
+    // Fetch all tables in parallel for speed
+    const results = await Promise.all(
+      BACKUP_TABLES.map(async (table) => {
+        const { data, error } = await sb.from(table).select("*");
+        if (error) console.warn(`Skipping ${table}: ${error.message}`);
+        return [table, data ?? []] as const;
+      })
+    );
+
+    const tables: Record<string, unknown[]> = Object.fromEntries(results);
+    const rowCount = results.reduce((s, [, rows]) => s + rows.length, 0);
 
     const now    = new Date().toISOString();
     const today  = now.slice(0, 10);
     const backup = { version: 1, exported_at: now, trigger: trigger ?? "manual", tables };
-    const json   = JSON.stringify(backup, null, 2);
 
-    // Base64-encode the JSON for the email attachment
-    const encoder  = new TextEncoder();
-    const bytes    = encoder.encode(json);
-    const b64      = btoa(String.fromCharCode(...bytes));
-
-    const rowCount = BACKUP_TABLES.reduce((s, t) => s + (tables[t]?.length ?? 0), 0);
+    // Chunked base64 — safe for large payloads
+    const json  = JSON.stringify(backup);
+    const bytes = new TextEncoder().encode(json);
+    const b64   = toBase64(bytes);
 
     // Send via Resend
     const res = await fetch("https://api.resend.com/emails", {
@@ -70,10 +78,10 @@ serve(async (req) => {
             <p style="color:#666;font-size:13px;margin-top:0">Tarih: ${now.replace("T"," ").slice(0,19)} UTC</p>
             <hr style="border:none;border-top:1px solid #eee;margin:16px 0">
             <table style="width:100%;font-size:13px;border-collapse:collapse">
-              ${BACKUP_TABLES.map(t => `
+              ${results.map(([t, rows]) => `
                 <tr>
                   <td style="padding:4px 8px 4px 0;color:#888">${t}</td>
-                  <td style="padding:4px 0;font-weight:600;text-align:right">${tables[t]?.length ?? 0} kayıt</td>
+                  <td style="padding:4px 0;font-weight:600;text-align:right">${rows.length} kayıt</td>
                 </tr>
               `).join("")}
             </table>
@@ -91,17 +99,16 @@ serve(async (req) => {
       }),
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Resend API error: ${err}`);
-    }
+    const resBody = await res.text();
+    if (!res.ok) throw new Error(`Resend error ${res.status}: ${resBody}`);
 
+    console.log(`[send-backup-email] OK → ${to}, ${rowCount} rows, trigger=${trigger}`);
     return new Response(
       JSON.stringify({ ok: true, sent_to: to, rows: rowCount }),
       { headers: { ...CORS, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("[send-backup-email]", err);
+    console.error("[send-backup-email] FAILED:", err);
     return new Response(
       JSON.stringify({ ok: false, error: (err as Error).message }),
       { status: 500, headers: { ...CORS, "Content-Type": "application/json" } },
