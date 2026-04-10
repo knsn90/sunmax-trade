@@ -95,7 +95,7 @@ export function TransportPlanSection({ file, writable }: Props) {
   const isUrgent     = days !== null && days >= 0 && days <= 1;
   const hasUnnotif   = notifs.some(n => n.send_status === 'pending');
   const hasCancelled = plates.some(p => p.plate_status === 'cancelled');
-  const modeIsSet    = file.transport_mode === 'truck' || file.transport_mode === 'railway';
+  const modeIsSet    = file.transport_mode === 'truck' || file.transport_mode === 'railway' || file.transport_mode === 'sea';
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   async function saveHeader() {

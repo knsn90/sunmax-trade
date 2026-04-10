@@ -471,6 +471,8 @@ export function TradeFileDetailPage() {
   const isSaleOrDel = file.status === 'sale' || file.status === 'delivery';
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
   const expenses = fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
+  // Satış detayı var mı? selling_price 0 olabilir, bu yüzden != null kontrolü
+  const hasSaleDetails = !!(file.supplier_id || file.selling_price != null || file.incoterms || file.payment_terms || file.port_of_discharge);
 
   // ── Parti / kısmi sevkiyat hesaplamaları ────────────────────────────────────
   const isBatch    = !!file.parent_file_id;                          // bu dosya bir alt parti mi?
@@ -873,9 +875,9 @@ export function TradeFileDetailPage() {
             </div>
           ) : undefined}
         >
-          {file.selling_price ? (
+          {hasSaleDetails ? (
             <>
-              <KV label={t('detail.saleDetails.salePrice')} value={`${fCurrency(file.selling_price)}/MT`} bold />
+              <KV label={t('detail.saleDetails.salePrice')} value={file.selling_price ? `${fCurrency(file.selling_price)}/MT` : '—'} bold />
               <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
               <KV label={t('detail.saleDetails.supplier')} value={file.supplier?.name ?? '—'} />
               <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
@@ -1396,11 +1398,11 @@ export function TradeFileDetailPage() {
                 </div>
               </div>
               {!collapsed.saleDetails && (
-                file.selling_price ? (
+                hasSaleDetails ? (
                   <div className="px-6 py-2">
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.salePrice')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.selling_price)}/MT</span>
+                      <span className="text-[13px] font-bold text-gray-900">{file.selling_price ? `${fCurrency(file.selling_price)}/MT` : '—'}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>

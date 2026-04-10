@@ -29,12 +29,10 @@ interface Props {
 }
 
 const TRANSPORT_OPTIONS = [
-  { value: '',        label: '— Seçin —' },
-  { value: 'sea',    label: 'Deniz (Gemi)' },
-  { value: 'road',   label: 'Kara (TIR)' },
-  { value: 'rail',   label: 'Demiryolu (Vagon)' },
-  { value: 'air',    label: 'Hava' },
-  { value: 'mixed',  label: 'Karma' },
+  { value: '',         label: '— Seçin —' },
+  { value: 'truck',    label: 'Kara (TIR)' },
+  { value: 'railway',  label: 'Demiryolu (Vagon)' },
+  { value: 'sea',      label: 'Deniz (Gemi)' },
 ];
 
 export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
@@ -74,7 +72,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
 
       // Ana dosyanın satış detaylarını kopyala
       // ETA ve taşıma şekli batch'in kendi değerlerini korur
-      if (parent.supplier_id || parent.selling_price) {
+      if (parent.supplier_id || parent.selling_price != null || parent.incoterms || parent.payment_terms) {
         await updateSaleDetails.mutateAsync({
           id: created.id,
           data: {
