@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTradeFile, useChangeStatus, useNoteDelay, tradeFileKeys } from '@/hooks/useTradeFiles';
+import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFile, tradeFileKeys } from '@/hooks/useTradeFiles';
 import { tradeFileService } from '@/services/tradeFileService';
 import { dropboxService } from '@/services/dropboxService';
 import { toast } from 'sonner';
@@ -165,7 +165,14 @@ function PartilerCard({
   onToggle?: () => void;
 }) {
   const navigate = useNavigate();
+  const deleteFile = useDeleteTradeFile();
   const batches = file.batches ?? [];
+
+  function handleDeleteBatch(e: React.MouseEvent, batchId: string, batchNo: string) {
+    e.stopPropagation();
+    if (!window.confirm(`P${batchNo} partisini silmek istediğinizden emin misiniz?\nBu işlem geri alınamaz.`)) return;
+    deleteFile.mutate(batchId);
+  }
   if (batches.length === 0 && !writable) return null;
 
   const usedTon   = batches.reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
@@ -250,27 +257,43 @@ function PartilerCard({
                 .slice()
                 .sort((a, b) => (a.batch_no ?? 0) - (b.batch_no ?? 0))
                 .map(b => (
-                  <button
+                  <div
                     key={b.id}
-                    onClick={() => navigate(`/files/${b.id}`)}
-                    className="w-full flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                    className="group flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-colors"
                   >
-                    <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
-                      style={{ background: accent + 'dd' }}
+                    {/* Tıklanabilir alan */}
+                    <button
+                      onClick={() => navigate(`/files/${b.id}`)}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
                     >
-                      P{b.batch_no}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-gray-800">{b.file_no}</p>
-                      <p className="text-[11px] text-gray-400">
-                        {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} MT` : '—'}
-                        {b.transport_mode ? ` · ${TRANSPORT_LABEL[b.transport_mode] ?? b.transport_mode}` : ''}
-                        {b.eta ? ` · ETA ${b.eta}` : ''}
-                      </p>
-                    </div>
-                    <span className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT[b.status] ?? 'bg-gray-300')} />
-                  </button>
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
+                        style={{ background: accent + 'dd' }}
+                      >
+                        P{b.batch_no}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-gray-800">{b.file_no}</p>
+                        <p className="text-[11px] text-gray-400">
+                          {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} MT` : '—'}
+                          {b.transport_mode ? ` · ${TRANSPORT_LABEL[b.transport_mode] ?? b.transport_mode}` : ''}
+                          {b.eta ? ` · ETA ${b.eta}` : ''}
+                        </p>
+                      </div>
+                      <span className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT[b.status] ?? 'bg-gray-300')} />
+                    </button>
+                    {/* Sil butonu — sadece writable modda, hover'da görünür */}
+                    {writable && (
+                      <button
+                        onClick={(e) => handleDeleteBatch(e, b.id, String(b.batch_no))}
+                        disabled={deleteFile.isPending}
+                        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Partiyi sil"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 ))}
             </div>
           )}
