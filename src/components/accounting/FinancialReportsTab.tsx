@@ -16,20 +16,27 @@ function isMoneyIn(txnType: string, partyType: string | null): boolean {
   return false;
 }
 
+/** Hesap para birimine göre doğru miktarı seç */
+function pickAmt(t: Transaction, currency: string): number {
+  return currency === 'USD' ? (t.amount_usd ?? t.amount) : t.amount;
+}
+
 /** Kasa veya banka hesabına ait işlemlerin bakiyesini hesapla */
 function computeBalance(
   openingBalance: number,
   txns: Transaction[],
+  currency: string,
   incomingTransfers: AccountTransfer[] = [],
   outgoingTransfers: AccountTransfer[] = [],
 ): number {
   const txnBalance = txns.reduce((acc, t) => {
     const moneyIn = isMoneyIn(t.transaction_type, t.party_type);
-    return acc + (moneyIn ? t.amount : -t.amount);
+    const amt = pickAmt(t, currency);
+    return acc + (moneyIn ? amt : -amt);
   }, openingBalance);
   const transferBalance =
-    incomingTransfers.reduce((s, t) => s + t.amount, 0) -
-    outgoingTransfers.reduce((s, t) => s + t.amount, 0);
+    incomingTransfers.reduce((s, t) => s + (currency === 'USD' ? t.amount_usd : t.amount), 0) -
+    outgoingTransfers.reduce((s, t) => s + (currency === 'USD' ? t.amount_usd : t.amount), 0);
   return txnBalance + transferBalance;
 }
 
@@ -189,6 +196,7 @@ export function FinancialReportsTab() {
       balance: computeBalance(
         k.opening_balance ?? 0,
         txnsByKasa.get(k.id) ?? [],
+        k.currency,
         incomingTransfersByKasa.get(k.id) ?? [],
         outgoingTransfersByKasa.get(k.id) ?? [],
       ),
@@ -203,6 +211,7 @@ export function FinancialReportsTab() {
       balance: computeBalance(
         b.opening_balance ?? 0,
         txnsByBank.get(b.id) ?? [],
+        b.currency ?? 'USD',
         incomingTransfersByBank.get(b.id) ?? [],
         outgoingTransfersByBank.get(b.id) ?? [],
       ),
@@ -266,7 +275,7 @@ export function FinancialReportsTab() {
       const preOutgoing = dateFrom
         ? (outgoingTransfersByKasa.get(k.id) ?? []).filter(t => t.transfer_date < dateFrom)
         : [];
-      return computeBalance(k.opening_balance ?? 0, preTxns, preIncoming, preOutgoing);
+      return computeBalance(k.opening_balance ?? 0, preTxns, k.currency, preIncoming, preOutgoing);
     } else {
       const b = selectedAccount.bank;
       const preTxns = dateFrom
@@ -278,7 +287,7 @@ export function FinancialReportsTab() {
       const preOutgoing = dateFrom
         ? (outgoingTransfersByBank.get(b.id) ?? []).filter(t => t.transfer_date < dateFrom)
         : [];
-      return computeBalance(b.opening_balance ?? 0, preTxns, preIncoming, preOutgoing);
+      return computeBalance(b.opening_balance ?? 0, preTxns, b.currency ?? 'USD', preIncoming, preOutgoing);
     }
   }, [selectedAccount, dateFrom, txnsByKasa, txnsByBank, incomingTransfersByKasa, outgoingTransfersByKasa, incomingTransfersByBank, outgoingTransfersByBank]);
 
@@ -310,14 +319,17 @@ export function FinancialReportsTab() {
 
     rows.sort((a, b) => a.date.localeCompare(b.date));
 
+    const cur = selectedCurrency;
     let running = openingForLedger;
     return rows.map(row => {
       if (row.kind === 'txn') {
         const moneyIn = isMoneyIn(row.txn.transaction_type, row.txn.party_type);
-        running = running + (moneyIn ? row.txn.amount : -row.txn.amount);
+        const amt = pickAmt(row.txn, cur);
+        running = running + (moneyIn ? amt : -amt);
         return { kind: 'txn' as const, txn: row.txn, moneyIn, running };
       } else {
-        running = running + (row.moneyIn ? row.transfer.amount : -row.transfer.amount);
+        const tAmt = cur === 'USD' ? row.transfer.amount_usd : row.transfer.amount;
+        running = running + (row.moneyIn ? tAmt : -tAmt);
         const otherName = row.moneyIn
           ? getAccountName(row.transfer.from_type, row.transfer.from_id)
           : getAccountName(row.transfer.to_type, row.transfer.to_id);
@@ -331,8 +343,16 @@ export function FinancialReportsTab() {
     ? ledgerRows[ledgerRows.length - 1].running
     : openingForLedger;
 
-  const totalIn = ledgerRows.reduce((s, r) => s + (r.moneyIn ? (r.kind === 'txn' ? r.txn.amount : r.transfer.amount) : 0), 0);
-  const totalOut = ledgerRows.reduce((s, r) => s + (!r.moneyIn ? (r.kind === 'txn' ? r.txn.amount : r.transfer.amount) : 0), 0);
+  const totalIn = ledgerRows.reduce((s, r) => {
+    if (!r.moneyIn) return s;
+    const amt = r.kind === 'txn' ? pickAmt(r.txn, selectedCurrency) : (selectedCurrency === 'USD' ? r.transfer.amount_usd : r.transfer.amount);
+    return s + amt;
+  }, 0);
+  const totalOut = ledgerRows.reduce((s, r) => {
+    if (r.moneyIn) return s;
+    const amt = r.kind === 'txn' ? pickAmt(r.txn, selectedCurrency) : (selectedCurrency === 'USD' ? r.transfer.amount_usd : r.transfer.amount);
+    return s + amt;
+  }, 0);
 
   const selectedName = selectedAccount
     ? selectedAccount.kind === 'kasa'
@@ -532,18 +552,32 @@ export function FinancialReportsTab() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             {moneyIn ? (
-                              <span className="text-[12px] font-semibold text-emerald-700 tabular-nums">
-                                + {fCurrency(txn.amount, txn.currency)}
-                              </span>
+                              <div className="text-right">
+                                <span className="text-[12px] font-semibold text-emerald-700 tabular-nums block">
+                                  + {fCurrency(pickAmt(txn, selectedCurrency), selectedCurrency as any)}
+                                </span>
+                                {txn.currency !== selectedCurrency && (
+                                  <span className="text-[10px] text-gray-400 font-mono">
+                                    {fCurrency(txn.amount, txn.currency)}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-gray-200 text-[11px]">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-right">
                             {!moneyIn ? (
-                              <span className="text-[12px] font-semibold text-red-600 tabular-nums">
-                                − {fCurrency(txn.amount, txn.currency)}
-                              </span>
+                              <div className="text-right">
+                                <span className="text-[12px] font-semibold text-red-600 tabular-nums block">
+                                  − {fCurrency(pickAmt(txn, selectedCurrency), selectedCurrency as any)}
+                                </span>
+                                {txn.currency !== selectedCurrency && (
+                                  <span className="text-[10px] text-gray-400 font-mono">
+                                    {fCurrency(txn.amount, txn.currency)}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-gray-200 text-[11px]">—</span>
                             )}
