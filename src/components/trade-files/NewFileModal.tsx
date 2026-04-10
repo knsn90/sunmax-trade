@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { newTradeFileSchema, type NewTradeFileFormData } from '@/types/forms';
 import { useCustomers, useCreateCustomer, useProducts, useCreateProduct } from '@/hooks/useEntities';
-import { useCreateTradeFile, useUpdateFileInfo, useTradeFiles } from '@/hooks/useTradeFiles';
+import { useCreateTradeFile, useUpdateFileInfo, useDeleteTradeFile, useTradeFiles } from '@/hooks/useTradeFiles';
 import { generateTradeFileNo } from '@/lib/generators';
 import { today } from '@/lib/formatters';
 import type { TradeFile } from '@/types/database';
@@ -13,10 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea, NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   open: boolean;
@@ -28,6 +29,16 @@ interface Props {
 export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit }: Props) {
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const navigate = useNavigate();
+  const deleteFile = useDeleteTradeFile();
+
+  async function handleDelete() {
+    if (!fileToEdit) return;
+    if (!window.confirm(`"${fileToEdit.file_no}" dosyasını silmek istediğinizden emin misiniz?\nBu işlem geri alınamaz.`)) return;
+    await deleteFile.mutateAsync(fileToEdit.id);
+    onOpenChange(false);
+    navigate('/files');
+  }
 
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
@@ -325,6 +336,18 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
 
           {/* ── Footer ──────────────────────────────────────── */}
           <DialogFooter>
+            {/* Sil butonu — sadece düzenleme modunda */}
+            {editMode && fileToEdit && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleteFile.isPending}
+                className="mr-auto flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 border border-red-100 transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deleteFile.isPending ? 'Siliniyor…' : 'Dosyayı Sil'}
+              </button>
+            )}
             <Button
               type="button"
               variant="outline"
