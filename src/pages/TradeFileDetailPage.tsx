@@ -674,7 +674,7 @@ export function TradeFileDetailPage() {
         <div className="px-4 py-3 border-b border-gray-50">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.delivered')}</div>
           <div className="text-[13px] font-bold text-gray-900">
-            {deliveredTonnage ? fN(deliveredTonnage, 0) + ' MT' : '—'}
+            {deliveredTonnage ? fN(deliveredTonnage, 3) + ' ADMT' : '—'}
           </div>
         </div>
       </div>
@@ -1308,7 +1308,7 @@ export function TradeFileDetailPage() {
                 <div className="px-5 py-4">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.delivered')}</div>
                   <div className="text-[15px] font-extrabold text-gray-900">
-                    {deliveredTonnage ? fN(deliveredTonnage, 0) + ' MT' : '—'}
+                    {deliveredTonnage ? fN(deliveredTonnage, 3) + ' ADMT' : '—'}
                   </div>
                 </div>
               </div>
