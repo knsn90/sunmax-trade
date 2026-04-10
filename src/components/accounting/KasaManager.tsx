@@ -43,12 +43,13 @@ export function KasaManager() {
   const [form, setForm] = useState<KasaForm>(EMPTY);
 
   /** Bakiye = açılış bakiyesi + işlemlerden hesaplanan bakiye */
-  function kasaBalance(kasaId: string, openingBalance: number): number {
+  function kasaBalance(kasaId: string, currency: string, openingBalance: number): number {
     const txnBalance = allTxns
       .filter(t => t.kasa_id === kasaId)
       .reduce((sum, t) => {
         const credit = isMoneyIn(t.transaction_type, t.party_type ?? '');
-        return sum + (credit ? t.amount : -t.amount);
+        const amt = currency === 'USD' ? (t.amount_usd ?? t.amount) : t.amount;
+        return sum + (credit ? amt : -amt);
       }, 0);
     return openingBalance + txnBalance;
   }
@@ -206,7 +207,7 @@ export function KasaManager() {
       ) : (
         <div className="divide-y divide-gray-50">
           {kasalar.map(kasa => {
-            const balance = kasaBalance(kasa.id, kasa.opening_balance ?? 0);
+            const balance = kasaBalance(kasa.id, kasa.currency, kasa.opening_balance ?? 0);
             const isPos = balance >= 0;
             return (
               <div key={kasa.id} className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50/40 transition-colors group">

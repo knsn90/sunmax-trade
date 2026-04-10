@@ -67,12 +67,17 @@ export function App() {
         const nowSec    = Math.floor(Date.now() / 1000);
         const remaining = expiresAt - nowSec;
         if (remaining < 600) {                             // < 10 min left
-          await supabase.auth.refreshSession();
+          const { error } = await supabase.auth.refreshSession();
+          if (error) {
+            // Refresh token is invalid/expired → force sign-out so user sees login
+            await supabase.auth.signOut();
+            return;
+          }
           // Invalidate all stale queries so they re-run with the fresh token
           queryClient.invalidateQueries();
         }
       } catch {
-        // Refresh failed (offline?) — queries will show error state normally
+        // Network offline — queries will show error state normally
       }
     };
     window.addEventListener('focus', handleFocus);
