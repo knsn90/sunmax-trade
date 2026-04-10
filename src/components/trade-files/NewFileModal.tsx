@@ -192,8 +192,9 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                     return parents.map((p) => {
                       const children = subs.filter(s => s.parent_customer_id === p.id);
                       return children.length > 0 ? (
-                        // Ana firma optgroup başlığı (seçilemeyen), alt firmalar ↳ ile
+                        // Ana firma optgroup başlığı + seçilebilir option, alt firmalar ↳ ile
                         <optgroup key={p.id} label={p.name}>
+                          <option value={p.id}>{p.name}</option>
                           {children.map(s => (
                             <option key={s.id} value={s.id}>↳ {s.name}</option>
                           ))}
