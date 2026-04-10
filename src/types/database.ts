@@ -216,6 +216,9 @@ export interface TradeFile extends Timestamps {
   cancel_reason: string | null;
   // Meta
   created_by: string | null;
+  // Parti / kısmi sevkiyat
+  parent_file_id: string | null;
+  batch_no: number | null;
   // Joined relations (from select queries)
   customer?: Customer;
   product?: Product;
@@ -224,6 +227,8 @@ export interface TradeFile extends Timestamps {
   invoices?: Invoice[];
   packing_lists?: PackingList[];
   proformas?: Proforma[];
+  // Alt partiler (detail sorgusunda gelir)
+  batches?: Pick<TradeFile, 'id' | 'file_no' | 'batch_no' | 'status' | 'tonnage_mt' | 'transport_mode' | 'eta'>[];
 }
 
 export interface PnlData {

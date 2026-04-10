@@ -14,6 +14,7 @@ import type { TradeFileStatus } from '@/types/enums';
 import { ToSaleModal } from '@/components/trade-files/ToSaleModal';
 import { DeliveryModal } from '@/components/trade-files/DeliveryModal';
 import { NewFileModal } from '@/components/trade-files/NewFileModal';
+import { BatchModal } from '@/components/trade-files/BatchModal';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
@@ -38,7 +39,7 @@ import {
   ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
   Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
   MoreVertical, X, RotateCcw, Bell, AlertTriangle, ExternalLink,
-  CheckCircle,
+  CheckCircle, Layers,
 } from 'lucide-react';
 
 // ── Action sheet item ─────────────────────────────────────────────────────────
@@ -137,6 +138,122 @@ function DocRow({
   );
 }
 
+// ── Partiler Kartı ────────────────────────────────────────────────────────────
+const TRANSPORT_LABEL: Record<string, string> = {
+  sea: 'Gemi', road: 'TIR', rail: 'Vagon', air: 'Uçak', mixed: 'Karma',
+};
+
+function PartilerCard({
+  file, writable, accent, onNewBatch,
+}: {
+  file: import('@/types/database').TradeFile;
+  writable: boolean;
+  accent: string;
+  onNewBatch: () => void;
+}) {
+  const navigate = useNavigate();
+  const batches = file.batches ?? [];
+  if (batches.length === 0 && !writable) return null;
+
+  const usedTon   = batches.reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const totalTon  = file.tonnage_mt ?? 0;
+  const pct       = totalTon > 0 ? Math.min(100, Math.round((usedTon / totalTon) * 100)) : 0;
+  const remaining = Math.max(0, totalTon - usedTon);
+
+  const STATUS_DOT: Record<string, string> = {
+    request: 'bg-amber-400', sale: 'bg-blue-400',
+    delivery: 'bg-violet-400', completed: 'bg-green-400', cancelled: 'bg-gray-300',
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
+        <Layers className="h-4 w-4 text-gray-400" />
+        <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
+          Partiler
+        </span>
+        {batches.length > 0 && (
+          <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+            {batches.length}
+          </span>
+        )}
+        {writable && (
+          <button
+            onClick={onNewBatch}
+            disabled={remaining <= 0 && totalTon > 0}
+            className="ml-auto flex items-center gap-1.5 px-3 h-7 rounded-xl text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
+            style={{ background: accent }}
+          >
+            <Plus className="h-3 w-3" /> Yeni Parti
+          </button>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      {totalTon > 0 && (
+        <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/40">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-semibold text-gray-500">
+              Yüklenen: <strong className="text-gray-900">{usedTon.toLocaleString('tr-TR')} MT</strong>
+            </span>
+            <span className="text-[11px] font-semibold text-gray-500">
+              Kalan: <strong className={remaining > 0 ? 'text-amber-600' : 'text-green-600'}>
+                {remaining.toLocaleString('tr-TR')} MT
+              </strong>
+            </span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${pct}%`, background: pct === 100 ? '#16a34a' : accent }}
+            />
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1 text-right">{pct}% tamamlandı</p>
+        </div>
+      )}
+
+      {/* Batch listesi */}
+      {batches.length === 0 ? (
+        <div className="flex flex-col items-center py-8 text-gray-400">
+          <Layers className="h-7 w-7 mb-1.5 opacity-20" />
+          <p className="text-[12px] font-medium text-gray-400">Henüz parti yok</p>
+          <p className="text-[11px] text-gray-300 mt-0.5">Yeni Parti butonu ile ekleyin</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-50">
+          {batches
+            .slice()
+            .sort((a, b) => (a.batch_no ?? 0) - (b.batch_no ?? 0))
+            .map(b => (
+              <button
+                key={b.id}
+                onClick={() => navigate(`/files/${b.id}`)}
+                className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
+                  style={{ background: accent + 'dd' }}
+                >
+                  P{b.batch_no}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-gray-800">{b.file_no}</p>
+                  <p className="text-[11px] text-gray-400">
+                    {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} MT` : '—'}
+                    {b.transport_mode ? ` · ${TRANSPORT_LABEL[b.transport_mode] ?? b.transport_mode}` : ''}
+                    {b.eta ? ` · ETA ${b.eta}` : ''}
+                  </p>
+                </div>
+                <span className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT[b.status] ?? 'bg-gray-300')} />
+              </button>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export function TradeFileDetailPage() {
   const { t } = useTranslation('tradeFiles');
@@ -177,6 +294,7 @@ export function TradeFileDetailPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReasonText, setCancelReasonText] = useState('');
   const [delayOpen, setDelayOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
   const [delayEta, setDelayEta] = useState('');
   const [delayNotes, setDelayNotes] = useState('');
   const noteDelay = useNoteDelay();
@@ -894,6 +1012,16 @@ export function TradeFileDetailPage() {
           )}
         </Section>
 
+        {/* ── Partiler (mobil) ─────────────────────────────────────────── */}
+        {!file.parent_file_id && (
+          <PartilerCard
+            file={file}
+            writable={writable}
+            accent={accent}
+            onNewBatch={() => setBatchOpen(true)}
+          />
+        )}
+
         {/* ── Transport Plan ───────────────────────────────────────────── */}
         {['sale', 'delivery', 'completed'].includes(file.status) && (
           <Section title={t('detail.transport.title')} icon={<Truck className="h-3.5 w-3.5" />}>
@@ -1118,6 +1246,16 @@ export function TradeFileDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* ── Partiler (Kısmi Sevkiyat) ──────────────────────────────── */}
+            {!file.parent_file_id && (
+              <PartilerCard
+                file={file}
+                writable={writable}
+                accent={accent}
+                onNewBatch={() => setBatchOpen(true)}
+              />
+            )}
 
             {/* Sale Details */}
             {file.selling_price ? (
@@ -1385,6 +1523,14 @@ export function TradeFileDetailPage() {
       )}
 
       {/* Modals */}
+      {batchOpen && (
+        <BatchModal
+          parent={file}
+          nextBatchNo={(file.batches?.length ?? 0) + 1}
+          open={batchOpen}
+          onClose={() => setBatchOpen(false)}
+        />
+      )}
       <NewFileModal open={editFileOpen} onOpenChange={setEditFileOpen} editMode fileToEdit={file} />
       <ToSaleModal open={saleOpen} onOpenChange={setSaleOpen} file={file} />
       <ToSaleModal open={editSaleOpen} onOpenChange={setEditSaleOpen} file={file} editMode />

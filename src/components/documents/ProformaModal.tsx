@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { proformaSchema, type ProformaFormData } from '@/types/forms';
 import type { TradeFile, Proforma } from '@/types/database';
 import { useCreateProforma, useUpdateProforma } from '@/hooks/useProformas';
+import { useCustomers } from '@/hooks/useEntities';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { today, fCurrency } from '@/lib/formatters';
 import { formatProformaNo } from '@/lib/generators';
@@ -31,10 +32,20 @@ interface ProformaModalProps {
 export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaModalProps) {
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
+  const { data: allCustomers = [] } = useCustomers();
   const createPI = useCreateProforma();
   const updatePI = useUpdateProforma();
   const isEdit = !!proforma;
   const importRef = useRef<HTMLInputElement>(null);
+
+  // ── Consignee (Alıcı Firma) ───────────────────────────────────────────
+  const [consigneeId, setConsigneeId] = useState<string>('');
+  // Sub-customers of the trade file's customer
+  const mainCustomerId = file?.customer_id ?? '';
+  const subCustomers = allCustomers.filter(c => c.parent_customer_id === mainCustomerId);
+  const mainCustomer = allCustomers.find(c => c.id === mainCustomerId);
+  // Show the dropdown only if there are sub-companies defined
+  const hasSubCustomers = subCustomers.length > 0;
 
   const hsCode = proforma?.hs_code || file?.product?.hs_code || '';
   const defaultNotes = [
@@ -59,6 +70,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   useEffect(() => {
     if (!open) return;
     if (proforma) {
+      setConsigneeId(proforma.consignee_customer_id ?? '');
       reset({
         proforma_date: proforma.proforma_date,
         validity_date: proforma.validity_date ?? '',
@@ -90,6 +102,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         notes: proforma.notes ?? '',
       });
     } else if (file) {
+      setConsigneeId('');
       const validDate = new Date();
       validDate.setMonth(validDate.getMonth() + 6);
       reset({
@@ -180,12 +193,13 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
 
   async function onSubmit(data: ProformaFormData) {
     try {
+      const cId = consigneeId || undefined;
       if (isEdit && proforma) {
-        await updatePI.mutateAsync({ id: proforma.id, data });
+        await updatePI.mutateAsync({ id: proforma.id, data, consigneeId: cId });
       } else if (file) {
         const prefix = settings?.file_prefix ?? 'ESN';
         const piNo = formatProformaNo(prefix, Date.now() % 10000);
-        await createPI.mutateAsync({ tradeFileId: file.id, proformaNo: piNo, data });
+        await createPI.mutateAsync({ tradeFileId: file.id, proformaNo: piNo, data, consigneeId: cId });
       }
       onOpenChange(false);
     } catch {
@@ -214,6 +228,27 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
+
+          {/* ── Alıcı Firma (Consignee) — sadece alt firma varsa göster ── */}
+          {hasSubCustomers && (
+            <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">
+                Alıcı Firma (Consignee)
+              </label>
+              <NativeSelect
+                value={consigneeId}
+                onChange={e => setConsigneeId(e.target.value)}
+                className="text-[12px]"
+              >
+                <option value="">{mainCustomer?.name ?? '—'} (Ana Firma)</option>
+                {subCustomers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </NativeSelect>
+              <p className="text-[10px] text-blue-500 mt-1">Muhasebe değişmez — sadece evrak üzerindeki alıcı adı değişir.</p>
+            </div>
+          )}
+
           <FormRow cols={3}>
             <FormGroup label="PI Date *" error={errors.proforma_date?.message}>
               <Input type="date" {...register('proforma_date')} />

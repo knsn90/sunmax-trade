@@ -16,7 +16,7 @@ const FILE_SELECT = `
   creator:profiles!created_by(id,full_name)
 `;
 
-// Used for detail page — includes sub-documents
+// Used for detail page — includes sub-documents + batches
 const FILE_DETAIL_SELECT = `
   *,
   customer:customers!customer_id(*, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
@@ -24,7 +24,8 @@ const FILE_DETAIL_SELECT = `
   supplier:suppliers!supplier_id(*),
   invoices(*),
   packing_lists(*, packing_list_items(*)),
-  proformas(*)
+  proformas(*),
+  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, transport_mode, eta)
 `;
 
 // Minimal select for mutations — no joins, avoids Supabase load
@@ -70,7 +71,11 @@ export const tradeFileService = {
   },
 
   async create(
-    input: NewTradeFileFormData & { file_no: string },
+    input: NewTradeFileFormData & {
+      file_no: string;
+      parent_file_id?: string | null;
+      batch_no?: number | null;
+    },
   ): Promise<TradeFile> {
     const { data, error } = await supabase
       .from('trade_files')
@@ -84,6 +89,8 @@ export const tradeFileService = {
         notes: input.notes,
         eta: input.eta || null,
         status: 'request' as TradeFileStatus,
+        parent_file_id: input.parent_file_id ?? null,
+        batch_no: input.batch_no ?? null,
       })
       .select(MUTATION_SELECT)
       .single();

@@ -110,7 +110,10 @@
       "Bash(curl -s -X POST https://gramxnhbkbnjbmkdomjf.supabase.co/functions/v1/dropbox -H 'Content-Type: application/json' -H 'apikey: sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP' -H 'Authorization: Bearer sb_publishable_bZbhS6nobCMUKfDsA1T6bg_C_x63toP' -d '{\"action\":\"uploadDocument\",\"customerName\":\"Test\",\"fileNo\":\"TEST-001\",\"documentName\":\"test-doc\",\"htmlContent\":\"<h1>Test</h1><p>Merhaba Dünya</p>\"}')",
       "Bash(wait)",
       "Bash(vercel deploy:*)",
-      "Bash(ls /Users/saber/Downloads/sunmax-trade/src/hooks/use*.ts)"
+      "Bash(ls /Users/saber/Downloads/sunmax-trade/src/hooks/use*.ts)",
+      "Bash(head -10 grep -n \"useSuppliers\" /Users/saber/Downloads/sunmax-trade/src/hooks/*.ts)",
+      "Bash(grep -rn \"while\\\\|setInterval\\\\|refetch\" /Users/saber/Downloads/sunmax-trade/src/pages/*.tsx)",
+      "Bash(vercel --prod --yes)"
     ]
   }
 }

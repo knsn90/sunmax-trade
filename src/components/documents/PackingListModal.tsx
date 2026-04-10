@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { packingListSchema, type PackingListFormData } from '@/types/forms';
 import type { TradeFile, PackingList } from '@/types/database';
 import { useCreatePackingList, useUpdatePackingList } from '@/hooks/useDocuments';
+import { useCustomers } from '@/hooks/useEntities';
 import { useSettings } from '@/hooks/useSettings';
 import { today, fN } from '@/lib/formatters';
 import { formatPLNo } from '@/lib/generators';
@@ -37,9 +38,17 @@ interface PLRow {
 
 export function PackingListModal({ open, onOpenChange, file, packingList }: PackingListModalProps) {
   const { data: settings } = useSettings();
+  const { data: allCustomers = [] } = useCustomers();
   const createPL = useCreatePackingList();
   const updatePL = useUpdatePackingList();
   const isEdit = !!packingList;
+
+  // ── Consignee (Alıcı Firma) ───────────────────────────────────────────
+  const [consigneeId, setConsigneeId] = useState<string>('');
+  const mainCustomerId = file?.customer_id ?? '';
+  const subCustomers = allCustomers.filter(c => c.parent_customer_id === mainCustomerId);
+  const mainCustomer = allCustomers.find(c => c.id === mainCustomerId);
+  const hasSubCustomers = subCustomers.length > 0;
 
   const [rows, setRows] = useState<PLRow[]>([{ vehicle_plate: '', reels: 0, admt: 0, gross_weight_kg: 0 }]);
   const importRef = useRef<HTMLInputElement>(null);
@@ -54,6 +63,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   useEffect(() => {
     if (!open) return;
     if (packingList) {
+      setConsigneeId(packingList.consignee_customer_id ?? '');
       const items = packingList.packing_list_items?.map(i => ({
         vehicle_plate: i.vehicle_plate,
         reels: i.reels,
@@ -72,6 +82,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
         items,
       });
     } else if (file) {
+      setConsigneeId('');
       const initialRows = [{ vehicle_plate: '', reels: 0, admt: 0, gross_weight_kg: 0 }];
       setRows(initialRows);
       reset({
@@ -148,12 +159,13 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   async function onSubmit(data: PackingListFormData) {
     try {
       data.items = rows;
+      const cId = consigneeId || undefined;
       if (isEdit && packingList) {
-        await updatePL.mutateAsync({ id: packingList.id, data });
+        await updatePL.mutateAsync({ id: packingList.id, data, consigneeId: cId });
       } else if (file) {
         const prefix = settings?.file_prefix ?? 'ESN';
         const plNo = formatPLNo(prefix, Date.now() % 10000);
-        await createPL.mutateAsync({ tradeFileId: file.id, customerId: file.customer_id, plNo, data });
+        await createPL.mutateAsync({ tradeFileId: file.id, customerId: file.customer_id, plNo, data, consigneeId: cId });
       }
       onOpenChange(false);
     } catch {
@@ -171,7 +183,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
             <div className="min-w-0">
               <DialogTitle>{isEdit ? 'Edit Packing List' : 'New Packing List'}</DialogTitle>
               <DialogDescription className="truncate">
-                {file?.file_no ?? ''} — {file?.customer?.name ?? ''}
+                {file?.file_no ?? ''} — {consigneeId ? (allCustomers.find(c => c.id === consigneeId)?.name ?? file?.customer?.name ?? '') : (file?.customer?.name ?? '')}
               </DialogDescription>
             </div>
             <div className="flex gap-1.5 flex-shrink-0">
@@ -182,6 +194,27 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
+
+          {/* ── Alıcı Firma (Consignee) — sadece alt firma varsa göster ── */}
+          {hasSubCustomers && (
+            <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">
+                Alıcı Firma (Consignee)
+              </label>
+              <NativeSelect
+                value={consigneeId}
+                onChange={e => setConsigneeId(e.target.value)}
+                className="text-[12px]"
+              >
+                <option value="">{mainCustomer?.name ?? '—'} (Ana Firma)</option>
+                {subCustomers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </NativeSelect>
+              <p className="text-[10px] text-blue-500 mt-1">Muhasebe değişmez — sadece evrak üzerindeki alıcı adı değişir.</p>
+            </div>
+          )}
+
           <FormRow cols={3}>
             <FormGroup label="Date *" error={errors.pl_date?.message}>
               <Input type="date" {...register('pl_date')} />

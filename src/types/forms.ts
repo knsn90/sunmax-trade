@@ -93,7 +93,10 @@ export const newTradeFileSchema = z.object({
   customer_ref: z.string().max(100).default(''),
   notes: z.string().max(2000).default(''),
 });
-export type NewTradeFileFormData = z.infer<typeof newTradeFileSchema>;
+export type NewTradeFileFormData = z.infer<typeof newTradeFileSchema> & {
+  parent_file_id?: string | null;
+  batch_no?: number | null;
+};
 
 export const saleConversionSchema = z.object({
   supplier_id: z.string().min(1, 'Select a supplier'),

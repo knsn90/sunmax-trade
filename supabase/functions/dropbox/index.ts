@@ -291,7 +291,7 @@ serve(async (req) => {
     }
 
     // ── uploadAttachment ──────────────────────────────────────────────────────
-    if (body.action === 'uploadAttachment') {
+    if (action === 'uploadAttachment') {
       const { customerName: cn, fileNo: fn, fileName, fileBase64 } = body as {
         action: string; customerName: string; fileNo: string; fileName: string; fileBase64: string;
       };
