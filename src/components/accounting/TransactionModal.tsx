@@ -320,8 +320,11 @@ export function TransactionModal({
     // Only reset on type change if the current party doesn't match the new filter
     if (!selectedParty) return;
     const f = partyFilter(txnType);
-    if (f !== 'all' && selectedParty.entityType !== f) {
-      handlePartyChange(null);
+    if (f !== 'all') {
+      // svc_inv: hem service_provider hem supplier geçerli
+      const valid = selectedParty.entityType === f ||
+        (f === 'service_provider' && selectedParty.entityType === 'supplier');
+      if (!valid) handlePartyChange(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txnType]);
@@ -358,7 +361,7 @@ export function TransactionModal({
     data.payment_status = 'paid';
 
     const typeToParty: Record<string, TransactionFormData['party_type']> = {
-      svc_inv: 'service_provider',
+      svc_inv: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'service_provider',
       purchase_inv: 'supplier',
       receipt: 'customer',
       sale_inv: 'customer',

@@ -75,7 +75,7 @@ export function PartyCombobox({
     ...(filter === 'all' || filter === 'customer'
       ? customers.map(c => ({ id: c.id, name: c.name, entityType: 'customer' as EntityKind }))
       : []),
-    ...(filter === 'all' || filter === 'supplier'
+    ...(filter === 'all' || filter === 'supplier' || filter === 'service_provider'
       ? suppliers.map(s => ({ id: s.id, name: s.name, entityType: 'supplier' as EntityKind }))
       : []),
     ...(filter === 'all' || filter === 'service_provider'
