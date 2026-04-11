@@ -223,7 +223,7 @@ export function AccountingPage() {
 
   // ── Bulk selection ─────────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | 'delete' | null>(null);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | 'revert' | 'delete' | null>(null);
 
   // Reset selection when tab changes
   useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
@@ -398,7 +398,7 @@ export function AccountingPage() {
     }
   }
 
-  async function executeBulkStatus(status: 'approved' | 'rejected') {
+  async function executeBulkStatus(status: 'approved' | 'rejected' | 'draft') {
     const ids = Array.from(selectedIds);
     setPendingBulkAction(null);
     setSelectedIds(new Set());
@@ -429,6 +429,8 @@ export function AccountingPage() {
 
   const allSelected = filteredTxns.length > 0 && filteredTxns.every(tx => selectedIds.has(tx.id));
   const someSelected = selectedIds.size > 0;
+  const selectedTxns = filteredTxns.filter(tx => selectedIds.has(tx.id));
+  const allSelectedNonDraft = selectedTxns.length > 0 && selectedTxns.every(tx => (tx.doc_status ?? 'draft') !== 'draft');
 
   function handleTxnPrint(t: Transaction) {
     if (!settings) return;
@@ -819,7 +821,7 @@ export function AccountingPage() {
                   onDelete={() => handleDelete(t.id)}
                   onPrint={() => handleTxnPrint(t)}
                   selected={selectedIds.has(t.id)}
-                  onSelect={admin && (t.doc_status ?? 'draft') !== 'approved' ? () => toggleSelect(t.id) : undefined}
+                  onSelect={(admin || canApprove) ? () => toggleSelect(t.id) : undefined}
                 />
               ))}
             </div>
@@ -889,7 +891,7 @@ export function AccountingPage() {
                       <tr key={txn.id} className={`hover:bg-blue-50/20 transition-colors ${isChecked ? 'bg-blue-50/40' : isDraft ? 'bg-amber-50/20' : ''}`}>
                         {/* Checkbox */}
                         <td className="px-2 py-3 text-center">
-                          {admin && isDraft && (
+                          {(admin || canApprove) && (
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -1025,24 +1027,35 @@ export function AccountingPage() {
             </div>
 
             {canApprove && (
-              <>
+              allSelectedNonDraft ? (
                 <button
-                  onClick={() => setPendingBulkAction('approve')}
+                  onClick={() => setPendingBulkAction('revert')}
                   disabled={bulkSetStatus.isPending}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  Toplu Onayla
-                </button>
-                <button
-                  onClick={() => setPendingBulkAction('reject')}
-                  disabled={bulkSetStatus.isPending}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
                 >
                   <X className="h-3.5 w-3.5" />
-                  Toplu Reddet
+                  Taslağa Döndür
                 </button>
-              </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setPendingBulkAction('approve')}
+                    disabled={bulkSetStatus.isPending}
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Toplu Onayla
+                  </button>
+                  <button
+                    onClick={() => setPendingBulkAction('reject')}
+                    disabled={bulkSetStatus.isPending}
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Toplu Reddet
+                  </button>
+                </>
+              )
             )}
             {admin && (
               <button
@@ -1077,6 +1090,16 @@ export function AccountingPage() {
         subtitle={`${selectedIds.size} kaydı reddetmek için şifrenizi girin`}
         buttonLabel="❌ Reddet"
         headerClass="bg-gradient-to-r from-amber-500 to-orange-500"
+      />
+      <ApproveWithPasswordDialog
+        open={pendingBulkAction === 'revert'}
+        onClose={() => setPendingBulkAction(null)}
+        onConfirm={() => executeBulkStatus('draft')}
+        isPending={bulkSetStatus.isPending}
+        title="Taslağa Döndür"
+        subtitle={`${selectedIds.size} kaydı taslağa döndürmek için şifrenizi girin`}
+        buttonLabel="↩ Taslağa Döndür"
+        headerClass="bg-gradient-to-r from-gray-600 to-gray-500"
       />
       <ApproveWithPasswordDialog
         open={pendingBulkAction === 'delete'}

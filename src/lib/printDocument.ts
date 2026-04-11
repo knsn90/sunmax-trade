@@ -1059,11 +1059,11 @@ export function printReceipt(txn: Transaction, settings: CompanySettings, isDraf
       </tfoot>
     </table>
 
-    ${txn.notes ? `
+    ${(() => { try { JSON.parse(txn.notes || ''); return ''; } catch { return txn.notes ? `
     <!-- Notes -->
     <div style="border:1px solid #ddd;padding:8px 12px;border-radius:4px;font-size:10px;color:#555;margin-bottom:18px">
       <strong>Notes:</strong> ${esc(txn.notes)}
-    </div>` : ''}
+    </div>` : ''; } })()}
 
     <!-- Signatures -->
     <table style="width:100%;margin-top:32px">
