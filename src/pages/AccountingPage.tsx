@@ -54,7 +54,7 @@ function KpiCard({ label, value, icon, color, sub }: {
       </div>
       <div className="min-w-0">
         <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{label}</div>
-        <div className="text-[15px] font-black text-gray-900 truncate">{value}</div>
+        <div className="text-[13px] font-black text-gray-900 leading-tight">{value}</div>
         {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
       </div>
     </div>
@@ -470,8 +470,8 @@ export function AccountingPage() {
 
 
         {/* ── Toolbar ──────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2">
-          {/* Tabs */}
+        <div className="flex flex-col md:flex-row md:items-center gap-2">
+          {/* Row 1: Tabs */}
           <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
             {TABS.map(t => (
               <button
@@ -486,66 +486,69 @@ export function AccountingPage() {
             ))}
           </div>
 
-          <div className="flex-1 hidden md:block" />
+          {/* Row 2 on mobile / rest of row on desktop */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 hidden md:block" />
 
-          {/* Type + Status filters — desktop only */}
-          {activeTab !== 'sale' && activeTab !== 'ayarlar' && (
-            <div className="hidden md:flex items-center gap-2">
-              <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-44" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-                <option value="">{t('filters.allTypes')}</option>
-                {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance'] as const).map(k => <option key={k} value={k}>{tc('txType.' + k)}</option>)}
-              </NativeSelect>
-              <button
-                onClick={() => setFlagFilter(v => !v)}
-                title="Sadece sorunlu işlemleri göster"
-                className={`h-9 px-3 rounded-xl border text-[12px] font-semibold flex items-center gap-1.5 transition-colors ${
-                  flagFilter
-                    ? 'border-amber-300 bg-amber-50 text-amber-600'
-                    : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
-                }`}
-              >
-                <Flag className="h-3.5 w-3.5" fill={flagFilter ? 'currentColor' : 'none'} />
-              </button>
-            </div>
-          )}
-
-          {/* Search + Transfer + New Transaction */}
-          {activeTab !== 'ayarlar' && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 w-48">
-                <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                <input
-                  className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
-                  placeholder={t('filters.search')}
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-              {writable && (
+            {/* Type + Status filters — desktop only */}
+            {activeTab !== 'sale' && activeTab !== 'ayarlar' && (
+              <div className="hidden md:flex items-center gap-2">
+                <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-44" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                  <option value="">{t('filters.allTypes')}</option>
+                  {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance'] as const).map(k => <option key={k} value={k}>{tc('txType.' + k)}</option>)}
+                </NativeSelect>
                 <button
-                  onClick={() => {
-                    if (activeTab === 'sale') {
-                      setEditingSaleInv(null);
-                      setSaleInvModalOpen(true);
-                    } else if (activeTab === 'buy') {
-                      setEditingPurchaseInv(null);
-                      setPurchaseInvModalOpen(true);
-                    } else if (activeTab === 'svc') {
-                      setEditingSvcInv(null);
-                      setSvcInvModalOpen(true);
-                    } else {
-                      openNew();
-                    }
-                  }}
-                  title={activeTab === 'sale' ? 'Yeni Satış Faturası' : activeTab === 'buy' ? 'Yeni Satın Alma Faturası' : 'New Transaction'}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity shrink-0"
-                  style={{ background: accent }}
+                  onClick={() => setFlagFilter(v => !v)}
+                  title="Sadece sorunlu işlemleri göster"
+                  className={`h-9 px-3 rounded-xl border text-[12px] font-semibold flex items-center gap-1.5 transition-colors ${
+                    flagFilter
+                      ? 'border-amber-300 bg-amber-50 text-amber-600'
+                      : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Flag className="h-3.5 w-3.5" fill={flagFilter ? 'currentColor' : 'none'} />
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+
+            {/* Search + New Transaction */}
+            {activeTab !== 'ayarlar' && (
+              <div className="flex items-center gap-2 flex-1 md:flex-none">
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 md:w-48">
+                  <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                  <input
+                    className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+                    placeholder={t('filters.search')}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                </div>
+                {writable && (
+                  <button
+                    onClick={() => {
+                      if (activeTab === 'sale') {
+                        setEditingSaleInv(null);
+                        setSaleInvModalOpen(true);
+                      } else if (activeTab === 'buy') {
+                        setEditingPurchaseInv(null);
+                        setPurchaseInvModalOpen(true);
+                      } else if (activeTab === 'svc') {
+                        setEditingSvcInv(null);
+                        setSvcInvModalOpen(true);
+                      } else {
+                        openNew();
+                      }
+                    }}
+                    title={activeTab === 'sale' ? 'Yeni Satış Faturası' : activeTab === 'buy' ? 'Yeni Satın Alma Faturası' : 'New Transaction'}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity shrink-0"
+                    style={{ background: accent }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Mobile filters */}
