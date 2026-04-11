@@ -507,7 +507,6 @@ export function AccountingPage() {
                 }`}
               >
                 <Flag className="h-3.5 w-3.5" fill={flagFilter ? 'currentColor' : 'none'} />
-                Sorunlu
               </button>
             </div>
           )}
