@@ -570,12 +570,13 @@ export function PnlReportTab() {
       {/* ══ TEK DOSYA DETAYI ════════════════════════════════════════════ */}
       {viewMode === 'tek' && (
         <>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          {/* Dosya seçici */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
             <div className="flex gap-3 items-center flex-wrap">
               <NativeSelect
                 value={selectedFileId}
                 onChange={(e) => setSelectedFileId(e.target.value)}
-                className="w-full md:min-w-[300px] md:w-auto"
+                className="flex-1 md:min-w-[320px] md:flex-none"
               >
                 <option value="">{t('pnl.select_file')}</option>
                 {files.map((f) => (
@@ -587,7 +588,7 @@ export function PnlReportTab() {
               {selectedFile && pnl && (
                 <button
                   onClick={printPnl}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 shadow-sm transition-colors"
                 >
                   <Printer className="h-3.5 w-3.5" />
                   {t('pnl.print_pdf')}
@@ -600,58 +601,146 @@ export function PnlReportTab() {
             <div className="text-center py-8 text-gray-400 text-sm">{t('pnl.no_selling_price')}</div>
           )}
 
-          {selectedFile && pnl && (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-                {[
-                  { label: t('pnl.revenue'),    value: fUSD(pnl.revenue), color: '#1e40af' },
-                  { label: t('pnl.cost'),        value: fUSD(pnl.costs),  color: '#374151' },
-                  { label: t('pnl.net_profit'),  value: fUSD(pnl.profit), color: col(pnl.profit) },
-                  { label: t('pnl.margin'),      value: pnl.margin.toFixed(2) + '%', color: col(pnl.profit) },
-                ].map((card) => (
-                  <div key={card.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 px-2 py-3 md:p-4 text-center overflow-hidden">
-                    <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{card.label}</div>
-                    <div className="text-[13px] md:text-xl font-black break-all leading-tight" style={{ color: card.color }}>{card.value}</div>
-                  </div>
-                ))}
-              </div>
+          {selectedFile && pnl && (() => {
+            const purchaseRows = costRows.filter(t => t.transaction_type === 'purchase_inv');
+            const svcRows      = costRows.filter(t => t.transaction_type === 'svc_inv');
+            const purchaseTotal = purchaseRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+            const svcTotal      = svcRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+            const qty = selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0;
 
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-4">
-                  {t('pnl.detail_title', { fileNo: selectedFile.file_no })}
+            return (
+              <>
+                {/* KPI kartları */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Gelir',     value: fUSD(pnl.revenue), color: '#1e40af', bg: 'bg-blue-50' },
+                    { label: 'Maliyet',   value: fUSD(pnl.costs),   color: '#374151', bg: 'bg-gray-50' },
+                    { label: 'Net Kâr',   value: fUSD(pnl.profit),  color: col(pnl.profit), bg: pnl.profit >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
+                    { label: 'Kâr Marjı', value: '%' + pnl.margin.toFixed(2), color: col(pnl.profit), bg: pnl.profit >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
+                  ].map((card) => (
+                    <div key={card.label} className={`${card.bg} rounded-2xl border border-gray-100 px-4 py-4`}>
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{card.label}</div>
+                      <div className="text-[18px] md:text-[22px] font-black leading-tight" style={{ color: card.color }}>{card.value}</div>
+                    </div>
+                  ))}
                 </div>
-                <table className="w-full text-xs">
-                  <tbody>
-                    <tr className="border-b border-gray-100">
-                      <td className="py-2 text-gray-500">
-                        {t('pnl.revenue')} ({fN(selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0, 3)} MT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'})
-                      </td>
-                      <td className="py-2 text-right font-semibold text-blue-700">{fUSD(pnl.revenue)}</td>
-                    </tr>
-                    {costRows.map((txn) => (
-                      <tr key={txn.id} className="border-b border-gray-100">
-                        <td className="py-1.5 text-gray-500 pl-3">— {txn.description}</td>
-                        <td className="py-1.5 text-right text-gray-700">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td>
-                      </tr>
-                    ))}
-                    {pnl.freight > 0 && (
-                      <tr className="border-b border-gray-100">
-                        <td className="py-1.5 text-gray-500 pl-3">— Navlun / Freight</td>
-                        <td className="py-1.5 text-right text-gray-700">({fUSD(pnl.freight)})</td>
-                      </tr>
+
+                {/* Detay kart */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Kart başlığı */}
+                  <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500">K/Z Detayı — {selectedFile.file_no}</div>
+                      <div className="text-[12px] text-gray-400 mt-0.5">{selectedFile.customer?.name ?? ''} · {fN(qty, 3)} MT</div>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-gray-50">
+                    {/* GELİR */}
+                    <div className="px-6 py-3 flex items-center justify-between bg-blue-50/40">
+                      <div>
+                        <div className="text-[12px] font-bold text-blue-800">Gelir</div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">{fN(qty, 3)} MT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</div>
+                      </div>
+                      <div className="text-[15px] font-black text-blue-700 tabular-nums">{fUSD(pnl.revenue)}</div>
+                    </div>
+
+                    {/* SATIN ALMA FATURALARI */}
+                    {purchaseRows.length > 0 && (
+                      <div>
+                        <div className="px-6 py-2.5 flex items-center justify-between bg-amber-50/60 border-b border-amber-100/60">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-amber-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Satın Alma Faturaları</span>
+                            <span className="text-[10px] text-amber-500 bg-amber-100 px-1.5 py-0.5 rounded-full font-semibold">{purchaseRows.length}</span>
+                          </div>
+                          <span className="text-[13px] font-bold text-amber-700 tabular-nums">({fUSD(purchaseTotal)})</span>
+                        </div>
+                        {purchaseRows.map((txn) => (
+                          <div key={txn.id} className="px-6 py-2.5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-300 mt-1.5 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-[12px] text-gray-700 truncate">{txn.description || '—'}</div>
+                                {txn.supplier?.name && (
+                                  <div className="text-[10px] text-gray-400 mt-0.5">{txn.supplier.name}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="shrink-0 ml-4 text-right">
+                              <div className="text-[12px] font-semibold text-gray-700 tabular-nums">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</div>
+                              {txn.currency !== 'USD' && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                    <tr className="border-t-2 border-gray-700">
-                      <td className="py-2 font-bold text-sm">{t('pnl.net_profit')}</td>
-                      <td className="py-2 text-right font-bold text-sm" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+
+                    {/* HİZMET FATURALARI */}
+                    {svcRows.length > 0 && (
+                      <div>
+                        <div className="px-6 py-2.5 flex items-center justify-between bg-violet-50/60 border-b border-violet-100/60">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-violet-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700">Hizmet Faturaları</span>
+                            <span className="text-[10px] text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full font-semibold">{svcRows.length}</span>
+                          </div>
+                          <span className="text-[13px] font-bold text-violet-700 tabular-nums">({fUSD(svcTotal)})</span>
+                        </div>
+                        {svcRows.map((txn) => (
+                          <div key={txn.id} className="px-6 py-2.5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className="w-1.5 h-1.5 rounded-full bg-violet-300 mt-1.5 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-[12px] text-gray-700 truncate">{txn.description || '—'}</div>
+                                {txn.service_provider?.name && (
+                                  <div className="text-[10px] text-gray-400 mt-0.5">{txn.service_provider.name}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="shrink-0 ml-4 text-right">
+                              <div className="text-[12px] font-semibold text-gray-700 tabular-nums">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</div>
+                              {txn.currency !== 'USD' && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* NAVLUN */}
+                    {pnl.freight > 0 && (
+                      <div className="px-6 py-2.5 flex items-center justify-between border-b border-gray-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
+                          <span className="text-[12px] text-gray-500">Navlun / Freight</span>
+                        </div>
+                        <span className="text-[12px] font-semibold text-gray-600 tabular-nums">({fUSD(pnl.freight)})</span>
+                      </div>
+                    )}
+
+                    {/* NET KÂR */}
+                    <div className="px-6 py-4 flex items-center justify-between" style={{ background: pnl.profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
+                      <div>
+                        <div className="text-[12px] font-bold" style={{ color: col(pnl.profit) }}>Net Kâr</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">Toplam Maliyet: {fUSD(pnl.costs)}</div>
+                      </div>
+                      <div className="text-[22px] font-black tabular-nums" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
 
           {!selectedFileId && (
-            <div className="text-center py-12 text-gray-400 text-sm">{t('pnl.select_prompt')}</div>
+            <div className="flex flex-col items-center py-16 text-gray-400">
+              <FileText className="h-8 w-8 mb-2 opacity-20" />
+              <p className="text-[13px] font-medium text-gray-500">{t('pnl.select_prompt')}</p>
+            </div>
           )}
         </>
       )}
