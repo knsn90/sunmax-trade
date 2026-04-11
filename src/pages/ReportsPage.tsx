@@ -317,7 +317,9 @@ export function PnlReportTab() {
     const costByFile = new Map<string, number>();
     for (const t of txns) {
       if (!['purchase_inv', 'svc_inv'].includes(t.transaction_type)) continue;
-      const fid = t.trade_file_id ?? (t.trade_file as any)?.id;
+      const tf = t.trade_file as any;
+      // Batch transaction → attribute cost to parent file instead
+      const fid = tf?.parent_file_id ?? t.trade_file_id ?? tf?.id;
       if (!fid) continue;
       costByFile.set(fid, (costByFile.get(fid) ?? 0) + (t.amount_usd ?? t.amount ?? 0));
     }
@@ -1454,59 +1456,70 @@ export function AccountStatementTab() {
 
       {hasData && !isLoading && (
         <>
-          {/* Özet — 3 sütun quick info */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="grid grid-cols-3 divide-x divide-gray-50">
-              <div className="px-3 md:px-5 py-3 md:py-4">
-                <div className="text-[8px] md:text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Borç</div>
-                <div className="text-[13px] md:text-[17px] font-extrabold text-red-600 break-all leading-tight">{fUSD(totalBorç)}</div>
-                <div className="text-[10px] text-gray-400 mt-0.5 truncate">{entityName}</div>
+          {/* ── Mono KPI kartları ── */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Toplam Borç</div>
+              <div className="text-[15px] font-black leading-tight tabular-nums text-red-600">{fUSD(totalBorç)}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5 truncate">{entityName}</div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Toplam Alacak</div>
+              <div className="text-[15px] font-black leading-tight tabular-nums text-green-700">{fUSD(totalAlacak)}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{txnsWithBalance.length} işlem</div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Net Bakiye</div>
+              <div className="text-[15px] font-black leading-tight tabular-nums"
+                style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#16a34a' : '#9ca3af' }}>
+                {fUSD(Math.abs(netBakiye))}
               </div>
-              <div className="px-3 md:px-5 py-3 md:py-4">
-                <div className="text-[8px] md:text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Toplam Alacak</div>
-                <div className="text-[13px] md:text-[17px] font-extrabold text-green-700 break-all leading-tight">{fUSD(totalAlacak)}</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{txnsWithBalance.length} işlem</div>
+              <div className="text-[10px] font-bold mt-0.5 uppercase tracking-widest"
+                style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#16a34a' : '#9ca3af' }}>
+                {netBakiye > 0 ? 'Borçlu' : netBakiye < 0 ? 'Alacaklı' : 'Sıfır'}
               </div>
-              <div className="px-3 md:px-5 py-3 md:py-4">
-                <div className="text-[8px] md:text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Net Bakiye</div>
-                <div className="flex items-baseline gap-1 flex-wrap">
-                  <span className="text-[13px] md:text-[17px] font-extrabold break-all leading-tight"
-                    style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#15803d' : '#6b7280' }}>
-                    {fUSD(Math.abs(netBakiye))}
-                  </span>
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest"
-                    style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#15803d' : '#9ca3af' }}>
-                    {netBakiye > 0 ? 'Borçlu' : netBakiye < 0 ? 'Alacaklı' : 'Sıfır'}
-                  </span>
-                </div>
-              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">İşlem Sayısı</div>
+              <div className="text-[15px] font-black leading-tight tabular-nums text-gray-900">{txnsWithBalance.length}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">kayıt</div>
             </div>
           </div>
 
-          {/* İşlem tablosu */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
+          {/* ── İşlem tablosu ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {/* Section header */}
+            <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Hesap Ekstresi</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Hesap Ekstresi</span>
                 {(dateFrom || dateTo) && (
-                  <span className="text-[10px] text-gray-400 font-mono">
+                  <span className="text-[10px] text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded-full">
                     {dateFrom || '…'} – {dateTo || '…'}
                   </span>
                 )}
               </div>
-              <span className="text-[10px] text-gray-400">{txnsWithBalance.length} kayıt</span>
+              <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{txnsWithBalance.length}</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {['Tarih', 'İşlem Türü', 'İşlem No', 'Açıklama', 'Döviz', 'Borç (USD)', 'Alacak (USD)', 'Bakiye (USD)'].map((h, i) => (
-                      <th key={h} className={cn(
+                    {[
+                      { label: 'Tarih', right: false },
+                      { label: 'İşlem Türü', right: false },
+                      { label: 'İşlem No', right: false },
+                      { label: 'Açıklama', right: false },
+                      { label: 'Döviz', right: false },
+                      { label: 'Borç (USD)', right: true },
+                      { label: 'Alacak (USD)', right: true },
+                      { label: 'Bakiye (USD)', right: true },
+                    ].map((h) => (
+                      <th key={h.label} className={cn(
                         'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap',
-                        i >= 5 ? 'text-right' : 'text-left',
+                        h.right ? 'text-right' : 'text-left',
                       )}>
-                        {h}
+                        {h.label}
                       </th>
                     ))}
                   </tr>
@@ -1517,56 +1530,56 @@ export function AccountStatementTab() {
                       'border-b border-gray-50 hover:bg-gray-50/60 transition-colors',
                       i % 2 === 1 && 'bg-gray-50/40',
                     )}>
-                      <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{fDate(txn.transaction_date)}</td>
-                      <td className="px-4 py-3 text-[12px] text-gray-700">{tc(`txType.${txn.transaction_type}`)}</td>
-                      <td className="px-4 py-3 text-[11px] font-mono text-gray-400">{txn.reference_no || '—'}</td>
-                      <td className="px-4 py-3 text-[12px] text-gray-600 max-w-[200px] truncate">{txn.description || '—'}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[11px] font-bold text-gray-700 tabular-nums">{txn.currency}</span>
-                          {txn.currency !== 'USD' && (
-                            <span className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</span>
-                          )}
-                        </div>
+                      <td className="px-4 py-2.5 text-[11px] text-gray-500 whitespace-nowrap tabular-nums">{fDate(txn.transaction_date)}</td>
+                      <td className="px-4 py-2.5 text-[12px] font-semibold text-gray-700">{tc(`txType.${txn.transaction_type}`)}</td>
+                      <td className="px-4 py-2.5 text-[10px] font-mono text-gray-400">{txn.reference_no || '—'}</td>
+                      <td className="px-4 py-2.5 text-[12px] text-gray-500 max-w-[180px] truncate">{txn.description || '—'}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="text-[11px] font-bold text-gray-700 tabular-nums">{txn.currency}</div>
+                        {txn.currency !== 'USD' && (
+                          <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {txn.isDebit ? (
-                          <div className="text-[12px] font-semibold text-red-600 tabular-nums">{fUSD(txn.amt)}</div>
-                        ) : ''}
+                      <td className="px-4 py-2.5 text-right">
+                        {txn.isDebit && (
+                          <span className="text-[12px] font-semibold text-red-600 tabular-nums">{fUSD(txn.amt)}</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {!txn.isDebit ? (
-                          <div className="text-[12px] font-semibold text-green-700 tabular-nums">{fUSD(txn.amt)}</div>
-                        ) : ''}
+                      <td className="px-4 py-2.5 text-right">
+                        {!txn.isDebit && (
+                          <span className="text-[12px] font-semibold text-green-700 tabular-nums">{fUSD(txn.amt)}</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-right font-bold whitespace-nowrap">
-                        <span style={{ color: txn.balance > 0 ? '#b45309' : txn.balance < 0 ? '#16a34a' : '#9ca3af' }}>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <span className="text-[12px] font-bold tabular-nums"
+                          style={{ color: txn.balance > 0 ? '#b45309' : txn.balance < 0 ? '#16a34a' : '#9ca3af' }}>
                           {fUSD(Math.abs(txn.balance))}
                         </span>
                         {txn.balance !== 0 && (
-                          <span className="ml-1 text-[10px] font-black"
+                          <span className="ml-1 text-[9px] font-extrabold"
                             style={{ color: txn.balance > 0 ? '#b45309' : '#16a34a' }}>
-                            ({txn.balance > 0 ? 'B' : 'A'})
+                            {txn.balance > 0 ? 'B' : 'A'}
                           </span>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                {/* Ara toplam footer */}
                 <tfoot>
-                  <tr className="border-t-2 border-gray-100 bg-gray-50/60">
-                    <td colSpan={4} className="px-4 py-3 text-[11px] text-gray-400">{txnsWithBalance.length} kayıt</td>
-                    <td className="px-4 py-3 text-[10px] font-bold text-gray-500 text-right uppercase tracking-widest">Genel Toplam</td>
-                    <td className="px-4 py-3 text-[13px] text-right font-black text-red-600">{fUSD(totalBorç)}</td>
-                    <td className="px-4 py-3 text-[13px] text-right font-black text-green-700">{fUSD(totalAlacak)}</td>
-                    <td className="px-4 py-3 text-[13px] text-right font-black whitespace-nowrap">
+                  <tr className="border-t border-gray-100 bg-gray-50">
+                    <td colSpan={4} className="px-4 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">{txnsWithBalance.length} kayıt</td>
+                    <td className="px-4 py-2.5 text-[10px] font-bold text-gray-500 text-right uppercase tracking-widest">Toplam</td>
+                    <td className="px-4 py-2.5 text-[12px] font-bold text-right text-red-600 tabular-nums">{fUSD(totalBorç)}</td>
+                    <td className="px-4 py-2.5 text-[12px] font-bold text-right text-green-700 tabular-nums">{fUSD(totalAlacak)}</td>
+                    <td className="px-4 py-2.5 text-[12px] font-bold text-right whitespace-nowrap tabular-nums">
                       <span style={{ color: netBakiye > 0 ? '#b45309' : netBakiye < 0 ? '#16a34a' : '#9ca3af' }}>
                         {fUSD(Math.abs(netBakiye))}
                       </span>
                       {netBakiye !== 0 && (
-                        <span className="ml-1 text-[10px] font-black"
+                        <span className="ml-1 text-[9px] font-extrabold"
                           style={{ color: netBakiye > 0 ? '#b45309' : '#16a34a' }}>
-                          ({netBakiye > 0 ? 'B' : 'A'})
+                          {netBakiye > 0 ? 'B' : 'A'}
                         </span>
                       )}
                     </td>
@@ -2027,7 +2040,6 @@ export function CustomerReportTab() {
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { data: customers = [], isLoading: loadingC } = useCustomers();
-  const { data: allFiles = [] } = useTradeFiles();
   const { data: settings } = useSettings();
 
   const [customerId, setCustomerId] = useState('');
@@ -2058,7 +2070,7 @@ export function CustomerReportTab() {
       salutComp: 'Sayın', salutNameAgha: 'Sayın Bay', salutNameKhanom: 'Sayın Bayan',
       greeting: 'Hesap dökümünü saygılarımızla bilgilerinize sunarız:',
       payHdr: ['#', 'Tarih', 'Tutar', 'Para Birimi', 'USD Karşılığı', 'Açıklama'],
-      prdHdr: ['#', 'Ürün', 'Birim Fiyat (USD)', 'Tonaj (ADMT)', 'Toplam (USD)', 'Dosya No'],
+      prdHdr: ['#', 'Açıklama', 'Tarih', 'Tutar', 'USD Karşılığı', 'Dosya No'],
       advHdr: ['#', 'Tarih', 'Tutar', 'Para Birimi', 'USD Karşılığı', 'Açıklama'],
       noPayment: 'Ödeme yok', noProduct: 'Kayıt yok', noAdvance: 'Ön ödeme yok',
       dateLabel: 'Tarih', clientLabel: 'MÜŞTERİ', printBtn: 'Yazdır / PDF',
@@ -2075,7 +2087,7 @@ export function CustomerReportTab() {
       salutComp: 'Dear', salutNameAgha: 'Dear Mr.', salutNameKhanom: 'Dear Ms.',
       greeting: 'Please find below our account statement:',
       payHdr: ['#', 'Date', 'Amount', 'Currency', 'USD Equiv.', 'Description'],
-      prdHdr: ['#', 'Product', 'Unit Price (USD)', 'Tonnage (ADMT)', 'Total (USD)', 'File No'],
+      prdHdr: ['#', 'Description', 'Date', 'Amount', 'USD Equiv.', 'File No'],
       advHdr: ['#', 'Date', 'Amount', 'Currency', 'USD Equiv.', 'Description'],
       noPayment: 'No payments', noProduct: 'No records', noAdvance: 'No advances',
       dateLabel: 'Date', clientLabel: 'CLIENT', printBtn: 'Print / PDF',
@@ -2092,7 +2104,7 @@ export function CustomerReportTab() {
       salutComp: 'مدیریت محترم شرکت', salutNameAgha: 'جناب آقای', salutNameKhanom: 'سرکار خانم',
       greeting: 'ﺑﺎ ﺳﻼم و ﻋﺮض ادب، ﺻﻮرت ﺣﺴﺎب ﻓﯽ ﻣﺎﺑﯿﻦ ﺑﻪ ﺷﺮح ذﯾﻞ ﺗﻘﺪﯾﻢ ﻣﯽ ﮔﺮدد:',
       payHdr: ['#', 'تاریخ', 'مبلغ', 'ارز', 'معادل دلار', 'توضیحات'],
-      prdHdr: ['#', 'محصول', 'قیمت واحد (USD)', 'تناژ (ADMT)', 'جمع (USD)', 'شماره پرونده'],
+      prdHdr: ['#', 'توضیحات', 'تاریخ', 'مبلغ', 'معادل دلار', 'شماره پرونده'],
       advHdr: ['#', 'تاریخ', 'مبلغ', 'ارز', 'معادل دلار', 'توضیحات'],
       noPayment: 'پرداختی موجود نیست', noProduct: 'رکوردی موجود نیست', noAdvance: 'پیش‌پرداختی موجود نیست',
       dateLabel: 'تاریخ', clientLabel: 'مشتری', printBtn: 'چاپ / PDF',
@@ -2128,31 +2140,12 @@ export function CustomerReportTab() {
     [filteredTxns],
   );
 
-  // Satış faturası (sale_inv) oluşturulmuş dosyaların ID seti
-  const invoicedFileIds = useMemo(
-    () => new Set(
-      rawTxns
-        .filter((t) => t.transaction_type === 'sale_inv' && t.trade_file_id)
-        .map((t) => t.trade_file_id as string),
-    ),
-    [rawTxns],
-  );
-
-  // Table 2 — Birincil kaynak: sale_inv işlemleri (muhasebe kayıtları)
+  // Table 2 — sale_inv işlemleri (muhasebe kayıtları)
   const saleInvoices = useMemo(
     () => filteredTxns.filter((t) => t.transaction_type === 'sale_inv'),
     [filteredTxns],
   );
 
-  // Table 2 — Yedek kaynak: satış fiyatı olan ticaret dosyaları (sale_inv yoksa gösterilir)
-  const customerFiles = useMemo(
-    () => allFiles.filter(
-      (f) => f.customer_id === customerId &&
-             (f.selling_price ?? 0) > 0 &&
-             (invoicedFileIds.has(f.id) || ['sale', 'delivery', 'completed'].includes(f.status)),
-    ),
-    [allFiles, customerId, invoicedFileIds],
-  );
 
   // Table 3: Ön ödemeler — tedarikçi avansları hariç, TÜM müşteri ön ödemeleri gösterilir
   // (faturası kesilmiş dosyalara ait olanlar da dahil — müşterinin borcunu azaltır)
@@ -2166,13 +2159,8 @@ export function CustomerReportTab() {
   );
 
   const totalPayments = payments.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
-  // sale_inv varsa onlardan topla; yoksa ticaret dosyası tutarlarından
-  const totalProducts = saleInvoices.length > 0
-    ? saleInvoices.reduce((s, t) => s + (t.amount_usd ?? 0), 0)
-    : customerFiles.reduce((s, f) => {
-        const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
-        return s + qty * (f.selling_price ?? 0);
-      }, 0);
+  // Satış faturalarından topla
+  const totalProducts = saleInvoices.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
   const totalAdvances = advances.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
   // balance > 0: customer still owes us (borçlu); < 0: overpaid (alacaklı)
   // balance = products - advances (prepaid) - payments (post-invoice receipts)
@@ -2284,11 +2272,9 @@ export function CustomerReportTab() {
       `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#1d4ed8">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${translateDesc(t.description ?? '')}</td></tr>`
     ).join('');
 
-    const prdRows = customerFiles.map((f, i) => {
-      const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
-      const tot = qty * (f.selling_price ?? 0);
-      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};font-weight:600;color:#1e293b">${f.product?.name ?? '—'}</td><td style="${i%2?TDZ:TD};text-align:right">${fN(f.selling_price ?? 0)}</td><td style="${i%2?TDZ:TD};text-align:right">${fN(qty, 3)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#15803d">${fUSD(tot)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${f.file_no}</td></tr>`;
-    }).join('');
+    const prdRows = saleInvoices.map((t, i) =>
+      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};color:#374151">${translateDesc(t.description ?? '') || (t.trade_file as any)?.product?.name || '—'}</td><td style="${i%2?TDZ:TD};color:#64748b">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)} ${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#15803d">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${(t.trade_file as any)?.file_no ?? t.reference_no ?? '—'}</td></tr>`
+    ).join('');
 
     const advRows = advances.map((t, i) => {
       const admt = t.trade_file?.delivered_admt ?? t.trade_file?.tonnage_mt;
@@ -2719,15 +2705,12 @@ export function CustomerReportTab() {
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.products}</span>
               </div>
               <span className="text-[10px] text-gray-400">
-                {saleInvoices.length > 0
-                  ? `${saleInvoices.length} ${L.records}`
-                  : `${customerFiles.length} ${reportLang === 'fa' ? 'پرونده' : reportLang === 'tr' ? 'dosya' : 'files'}`}
+                {saleInvoices.length} {L.records}
               </span>
             </div>
-            {saleInvoices.length === 0 && customerFiles.length === 0 ? (
+            {saleInvoices.length === 0 ? (
               <div className="px-5 py-10 text-center text-[12px] text-gray-400">{L.noProduct}</div>
-            ) : saleInvoices.length > 0 ? (
-              /* Birincil görünüm: sale_inv muhasebe kayıtları */
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -2756,68 +2739,6 @@ export function CustomerReportTab() {
                     <tr className="bg-green-50/60 border-t-2 border-green-100">
                       <td colSpan={5} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalProducts}</td>
                       <td className="px-4 py-3 text-[14px] font-black text-green-700 text-right">{fUSD(totalProducts)}</td>
-                      <td />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            ) : (
-              /* Yedek görünüm: ticaret dosyası tutarları */
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <colgroup>
-                    <col className="w-10" />
-                    <col />
-                    <col className="w-36" />
-                    <col className="w-32" />
-                    <col className="w-36" />
-                    <col className="w-40" />
-                  </colgroup>
-                  <thead>
-                    <tr className="bg-gray-50/80 border-b border-gray-100">
-                      {L.prdHdr.map((h, hi) => (
-                        <th
-                          key={h}
-                          className={cn(
-                            'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap',
-                            hi === 0 ? 'text-center' : hi >= 2 && hi <= 4 ? 'text-right' : 'text-left',
-                          )}
-                        >{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {customerFiles.map((f, i) => {
-                      const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
-                      const tot = qty * (f.selling_price ?? 0);
-                      return (
-                        <tr key={f.id} className={cn('transition-colors', i % 2 === 1 ? 'bg-gray-50/30' : 'hover:bg-gray-50/60')}>
-                          <td className="px-4 py-3.5 text-[11px] text-gray-300 text-center font-mono tabular-nums">{i + 1}</td>
-                          <td className="px-4 py-3.5">
-                            <span className="text-[13px] font-bold text-gray-900">{f.product?.name ?? '—'}</span>
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <span className="text-[12px] font-semibold text-gray-700 tabular-nums">{fN(f.selling_price ?? 0, 3)}</span>
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <span className="text-[13px] font-bold text-gray-800 tabular-nums">{fN(qty, 3)}</span>
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <span className="text-[14px] font-extrabold text-green-700 tabular-nums">{fUSD(tot)}</span>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-[10px] font-mono font-semibold text-gray-500 tracking-wide">{f.file_no}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-green-50 border-t-2 border-green-100">
-                      <td colSpan={4} className="px-4 py-3.5 text-[11px] font-bold text-right text-gray-500 uppercase tracking-wider">{L.totalProducts}</td>
-                      <td className="px-4 py-3.5 text-right">
-                        <span className="text-[15px] font-black text-green-700 tabular-nums">{fUSD(totalProducts)}</span>
-                      </td>
                       <td />
                     </tr>
                   </tfoot>
