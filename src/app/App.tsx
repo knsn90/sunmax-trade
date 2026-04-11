@@ -9,6 +9,7 @@ import { applyTheme, getStoredTheme } from '@/lib/theme';
 import { supabase } from '@/services/supabase';
 import { loadCompanySettings } from '@/services/companySettingsService';
 import { useAutoBackupEmail } from '@/hooks/useAutoBackupEmail';
+import { UpdatePrompt } from '@/components/ui/UpdatePrompt';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +104,7 @@ export function App() {
               },
             }}
           />
+          <UpdatePrompt />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
