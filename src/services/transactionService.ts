@@ -30,7 +30,8 @@ export const transactionService = {
     let query = supabase
       .from('transactions')
       .select(TXN_SELECT)
-      .order('transaction_date', { ascending: false });
+      .order('transaction_date', { ascending: false })
+      .limit(10000); // Supabase default is 1000; reports need all rows
 
     if (filters?.type) {
       query = query.eq('transaction_type', filters.type);
