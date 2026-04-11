@@ -7,8 +7,10 @@ import { useBankAccounts } from '@/hooks/useSettings';
 import { useCreateTransfer } from '@/hooks/useTransfers';
 import { useTheme } from '@/contexts/ThemeContext';
 import { today } from '@/lib/formatters';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SmartFill } from '@/components/ui/SmartFill';
+import { OcrButton } from '@/components/ui/OcrButton';
+import type { OcrResult } from '@/lib/openai';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
@@ -35,6 +37,8 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }
+
+const mo = 'bg-gray-100 border-0 focus:ring-0';
 
 export function TransferModal({ open, onOpenChange }: Props) {
   const { theme } = useTheme();
@@ -98,22 +102,27 @@ export function TransferModal({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ArrowLeftRight className="h-4 w-4" style={{ color: accent }} />
-            İç Transfer
-          </DialogTitle>
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle className="flex items-center gap-2 flex-1">
+              <ArrowLeftRight className="h-4 w-4" style={{ color: accent }} />
+              İç Transfer
+            </DialogTitle>
+            <div className="flex gap-1.5 shrink-0">
+              <SmartFill mode="transaction" onResult={(_r: OcrResult) => {}} formName="Transfer" iconOnly />
+              <OcrButton mode="transaction" onResult={(_r: OcrResult) => {}} iconOnly />
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-1">
 
           {/* Kaynak → Hedef */}
           <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end">
             {/* Kaynak Hesap */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-medium text-gray-500">Kaynak Hesap (Çıkış)</label>
-              {/* Kasa / Banka toggle */}
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Kaynak Hesap (Çıkış)</div>
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                 {([
                   { value: 'kasa' as const, label: 'Kasa', Icon: Banknote },
@@ -124,7 +133,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
                     type="button"
                     onClick={() => setValue('from_type', value)}
                     className={cn(
-                      'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-[11px] font-semibold transition-all',
+                      'flex-1 flex items-center justify-center gap-1.5 h-7 rounded-lg text-[11px] font-semibold transition-all',
                       fromType === value ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500',
                     )}
                   >
@@ -133,7 +142,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
                   </button>
                 ))}
               </div>
-              <NativeSelect {...register('from_id')}>
+              <NativeSelect {...register('from_id')} className={mo}>
                 <option value="">— Hesap seçin —</option>
                 {fromType === 'kasa'
                   ? kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)
@@ -155,8 +164,8 @@ export function TransferModal({ open, onOpenChange }: Props) {
             </div>
 
             {/* Hedef Hesap */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-medium text-gray-500">Hedef Hesap (Giriş)</label>
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Hedef Hesap (Giriş)</div>
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                 {([
                   { value: 'kasa' as const, label: 'Kasa', Icon: Banknote },
@@ -167,7 +176,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
                     type="button"
                     onClick={() => setValue('to_type', value)}
                     className={cn(
-                      'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-[11px] font-semibold transition-all',
+                      'flex-1 flex items-center justify-center gap-1.5 h-7 rounded-lg text-[11px] font-semibold transition-all',
                       toType === value ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500',
                     )}
                   >
@@ -176,7 +185,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
                   </button>
                 ))}
               </div>
-              <NativeSelect {...register('to_id')}>
+              <NativeSelect {...register('to_id')} className={mo}>
                 <option value="">— Hesap seçin —</option>
                 {toType === 'kasa'
                   ? kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)
@@ -196,7 +205,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
           {/* Tutar & Para Birimi */}
           <FormRow cols={isNonUSD ? 3 : 2}>
             <FormGroup label="Para Birimi">
-              <NativeSelect {...register('currency')}>
+              <NativeSelect {...register('currency')} className={mo}>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
                 <option value="AED">AED</option>
@@ -205,7 +214,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
               </NativeSelect>
             </FormGroup>
             <FormGroup label="Tutar *" error={errors.amount?.message}>
-              <Input type="number" step="0.01" {...register('amount')} />
+              <Input type="number" step="0.01" {...register('amount')} className={mo} />
             </FormGroup>
             {isNonUSD && (
               <FormGroup label="USD Karşılığı">
@@ -217,7 +226,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
                     value={rate > 0 && amount > 0 ? (amount / rate).toFixed(2) : ''}
                     readOnly
                     placeholder="0.00"
-                    className="pl-6 bg-blue-50 border-blue-100"
+                    className="pl-6 bg-blue-50 border-0 focus:ring-0"
                   />
                 </div>
               </FormGroup>
@@ -226,36 +235,45 @@ export function TransferModal({ open, onOpenChange }: Props) {
 
           {isNonUSD && (
             <FormGroup label="Kur (yerel/USD)">
-              <Input type="number" step="0.0001" {...register('exchange_rate')} />
+              <Input type="number" step="0.0001" {...register('exchange_rate')} className={mo} />
             </FormGroup>
           )}
 
           {/* Tarih & Referans No */}
           <FormRow cols={2}>
             <FormGroup label="Tarih *">
-              <Input type="date" {...register('transfer_date')} />
+              <Input type="date" {...register('transfer_date')} className={mo} />
             </FormGroup>
             <FormGroup label="Referans No">
-              <Input {...register('reference_no')} placeholder="Makbuz, dekont no" />
+              <Input {...register('reference_no')} placeholder="Tahsilat, dekont no" className={mo} />
             </FormGroup>
           </FormRow>
 
           <FormGroup label="Açıklama">
-            <Input {...register('description')} placeholder="örn. Kasadan Garanti'ye nakit yatırma" />
+            <Input {...register('description')} placeholder="örn. Kasadan Garanti'ye nakit yatırma" className={mo} />
           </FormGroup>
 
           <FormGroup label="Not">
-            <Textarea rows={2} {...register('notes')} />
+            <Textarea rows={2} {...register('notes')} className={mo} />
           </FormGroup>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
               İptal
-            </Button>
-            <Button type="submit" disabled={createTransfer.isPending}>
+            </button>
+            <button
+              type="submit"
+              disabled={createTransfer.isPending}
+              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+              style={{ background: accent }}
+            >
               {createTransfer.isPending ? 'Kaydediliyor…' : 'Transferi Kaydet'}
-            </Button>
-          </DialogFooter>
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

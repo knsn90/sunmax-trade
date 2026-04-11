@@ -11,14 +11,12 @@ import { useBankAccounts } from '@/hooks/useSettings';
 import { useCreateTransfer } from '@/hooks/useTransfers';
 import { today, toUSD } from '@/lib/formatters';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/form-elements';
-import { FormRow, FormGroup } from '@/components/ui/shared';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
 import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight, Plus, ChevronUp } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 
 const TR_BANKS = [
   '— Seçin —',
@@ -109,6 +107,53 @@ export function TransactionModal({
 }: TransactionModalProps) {
   const { t } = useTranslation('accounting');
   const { t: tc } = useTranslation('common');
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+  const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+  const Lbl = ({ children }: { children: React.ReactNode }) => (
+    <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+  );
+  const Fld = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
+    <div className={className}><Lbl>{label}</Lbl>{children}</div>
+  );
+  // Reusable exchange-rate + USD columns (only rendered when isNonUSD)
+  const RateFields = () => (
+    <>
+      <div>
+        <Lbl>{kurYon === 'direct' ? `1 ${currency} = ? USD` : `1 USD = ? ${currency}`}</Lbl>
+        <div className="flex h-8 rounded-lg overflow-hidden bg-gray-100">
+          <input type="number" step="0.0001" {...register('exchange_rate')}
+            placeholder="0.0000"
+            className="flex-1 min-w-0 bg-transparent px-3 text-[12px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
+            onChange={(e) => { register('exchange_rate').onChange(e); if (!usdFocused.current) setUsdStr(''); }}
+          />
+          <div className="flex shrink-0 border-l border-gray-200">
+            <button type="button" onClick={() => setKurYon('direct')}
+              className={cn('px-2 h-full text-[9px] font-bold whitespace-nowrap transition-colors',
+                kurYon === 'direct' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
+              {currency}→USD
+            </button>
+            <button type="button" onClick={() => setKurYon('inverse')}
+              className={cn('px-2 h-full text-[9px] font-bold whitespace-nowrap transition-colors border-l border-gray-200',
+                kurYon === 'inverse' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
+              USD→{currency}
+            </button>
+          </div>
+        </div>
+      </div>
+      <Fld label="USD Karşılığı">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 pointer-events-none">$</span>
+          <input type="number" step="0.01" value={usdStr} onChange={handleUsdChange}
+            onFocus={() => { usdFocused.current = true; }}
+            onBlur={() => { usdFocused.current = false; setUsdStr(usdEquivalent > 0 ? usdEquivalent.toFixed(2) : ''); }}
+            placeholder="0.00" className={`${inp} pl-6`}
+          />
+        </div>
+      </Fld>
+    </>
+  );
 
   const isEdit = !!transaction;
   const createTxn = useCreateTransaction();
@@ -167,7 +212,7 @@ export function TransactionModal({
     },
   });
 
-  const { register, handleSubmit, formState: { errors }, reset, control, setValue, watch } = form;
+  const { register, handleSubmit, formState: { errors: _errors }, reset, control, setValue, watch } = form;
 
   // ── Populate form when modal opens ───────────────────────────────────────
   useEffect(() => {
@@ -272,25 +317,34 @@ export function TransactionModal({
   const isNonUSD = currency !== 'USD';
   const isMasrafNonUSD = masrafCurrency !== 'USD';
   const masrafUsd = masrafTutar > 0 ? toUSD(masrafTutar, masrafCurrency as 'USD', masrafRate) : 0;
-  const usdEquivalent = toUSD(amount, currency as 'USD', rate);
+
+  const [kurYon, setKurYon] = useState<'direct' | 'inverse'>('inverse');
+  // direct: 1 local = rate USD → usd = amount * rate
+  // inverse: 1 USD = rate local → usd = amount / rate
+  const usdEquivalent = isNonUSD && rate > 0
+    ? (kurYon === 'direct' ? amount * rate : amount / rate)
+    : amount;
 
   // ── Bidirectional USD input ──────────────────────────────────────────────
   const [usdStr, setUsdStr] = useState('');
   const usdFocused = useRef(false);
 
-  // When amount/rate/currency change externally → update USD display
+  // When amount/rate/currency/kurYon change externally → update USD display
   useEffect(() => {
     if (usdFocused.current) return;
     setUsdStr(isNonUSD && usdEquivalent > 0 ? usdEquivalent.toFixed(2) : '');
-  }, [amount, rate, currency, isNonUSD, usdEquivalent]);
+  }, [amount, rate, currency, kurYon, isNonUSD, usdEquivalent]);
 
   function handleUsdChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setUsdStr(val);
     const usdVal = parseFloat(val);
     if (usdVal > 0 && amount > 0) {
-      // rate = amount / usdEquivalent
-      setValue('exchange_rate', parseFloat((amount / usdVal).toFixed(6)));
+      // back-calculate rate from USD value
+      const newRate = kurYon === 'direct'
+        ? parseFloat((usdVal / amount).toFixed(6))   // rate = usd / amount
+        : parseFloat((amount / usdVal).toFixed(6));  // rate = amount / usd
+      setValue('exchange_rate', newRate);
     }
   }
 
@@ -410,271 +464,198 @@ export function TransactionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="xl">
         <DialogHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <DialogTitle>{isEdit ? t('transaction.modal.titleEdit') : t('transaction.modal.titleNew')}</DialogTitle>
-            <div className="flex gap-1.5 flex-shrink-0">
-              <SmartFill mode="transaction" onResult={handleOcrResult} formName="Transaction" />
-              {!isEdit && <OcrButton mode="transaction" onResult={handleOcrResult} />}
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle className="flex-1">{isEdit
+              ? t('transaction.modal.titleEdit')
+              : ({
+                  receipt:      'Yeni Tahsilat',
+                  payment:      'Yeni Ödeme',
+                  advance:      'Yeni Ön Ödeme',
+                  ic_transfer:  'Yeni İç Transfer',
+                  sale_inv:     'Yeni Satış Faturası',
+                  purchase_inv: 'Yeni Satın Alma Faturası',
+                  svc_inv:      'Yeni Hizmet Faturası',
+                } as Record<string, string>)[txnType] ?? t('transaction.modal.titleNew')
+            }</DialogTitle>
+            <div className="flex gap-1.5 shrink-0">
+              <SmartFill mode="transaction" onResult={handleOcrResult} formName="Transaction" iconOnly />
+              {!isEdit && <OcrButton mode="transaction" onResult={handleOcrResult} iconOnly />}
             </div>
           </div>
+
+          {/* ── İşlem türü pill seçici ── */}
+          {!isEdit && (
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none mt-3">
+              {(['sale_inv','purchase_inv','svc_inv','receipt','payment','advance','ic_transfer'] as const).map(k => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    if (k === 'sale_inv' && onSaleInvRedirect) { onOpenChange(false); onSaleInvRedirect(); return; }
+                    if (k === 'purchase_inv' && onPurchaseInvRedirect) { onOpenChange(false); onPurchaseInvRedirect(); return; }
+                    if (k === 'svc_inv' && onSvcInvRedirect) { onOpenChange(false); onSvcInvRedirect(); return; }
+                    userChangedType.current = true;
+                    setValue('transaction_type', k);
+                  }}
+                  className={cn(
+                    'shrink-0 px-3 h-7 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
+                    txnType === k
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700',
+                  )}
+                >
+                  {tc('txType.' + k)}
+                </button>
+              ))}
+            </div>
+          )}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <FormRow>
-            <FormGroup label={`${t('transaction.modal.type')} *`} error={errors.transaction_type?.message}>
-              <NativeSelect
-                {...register('transaction_type')}
-                onChange={(e) => {
-                  userChangedType.current = true;
-                  register('transaction_type').onChange(e);
-                }}
-              >
-                {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance','ic_transfer'] as const).map(k => (
-                  <option key={k} value={k}>{tc('txType.' + k)}</option>
-                ))}
-              </NativeSelect>
-            </FormGroup>
-            <FormGroup label={`${tc('form.date')} *`} error={errors.transaction_date?.message}>
-              <Input type="date" {...register('transaction_date')} />
-            </FormGroup>
-          </FormRow>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-1">
 
-          {/* ── İÇ TRANSFER FORMU (txnType === 'ic_transfer') ─────────────────── */}
+          {/* ── İÇ TRANSFER FORMU ─────────────────────────────────────────── */}
           {txnType === 'ic_transfer' ? (
             <>
-              {/* Tarih + Açıklama */}
-              <FormRow>
-                <FormGroup label={`${t('transaction.modal.description')} *`} error={errors.description?.message}>
-                  <Input {...register('description')} placeholder="Örn. Kasadan bankaya para yatırma" />
-                </FormGroup>
-                <FormGroup label={t('transaction.modal.referenceNo')}>
-                  <Input {...register('reference_no')} placeholder="Dekont / ref no" />
-                </FormGroup>
-              </FormRow>
+              <div className="grid grid-cols-3 gap-3">
+                <Fld label={`${tc('form.date')} *`}>
+                  <input type="date" {...register('transaction_date')} className={inp} />
+                </Fld>
+                <Fld label={`${t('transaction.modal.description')} *`}>
+                  <input {...register('description')} placeholder="Örn. Kasadan bankaya para yatırma" className={inp} />
+                </Fld>
+                <Fld label={t('transaction.modal.referenceNo')}>
+                  <input {...register('reference_no')} placeholder="Dekont / ref no" className={inp} />
+                </Fld>
+              </div>
 
-              {/* Tutar */}
-              <FormRow cols={isNonUSD ? 4 : 2}>
-                <FormGroup label={tc('form.currency')}>
-                  <NativeSelect {...register('currency')}>
+              <div className={`grid gap-3 ${isNonUSD ? 'grid-cols-4' : 'grid-cols-2'}`}>
+                <Fld label={tc('form.currency')}>
+                  <select {...register('currency')} className={sel}>
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
                     <option value="AED">AED</option>
                     <option value="TRY">TRY</option>
-                  </NativeSelect>
-                </FormGroup>
-                <FormGroup label={`${t('transaction.modal.amount')} *`} error={errors.amount?.message}>
-                  <Input type="number" step="0.01" {...register('amount')} />
-                </FormGroup>
-                {isNonUSD && (
-                  <FormGroup label={t('transaction.modal.exchangeRate')}>
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      {...register('exchange_rate')}
-                      placeholder={t('transaction.modal.exchangeRatePlaceholder')}
-                      onChange={(e) => {
-                        register('exchange_rate').onChange(e);
-                        if (!usdFocused.current) setUsdStr('');
-                      }}
-                    />
-                  </FormGroup>
-                )}
-                {isNonUSD && (
-                  <FormGroup label="USD Karşılığı">
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 pointer-events-none">$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={usdStr}
-                        onChange={handleUsdChange}
-                        onFocus={() => { usdFocused.current = true; }}
-                        onBlur={() => {
-                          usdFocused.current = false;
-                          const usd = toUSD(amount, currency as 'USD', rate);
-                          setUsdStr(usd > 0 ? usd.toFixed(2) : '');
-                        }}
-                        placeholder="0.00"
-                        className="pl-6 bg-blue-50 border-blue-100 focus:bg-white"
-                      />
-                    </div>
-                  </FormGroup>
-                )}
-              </FormRow>
+                  </select>
+                </Fld>
+                <Fld label={`${t('transaction.modal.amount')} *`}>
+                  <input type="number" step="0.01" {...register('amount')} className={inp} />
+                </Fld>
+                {isNonUSD && <RateFields />}
+              </div>
 
               {/* From → To */}
-              <div className="mb-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
-                    <ArrowLeftRight className="h-3 w-3 text-white" />
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Lbl>Kaynak Hesap (Çıkış)</Lbl>
+                  <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                    {(['kasa', 'bank'] as const).map(tt => (
+                      <button key={tt} type="button"
+                        onClick={() => { setItFromType(tt); setItFromId(''); }}
+                        className={cn('flex-1 h-7 rounded-lg text-[11px] font-semibold transition-all',
+                          itFromType === tt ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500')}
+                      >{tt === 'kasa' ? 'Kasa' : 'Banka'}</button>
+                    ))}
                   </div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">
-                    Kaynak ve Hedef Hesap
-                  </p>
-                </div>
-
-                {/* Nereden */}
-                <div>
-                  <p className="text-[10px] font-semibold text-amber-600 mb-1.5 uppercase tracking-wide">Nereden</p>
-                  <div className="flex gap-1.5 bg-amber-100/60 p-1 rounded-lg mb-2">
-                    <button type="button"
-                      onClick={() => { setItFromType('kasa'); setItFromId(''); }}
-                      className={`flex-1 py-1 rounded-md text-[11px] font-semibold transition-all ${itFromType === 'kasa' ? 'bg-white shadow-sm text-gray-900' : 'text-amber-700'}`}
-                    >Kasa</button>
-                    <button type="button"
-                      onClick={() => { setItFromType('bank'); setItFromId(''); }}
-                      className={`flex-1 py-1 rounded-md text-[11px] font-semibold transition-all ${itFromType === 'bank' ? 'bg-white shadow-sm text-gray-900' : 'text-amber-700'}`}
-                    >Banka</button>
-                  </div>
-                  <NativeSelect value={itFromId} onChange={e => setItFromId(e.target.value)}>
-                    <option value="">— Seçin —</option>
+                  <select value={itFromId} onChange={e => setItFromId(e.target.value)} className={sel}>
+                    <option value="">— Hesap seçin —</option>
                     {itFromType === 'kasa'
                       ? kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)
                       : bankAccounts.map(a => <option key={a.id} value={a.id}>{a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.currency ? ` · ${a.currency}` : ''}</option>)
                     }
-                  </NativeSelect>
+                  </select>
                 </div>
-
-                {/* Separator arrow */}
-                <div className="flex justify-center">
-                  <div className="w-7 h-7 rounded-full bg-amber-200 flex items-center justify-center">
-                    <ArrowLeftRight className="h-3.5 w-3.5 text-amber-700" />
+                <div className="pb-1 text-gray-300"><ArrowLeftRight className="h-5 w-5" /></div>
+                <div className="space-y-1.5">
+                  <Lbl>Hedef Hesap (Giriş)</Lbl>
+                  <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                    {(['kasa', 'bank'] as const).map(tt => (
+                      <button key={tt} type="button"
+                        onClick={() => { setItToType(tt); setItToId(''); }}
+                        className={cn('flex-1 h-7 rounded-lg text-[11px] font-semibold transition-all',
+                          itToType === tt ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500')}
+                      >{tt === 'kasa' ? 'Kasa' : 'Banka'}</button>
+                    ))}
                   </div>
-                </div>
-
-                {/* Nereye */}
-                <div>
-                  <p className="text-[10px] font-semibold text-amber-600 mb-1.5 uppercase tracking-wide">Nereye</p>
-                  <div className="flex gap-1.5 bg-amber-100/60 p-1 rounded-lg mb-2">
-                    <button type="button"
-                      onClick={() => { setItToType('kasa'); setItToId(''); }}
-                      className={`flex-1 py-1 rounded-md text-[11px] font-semibold transition-all ${itToType === 'kasa' ? 'bg-white shadow-sm text-gray-900' : 'text-amber-700'}`}
-                    >Kasa</button>
-                    <button type="button"
-                      onClick={() => { setItToType('bank'); setItToId(''); }}
-                      className={`flex-1 py-1 rounded-md text-[11px] font-semibold transition-all ${itToType === 'bank' ? 'bg-white shadow-sm text-gray-900' : 'text-amber-700'}`}
-                    >Banka</button>
-                  </div>
-                  <NativeSelect value={itToId} onChange={e => setItToId(e.target.value)}>
-                    <option value="">— Seçin —</option>
+                  <select value={itToId} onChange={e => setItToId(e.target.value)} className={sel}>
+                    <option value="">— Hesap seçin —</option>
                     {itToType === 'kasa'
                       ? kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)
                       : bankAccounts.map(a => <option key={a.id} value={a.id}>{a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.currency ? ` · ${a.currency}` : ''}</option>)
                     }
-                  </NativeSelect>
+                  </select>
                 </div>
               </div>
             </>
           ) : (
             <>
-              {/* 1) TARAF — party picker */}
-              <FormGroup label={partyLabel[txnType] ?? t('transaction.modal.party')} className="mb-2.5">
-                {ocrPartyHint && (
-                  <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-lg px-2.5 py-1.5 mb-1.5 text-xs">
-                    <span>{t('transaction.modal.ocrDetected')} <strong>{ocrPartyHint}</strong> {t('transaction.modal.ocrInstruction')}</span>
-                    <button type="button" onClick={() => setOcrPartyHint(null)} className="text-muted-foreground hover:text-foreground ml-2">✕</button>
-                  </div>
-                )}
-                <PartyCombobox
-                  value={selectedParty}
-                  onChange={handlePartyChange}
-                  filter={partyFilter(txnType)}
-                  placeholder={t('transaction.modal.partyPlaceholder', { party: (partyLabel[txnType] ?? t('transaction.modal.party')).toLowerCase() })}
-                />
-              </FormGroup>
+              {/* Tarih + Taraf */}
+              <div className="grid grid-cols-[180px_1fr] gap-3 items-start">
+                <Fld label={`${tc('form.date')} *`}>
+                  <input type="date" {...register('transaction_date')} className={inp} />
+                </Fld>
+                <Fld label={partyLabel[txnType] ?? t('transaction.modal.party')}>
+                  {ocrPartyHint && (
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 mb-1.5 text-xs">
+                      <span>{t('transaction.modal.ocrDetected')} <strong>{ocrPartyHint}</strong> {t('transaction.modal.ocrInstruction')}</span>
+                      <button type="button" onClick={() => setOcrPartyHint(null)} className="text-gray-400 hover:text-gray-700 ml-2">✕</button>
+                    </div>
+                  )}
+                  <PartyCombobox value={selectedParty} onChange={handlePartyChange} filter={partyFilter(txnType)}
+                    placeholder={t('transaction.modal.partyPlaceholder', { party: (partyLabel[txnType] ?? t('transaction.modal.party')).toLowerCase() })}
+                  />
+                </Fld>
+              </div>
 
-              {/* 2) TİCARET DOSYASI */}
-              <FormGroup label={t('transaction.modal.tradeFile')} className="mb-2.5">
-                <NativeSelect {...register('trade_file_id')}>
+              {/* Ticaret Dosyası */}
+              <Fld label={t('transaction.modal.tradeFile')}>
+                <select {...register('trade_file_id')} className={sel}>
                   <option value="">{t('transaction.modal.tradeFileSelect')}</option>
                   {files.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.file_no} – {f.customer?.name ?? ''}
-                    </option>
+                    <option key={f.id} value={f.id}>{f.file_no} – {f.customer?.name ?? ''}</option>
                   ))}
-                </NativeSelect>
-              </FormGroup>
+                </select>
+              </Fld>
 
-              <FormRow>
-                <FormGroup label={`${t('transaction.modal.description')} *`} error={errors.description?.message}>
-                  <Input {...register('description')} placeholder={t('transaction.modal.descriptionPlaceholder')} />
-                </FormGroup>
-                <FormGroup label={t('transaction.modal.referenceNo')}>
-                  <Input {...register('reference_no')} />
-                </FormGroup>
-              </FormRow>
+              <div className="grid grid-cols-2 gap-3">
+                <Fld label={`${t('transaction.modal.description')} *`}>
+                  <input {...register('description')} placeholder={t('transaction.modal.descriptionPlaceholder')} className={inp} />
+                </Fld>
+                <Fld label={t('transaction.modal.referenceNo')}>
+                  <input {...register('reference_no')} className={inp} />
+                </Fld>
+              </div>
 
-              <FormRow cols={isNonUSD ? 4 : 2}>
-                <FormGroup label={tc('form.currency')}>
-                  <NativeSelect {...register('currency')}>
+              <div className={`grid gap-3 ${isNonUSD ? 'grid-cols-4' : 'grid-cols-2'}`}>
+                <Fld label={tc('form.currency')}>
+                  <select {...register('currency')} className={sel}>
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
                     <option value="AED">AED</option>
                     <option value="TRY">TRY</option>
-                  </NativeSelect>
-                </FormGroup>
-                <FormGroup label={`${t('transaction.modal.amount')} *`} error={errors.amount?.message}>
-                  <Input type="number" step="0.01" {...register('amount')} />
-                </FormGroup>
-                {isNonUSD && (
-                  <FormGroup label={t('transaction.modal.exchangeRate')}>
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      {...register('exchange_rate')}
-                      placeholder={t('transaction.modal.exchangeRatePlaceholder')}
-                      onChange={(e) => {
-                        register('exchange_rate').onChange(e);
-                        if (!usdFocused.current) setUsdStr('');
-                      }}
-                    />
-                  </FormGroup>
-                )}
-                {isNonUSD && (
-                  <FormGroup label="USD Karşılığı">
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 pointer-events-none">$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={usdStr}
-                        onChange={handleUsdChange}
-                        onFocus={() => { usdFocused.current = true; }}
-                        onBlur={() => {
-                          usdFocused.current = false;
-                          const usd = toUSD(amount, currency as 'USD', rate);
-                          setUsdStr(usd > 0 ? usd.toFixed(2) : '');
-                        }}
-                        placeholder="0.00"
-                        className="pl-6 bg-blue-50 border-blue-100 focus:bg-white"
-                      />
-                    </div>
-                  </FormGroup>
-                )}
-              </FormRow>
+                  </select>
+                </Fld>
+                <Fld label={`${t('transaction.modal.amount')} *`}>
+                  <input type="number" step="0.01" {...register('amount')} className={inp} />
+                </Fld>
+                {isNonUSD && <RateFields />}
+              </div>
 
-              {/* ── Ödeme Türü ─────────────────────────────────────────────── */}
-              <FormGroup label="Ödeme Türü" className="mb-2.5">
+              {/* Ödeme Türü */}
+              <Fld label="Ödeme Türü">
                 <div className="flex gap-2">
                   {([
-                    { value: '',               label: 'Belirtilmedi',   Icon: HelpCircle },
-                    { value: 'nakit',          label: 'Nakit',          Icon: Banknote   },
-                    { value: 'banka_havalesi', label: 'Banka Havalesi', Icon: Landmark   },
-                    { value: 'kredi_karti',    label: 'Kredi Kartı',    Icon: CreditCard },
+                    { value: '',               label: 'Belirtilmedi', Icon: HelpCircle },
+                    { value: 'nakit',          label: 'Nakit',        Icon: Banknote   },
+                    { value: 'banka_havalesi', label: 'Banka',        Icon: Landmark   },
+                    { value: 'kredi_karti',    label: 'Kredi Kartı',  Icon: CreditCard },
                   ] as const).map(({ value, label, Icon }) => {
                     const active = paymentMethod === value;
                     return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setValue('payment_method', value)}
-                        className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                          active
-                            ? 'bg-gray-900 text-white border-gray-900'
-                            : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400 hover:text-gray-700'
-                        }`}
+                      <button key={value} type="button" onClick={() => setValue('payment_method', value)}
+                        className={cn('flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-xl text-[10px] font-semibold transition-all',
+                          active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400 hover:text-gray-700 hover:bg-gray-200')}
                       >
                         <Icon className="h-4 w-4" strokeWidth={1.5} />
                         {label}
@@ -682,248 +663,184 @@ export function TransactionModal({
                     );
                   })}
                 </div>
-              </FormGroup>
+              </Fld>
 
-              {/* Banka Havalesi detayları */}
+              {/* Banka Havalesi */}
               {paymentMethod === 'banka_havalesi' && (
-                <div className="mb-2.5 space-y-2">
-                  {/* Kaynak tipi toggle */}
-                  <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => setBankSource('havale')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${bankSource === 'havale' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                      <Landmark className="h-3.5 w-3.5" />
-                      Banka Transferi
+                <div className="space-y-2">
+                  <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                    <button type="button" onClick={() => setBankSource('havale')}
+                      className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
+                        bankSource === 'havale' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700')}>
+                      <Landmark className="h-3.5 w-3.5" />Banka Transferi
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setBankSource('nakit')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${bankSource === 'nakit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                      <Banknote className="h-3.5 w-3.5" />
-                      Nakit Kaynaklı
+                    <button type="button" onClick={() => setBankSource('nakit')}
+                      className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
+                        bankSource === 'nakit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700')}>
+                      <Banknote className="h-3.5 w-3.5" />Nakit Kaynaklı
                     </button>
                   </div>
-                  {/* Bizim banka hesabımız */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-                        <Landmark className="h-3 w-3 text-white" />
-                      </div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
-                        {isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Para Hangi Hesabımıza Girdi?' : 'Para Hangi Hesabımızdan Çıktı?'}
-                      </p>
-                    </div>
-                    <NativeSelect
-                      {...register('bank_account_id')}
+                  <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                    <Lbl>{isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Para Hangi Hesabımıza Girdi?' : 'Para Hangi Hesabımızdan Çıktı?'}</Lbl>
+                    <select {...register('bank_account_id')} className={sel}
                       onChange={(e) => {
                         register('bank_account_id').onChange(e);
                         const acc = bankAccounts.find(a => a.id === e.target.value);
-                        if (acc) {
-                          setValue('bank_name', acc.bank_name);
-                          setValue('bank_account_no', acc.iban_usd || acc.iban_eur || '');
-                          setValue('swift_bic', acc.swift_bic || '');
-                        } else {
-                          setValue('bank_name', ''); setValue('bank_account_no', ''); setValue('swift_bic', '');
-                        }
-                      }}
-                    >
+                        if (acc) { setValue('bank_name', acc.bank_name); setValue('bank_account_no', acc.iban_usd || acc.iban_eur || ''); setValue('swift_bic', acc.swift_bic || ''); }
+                        else { setValue('bank_name', ''); setValue('bank_account_no', ''); setValue('swift_bic', ''); }
+                      }}>
                       <option value="">— Hesap seçin —</option>
                       {bankAccounts.map(a => (
-                        <option key={a.id} value={a.id}>
-                          {a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.currency ? ` · ${a.currency}` : ''}
-                        </option>
+                        <option key={a.id} value={a.id}>{a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.currency ? ` · ${a.currency}` : ''}</option>
                       ))}
-                    </NativeSelect>
+                    </select>
                     {bankAccounts.length === 0 && (
-                      <p className="text-[11px] text-blue-500 italic">Henüz banka hesabı eklenmemiş. Muhasebe → Ayarlar'dan ekleyebilirsiniz.</p>
+                      <p className="text-[11px] text-gray-400 italic">Henüz banka hesabı eklenmemiş. Muhasebe → Ayarlar'dan ekleyebilirsiniz.</p>
                     )}
                   </div>
-                  {/* Nakit kaynaklı: kasa seçici */}
                   {bankSource === 'nakit' && kasalar.length > 0 && (
-                    <div className="bg-green-50/60 border border-green-200 rounded-xl p-3 space-y-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center shrink-0">
-                          <Banknote className="h-3 w-3 text-white" />
-                        </div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-green-700">
-                          {isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Nakit Hangi Kasadan Geldi?' : 'Nakit Hangi Kasaya Gitti?'}
-                        </p>
-                      </div>
-                      <NativeSelect {...register('kasa_id')}>
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                      <Lbl>{isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Nakit Hangi Kasadan Geldi?' : 'Nakit Hangi Kasaya Gitti?'}</Lbl>
+                      <select {...register('kasa_id')} className={sel}>
                         <option value="">— Kasa seçin —</option>
                         {kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)}
-                      </NativeSelect>
+                      </select>
                     </div>
                   )}
-                  {/* Havale modunda: karşı taraf banka bilgileri */}
                   {bankSource === 'havale' && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center shrink-0">
-                          <Landmark className="h-3 w-3 text-white" />
-                        </div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Karşı Taraf Banka Bilgileri</p>
-                      </div>
-                      <FormRow cols={2}>
-                        <FormGroup label="Banka Adı">
-                          <NativeSelect {...register('bank_name')}>
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                      <Lbl>Karşı Taraf Banka Bilgileri</Lbl>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Fld label="Banka Adı">
+                          <select {...register('bank_name')} className={sel}>
                             {TR_BANKS.map(b => <option key={b} value={b === '— Seçin —' ? '' : b}>{b}</option>)}
-                          </NativeSelect>
-                        </FormGroup>
-                        <FormGroup label="Referans No">
-                          <Input {...register('reference_no')} placeholder="Havale / EFT ref no" />
-                        </FormGroup>
-                      </FormRow>
-                      <FormRow cols={2}>
-                        <FormGroup label="IBAN / Hesap No">
-                          <Input {...register('bank_account_no')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
-                        </FormGroup>
-                        <FormGroup label="Swift / BIC">
-                          <Input {...register('swift_bic')} placeholder="örn. TCZBTR2A" className="font-mono text-[12px]" />
-                        </FormGroup>
-                      </FormRow>
+                          </select>
+                        </Fld>
+                        <Fld label="Referans No">
+                          <input {...register('reference_no')} placeholder="Havale / EFT ref no" className={inp} />
+                        </Fld>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Fld label="IBAN / Hesap No">
+                          <input {...register('bank_account_no')} placeholder="TR00 0000 0000 0000 0000 00" className={`${inp} font-mono`} />
+                        </Fld>
+                        <Fld label="Swift / BIC">
+                          <input {...register('swift_bic')} placeholder="örn. TCZBTR2A" className={`${inp} font-mono`} />
+                        </Fld>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Kredi Kartı detayları */}
+              {/* Kredi Kartı */}
               {paymentMethod === 'kredi_karti' && (
-                <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-3 mb-2.5 space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-violet-500 mb-2">💳 Kart Bilgileri</p>
-                  <FormRow cols={2}>
-                    <FormGroup label="Banka">
-                      <NativeSelect {...register('bank_name')}>
+                <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                  <Lbl>Kart Bilgileri</Lbl>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Fld label="Banka">
+                      <select {...register('bank_name')} className={sel}>
                         {TR_BANKS.map(b => <option key={b} value={b === '— Seçin —' ? '' : b}>{b}</option>)}
-                      </NativeSelect>
-                    </FormGroup>
-                    <FormGroup label="Kart Türü">
+                      </select>
+                    </Fld>
+                    <Fld label="Kart Türü">
                       <div className="flex gap-1.5">
                         {([
-                          { value: 'visa',       label: 'Visa'       },
-                          { value: 'mastercard', label: 'Mastercard' },
-                          { value: 'amex',       label: 'Amex'       },
-                          { value: 'troy',       label: 'Troy'       },
+                          { value: 'visa', label: 'Visa' }, { value: 'mastercard', label: 'Mastercard' },
+                          { value: 'amex', label: 'Amex' }, { value: 'troy', label: 'Troy' },
                         ] as const).map(({ value, label }) => (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => setValue('card_type', value)}
-                            className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
-                              watch('card_type') === value
-                                ? 'bg-violet-600 text-white border-violet-600'
-                                : 'bg-white text-gray-500 border-gray-200 hover:border-violet-300 hover:text-violet-600'
-                            }`}
+                          <button key={value} type="button" onClick={() => setValue('card_type', value)}
+                            className={cn('flex-1 h-8 rounded-lg text-[11px] font-bold transition-all',
+                              watch('card_type') === value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')}
                           >{label}</button>
                         ))}
                       </div>
-                    </FormGroup>
-                  </FormRow>
-                  <FormGroup label="Referans No">
-                    <Input {...register('reference_no')} placeholder="POS slip / işlem no" />
-                  </FormGroup>
+                    </Fld>
+                  </div>
+                  <Fld label="Referans No">
+                    <input {...register('reference_no')} placeholder="POS slip / işlem no" className={inp} />
+                  </Fld>
                 </div>
               )}
 
-              {/* Nakit detayları + Kasa seçimi */}
+              {/* Nakit */}
               {paymentMethod === 'nakit' && (
-                <div className="bg-green-50/60 border border-green-100 rounded-xl p-3 mb-2.5 space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">💵 Nakit Bilgileri</p>
+                <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                  <Lbl>Nakit Bilgileri</Lbl>
                   {kasalar.length > 0 && (
-                    <FormGroup label={isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Hangi Kasaya Girdi?' : 'Hangi Kasadan Çıktı?'}>
-                      <NativeSelect {...register('kasa_id')}>
+                    <Fld label={isMoneyIn(txnType, selectedParty?.entityType ?? '') ? 'Hangi Kasaya Girdi?' : 'Hangi Kasadan Çıktı?'}>
+                      <select {...register('kasa_id')} className={sel}>
                         <option value="">— Kasa seçin —</option>
                         {kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)}
-                      </NativeSelect>
-                    </FormGroup>
+                      </select>
+                    </Fld>
                   )}
-                  <FormRow cols={2}>
-                    <FormGroup label="Teslim Alan Kişi">
-                      <Input {...register('cash_receiver')} placeholder="Ad Soyad" />
-                    </FormGroup>
-                    <FormGroup label="Makbuz / Referans No">
-                      <Input {...register('reference_no')} placeholder="Makbuz no" />
-                    </FormGroup>
-                  </FormRow>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Fld label="Teslim Alan Kişi">
+                      <input {...register('cash_receiver')} placeholder="Ad Soyad" className={inp} />
+                    </Fld>
+                    <Fld label="Tahsilat / Referans No">
+                      <input {...register('reference_no')} placeholder="Tahsilat no" className={inp} />
+                    </Fld>
+                  </div>
                 </div>
               )}
             </>
           )}
 
-          {/* ── Masraf / Komisyon (collapsible) ──────────────────────────── */}
+          {/* Masraf / Komisyon */}
           {txnType !== 'ic_transfer' && (
-            <div className="mb-2.5">
+            <div>
               {!masrafOpen ? (
-                /* Kapalı: küçük "+ Masraf / Komisyon Ekle" butonu */
-                <button
-                  type="button"
-                  onClick={() => setMasrafOpen(true)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-gray-200 text-[11px] font-semibold text-gray-400 hover:text-gray-600 hover:border-gray-300 hover:bg-gray-50/60 transition-all"
-                >
-                  <Plus className="h-3 w-3" />
-                  Masraf / Komisyon Ekle
+                <button type="button" onClick={() => setMasrafOpen(true)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-gray-200 text-[11px] font-semibold text-gray-400 hover:text-gray-600 hover:border-gray-300 hover:bg-gray-50/60 transition-all">
+                  <Plus className="h-3 w-3" />Masraf / Komisyon Ekle
                 </button>
               ) : (
-                /* Açık: tam masraf formu */
-                <div className="border border-orange-200 rounded-xl bg-orange-50/30 overflow-hidden">
-                  {/* Header / kapat */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMasrafOpen(false);
-                      setValue('masraf_turu', '');
-                      setValue('masraf_tutar', 0);
-                      setValue('masraf_currency', 'USD');
-                      setValue('masraf_rate', 1);
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-orange-50 transition-colors"
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-orange-600">
-                      Masraf / Komisyon
-                    </span>
-                    <ChevronUp className="h-3.5 w-3.5 text-orange-400" />
+                <div className="bg-gray-50 rounded-xl overflow-hidden">
+                  <button type="button" onClick={() => { setMasrafOpen(false); setValue('masraf_turu', ''); setValue('masraf_tutar', 0); setValue('masraf_currency', 'USD'); setValue('masraf_rate', 1); }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-100 transition-colors">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Masraf / Komisyon</span>
+                    <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
                   </button>
-                  <div className="px-3 pb-3 space-y-2 border-t border-orange-100">
+                  <div className="px-3 pb-3 space-y-2 border-t border-gray-100">
                     <div className="pt-2">
-                      <FormRow cols={2}>
-                        <FormGroup label="Masraf Türü">
-                          <NativeSelect {...register('masraf_turu')}>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <Fld label="Masraf Türü">
+                          <select {...register('masraf_turu')} className={sel}>
                             <option value="">— Seçin —</option>
                             <option value="Havale Masrafı">Havale Masrafı</option>
                             <option value="Banka Komisyonu">Banka Komisyonu</option>
                             <option value="Sarraf Masrafı">Sarraf Masrafı</option>
                             <option value="Swift Masrafı">Swift Masrafı</option>
                             <option value="Diğer">Diğer</option>
-                          </NativeSelect>
-                        </FormGroup>
-                        <FormGroup label="Para Birimi">
-                          <NativeSelect {...register('masraf_currency')}>
+                          </select>
+                        </Fld>
+                        <Fld label="Para Birimi">
+                          <select {...register('masraf_currency')} className={sel}>
                             <option value="USD">USD</option>
                             <option value="EUR">EUR</option>
                             <option value="TRY">TRY</option>
                             <option value="AED">AED</option>
                             <option value="GBP">GBP</option>
-                          </NativeSelect>
-                        </FormGroup>
-                      </FormRow>
-                      <FormRow cols={isMasrafNonUSD ? 3 : 2}>
-                        <FormGroup label="Tutar">
-                          <Input type="number" step="0.01" min="0" {...register('masraf_tutar')} placeholder="0.00" />
-                        </FormGroup>
+                          </select>
+                        </Fld>
+                      </div>
+                      <div className={`grid gap-3 ${isMasrafNonUSD ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                        <Fld label="Tutar">
+                          <input type="number" step="0.01" min="0" {...register('masraf_tutar')} placeholder="0.00" className={inp} />
+                        </Fld>
                         {isMasrafNonUSD && (
-                          <FormGroup label={`Kur (1 USD = ? ${masrafCurrency})`}>
-                            <Input type="number" step="0.0001" min="0" {...register('masraf_rate')} placeholder="örn. 32.50" />
-                          </FormGroup>
+                          <Fld label={`Kur (1 USD = ? ${masrafCurrency})`}>
+                            <input type="number" step="0.0001" min="0" {...register('masraf_rate')} placeholder="örn. 32.50" className={inp} />
+                          </Fld>
                         )}
-                        <FormGroup label="USD Karşılığı">
-                          <div className="flex items-center h-9 px-3 rounded-xl bg-orange-100 border border-orange-200 text-[12px] font-bold text-orange-700 tabular-nums">
+                        <Fld label="USD Karşılığı">
+                          <div className="flex items-center h-8 px-3 rounded-lg bg-gray-200 text-[12px] font-bold text-gray-700 tabular-nums">
                             {masrafUsd > 0 ? `$${masrafUsd.toFixed(2)}` : <span className="text-gray-400 font-normal">—</span>}
                           </div>
-                        </FormGroup>
-                      </FormRow>
+                        </Fld>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -931,14 +848,17 @@ export function TransactionModal({
             </div>
           )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={() => onOpenChange(false)}
+              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
               {tc('btn.cancel')}
-            </Button>
-            <Button type="submit" disabled={createTxn.isPending || updateTxn.isPending || createTransfer.isPending}>
+            </button>
+            <button type="submit" disabled={createTxn.isPending || updateTxn.isPending || createTransfer.isPending}
+              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+              style={{ background: accent }}>
               {isEdit ? t('transaction.modal.btnUpdate') : t('transaction.modal.btnSave')}
-            </Button>
-          </DialogFooter>
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

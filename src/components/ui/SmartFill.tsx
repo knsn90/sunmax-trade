@@ -26,6 +26,7 @@ interface SmartFillProps {
   getCurrentValues?: () => Record<string, unknown>;
   context?: Record<string, unknown>;
   formName?: string;
+  iconOnly?: boolean;
 }
 
 interface ConversationEntry {
@@ -75,7 +76,7 @@ function getSpeechRecognition(): SpeechRecognitionCtor | null {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function SmartFill({ mode, onResult, getCurrentValues, context = {}, formName }: SmartFillProps) {
+export function SmartFill({ mode, onResult, getCurrentValues, context = {}, formName, iconOnly = false }: SmartFillProps) {
   const [open, setOpen] = useState(false);
   const [inputMode, setInputMode] = useState<'voice' | 'text'>(() =>
     getSpeechRecognition() ? 'voice' : 'text',
@@ -227,17 +228,28 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
   return (
     <>
       {/* Trigger button */}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="gap-1.5 text-brand-600 border-brand-300 hover:bg-brand-50"
-        onClick={() => setOpen(true)}
-      >
-        <Wand2 className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Akıllı Doldur</span>
-        <span className="sm:hidden">AI</span>
-      </Button>
+      {iconOnly ? (
+        <button
+          type="button"
+          title="Akıllı Doldur"
+          onClick={() => setOpen(true)}
+          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
+        >
+          <Wand2 className="h-3.5 w-3.5" />
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-brand-600 border-brand-300 hover:bg-brand-50"
+          onClick={() => setOpen(true)}
+        >
+          <Wand2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Akıllı Doldur</span>
+          <span className="sm:hidden">AI</span>
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="w-full max-w-lg flex flex-col gap-0 p-0 max-h-[90vh]">

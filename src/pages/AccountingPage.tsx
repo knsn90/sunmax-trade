@@ -20,6 +20,7 @@ import { BankAccountManager } from '@/components/accounting/BankAccountManager';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { PurchaseInvoiceModal } from '@/components/accounting/PurchaseInvoiceModal';
 import { ServiceInvoiceModal } from '@/components/accounting/ServiceInvoiceModal';
+import { FlagButton } from '@/components/accounting/FlagButton';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
 import { LoadingSpinner } from '@/components/ui/shared';
@@ -29,7 +30,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useCanApprove, useBulkSetDocStatus } from '@/hooks/useApproval';
 import {
   TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2,
-  Printer, Pencil, Trash2, Plus, Search, AlertTriangle, BookCheck, Check, X,
+  Printer, Pencil, Trash2, Plus, Search, AlertTriangle, BookCheck, Check, X, Flag,
 } from 'lucide-react';
 
 type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash' | 'ayarlar';
@@ -114,8 +115,9 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint, sele
         </Badge>
       </div>
       {/* Actions */}
-      <div className="flex items-center gap-0.5 shrink-0 ml-1">
+      <div className="flex items-center gap-1 shrink-0 ml-1">
         <ApprovalActions table="transactions" id={t.id} currentStatus={t.doc_status ?? 'draft'} />
+        <FlagButton transaction={t} />
         {settings && (
           <button onClick={onPrint} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
             <Printer className="h-3.5 w-3.5" />
@@ -163,6 +165,7 @@ export function AccountingPage() {
   });
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [flagFilter, setFlagFilter] = useState(false);
   const [search, setSearch] = useState('');
 
   // 'all' tab loads everything at once (for client-side search)
@@ -347,7 +350,12 @@ export function AccountingPage() {
     }
   }
 
-  function openNew() { setEditingTxn(null); setTxnModalOpen(true); }
+  function openNew() {
+    if (activeTab === 'buy') { setEditingPurchaseInv(null); setPurchaseInvModalOpen(true); return; }
+    if (activeTab === 'svc') { setEditingSvcInv(null); setSvcInvModalOpen(true); return; }
+    if (activeTab === 'sale') { setEditingSaleInv(null); setSaleInvModalOpen(true); return; }
+    setEditingTxn(null); setPendingTxnType(undefined); setTxnModalOpen(true);
+  }
   function openEdit(txn: Transaction) {
     if (txn.transaction_type === 'purchase_inv') {
       setEditingPurchaseInv(txn);
@@ -398,14 +406,16 @@ export function AccountingPage() {
   }
 
   const filteredTxns = useMemo(() => {
-    if (!search.trim()) return txns;
+    let result = txns;
+    if (flagFilter) result = result.filter(t => t.flagged);
+    if (!search.trim()) return result;
     const q = search.toLowerCase();
-    return txns.filter(t =>
+    return result.filter(t =>
       t.trade_file?.file_no?.toLowerCase().includes(q) ||
       (t.customer?.name ?? t.supplier?.name ?? t.service_provider?.name ?? t.party_name ?? '').toLowerCase().includes(q) ||
       t.description?.toLowerCase().includes(q)
     );
-  }, [txns, search]);
+  }, [txns, search, flagFilter]);
 
   const filteredSaleInvoices = useMemo(() => {
     if (!search.trim()) return saleInvoices;
@@ -487,6 +497,18 @@ export function AccountingPage() {
                 <option value="">{t('filters.allStatuses')}</option>
                 {(['open','partial','paid'] as const).map(k => <option key={k} value={k}>{tc('payStatus.' + k)}</option>)}
               </NativeSelect>
+              <button
+                onClick={() => setFlagFilter(v => !v)}
+                title="Sadece sorunlu işlemleri göster"
+                className={`h-9 px-3 rounded-xl border text-[12px] font-semibold flex items-center gap-1.5 transition-colors ${
+                  flagFilter
+                    ? 'border-amber-300 bg-amber-50 text-amber-600'
+                    : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <Flag className="h-3.5 w-3.5" fill={flagFilter ? 'currentColor' : 'none'} />
+                Sorunlu
+              </button>
             </div>
           )}
 
@@ -825,10 +847,9 @@ export function AccountingPage() {
                   <col className="w-[15%]" />
                   <col className="w-[18%]" />
                   <col className="hidden lg:table-column" />
-                  <col className="w-[14%]" />
-                  <col className="w-[14%]" />
-                  <col className="w-[72px]" />
-                  <col className="w-[76px]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[180px]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/60">
@@ -848,7 +869,6 @@ export function AccountingPage() {
                     <th className="hidden lg:table-cell px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Açıklama</th>
                     <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Borç</th>
                     <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Alacak</th>
-                    <th className="px-2 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Onay</th>
                     <th className="px-2 py-2.5" />
                   </tr>
                 </thead>
@@ -928,15 +948,11 @@ export function AccountingPage() {
                             </div>
                           ) : <span className="text-gray-200 text-[11px]">—</span>}
                         </td>
-                        {/* Onay */}
+                        {/* Actions (onay + flag + yazdır + düzenle + sil) */}
                         <td className="px-2 py-3">
-                          <div className="flex items-center justify-center gap-0.5">
+                          <div className="flex items-center gap-1 justify-end">
                             <ApprovalActions table="transactions" id={txn.id} currentStatus={txn.doc_status ?? 'draft'} />
-                          </div>
-                        </td>
-                        {/* Actions */}
-                        <td className="px-2 py-3">
-                          <div className="flex items-center gap-0.5 justify-end">
+                            <FlagButton transaction={txn} />
                             {settings && (
                               <button onClick={() => handleTxnPrint(txn)} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="Yazdır">
                                 <Printer className="h-3.5 w-3.5" />
@@ -1095,9 +1111,18 @@ export function AccountingPage() {
         invoiceType="sale"
         onSwitchToTransaction={(type) => {
           setSaleInvModalOpen(false);
-          setPendingTxnType(type);
-          setEditingTxn(null);
-          setTxnModalOpen(true);
+          setEditingSaleInv(null);
+          if (type === 'purchase_inv') {
+            setEditingPurchaseInv(null);
+            setPurchaseInvModalOpen(true);
+          } else if (type === 'svc_inv') {
+            setEditingSvcInv(null);
+            setSvcInvModalOpen(true);
+          } else {
+            setPendingTxnType(type);
+            setEditingTxn(null);
+            setTxnModalOpen(true);
+          }
         }}
       />
       <PurchaseInvoiceModal
@@ -1107,15 +1132,30 @@ export function AccountingPage() {
         onSwitchToTransaction={(type) => {
           setPurchaseInvModalOpen(false);
           setEditingPurchaseInv(null);
-          setPendingTxnType(type);
-          setEditingTxn(null);
-          setTxnModalOpen(true);
+          if (type === 'sale_inv') { setEditingSaleInv(null); setSaleInvModalOpen(true); }
+          else if (type === 'svc_inv') { setEditingSvcInv(null); setSvcInvModalOpen(true); }
+          else { setPendingTxnType(type); setEditingTxn(null); setTxnModalOpen(true); }
         }}
       />
       <ServiceInvoiceModal
         open={svcInvModalOpen}
         onOpenChange={(v) => { setSvcInvModalOpen(v); if (!v) setEditingSvcInv(null); }}
         transaction={editingSvcInv}
+        onSwitchToTransaction={(type) => {
+          setSvcInvModalOpen(false);
+          setEditingSvcInv(null);
+          if (type === 'sale_inv') {
+            setEditingSaleInv(null);
+            setSaleInvModalOpen(true);
+          } else if (type === 'purchase_inv') {
+            setEditingPurchaseInv(null);
+            setPurchaseInvModalOpen(true);
+          } else {
+            setPendingTxnType(type);
+            setEditingTxn(null);
+            setTxnModalOpen(true);
+          }
+        }}
       />
     </div>
   );

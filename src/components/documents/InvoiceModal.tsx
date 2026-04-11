@@ -16,32 +16,51 @@ import { parseInvoiceExcel, downloadInvoiceTemplate } from '@/lib/excelImport';
 import { printInvoice } from '@/lib/printDocument';
 import { toast } from 'sonner';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/form-elements';
-import { FormRow, FormGroup } from '@/components/ui/shared';
+import { useTheme } from '@/contexts/ThemeContext';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { cn } from '@/lib/utils';
 import { HelpCircle, Banknote, Building2, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
 import type { OcrResult } from '@/lib/openai';
 
+// ── Mono design primitives ──────────────────────────────────────────────────
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+
+function Lbl({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>;
+}
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={className}>
+      <Lbl>{label}</Lbl>
+      {children}
+    </div>
+  );
+}
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 pt-1">{children}</div>;
+}
+function Divider() { return <div className="border-t border-gray-100 my-1" />; }
+
+// ── Constants ───────────────────────────────────────────────────────────────
 const TXN_TYPES = [
-  { value: 'sale_inv',    label: 'Satış Faturası' },
+  { value: 'sale_inv',     label: 'Satış Faturası' },
   { value: 'purchase_inv', label: 'Satın Alma Faturası' },
-  { value: 'svc_inv',     label: 'Hizmet Faturası' },
-  { value: 'receipt',     label: 'Tahsilat' },
-  { value: 'payment',     label: 'Ödeme' },
-  { value: 'advance',     label: 'Ön Ödeme' },
+  { value: 'svc_inv',      label: 'Hizmet Faturası' },
+  { value: 'receipt',      label: 'Tahsilat' },
+  { value: 'payment',      label: 'Ödeme' },
+  { value: 'advance',      label: 'Ön Ödeme' },
+  { value: 'ic_transfer',  label: 'İç Transfer' },
 ] as const;
 
 const PAYMENT_METHODS = [
-  { value: '',                label: 'Belirtilmedi', icon: <HelpCircle className="h-4 w-4" /> },
-  { value: 'nakit',          label: 'Nakit',         icon: <Banknote className="h-4 w-4" /> },
-  { value: 'banka_havalesi', label: 'Banka Havalesi', icon: <Building2 className="h-4 w-4" /> },
-  { value: 'kredi_karti',    label: 'Kredi Kartı',   icon: <CreditCard className="h-4 w-4" /> },
+  { value: '' as const,               label: 'Belirtilmedi', icon: <HelpCircle className="h-4 w-4" /> },
+  { value: 'nakit' as const,          label: 'Nakit',        icon: <Banknote className="h-4 w-4" /> },
+  { value: 'banka_havalesi' as const, label: 'Banka',        icon: <Building2 className="h-4 w-4" /> },
+  { value: 'kredi_karti' as const,    label: 'Kredi Kartı',  icon: <CreditCard className="h-4 w-4" /> },
 ] as const;
 
 interface InvoiceModalProps {
@@ -50,7 +69,6 @@ interface InvoiceModalProps {
   file: TradeFile | null;
   invoice?: Invoice | null;
   invoiceType?: 'commercial' | 'sale';
-  /** Sale modunda işlem türü değiştirilmek istendiğinde çağrılır */
   onSwitchToTransaction?: (type: string) => void;
 }
 
@@ -59,6 +77,8 @@ export function InvoiceModal({
 }: InvoiceModalProps) {
   const { t } = useTranslation('documents');
   const { t: tc } = useTranslation('common');
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const qc = useQueryClient();
 
   const { data: settings } = useSettings();
@@ -76,7 +96,6 @@ export function InvoiceModal({
   const { data: customers = [] } = useCustomers();
   const saleFiles = allFiles.filter(f => ['sale', 'delivery', 'completed'].includes(f.status));
 
-  // Customer filter + file picker
   const [pickedCustomerId, setPickedCustomerId] = useState('');
   const [pickedFileId, setPickedFileId] = useState('');
   const filteredFiles = pickedCustomerId
@@ -85,7 +104,7 @@ export function InvoiceModal({
   const pickedFile = filteredFiles.find(f => f.id === pickedFileId) ?? null;
   const effectiveFile = file ?? pickedFile;
 
-  // ── Payment state (only for sale mode) ──────────────────────────────────
+  // ── Payment state ────────────────────────────────────────────────────────
   const [paymentMethod, setPaymentMethod] = useState<'' | 'nakit' | 'banka_havalesi' | 'kredi_karti'>('');
   const [masrafOpen, setMasrafOpen] = useState(false);
   const [masrafTuru, setMasrafTuru] = useState('');
@@ -108,13 +127,10 @@ export function InvoiceModal({
   });
   const { register, handleSubmit, formState: { errors }, reset, control, setValue } = form;
 
-  // Reset on open
   useEffect(() => {
     if (!open) {
-      setPickedCustomerId('');
-      setPickedFileId('');
-      setPaymentMethod('');
-      setMasrafOpen(false);
+      setPickedCustomerId(''); setPickedFileId('');
+      setPaymentMethod(''); setMasrafOpen(false);
       setMasrafTuru(''); setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
       return;
     }
@@ -141,7 +157,6 @@ export function InvoiceModal({
     }
   }, [open, file, invoice, settings, reset]);
 
-  // Auto-fill when picked file changes
   useEffect(() => {
     if (!open || !pickedFile || invoice) return;
     reset({
@@ -156,10 +171,8 @@ export function InvoiceModal({
     });
   }, [pickedFile, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset file when customer changes
   useEffect(() => { setPickedFileId(''); }, [pickedCustomerId]);
 
-  // Live calc
   const qty      = useWatch({ control, name: 'quantity_admt' }) ?? 0;
   const price    = useWatch({ control, name: 'unit_price' }) ?? 0;
   const freight  = useWatch({ control, name: 'freight' }) ?? 0;
@@ -227,7 +240,6 @@ export function InvoiceModal({
           invoiceType: effectiveType,
         });
 
-        // Sale modunda transaction da oluştur (muhasebe kaydı)
         if (isSale) {
           await transactionService.create({
             transaction_date: data.invoice_date,
@@ -271,251 +283,244 @@ export function InvoiceModal({
     }
   }
 
+  const isSaving = createInvoice.isPending || updateInvoice.isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="xl">
         <DialogHeader>
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
+          <div className="flex items-center gap-2 pr-8">
+            <div className="min-w-0 flex-1">
               <DialogTitle>
                 {invoice?.invoice_type === 'sale'
                   ? (isEdit ? t('invoice.modal.titleEditSale') : t('invoice.modal.titleNewSale'))
                   : (isEdit ? t('invoice.modal.titleEditCommercial') : t('invoice.modal.titleNewCommercial'))}
               </DialogTitle>
-              <DialogDescription className="truncate">
-                {effectiveFile?.file_no ?? ''} — {effectiveFile?.customer?.name ?? invoice?.customer?.name ?? ''}
-              </DialogDescription>
+              {(effectiveFile?.file_no || effectiveFile?.customer?.name || invoice?.customer?.name) && (
+                <DialogDescription className="truncate">
+                  {effectiveFile?.file_no ?? ''} — {effectiveFile?.customer?.name ?? invoice?.customer?.name ?? ''}
+                </DialogDescription>
+              )}
             </div>
-            <div className="flex gap-1.5 flex-shrink-0">
-              <SmartFill mode="invoice" onResult={handleOcrResult} formName="Invoice" />
-              <OcrButton mode="invoice" onResult={handleOcrResult} />
+            <div className="flex gap-1.5 shrink-0">
+              <SmartFill mode="invoice" onResult={handleOcrResult} formName="Invoice" iconOnly />
+              <OcrButton mode="invoice" onResult={handleOcrResult} iconOnly />
             </div>
           </div>
+
+          {/* ── İşlem türü pill seçici ── */}
+          {!isEdit && onSwitchToTransaction && (
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none mt-3">
+              {TXN_TYPES.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    if (opt.value !== 'sale_inv') {
+                      onOpenChange(false);
+                      onSwitchToTransaction(opt.value);
+                    }
+                  }}
+                  className={cn(
+                    'shrink-0 px-3 h-7 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
+                    opt.value === 'sale_inv'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-3 py-1">
 
-          {/* ── İşlem Türü (sadece sale modunda, yönlendirme için) ── */}
-          {isSaleMode && onSwitchToTransaction && (
-            <FormRow cols={2}>
-              <FormGroup label="İşlem Türü">
-                <NativeSelect
-                  value="sale_inv"
-                  onChange={e => {
-                    if (e.target.value !== 'sale_inv') {
-                      onOpenChange(false);
-                      onSwitchToTransaction(e.target.value);
-                    }
-                  }}
-                >
-                  {TXN_TYPES.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </NativeSelect>
-              </FormGroup>
-            </FormRow>
-          )}
+            {/* ── Müşteri + Dosya seçimi (muhasebeden açılınca) ── */}
+            {needsFilePicker && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Müşteri">
+                    <select className={sel} value={pickedCustomerId} onChange={e => setPickedCustomerId(e.target.value)}>
+                      <option value="">— Tüm müşteriler —</option>
+                      {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Ticaret Dosyası *">
+                    <select className={sel} value={pickedFileId} onChange={e => setPickedFileId(e.target.value)}>
+                      <option value="">— Dosya seçin —</option>
+                      {filteredFiles.map(f => (
+                        <option key={f.id} value={f.id}>
+                          {f.file_no} — {f.customer?.name ?? '—'} {f.product?.name ? `(${f.product.name})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+                <Divider />
+              </>
+            )}
 
-          {/* ── Müşteri + Dosya seçimi (muhasebeden açılınca) ── */}
-          {needsFilePicker && (
-            <FormRow cols={2}>
-              <FormGroup label="Müşteri">
-                <NativeSelect
-                  value={pickedCustomerId}
-                  onChange={e => setPickedCustomerId(e.target.value)}
-                >
-                  <option value="">— Tüm müşteriler —</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </NativeSelect>
-              </FormGroup>
-              <FormGroup label="Ticaret Dosyası *">
-                <NativeSelect
-                  value={pickedFileId}
-                  onChange={e => setPickedFileId(e.target.value)}
-                >
-                  <option value="">— Dosya seçin —</option>
-                  {filteredFiles.map(f => (
-                    <option key={f.id} value={f.id}>
-                      {f.file_no} — {f.customer?.name ?? '—'} {f.product?.name ? `(${f.product.name})` : ''}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </FormGroup>
-            </FormRow>
-          )}
+            {/* ── Fatura Bilgileri ── */}
+            <div className="grid grid-cols-3 gap-3">
+              <Field label={`${tc('form.date')} *`}>
+                <input type="date" className={inp} {...register('invoice_date')} />
+                {errors.invoice_date && <p className="text-[11px] text-red-500 mt-0.5">{errors.invoice_date.message}</p>}
+              </Field>
+              <Field label={tc('form.currency')}>
+                <select className={sel} {...register('currency')}>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="TRY">TRY</option>
+                </select>
+              </Field>
+              <Field label={t('invoice.modal.incoterms')}>
+                <input className={inp} {...register('incoterms')} />
+              </Field>
+            </div>
 
-          {/* ── Fatura alanları ── */}
-          <FormRow cols={3}>
-            <FormGroup label={`${tc('form.date')} *`} error={errors.invoice_date?.message}>
-              <Input type="date" {...register('invoice_date')} />
-            </FormGroup>
-            <FormGroup label={tc('form.currency')}>
-              <NativeSelect {...register('currency')}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="TRY">TRY</option>
-              </NativeSelect>
-            </FormGroup>
-            <FormGroup label={t('invoice.modal.incoterms')}>
-              <Input {...register('incoterms')} />
-            </FormGroup>
-          </FormRow>
+            <Divider />
 
-          <FormRow cols={3}>
-            <FormGroup label={`${t('invoice.modal.quantityAdmt')} *`} error={errors.quantity_admt?.message}>
-              <Input type="number" step="0.001" {...register('quantity_admt')} />
-            </FormGroup>
-            <FormGroup label={`${t('invoice.modal.unitPrice')} *`} error={errors.unit_price?.message}>
-              <Input type="number" step="0.001" {...register('unit_price')} />
-            </FormGroup>
-            <FormGroup label={t('invoice.modal.freight')}>
-              <Input type="number" step="0.001" {...register('freight')} />
-            </FormGroup>
-          </FormRow>
+            {/* ── Miktar / Fiyat ── */}
+            <div className="grid grid-cols-3 gap-3">
+              <Field label={`${t('invoice.modal.quantityAdmt')} *`}>
+                <input type="number" step="0.001" className={inp} {...register('quantity_admt')} placeholder="0.000" />
+                {errors.quantity_admt && <p className="text-[11px] text-red-500 mt-0.5">{errors.quantity_admt.message}</p>}
+              </Field>
+              <Field label={`${t('invoice.modal.unitPrice')} *`}>
+                <input type="number" step="0.001" className={inp} {...register('unit_price')} placeholder="0.000" />
+                {errors.unit_price && <p className="text-[11px] text-red-500 mt-0.5">{errors.unit_price.message}</p>}
+              </Field>
+              <Field label={t('invoice.modal.freight')}>
+                <input type="number" step="0.001" className={inp} {...register('freight')} placeholder="0.000" />
+              </Field>
+            </div>
 
-          {/* Live totals */}
-          <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 flex flex-wrap gap-3 sm:gap-5 text-xs">
-            <span>{t('invoice.modal.subtotal')} <strong className="text-brand-600">{fCurrency(subtotal, currency as 'USD')}</strong></span>
-            <span>{t('invoice.modal.freightLabel')} <strong>{fCurrency(freight, currency as 'USD')}</strong></span>
-            <span>{t('invoice.modal.total')} <strong className="text-brand-600">{fCurrency(total, currency as 'USD')}</strong></span>
-          </div>
+            {/* Live totals */}
+            <div className="flex flex-wrap gap-3 sm:gap-5 text-[12px]">
+              <span className="text-gray-500">{t('invoice.modal.subtotal')} <strong className="text-gray-900">{fCurrency(subtotal, currency as 'USD')}</strong></span>
+              <span className="text-gray-500">{t('invoice.modal.freightLabel')} <strong className="text-gray-900">{fCurrency(freight, currency as 'USD')}</strong></span>
+              <span className="text-gray-500">{t('invoice.modal.total')} <strong className="text-gray-900 text-[13px]">{fCurrency(total, currency as 'USD')}</strong></span>
+            </div>
 
-          <FormRow>
-            <FormGroup label={t('invoice.modal.proformaNo')}>
-              <Input {...register('proforma_no')} />
-            </FormGroup>
-            <FormGroup label={t('invoice.modal.cbNo')}>
-              <Input {...register('cb_no')} />
-            </FormGroup>
-          </FormRow>
+            <Divider />
 
-          <FormRow>
-            <FormGroup label={t('invoice.modal.insuranceNo')}>
-              <Input {...register('insurance_no')} />
-            </FormGroup>
-            <FormGroup label={tc('form.payment_terms')}>
-              <Input {...register('payment_terms')} />
-            </FormGroup>
-          </FormRow>
+            {/* ── Referans Bilgileri ── */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t('invoice.modal.proformaNo')}>
+                <input className={inp} {...register('proforma_no')} />
+              </Field>
+              <Field label={t('invoice.modal.cbNo')}>
+                <input className={inp} {...register('cb_no')} />
+              </Field>
+            </div>
 
-          <FormRow>
-            <FormGroup label={t('invoice.modal.grossWeight')}>
-              <Input type="number" step="0.001" {...register('gross_weight_kg')} />
-            </FormGroup>
-            <FormGroup label={t('invoice.modal.packingInfo')}>
-              <Input {...register('packing_info')} placeholder={t('invoice.modal.packingPlaceholder')} />
-            </FormGroup>
-          </FormRow>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t('invoice.modal.insuranceNo')}>
+                <input className={inp} {...register('insurance_no')} />
+              </Field>
+              <Field label={tc('form.payment_terms')}>
+                <input className={inp} {...register('payment_terms')} />
+              </Field>
+            </div>
 
-          {/* ── Ödeme Bölümü (sadece sale modunda) ── */}
-          {isSaleMode && (
-            <div className="mt-1 border-t border-dashed border-gray-200 pt-3 space-y-3">
-              {/* Ödeme Türü */}
-              <FormGroup label="Ödeme Türü">
-                <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t('invoice.modal.grossWeight')}>
+                <input type="number" step="0.001" className={inp} {...register('gross_weight_kg')} placeholder="0.000" />
+              </Field>
+              <Field label={t('invoice.modal.packingInfo')}>
+                <input className={inp} {...register('packing_info')} placeholder={t('invoice.modal.packingPlaceholder')} />
+              </Field>
+            </div>
+
+            {/* ── Ödeme (sadece sale modunda) ── */}
+            {isSaleMode && (
+              <>
+                <Divider />
+                <SectionTitle>Ödeme</SectionTitle>
+                <div className="grid grid-cols-4 gap-1.5">
                   {PAYMENT_METHODS.map(pm => (
-                    <button
-                      key={pm.value}
-                      type="button"
+                    <button key={pm.value} type="button"
                       onClick={() => setPaymentMethod(pm.value as typeof paymentMethod)}
                       className={cn(
-                        'flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl border text-[11px] font-semibold transition-all',
-                        paymentMethod === pm.value
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700',
-                      )}
-                    >
-                      {pm.icon}
-                      {pm.label}
+                        'flex flex-col items-center gap-1 py-2 px-2 rounded-lg text-[10px] font-semibold transition-all',
+                        paymentMethod === pm.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+                      )}>
+                      {pm.icon}{pm.label}
                     </button>
                   ))}
                 </div>
-              </FormGroup>
 
-              {/* Masraf / Komisyon */}
-              <button
-                type="button"
-                onClick={() => setMasrafOpen(v => !v)}
-                className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-gray-300 rounded-xl text-[12px] font-semibold text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
-              >
-                {masrafOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                + Masraf / Komisyon Ekle
-              </button>
+                <button type="button" onClick={() => setMasrafOpen(v => !v)}
+                  className="w-full flex items-center justify-center gap-2 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[11px] font-semibold text-gray-500 transition-colors">
+                  {masrafOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  + Masraf / Komisyon Ekle
+                </button>
 
-              {masrafOpen && (
-                <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-                  <FormRow cols={2}>
-                    <FormGroup label="Masraf Türü">
-                      <Input
-                        value={masrafTuru}
-                        onChange={e => setMasrafTuru(e.target.value)}
-                        placeholder="Örn. Banka komisyonu"
-                      />
-                    </FormGroup>
-                    <FormGroup label="Tutar">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={masrafTutar || ''}
-                        onChange={e => setMasrafTutar(Number(e.target.value))}
-                      />
-                    </FormGroup>
-                  </FormRow>
-                  <FormRow cols={2}>
-                    <FormGroup label="Para Birimi">
-                      <NativeSelect
-                        value={masrafCurrency}
-                        onChange={e => setMasrafCurrency(e.target.value as typeof masrafCurrency)}
-                      >
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="TRY">TRY</option>
-                      </NativeSelect>
-                    </FormGroup>
-                    {masrafCurrency !== 'USD' && (
-                      <FormGroup label="Kur">
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          value={masrafRate || ''}
-                          onChange={e => setMasrafRate(Number(e.target.value))}
-                        />
-                      </FormGroup>
-                    )}
-                  </FormRow>
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-1">
-              <Button type="button" variant="outline" size="sm" onClick={() => downloadInvoiceTemplate()}>
-                {t('invoice.modal.btnTemplate')}
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => importRef.current?.click()}>
-                {t('invoice.modal.btnImportExcel')}
-              </Button>
-            </div>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {tc('btn.cancel')}
-            </Button>
-            {isEdit && (
-              <Button type="button" variant="outline" onClick={handlePrint}>
-                {t('invoice.modal.btnPrint')}
-              </Button>
+                {masrafOpen && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Masraf Türü">
+                        <input className={inp} value={masrafTuru} onChange={e => setMasrafTuru(e.target.value)} placeholder="Örn. Banka komisyonu" />
+                      </Field>
+                      <Field label="Tutar">
+                        <input type="number" step="0.01" className={inp} value={masrafTutar || ''} onChange={e => setMasrafTutar(Number(e.target.value))} />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Para Birimi">
+                        <select className={sel} value={masrafCurrency} onChange={e => setMasrafCurrency(e.target.value as typeof masrafCurrency)}>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                          <option value="TRY">TRY</option>
+                        </select>
+                      </Field>
+                      {masrafCurrency !== 'USD' && (
+                        <Field label="Kur">
+                          <input type="number" step="0.0001" className={inp} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} placeholder="0.0000" />
+                        </Field>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={createInvoice.isPending || updateInvoice.isPending}
-            >
-              {isEdit ? t('invoice.modal.btnUpdate') : t('invoice.modal.btnSave')}
-            </Button>
-          </DialogFooter>
+
+          </div>
+
+          {/* ── Footer ── */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-3 mt-1">
+            <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
+            <div className="flex gap-2">
+              <button type="button" onClick={() => downloadInvoiceTemplate()}
+                className="h-8 px-3 rounded-lg text-[11px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+                {t('invoice.modal.btnTemplate')}
+              </button>
+              <button type="button" onClick={() => importRef.current?.click()}
+                className="h-8 px-3 rounded-lg text-[11px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+                {t('invoice.modal.btnImportExcel')}
+              </button>
+            </div>
+            <div className="flex gap-2">
+              {isEdit && (
+                <button type="button" onClick={handlePrint}
+                  className="h-8 px-3 rounded-lg text-[11px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+                  {t('invoice.modal.btnPrint')}
+                </button>
+              )}
+              <button type="button" onClick={() => onOpenChange(false)}
+                className="h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+                {tc('btn.cancel')}
+              </button>
+              <button type="submit" disabled={isSaving}
+                className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+                style={{ background: accent }}>
+                {isSaving ? tc('btn.saving') : isEdit ? t('invoice.modal.btnUpdate') : t('invoice.modal.btnSave')}
+              </button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

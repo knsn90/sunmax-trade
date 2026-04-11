@@ -36,8 +36,8 @@
   },
   "invoice": {
     "modal": {
-      "titleNewCommercial": "Yeni Ticari Fatura",
-      "titleEditCommercial": "Ticari Fatura Düzenle",
+      "titleNewCommercial": "Yeni Satış Faturası",
+      "titleEditCommercial": "Satış Faturası Düzenle",
       "titleNewSale": "Yeni Satış Faturası",
       "titleEditSale": "Satış Faturası Düzenle",
       "incoterms": "Incoterms",

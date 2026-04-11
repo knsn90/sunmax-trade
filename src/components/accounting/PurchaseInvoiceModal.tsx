@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useSuppliers } from '@/hooks/useEntities';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
@@ -6,40 +7,46 @@ import { today, fCurrency, fN } from '@/lib/formatters';
 import { toast } from 'sonner';
 import type { Transaction } from '@/types/database';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { SmartFill } from '@/components/ui/SmartFill';
+import { OcrButton } from '@/components/ui/OcrButton';
+import type { OcrResult } from '@/lib/openai';
 import {
   HelpCircle, Banknote, Building2, CreditCard,
-  ChevronDown, ChevronUp, Plus, Trash2,
+  ChevronDown, ChevronUp, Plus, Trash2, X,
 } from 'lucide-react';
 
 // ── Styled primitives ───────────────────────────────────────────────────────
-const inp = 'bg-gray-100 rounded-xl h-11 px-4 text-[14px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
-const sel = 'bg-gray-100 rounded-xl h-11 px-4 text-[14px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
 
+function Lbl({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>;
+}
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <div className="text-[12px] font-medium text-gray-400 mb-1.5">{label}</div>
+      <Lbl>{label}</Lbl>
       {children}
     </div>
   );
 }
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-[19px] font-bold text-gray-900 mb-4">{children}</h3>;
+  return <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 pt-1">{children}</div>;
 }
-function Divider() { return <div className="border-t border-gray-100 my-2" />; }
+function Divider() { return <div className="border-t border-gray-100 my-1" />; }
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const TXN_TYPES = [
-  { value: 'purchase_inv', label: 'Satın Alma Faturası' },
   { value: 'sale_inv',     label: 'Satış Faturası' },
+  { value: 'purchase_inv', label: 'Satın Alma Faturası' },
   { value: 'svc_inv',      label: 'Hizmet Faturası' },
   { value: 'receipt',      label: 'Tahsilat' },
   { value: 'payment',      label: 'Ödeme' },
   { value: 'advance',      label: 'Ön Ödeme' },
+  { value: 'ic_transfer',  label: 'İç Transfer' },
 ] as const;
 
 const PAYMENT_METHODS = [
@@ -67,6 +74,8 @@ interface Props {
 }
 
 export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitchToTransaction, defaultTradeFileId }: Props) {
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { data: suppliers = [] } = useSuppliers();
   const { data: allFiles  = [] } = useTradeFiles();
   const createTxn = useCreateTransaction();
@@ -88,8 +97,9 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const [masrafOpen,   setMasrafOpen]   = useState(false);
   const [masrafTuru,   setMasrafTuru]   = useState('');
   const [masrafTutar,  setMasrafTutar]  = useState(0);
-  const [masrafCurrency, setMasrafCurrency] = useState<'USD' | 'EUR' | 'TRY'>('USD');
+  const [masrafCurrency, setMasrafCurrency] = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
   const [masrafRate,   setMasrafRate]   = useState(1);
+  const [masrafKurYon, setMasrafKurYon] = useState<'direct' | 'inverse'>('direct');
 
   const supplierFiles = allFiles.filter(f => f.supplier_id === supplierId && ['sale', 'delivery', 'completed'].includes(f.status));
   const pickedFile    = supplierFiles.find(f => f.id === fileId) ?? null;
@@ -143,7 +153,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       setFaturaNo(''); setFaturaTarihi(today()); setSupplierId(''); setFileId(defaultTradeFileId ?? '');
       setBrutAgirlik(0); setKapAdeti(0); setMensei(''); setLines([emptyLine()]);
       setCurrency('USD'); setDovizKuru(1); setKurYon('direct');
-      setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru(''); setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
+      setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru(''); setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1); setMasrafKurYon('direct');
     }
   }, [open, transaction, defaultTradeFileId]);
 
@@ -161,6 +171,13 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
     setKapAdeti(pickedFile.packages ?? 0);
     setCurrency((pickedFile.purchase_currency as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP') ?? 'USD');
   }, [pickedFile, transaction]);
+
+  function handleOcrResult(r: OcrResult) {
+    if (r.date)     setFaturaTarihi(r.date);
+    if (r.currency) setCurrency(r.currency as typeof currency);
+    if (r.unit_price && lines.length > 0) setLines(p => p.map((l, i) => i === 0 ? { ...l, birimFiyat: r.unit_price! } : l));
+    if (r.quantity_admt && lines.length > 0) setLines(p => p.map((l, i) => i === 0 ? { ...l, netAgirlik: r.quantity_admt! } : l));
+  }
 
   async function handleSubmit() {
     if (!supplierId)    { toast.error('Lütfen tedarikçi seçin'); return; }
@@ -202,25 +219,43 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Satın Alma Faturasını Düzenle' : 'Satın Alma Faturası'}</DialogTitle>
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle className="flex-1">{isEdit ? 'Satın Alma Faturasını Düzenle' : 'Satın Alma Faturası'}</DialogTitle>
+            <div className="flex gap-1.5 shrink-0">
+              <SmartFill mode="invoice" onResult={handleOcrResult} formName="PurchaseInvoice" iconOnly />
+              <OcrButton mode="invoice" onResult={handleOcrResult} iconOnly />
+            </div>
+          </div>
+
+          {/* ── İşlem türü pill seçici ── */}
+          {!isEdit && onSwitchToTransaction && (
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none mt-3">
+              {TXN_TYPES.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => {
+                    if (o.value !== 'purchase_inv') { onOpenChange(false); onSwitchToTransaction(o.value); }
+                  }}
+                  className={cn(
+                    'shrink-0 px-3 h-7 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
+                    o.value === 'purchase_inv'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700',
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
         </DialogHeader>
 
-        <div className="space-y-6 py-2">
-
-          {/* ── İşlem Türü ── */}
-          {!isEdit && onSwitchToTransaction && (
-            <Field label="İşlem Türü">
-              <select className={sel} value="purchase_inv" onChange={e => {
-                if (e.target.value !== 'purchase_inv') { onOpenChange(false); onSwitchToTransaction(e.target.value); }
-              }}>
-                {TXN_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </Field>
-          )}
+        <div className="space-y-3 py-1">
 
           {/* ── Fatura Bilgileri ── */}
           <div>
-            <SectionTitle>Fatura Bilgileri</SectionTitle>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Fatura No *">
                 <input className={inp} value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="AKS2026000000192" />
@@ -233,47 +268,45 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
 
           <Divider />
 
-          {/* ── Tedarikçi ── */}
+          {/* ── Dosya Detayları ── */}
           <div>
-            <SectionTitle>Tedarikçi</SectionTitle>
 
-            {supplierId && selectedSupplier ? (
-              <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 mb-3">
-                <div className="w-11 h-11 rounded-full bg-gray-900 flex items-center justify-center text-white text-[13px] font-bold shrink-0">
-                  {selectedSupplier.name.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-semibold text-gray-900 truncate">{selectedSupplier.name}</div>
-                  <div className="text-[12px] text-gray-400">Tedarikçi</div>
-                </div>
-                <button onClick={() => setSupplierId('')} className="text-gray-300 hover:text-red-400 transition-colors p-1">
-                  <span className="text-[12px]">✕</span>
-                </button>
-              </div>
-            ) : (
-              <div className="mb-3">
-                <select className={sel} value={supplierId} onChange={e => setSupplierId(e.target.value)}>
-                  <option value="">— Tedarikçi seçin —</option>
-                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Tedarikçi">
+                {supplierId && selectedSupplier ? (
+                  <div className="flex items-center gap-2 bg-gray-100 rounded-lg h-8 px-3">
+                    <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                      {selectedSupplier.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className="flex-1 min-w-0 text-[12px] font-semibold text-gray-900 truncate">{selectedSupplier.name}</span>
+                    <button onClick={() => setSupplierId('')} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <select className={sel} value={supplierId} onChange={e => setSupplierId(e.target.value)}>
+                    <option value="">— Tedarikçi seçin —</option>
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                )}
+              </Field>
+              <Field label="Ticaret Dosyası">
+                <select className={cn(sel, !supplierId && 'opacity-50')} value={fileId} onChange={e => setFileId(e.target.value)} disabled={!supplierId}>
+                  <option value="">— Opsiyonel —</option>
+                  {supplierFiles.map(f => (
+                    <option key={f.id} value={f.id}>{f.file_no}{f.product?.name ? ` — ${f.product.name}` : ''}</option>
+                  ))}
                 </select>
-              </div>
-            )}
-
-            <Field label="Ticaret Dosyası">
-              <select className={cn(sel, !supplierId && 'opacity-50')} value={fileId} onChange={e => setFileId(e.target.value)} disabled={!supplierId}>
-                <option value="">— Opsiyonel —</option>
-                {supplierFiles.map(f => (
-                  <option key={f.id} value={f.id}>{f.file_no}{f.product?.name ? ` — ${f.product.name}` : ''}</option>
-                ))}
-              </select>
-            </Field>
+              </Field>
+            </div>
           </div>
 
           <Divider />
 
           {/* ── Para Birimi ── */}
           <div>
-            <SectionTitle>Para Birimi</SectionTitle>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Para Birimi">
                 <select className={sel} value={currency} onChange={e => setCurrency(e.target.value as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP')}>
@@ -283,14 +316,14 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
               {isNonUsd && (
                 <Field label="Döviz Kuru">
                   <div className="flex items-center gap-2">
-                    <div className="flex bg-gray-100 rounded-xl overflow-hidden shrink-0">
+                    <div className="flex bg-gray-100 rounded-lg overflow-hidden shrink-0">
                       <button type="button" onClick={() => setKurYon('direct')}
-                        className={cn('px-2.5 h-11 text-[11px] font-bold whitespace-nowrap transition-colors',
+                        className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
                           kurYon === 'direct' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
                         {currency}→USD
                       </button>
                       <button type="button" onClick={() => setKurYon('inverse')}
-                        className={cn('px-2.5 h-11 text-[11px] font-bold whitespace-nowrap transition-colors',
+                        className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
                           kurYon === 'inverse' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
                         USD→{currency}
                       </button>
@@ -306,7 +339,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
 
           {/* ── Ürün Kalemleri ── */}
           <div>
-            <SectionTitle>Ürün Kalemleri</SectionTitle>
+
 
             <div className="grid gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1 mb-2"
               style={{ gridTemplateColumns: '2fr 110px 110px 80px 70px 32px' }}>
@@ -328,7 +361,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                     {fCurrency(lineTotal(line), currency)}
                   </div>
                   <button type="button" onClick={() => removeLine(i)} disabled={lines.length === 1}
-                    className="h-9 w-9 flex items-center justify-center rounded-xl text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-20">
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-20">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -336,8 +369,8 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
             </div>
 
             <button type="button" onClick={addLine}
-              className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-[13px] font-semibold text-gray-500 transition-colors">
-              <Plus className="h-4 w-4" />Satır Ekle
+              className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[11px] font-semibold text-gray-500 transition-colors">
+              <Plus className="h-3.5 w-3.5" />Satır Ekle
             </button>
 
             <div className="mt-4 space-y-1.5 text-[13px]">
@@ -383,11 +416,11 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
           {/* ── Ödeme ── */}
           <div>
             <SectionTitle>Ödeme</SectionTitle>
-            <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="grid grid-cols-4 gap-1.5 mb-3">
               {PAYMENT_METHODS.map(pm => (
                 <button key={pm.value} type="button" onClick={() => setPaymentMethod(pm.value)}
                   className={cn(
-                    'flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl text-[11px] font-semibold transition-all',
+                    'flex flex-col items-center gap-1 py-2 px-2 rounded-lg text-[10px] font-semibold transition-all',
                     paymentMethod === pm.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
                   )}>
                   {pm.icon}{pm.label}
@@ -396,7 +429,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
             </div>
 
             <button type="button" onClick={() => setMasrafOpen(v => !v)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-[13px] font-semibold text-gray-500 transition-colors">
+              className="w-full flex items-center justify-center gap-2 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[11px] font-semibold text-gray-500 transition-colors">
               {masrafOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               + Masraf / Komisyon Ekle
             </button>
@@ -414,12 +447,30 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Para Birimi">
                     <select className={sel} value={masrafCurrency} onChange={e => setMasrafCurrency(e.target.value as typeof masrafCurrency)}>
-                      <option value="USD">USD</option><option value="EUR">EUR</option><option value="TRY">TRY</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="AED">AED</option>
+                      <option value="GBP">GBP</option>
+                      <option value="TRY">TRY</option>
                     </select>
                   </Field>
                   {masrafCurrency !== 'USD' && (
                     <Field label="Kur">
-                      <input type="number" step="0.0001" className={inp} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} />
+                      <div className="flex items-center gap-2">
+                        <div className="flex bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                          <button type="button" onClick={() => setMasrafKurYon('direct')}
+                            className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
+                              masrafKurYon === 'direct' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
+                            {masrafCurrency}→USD
+                          </button>
+                          <button type="button" onClick={() => setMasrafKurYon('inverse')}
+                            className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
+                              masrafKurYon === 'inverse' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
+                            USD→{masrafCurrency}
+                          </button>
+                        </div>
+                        <input type="number" step="0.0001" className={cn(inp, 'flex-1')} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} placeholder="0.0000" />
+                      </div>
                     </Field>
                   )}
                 </div>
@@ -429,12 +480,17 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
 
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
-          <Button variant="secondary" onClick={handleSubmit} disabled={isSaving}>
+        <div className="flex justify-end gap-2 pt-3 mt-1">
+          <button type="button" onClick={() => onOpenChange(false)}
+            className="h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+            İptal
+          </button>
+          <button onClick={handleSubmit} disabled={isSaving}
+            className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+            style={{ background: accent }}>
             {isSaving ? 'Kaydediliyor…' : isEdit ? 'Güncelle' : 'Kaydet'}
-          </Button>
-        </DialogFooter>
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

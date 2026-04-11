@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { today, fCurrency, fN } from '@/lib/formatters';
@@ -8,6 +9,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { SmartFill } from '@/components/ui/SmartFill';
+import { OcrButton } from '@/components/ui/OcrButton';
+import type { OcrResult } from '@/lib/openai';
 import { PartyCombobox, type SelectedParty } from '@/components/accounting/PartyCombobox';
 import { cn } from '@/lib/utils';
 import {
@@ -16,25 +20,25 @@ import {
 } from 'lucide-react';
 
 // ── Styled primitives ───────────────────────────────────────────────────────
-const inp = 'bg-gray-100 rounded-xl h-11 px-4 text-[14px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
-const sel = 'bg-gray-100 rounded-xl h-11 px-4 text-[14px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <div className="text-[12px] font-medium text-gray-400 mb-1.5">{children}</div>;
+function Lbl({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>;
 }
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <Label>{label}</Label>
+      <Lbl>{label}</Lbl>
       {children}
     </div>
   );
 }
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-[19px] font-bold text-gray-900 mb-4">{children}</h3>;
+  return <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 pt-1">{children}</div>;
 }
 function Divider() {
-  return <div className="border-t border-gray-100 my-2" />;
+  return <div className="border-t border-gray-100 my-1" />;
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -59,14 +63,27 @@ function initials(name: string) {
 }
 
 // ── Props ───────────────────────────────────────────────────────────────────
+const SVC_TXN_TYPES = [
+  { value: 'sale_inv',     label: 'Satış Faturası' },
+  { value: 'purchase_inv', label: 'Satın Alma Faturası' },
+  { value: 'svc_inv',      label: 'Hizmet Faturası' },
+  { value: 'receipt',      label: 'Tahsilat' },
+  { value: 'payment',      label: 'Ödeme' },
+  { value: 'advance',      label: 'Ön Ödeme' },
+  { value: 'ic_transfer',  label: 'İç Transfer' },
+];
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   transaction?: Transaction | null;
   defaultTradeFileId?: string;
+  onSwitchToTransaction?: (type: string) => void;
 }
 
-export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTradeFileId }: Props) {
+export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTradeFileId, onSwitchToTransaction }: Props) {
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { data: allFiles = [] } = useTradeFiles();
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
@@ -84,8 +101,9 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
   const [masrafOpen,   setMasrafOpen]   = useState(false);
   const [masrafTuru,   setMasrafTuru]   = useState('');
   const [masrafTutar,  setMasrafTutar]  = useState(0);
-  const [masrafCurrency, setMasrafCurrency] = useState<'USD' | 'EUR' | 'TRY'>('USD');
+  const [masrafCurrency, setMasrafCurrency] = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
   const [masrafRate,   setMasrafRate]   = useState(1);
+  const [masrafKurYon, setMasrafKurYon] = useState<'direct' | 'inverse'>('direct');
 
   const toplamYerel = lines.reduce((s, l) => s + lineTotal(l), 0);
   const isNonUsd    = currency !== 'USD';
@@ -137,7 +155,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
     } else {
       setFaturaNo(''); setFaturaTarihi(today()); setParty(null); setFileId(defaultTradeFileId ?? '');
       setLines([emptyLine()]); setCurrency('USD'); setDovizKuru(1); setKurYon('direct');
-      setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru(''); setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
+      setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru(''); setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1); setMasrafKurYon('direct');
     }
   }, [open, transaction, defaultTradeFileId]);
 
@@ -183,14 +201,43 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Hizmet Faturasını Düzenle' : 'Hizmet Faturası'}</DialogTitle>
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle className="flex-1">{isEdit ? 'Hizmet Faturasını Düzenle' : 'Hizmet Faturası'}</DialogTitle>
+            <div className="flex gap-1.5 shrink-0">
+              <SmartFill mode="transaction" onResult={(_r: OcrResult) => {}} formName="ServiceInvoice" iconOnly />
+              <OcrButton mode="transaction" onResult={(_r: OcrResult) => {}} iconOnly />
+            </div>
+          </div>
+
+          {/* ── İşlem türü pill seçici ── */}
+          {!isEdit && onSwitchToTransaction && (
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none mt-3">
+              {SVC_TXN_TYPES.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => {
+                    if (o.value !== 'svc_inv') { onOpenChange(false); onSwitchToTransaction(o.value); }
+                  }}
+                  className={cn(
+                    'shrink-0 px-3 h-7 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
+                    o.value === 'svc_inv'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700',
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
         </DialogHeader>
 
-        <div className="space-y-6 py-2">
+        <div className="space-y-3 py-1">
 
           {/* ── Fatura Bilgileri ── */}
           <div>
-            <SectionTitle>Fatura Bilgileri</SectionTitle>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Fatura No / Dosya No">
                 <input className={inp} value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="ÖRN: GÜM-2026-001" />
@@ -203,46 +250,42 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
 
           <Divider />
 
-          {/* ── Hizmet Sağlayıcı ── */}
+          {/* ── Dosya Detayları ── */}
           <div>
-            <SectionTitle>Hizmet Sağlayıcı</SectionTitle>
 
-            {party ? (
-              <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 mb-3">
-                <div className="w-11 h-11 rounded-full bg-gray-900 flex items-center justify-center text-white text-[13px] font-bold shrink-0">
-                  {initials(party.name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-semibold text-gray-900 truncate">{party.name}</div>
-                  <div className="text-[12px] text-gray-400">
-                    {party.entityType === 'service_provider' ? 'Hizmet Sağlayıcı' : 'Tedarikçi'}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Hizmet Sağlayıcı">
+                {party ? (
+                  <div className="flex items-center gap-2 bg-gray-100 rounded-lg h-8 px-3">
+                    <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                      {initials(party.name)}
+                    </div>
+                    <span className="flex-1 min-w-0 text-[12px] font-semibold text-gray-900 truncate">{party.name}</span>
+                    <button onClick={() => setParty(null)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
-                </div>
-                <button onClick={() => setParty(null)} className="text-gray-300 hover:text-red-400 transition-colors p-1">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="mb-3">
-                <PartyCombobox value={party} onChange={setParty} filter="service_provider" placeholder="Hizmet sağlayıcı / tedarikçi ara…" />
-              </div>
-            )}
-
-            <Field label="Ticaret Dosyası">
-              <select className={sel} value={fileId} onChange={e => setFileId(e.target.value)}>
-                <option value="">— Opsiyonel —</option>
-                {allFiles.map(f => (
-                  <option key={f.id} value={f.id}>{f.file_no}{f.customer?.name ? ` – ${f.customer.name}` : ''}</option>
-                ))}
-              </select>
-            </Field>
+                ) : (
+                  <PartyCombobox value={party} onChange={setParty} filter="service_provider" placeholder="Ara…" />
+                )}
+              </Field>
+              <Field label="Ticaret Dosyası">
+                <select className={sel} value={fileId} onChange={e => setFileId(e.target.value)}>
+                  <option value="">— Opsiyonel —</option>
+                  {allFiles.map(f => (
+                    <option key={f.id} value={f.id}>{f.file_no}{f.customer?.name ? ` – ${f.customer.name}` : ''}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
           </div>
 
           <Divider />
 
           {/* ── Para Birimi ── */}
           <div>
-            <SectionTitle>Para Birimi</SectionTitle>
+
             <div className={cn('grid gap-3', isNonUsd ? 'grid-cols-2' : 'grid-cols-2')}>
               <Field label="Para Birimi">
                 <select className={sel} value={currency} onChange={e => setCurrency(e.target.value as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP')}>
@@ -252,14 +295,14 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
               {isNonUsd && (
                 <Field label="Döviz Kuru">
                   <div className="flex items-center gap-2">
-                    <div className="flex bg-gray-100 rounded-xl overflow-hidden shrink-0">
+                    <div className="flex bg-gray-100 rounded-lg overflow-hidden shrink-0">
                       <button type="button" onClick={() => setKurYon('direct')}
-                        className={cn('px-2.5 h-11 text-[11px] font-bold whitespace-nowrap transition-colors',
+                        className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
                           kurYon === 'direct' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
                         {currency}→USD
                       </button>
                       <button type="button" onClick={() => setKurYon('inverse')}
-                        className={cn('px-2.5 h-11 text-[11px] font-bold whitespace-nowrap transition-colors',
+                        className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
                           kurYon === 'inverse' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
                         USD→{currency}
                       </button>
@@ -275,7 +318,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
 
           {/* ── Hizmet Kalemleri ── */}
           <div>
-            <SectionTitle>Hizmet Kalemleri</SectionTitle>
+
 
             {/* Tablo başlığı */}
             <div className="grid gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1 mb-2"
@@ -301,7 +344,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                     {fCurrency(lineTotal(line), currency)}
                   </div>
                   <button type="button" onClick={() => removeLine(i)} disabled={lines.length === 1}
-                    className="h-9 w-9 flex items-center justify-center rounded-xl text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-20">
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-20">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -309,8 +352,8 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
             </div>
 
             <button type="button" onClick={addLine}
-              className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-[13px] font-semibold text-gray-500 transition-colors">
-              <Plus className="h-4 w-4" />
+              className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[11px] font-semibold text-gray-500 transition-colors">
+              <Plus className="h-3.5 w-3.5" />
               Satır Ekle
             </button>
 
@@ -340,11 +383,11 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
           {/* ── Ödeme ── */}
           <div>
             <SectionTitle>Ödeme</SectionTitle>
-            <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="grid grid-cols-4 gap-1.5 mb-3">
               {PAYMENT_METHODS.map(pm => (
                 <button key={pm.value} type="button" onClick={() => setPaymentMethod(pm.value)}
                   className={cn(
-                    'flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl text-[11px] font-semibold transition-all',
+                    'flex flex-col items-center gap-1 py-2 px-2 rounded-lg text-[10px] font-semibold transition-all',
                     paymentMethod === pm.value
                       ? 'bg-gray-900 text-white'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
@@ -355,7 +398,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
             </div>
 
             <button type="button" onClick={() => setMasrafOpen(v => !v)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-[13px] font-semibold text-gray-500 transition-colors">
+              className="w-full flex items-center justify-center gap-2 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[11px] font-semibold text-gray-500 transition-colors">
               {masrafOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               + Masraf / Komisyon Ekle
             </button>
@@ -375,12 +418,28 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                     <select className={sel} value={masrafCurrency} onChange={e => setMasrafCurrency(e.target.value as typeof masrafCurrency)}>
                       <option value="USD">USD</option>
                       <option value="EUR">EUR</option>
+                      <option value="AED">AED</option>
+                      <option value="GBP">GBP</option>
                       <option value="TRY">TRY</option>
                     </select>
                   </Field>
                   {masrafCurrency !== 'USD' && (
                     <Field label="Kur">
-                      <input type="number" step="0.0001" className={inp} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} />
+                      <div className="flex items-center gap-2">
+                        <div className="flex bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                          <button type="button" onClick={() => setMasrafKurYon('direct')}
+                            className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
+                              masrafKurYon === 'direct' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
+                            {masrafCurrency}→USD
+                          </button>
+                          <button type="button" onClick={() => setMasrafKurYon('inverse')}
+                            className={cn('px-2 h-8 text-[10px] font-bold whitespace-nowrap transition-colors',
+                              masrafKurYon === 'inverse' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700')}>
+                            USD→{masrafCurrency}
+                          </button>
+                        </div>
+                        <input type="number" step="0.0001" className={cn(inp, 'flex-1')} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} placeholder="0.0000" />
+                      </div>
                     </Field>
                   )}
                 </div>
@@ -392,9 +451,11 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
-          <Button variant="secondary" onClick={handleSubmit} disabled={isSaving}>
+          <button onClick={handleSubmit} disabled={isSaving}
+            className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+            style={{ background: accent }}>
             {isSaving ? 'Kaydediliyor…' : isEdit ? 'Güncelle' : 'Kaydet'}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

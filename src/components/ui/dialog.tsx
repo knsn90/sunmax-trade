@@ -51,7 +51,7 @@ const DialogContent = React.forwardRef<
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
         // Desktop: centered dialog
-        'md:bottom-auto md:left-[50%] md:top-[50%] md:translate-x-[-50%] md:translate-y-[-50%]',
+        'md:bottom-auto md:left-[50%] md:top-[5vh] md:translate-x-[-50%] md:translate-y-[0]',
         'md:rounded-xl md:p-6',
         'md:data-[state=closed]:slide-out-to-bottom-0 md:data-[state=open]:slide-in-from-bottom-0',
         'md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95',
@@ -73,7 +73,17 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = 'DialogContent';
 
 function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('mb-4', className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        'sticky top-0 z-10 bg-white',
+        '-mx-5 px-5 -mt-5 pt-5 pb-4 md:-mx-6 md:px-6 md:-mt-6 md:pt-6',
+        'mb-2',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
