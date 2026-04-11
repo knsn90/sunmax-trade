@@ -15,7 +15,7 @@ interface PnlModalProps {
 export function PnlModal({ open, onOpenChange, fileId }: PnlModalProps) {
   const { data: file } = useTradeFile(fileId ?? undefined);
   const { data: txns = [] } = useTransactions(
-    fileId ? { tradeFileId: fileId } : undefined,
+    fileId ? { tradeFileId: fileId, approvedOnly: true } : undefined,
   );
 
   const pnl = useMemo(() => {
@@ -24,9 +24,11 @@ export function PnlModal({ open, onOpenChange, fileId }: PnlModalProps) {
     const revenue = (file.selling_price ?? 0) * qty;
     const cogs = (file.purchase_price ?? 0) * qty;
 
-    const costs = txns
+    const txnCosts = txns
       .filter((t) => ['purchase_inv', 'svc_inv'].includes(t.transaction_type))
       .reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+    const freight = file.freight_cost ?? 0;
+    const costs = txnCosts > 0 ? txnCosts + freight : cogs + freight;
 
     const grossProfit = revenue - cogs;
     const netProfit = revenue - costs;
