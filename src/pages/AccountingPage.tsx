@@ -468,7 +468,7 @@ export function AccountingPage() {
 
 
         {/* ── Toolbar ──────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           {/* Tabs */}
           <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
             {TABS.map(t => (
@@ -514,8 +514,8 @@ export function AccountingPage() {
 
           {/* Search + Transfer + New Transaction */}
           {activeTab !== 'ayarlar' && (
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 md:w-56">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 w-48">
                 <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 <input
                   className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
