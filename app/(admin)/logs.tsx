@@ -121,7 +121,7 @@ export default function AdminLogsScreen() {
         .from('activity_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(300);
+        .limit(2000);
       if (!error && data) setLogs(data as ActivityLog[]);
     } catch (_) {
     } finally {
@@ -137,7 +137,7 @@ export default function AdminLogsScreen() {
     const channel = supabase
       .channel('activity_logs_changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_logs' }, (payload) => {
-        setLogs(prev => [payload.new as ActivityLog, ...prev].slice(0, 300));
+        setLogs(prev => [payload.new as ActivityLog, ...prev].slice(0, 2000));
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -165,10 +165,6 @@ export default function AdminLogsScreen() {
 
         {/* Toolbar row */}
         <View style={s.toolbarRow}>
-          <View style={s.toolbarTitle}>
-            <Text style={s.toolbarSub}>Sistem</Text>
-            <Text style={s.toolbarName}>Loglar</Text>
-          </View>
           <View style={s.rightGroup}>
             <TouchableOpacity
               style={[s.iconBtn, (searchExpanded || search.length > 0) && s.iconBtnActive]}
@@ -246,7 +242,7 @@ export default function AdminLogsScreen() {
               {/* Header */}
               <View style={s.cardHeader}>
                 <Text style={s.hCell} numberOfLines={1}>KULLANICI</Text>
-                <Text style={[s.hCell, { marginLeft: 'auto' as any }]}>Son {logs.length} kayıt · Gerçek zamanlı</Text>
+                <Text style={[s.hCell, { marginLeft: 'auto' as any }]}>{logs.length} kayıt · Gerçek zamanlı</Text>
               </View>
               {filtered.map((log, i) => (
                 <LogRow key={log.id} log={log} isLast={i === filtered.length - 1} />

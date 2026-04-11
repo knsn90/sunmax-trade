@@ -60,7 +60,7 @@ interface ChatMessage {
 }
 
 // ── Attached file model ──────────────────────────────────────────────────────
-type FileKind = 'photo' | 'stl' | 'ply' | 'pdf' | 'other';
+type FileKind = 'photo' | 'video' | 'stl' | 'ply' | 'pdf' | 'other';
 
 interface AttachedFile {
   id: string;
@@ -117,6 +117,7 @@ interface FormData {
   lab_voice_notes: { uri: string; duration: number }[];
   chat_messages: ChatMessage[];
   delivery_method: 'kurye' | 'elden' | 'kargo' | '';
+  implant_brand: string;
 }
 
 const BLANK_OP: Omit<ToothOp, 'tooth'> = {
@@ -145,7 +146,19 @@ const INITIAL_FORM: FormData = {
   lab_voice_notes: [],
   chat_messages: [],
   delivery_method: '',
+  implant_brand: '',
 };
+
+const ALL_IMPLANT_BRANDS = [
+  'Straumann','Nobel Biocare','Osstem','Zimmer Biomet','Dentsply Sirona',
+  'Megagen','Neodent','BioHorizons','Camlog','Astra Tech (Dentsply)',
+  'Ankylos','Bicon','Biomet 3i','Blue Sky Bio','Dentium','DIO Implant',
+  'Hi-Sen','IMZ','Keystone Dental','Lifecore','MIS Implants','Neway',
+  'OsteoCare','Phibo','Replace (Nobel)','Seven Implant','SPI Element',
+  'Touareg','Xive (Dentsply)','Southern Implants','Bredent','Cortex',
+  'Alpha-Bio Tec','Biohorizons','Euroteknika','Implant Direct','Adin',
+  'Thommen Medical','Bionika','T-Plus','Diğer',
+];
 
 const MODEL_TYPES = [
   { value: 'dijital', label: '💻 Dijital Tarama' },
@@ -157,6 +170,98 @@ const GENDERS = [
   { value: 'erkek', label: '♂ Erkek' },
   { value: 'kadın', label: '♀ Kadın' },
 ];
+
+const PHOTO_GUIDE_IMG = require('../../../assets/photo-guide.jpg');
+const BITE_GUIDE_IMG  = require('../../../assets/bite-guide.jpg');
+
+const PHOTO_GUIDE_TEXT =
+  'Smile design için en az iki fotoğraf gerekir: gülüş (frontal smile) ve retracted (ağız açık, dudak çekilmiş) görüntü.\n\n' +
+  'Her iki fotoğraf aynı açı ve pozisyonda çekilmeli, yüz düz ve ortalanmış olmalıdır.\n\n' +
+  'İyi sonuç için yeterli aydınlatma, mümkünse ring light veya çift ışık kullanılmalıdır.\n\n' +
+  'Kamera göz hizasında olmalı, hasta başını sabit tutmalı ve yaklaşık 1 metre mesafeden çekim yapılmalıdır.';
+
+const UPLOAD_TIPS: Record<string, string> = {
+  'Alt Çene':         'Alt dişlerin 3D taraması gereklidir.',
+  'Üst Çene':         'Üst dişlerin 3D taraması gereklidir.',
+  'Bite (Kapanış)':   'Bite (kapanış) kaydı, dişlerin doğru temasını belirler.\nEksik olursa oklüzyon hatası riski oluşur.',
+  'Scan Body STL':    'İmplant pozisyonunu doğru belirlemek için gereklidir.',
+  'Gülüş Videosu':    'Dinamik gülüş ve dudak hareketlerini görmek için önerilir.',
+  'PDF Belgesi':      'Ek talimat, reçete veya detay bilgileri içeren belgeyi yükleyin.',
+  'Referans Fotoğraf':'İstenen estetik ve formu göstermek için örnek görsel yükleyin.',
+};
+
+// ─── Hover tooltip wrapper ────────────────────────────────────────────────────
+function WithTooltip({
+  text,
+  children,
+  image,
+}: {
+  text: string;
+  children: React.ReactNode;
+  image?: any;
+}) {
+  const [pos, setPos] = useState<{ top: number; left: number; side: 'left' | 'right' } | null>(null);
+  const wrapRef = useRef<any>(null);
+
+  const show = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const node: Element = typeof el.getBoundingClientRect === 'function'
+      ? el : (el as any)._nativeTag;
+    if (!node?.getBoundingClientRect) return;
+    const rect = node.getBoundingClientRect();
+    const side = rect.left + rect.width / 2 < window.innerWidth / 2 ? 'right' : 'left';
+    setPos({ top: rect.top + rect.height / 2, left: rect.left + rect.width / 2, side });
+  };
+  const hide = () => setPos(null);
+
+  const TIP_W = image ? 300 : 240;
+
+  return (
+    <Pressable
+      ref={wrapRef}
+      // @ts-ignore
+      onHoverIn={show}
+      onHoverOut={hide}
+      style={{ alignSelf: 'flex-start' }}
+    >
+      {children}
+      {pos && (
+        <WebPortal>
+          <View style={{
+            // @ts-ignore
+            position: 'fixed',
+            top: pos.top,
+            left: pos.side === 'right' ? pos.left + 12 : pos.left - TIP_W - 12,
+            transform: [{ translateY: -40 }],
+            backgroundColor: '#0F172A',
+            borderRadius: 12,
+            overflow: 'hidden',
+            width: TIP_W,
+            zIndex: 99999,
+            // @ts-ignore
+            boxShadow: '0 6px 24px rgba(0,0,0,0.32)',
+            pointerEvents: 'none',
+          }}>
+            {image && (
+              <Image
+                source={image}
+                style={{ width: TIP_W, height: 110 }}
+                resizeMode="cover"
+              />
+            )}
+            <View style={{ padding: 12 }}>
+              <Text style={{ color: '#F8FAFC', fontSize: 11, lineHeight: 17 }}>{text}</Text>
+            </View>
+          </View>
+        </WebPortal>
+      )}
+    </Pressable>
+  );
+}
+
+// InfoTooltip artık kullanılmıyor — WithTooltip ile değiştirildi
+function InfoTooltip(_props: { text: string; color?: string }) { return null; }
 
 export function NewOrderScreen({ accentColor }: { accentColor?: string }) {
   const P     = accentColor ?? C.primary;
@@ -363,6 +468,44 @@ export function NewOrderScreen({ accentColor }: { accentColor?: string }) {
   // ── File attachments ──────────────────────────────────────────────────────
   const [fileActiveTooth, setFileActiveTooth] = useState<number | null>(null);
   const [previewFile, setPreviewFile] = useState<AttachedFile | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  // Track whether preview was opened from inside the upload modal so we can reopen it on close
+  const [previewFromUpload, setPreviewFromUpload] = useState(false);
+  // İmplant brand search dropdown
+  const [implantBrandSearch, setImplantBrandSearch] = useState('');
+  const [implantBrandDropOpen, setImplantBrandDropOpen] = useState(false);
+  const [implantDropPos, setImplantDropPos] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
+  const implantInputRef = useRef<View>(null);
+
+  const measureImplantInput = () => {
+    if (Platform.OS !== 'web' || !implantInputRef.current) return;
+    try {
+      // @ts-ignore
+      const rect = (implantInputRef.current as any).getBoundingClientRect?.();
+      if (!rect) return;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow >= 200) {
+        setImplantDropPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+      } else {
+        setImplantDropPos({ bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width });
+      }
+    } catch {}
+  };
+
+  const openPreviewFromUpload = (file: AttachedFile) => {
+    setUploadModalOpen(false);
+    setPreviewFromUpload(true);
+    // Small delay so upload modal finishes closing before preview opens
+    setTimeout(() => setPreviewFile(file), 150);
+  };
+
+  const closePreview = () => {
+    setPreviewFile(null);
+    if (previewFromUpload) {
+      setPreviewFromUpload(false);
+      setTimeout(() => setUploadModalOpen(true), 150);
+    }
+  };
 
   const openFilePicker = (scope: 'case' | 'tooth', tooth?: number) => {
     if (Platform.OS !== 'web') return;
@@ -418,6 +561,77 @@ export function NewOrderScreen({ accentColor }: { accentColor?: string }) {
         ...f,
         attachments: [
           ...f.attachments.filter(a => !a.name.startsWith(photoLabel)),
+          newFile,
+        ],
+      }));
+    };
+    // @ts-ignore
+    document.body.appendChild(input);
+    input.click();
+    // @ts-ignore
+    setTimeout(() => { try { document.body.removeChild(input); } catch {} }, 60_000);
+  };
+
+  // ── Specific scan picker (kesim öncesi / alt çene / üst çene / ek tarama) ──
+  const openSpecificScanPicker = (scanLabel: string) => {
+    if (Platform.OS !== 'web') return;
+    // @ts-ignore
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.stl,.ply,.obj,.dcm,.zip';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'stl';
+      const kind: FileKind = ext === 'ply' ? 'ply' : 'stl';
+      const newFile: AttachedFile = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: `${scanLabel}.${ext}`,
+        // @ts-ignore
+        uri: URL.createObjectURL(file),
+        kind,
+        size: file.size,
+        scope: 'case',
+      };
+      setForm(f => ({
+        ...f,
+        attachments: [
+          ...f.attachments.filter(a => !a.name.startsWith(scanLabel)),
+          newFile,
+        ],
+      }));
+    };
+    // @ts-ignore
+    document.body.appendChild(input);
+    input.click();
+    // @ts-ignore
+    setTimeout(() => { try { document.body.removeChild(input); } catch {} }, 60_000);
+  };
+
+  // ── Video picker (gülüş videosu) ──────────────────────────────────────────
+  const openSpecificVideoPicker = (videoLabel: string) => {
+    if (Platform.OS !== 'web') return;
+    // @ts-ignore
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*,.mp4,.mov,.avi,.webm';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'mp4';
+      const newFile: AttachedFile = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: `${videoLabel}.${ext}`,
+        // @ts-ignore
+        uri: URL.createObjectURL(file),
+        kind: 'video',
+        size: file.size,
+        scope: 'case',
+      };
+      setForm(f => ({
+        ...f,
+        attachments: [
+          ...f.attachments.filter(a => !a.name.startsWith(videoLabel)),
           newFile,
         ],
       }));
@@ -956,129 +1170,550 @@ ${form.notes ? `<div class="card">
 
           {/* ── Dosyalar ── */}
           <SectionCard title="Dosyalar" icon={'paperclip' as any} accentColor={P}>
+
             <View style={fus.twoCol}>
 
-              {/* ── Sol: Yükleme alanı ── */}
+              {/* ── Sol: Yükleme butonu ── */}
               <View style={fus.twoColLeft}>
-
-                {/* HASTA FOTOĞRAFLARI */}
-                <View style={fus.subHeader}>
-                  <Text style={fus.subLabel}>HASTA FOTOĞRAFLARI</Text>
-                  <Text style={fus.subHint}>Gülüş tasarımı için referans görseller</Text>
-                </View>
-
-                {(['Ekartörlü Resim', 'Gülüş Resmi'] as const).map((label) => {
-                  const existing = form.attachments.find(a => a.name.startsWith(label));
-                  return (
-                    <View key={label} style={fus.photoRow}>
-                      {/* Thumbnail or icon */}
-                      {existing ? (
-                        <TouchableOpacity
-                          style={fus.photoThumb}
-                          onPress={() => setPreviewFile(existing)}
-                          activeOpacity={0.85}
-                        >
-                          <Image source={{ uri: existing.uri }} style={fus.photoThumbImg} resizeMode="cover" />
-                          <View style={fus.photoThumbOverlay}>
-                            <MaterialCommunityIcons name={'eye-outline' as any} size={14} color="#FFFFFF" />
-                          </View>
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={fus.photoIcon}>
-                          {label === 'Ekartörlü Resim'
-                            ? <EkartorluIcon size={28} color={P} />
-                            : <GulushIcon size={28} color={P} />
-                          }
-                        </View>
-                      )}
-                      {/* Label */}
-                      <View style={{ flex: 1 }}>
-                        <Text style={fus.photoLabel}>{label}</Text>
-                        {existing && (
-                          <Text style={fus.photoFileName} numberOfLines={1}>{existing.name}</Text>
-                        )}
-                      </View>
-                      {/* Actions */}
-                      {existing ? (
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                          <TouchableOpacity
-                            style={[fus.cameraBtn, { backgroundColor: P + '14' }]}
-                            onPress={() => openSpecificPhotoPicker(label)}
-                            activeOpacity={0.75}
-                          >
-                            <MaterialCommunityIcons name={'camera-outline' as any} size={16} color={P} />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[fus.cameraBtn, { backgroundColor: '#FEE2E2' }]}
-                            onPress={() => removeAttachment(existing.id)}
-                            activeOpacity={0.75}
-                          >
-                            <MaterialCommunityIcons name={'close' as any} size={16} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          style={[fus.cameraBtn, { backgroundColor: P + '14' }]}
-                          onPress={() => openSpecificPhotoPicker(label)}
-                          activeOpacity={0.75}
-                        >
-                          <MaterialCommunityIcons name={'camera-outline' as any} size={16} color={P} />
-                        </TouchableOpacity>
-                      )}
+                <TouchableOpacity
+                  style={fus.uploadTrigger}
+                  onPress={() => setUploadModalOpen(true)}
+                  activeOpacity={0.75}
+                >
+                  <View style={[fus.uploadTriggerIcon, { backgroundColor: P + '14' }]}>
+                    <MaterialCommunityIcons name={'cloud-upload-outline' as any} size={28} color={P} />
+                  </View>
+                  <Text style={[fus.uploadTriggerTitle, { color: P }]}>Dosya Yükleme</Text>
+                  <Text style={[fus.uploadTriggerSub, { textAlign: 'center' }]}>
+                    {form.attachments.length === 0
+                      ? 'Fotoğraf, STL, PLY, PDF eklemek için tıklayın'
+                      : `${form.attachments.length} dosya yüklendi — düzenlemek için tıklayın`}
+                  </Text>
+                  {form.attachments.length > 0 && (
+                    <View style={[fus.uploadTriggerBadge, { backgroundColor: P }]}>
+                      <Text style={fus.uploadTriggerBadgeText}>{form.attachments.length} dosya</Text>
                     </View>
-                  );
-                })}
-
-                <View style={fus.sectionDivider} />
-
-                {/* DOSYA YÜKLEME */}
-                <View style={fus.subHeader}>
-                  <Text style={fus.subLabel}>DOSYA YÜKLEME</Text>
-                  <Text style={fus.subHint}>STL, PLY, PDF ve diğer dosyalar</Text>
-                </View>
-                <TouchableOpacity style={fus.addBtn} onPress={() => openFilePicker('case')}>
-                  <MaterialCommunityIcons name={'plus' as any} size={14} color={P} />
-                  <Text style={[fus.addBtnText, { color: P }]}>Vakaya Dosya Ekle</Text>
-                  <Text style={fus.addBtnHint}> · STL, PLY, PDF</Text>
+                  )}
                 </TouchableOpacity>
-
               </View>
 
               {/* Dikey ayırıcı */}
               <View style={fus.twoColDivider} />
 
-              {/* ── Sağ: Dosya listesi & ön izleme ── */}
+              {/* ── Sağ: Dosya listesi ── */}
               <View style={fus.twoColRight}>
-
                 <View style={fus.subHeader}>
                   <Text style={fus.subLabel}>YÜKLENEN DOSYALAR</Text>
                   <Text style={fus.subHint}>Tüm ekler ve ön izleme</Text>
                 </View>
-
                 {form.attachments.length === 0 ? (
                   <View style={fus.emptyState}>
                     <MaterialCommunityIcons name={'tray-outline' as any} size={28} color="#CBD5E1" />
                     <Text style={fus.emptyStateText}>Henüz dosya eklenmedi</Text>
-                    <Text style={fus.emptyStateHint}>Sol taraftaki alanları kullanarak{'\n'}dosya ve fotoğraf ekleyebilirsiniz</Text>
+                    <Text style={fus.emptyStateHint}>Sol taraftaki butona tıklayarak{'\n'}dosya ve fotoğraf ekleyebilirsiniz</Text>
                   </View>
                 ) : (
                   <>
-                    {form.attachments.map(a => (
-                      <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} onPreview={() => setPreviewFile(a)} />
-                    ))}
+                    {([
+                      { label: 'Gülüş Tasarımı', icon: 'image-outline', prefixes: ['Ekartörlü Resim', 'Gülüş Resmi', 'Gülüş Videosu'] },
+                      { label: 'Tarama Verileri', icon: 'tooth-outline', prefixes: ['Alt Çene', 'Üst Çene', 'Bite (Kapanış)'] },
+                      { label: 'İmplant Bilgileri', icon: 'screw-machine-flat-top', prefixes: ['Scan Body STL'] },
+                      { label: 'Ek Dosyalar', icon: 'paperclip', prefixes: ['PDF Belgesi', 'Referans Fotoğraf'] },
+                    ] as const).map(group => {
+                      const groupFiles = form.attachments.filter(a =>
+                        group.prefixes.some(p => a.name.startsWith(p))
+                      );
+                      if (groupFiles.length === 0) return null;
+                      return (
+                        <View key={group.label} style={fus.fileGroup}>
+                          <View style={fus.fileGroupHeader}>
+                            <MaterialCommunityIcons name={group.icon as any} size={11} color="#94A3B8" />
+                            <Text style={fus.fileGroupLabel}>{group.label}</Text>
+                          </View>
+                          {groupFiles.map(a => (
+                            <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} onPreview={() => setPreviewFile(a)} />
+                          ))}
+                        </View>
+                      );
+                    })}
+                    {/* Files that don't match any group */}
+                    {(() => {
+                      const allGroupPrefixes = ['Ekartörlü Resim', 'Gülüş Resmi', 'Gülüş Videosu', 'Alt Çene', 'Üst Çene', 'Bite (Kapanış)', 'Scan Body STL', 'PDF Belgesi', 'Referans Fotoğraf'];
+                      const others = form.attachments.filter(a => !allGroupPrefixes.some(p => a.name.startsWith(p)));
+                      if (others.length === 0) return null;
+                      return (
+                        <View style={fus.fileGroup}>
+                          <View style={fus.fileGroupHeader}>
+                            <MaterialCommunityIcons name={'folder-outline' as any} size={11} color="#94A3B8" />
+                            <Text style={fus.fileGroupLabel}>Diğer Dosyalar</Text>
+                          </View>
+                          {others.map(a => (
+                            <FileRow key={a.id} file={a} onRemove={() => removeAttachment(a.id)} onPreview={() => setPreviewFile(a)} />
+                          ))}
+                        </View>
+                      );
+                    })()}
                     <View style={fus.totalRow}>
                       <MaterialCommunityIcons name={'paperclip' as any} size={12} color="#64748B" />
-                      <Text style={fus.totalText}>
-                        Toplam {form.attachments.length} dosya
-                      </Text>
+                      <Text style={fus.totalText}>Toplam {form.attachments.length} dosya</Text>
                     </View>
                   </>
                 )}
-
               </View>
 
             </View>
+
           </SectionCard>
+
+          {/* ── Dosya Yükleme Modal ── */}
+          <Modal
+            visible={uploadModalOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setUploadModalOpen(false)}
+          >
+            <View style={fus.umOverlay}>
+              <View style={fus.umCard}>
+
+                {/* Header */}
+                <View style={fus.umHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={[fus.umHeaderIcon, { backgroundColor: P + '18' }]}>
+                      <MaterialCommunityIcons name={'cloud-upload-outline' as any} size={20} color={P} />
+                    </View>
+                    <Text style={fus.umHeaderTitle}>Dosya Yükleme</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setUploadModalOpen(false)} style={fus.umCloseBtn}>
+                    <MaterialCommunityIcons name={'close' as any} size={20} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
+                  <View style={fus.umGrid}>
+
+                  {/* ── Grup 1: Gülüş Tasarımı ── */}
+                  <View style={fus.umGroup}>
+                    <View style={fus.umGroupHeader}>
+                      <View style={[fus.umGroupDot, { backgroundColor: P }]} />
+                      <Text style={fus.umGroupTitle}>Gülüş Tasarımı</Text>
+                    </View>
+                    <View style={fus.uploadCardRow}>
+                      {(['Ekartörlü Resim', 'Gülüş Resmi'] as const).map((label) => {
+                        const existing = form.attachments.find(a => a.name.startsWith(label));
+                        const card = (
+                          <TouchableOpacity
+                              style={fus.uploadCard}
+                              onPress={() => existing ? openPreviewFromUpload(existing) : openSpecificPhotoPicker(label)}
+                              activeOpacity={0.8}
+                            >
+                              <View style={[fus.uploadCardTab, { backgroundColor: existing ? '#22C55E' : P }]} />
+                              <View style={fus.uploadCardBody}>
+                                {existing ? (
+                                  <View style={fus.uploadCardThumbWrap}>
+                                    <Image source={{ uri: existing.uri }} style={fus.uploadCardThumbImg} resizeMode="cover" />
+                                    <View style={fus.uploadCardThumbOverlay}>
+                                      <MaterialCommunityIcons name={'eye-outline' as any} size={18} color="#FFFFFF" />
+                                    </View>
+                                  </View>
+                                ) : (
+                                  <View style={fus.uploadCardIcon}>
+                                    <MaterialCommunityIcons
+                                      name={'image-outline' as any}
+                                      size={28} color={P}
+                                    />
+                                  </View>
+                                )}
+                                <Text style={fus.uploadCardLabel} numberOfLines={2}>{label}</Text>
+                                {existing && <Text style={fus.uploadCardFileName} numberOfLines={1}>{existing.name}</Text>}
+                              </View>
+                              <View style={[fus.uploadCardBtn, { backgroundColor: existing ? '#22C55E' : P }]}>
+                                <MaterialCommunityIcons name={existing ? 'check' : 'arrow-up'} size={16} color="#FFFFFF" />
+                              </View>
+                              {existing && (
+                                <TouchableOpacity
+                                  style={fus.uploadCardDel}
+                                  onPress={(e) => { e.stopPropagation?.(); removeAttachment(existing.id); }}
+                                  activeOpacity={0.8}
+                                >
+                                  <MaterialCommunityIcons name={'close' as any} size={12} color="#EF4444" />
+                                </TouchableOpacity>
+                              )}
+                            </TouchableOpacity>
+                        );
+                        return existing ? (
+                          <React.Fragment key={label}>{card}</React.Fragment>
+                        ) : (
+                          <WithTooltip key={label} text={PHOTO_GUIDE_TEXT} image={PHOTO_GUIDE_IMG}>{card}</WithTooltip>
+                        );
+                      })}
+                      {/* Video card */}
+                      {(() => {
+                        const videoLabel = 'Gülüş Videosu';
+                        const existing = form.attachments.find(a => a.name.startsWith(videoLabel));
+                        const card = (
+                          <TouchableOpacity
+                            key={videoLabel}
+                            style={[fus.uploadCard, !existing && fus.uploadCardDashed]}
+                            onPress={() => openSpecificVideoPicker(videoLabel)}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[fus.uploadCardTab, { backgroundColor: existing ? '#22C55E' : P }]} />
+                            <View style={fus.uploadCardBody}>
+                              <View style={fus.uploadCardIcon}>
+                                <MaterialCommunityIcons
+                                  name={'video-outline' as any}
+                                  size={28} color={existing ? '#22C55E' : P}
+                                />
+                              </View>
+                              <Text style={fus.uploadCardLabel} numberOfLines={2}>{videoLabel}</Text>
+                              {existing && (
+                                <Text style={[fus.uploadCardFileName, { color: '#22C55E' }]} numberOfLines={1}>
+                                  {existing.name.split('.').pop()?.toUpperCase()}
+                                </Text>
+                              )}
+                            </View>
+                            <View style={[fus.uploadCardBtn, { backgroundColor: existing ? '#22C55E' : P }]}>
+                              <MaterialCommunityIcons name={existing ? 'check' : 'arrow-up'} size={16} color="#FFFFFF" />
+                            </View>
+                            {existing && (
+                              <TouchableOpacity
+                                style={fus.uploadCardDel}
+                                onPress={(e) => { (e as any).stopPropagation?.(); removeAttachment(existing.id); }}
+                                activeOpacity={0.8}
+                              >
+                                <MaterialCommunityIcons name={'close' as any} size={12} color="#EF4444" />
+                              </TouchableOpacity>
+                            )}
+                          </TouchableOpacity>
+                        );
+                        return existing ? card : <WithTooltip text={UPLOAD_TIPS[videoLabel]}>{card}</WithTooltip>;
+                      })()}
+                    </View>
+                  </View>
+
+                  {/* ── Grup 2: Tarama Verileri ── */}
+                  <View style={fus.umGroup}>
+                    <View style={fus.umGroupHeader}>
+                      <View style={[fus.umGroupDot, { backgroundColor: '#0EA5E9' }]} />
+                      <Text style={fus.umGroupTitle}>Tarama Verileri</Text>
+                    </View>
+                    <View style={fus.uploadCardRow}>
+                      {(['Alt Çene', 'Üst Çene', 'Bite (Kapanış)'] as const).map((label) => {
+                        const existing = form.attachments.find(a => a.name.startsWith(label));
+                        const card = (
+                          <TouchableOpacity
+                            key={label}
+                            style={[fus.uploadCard, !existing && fus.uploadCardDashed]}
+                            onPress={() => existing ? openPreviewFromUpload(existing) : openSpecificScanPicker(label)}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[fus.uploadCardTab, { backgroundColor: existing ? '#22C55E' : '#0EA5E9' }]} />
+                            <View style={fus.uploadCardBody}>
+                              <View style={fus.uploadCardIcon}>
+                                <MaterialCommunityIcons
+                                  name={'cube-outline' as any}
+                                  size={28}
+                                  color={existing ? '#22C55E' : '#0EA5E9'}
+                                />
+                              </View>
+                              <Text style={[fus.uploadCardLabel, { color: existing ? '#0F172A' : '#64748B' }]} numberOfLines={2}>
+                                {label}
+                              </Text>
+                              {existing && (
+                                <Text style={[fus.uploadCardFileName, { color: '#22C55E' }]} numberOfLines={1}>
+                                  {existing.name.split('.').pop()?.toUpperCase()}
+                                </Text>
+                              )}
+                            </View>
+                            <View style={[fus.uploadCardBtn, { backgroundColor: existing ? '#22C55E' : '#0EA5E9' }]}>
+                              <MaterialCommunityIcons name={existing ? 'check' : 'arrow-up'} size={16} color="#FFFFFF" />
+                            </View>
+                            {existing && (
+                              <TouchableOpacity
+                                style={fus.uploadCardDel}
+                                onPress={(e) => { (e as any).stopPropagation?.(); removeAttachment(existing.id); }}
+                                activeOpacity={0.8}
+                              >
+                                <MaterialCommunityIcons name={'close' as any} size={12} color="#EF4444" />
+                              </TouchableOpacity>
+                            )}
+                          </TouchableOpacity>
+                        );
+                        return existing ? (
+                          <React.Fragment key={label}>{card}</React.Fragment>
+                        ) : (
+                          <WithTooltip key={label} text={UPLOAD_TIPS[label] ?? ''} image={label === 'Bite (Kapanış)' ? BITE_GUIDE_IMG : undefined}>
+                            {card}
+                          </WithTooltip>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* ── Grup 3: İmplant Bilgileri ── */}
+                  <View style={fus.umGroup}>
+                    <View style={fus.umGroupHeader}>
+                      <View style={[fus.umGroupDot, { backgroundColor: '#8B5CF6' }]} />
+                      <Text style={fus.umGroupTitle}>İmplant Bilgileri</Text>
+                    </View>
+                    <View style={fus.uploadCardRow}>
+                      {/* Scan Body STL */}
+                      {(() => {
+                        const scanLabel = 'Scan Body STL';
+                        const existing = form.attachments.find(a => a.name.startsWith(scanLabel));
+                        const card = (
+                          <TouchableOpacity
+                            key={scanLabel}
+                            style={[fus.uploadCard, !existing && fus.uploadCardDashed]}
+                            onPress={() => existing ? openPreviewFromUpload(existing) : openSpecificScanPicker(scanLabel)}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[fus.uploadCardTab, { backgroundColor: existing ? '#22C55E' : '#8B5CF6' }]} />
+                            <View style={fus.uploadCardBody}>
+                              <View style={fus.uploadCardIcon}>
+                                <MaterialCommunityIcons
+                                  name={'tooth-outline' as any}
+                                  size={28}
+                                  color={existing ? '#22C55E' : '#8B5CF6'}
+                                />
+                              </View>
+                              <Text style={[fus.uploadCardLabel, { color: existing ? '#0F172A' : '#64748B' }]} numberOfLines={2}>
+                                Scan Body STL
+                              </Text>
+                              {existing && (
+                                <Text style={[fus.uploadCardFileName, { color: '#22C55E' }]} numberOfLines={1}>
+                                  {existing.name.split('.').pop()?.toUpperCase()}
+                                </Text>
+                              )}
+                            </View>
+                            <View style={[fus.uploadCardBtn, { backgroundColor: existing ? '#22C55E' : '#8B5CF6' }]}>
+                              <MaterialCommunityIcons name={existing ? 'check' : 'arrow-up'} size={16} color="#FFFFFF" />
+                            </View>
+                            {existing && (
+                              <TouchableOpacity
+                                style={fus.uploadCardDel}
+                                onPress={(e) => { (e as any).stopPropagation?.(); removeAttachment(existing.id); }}
+                                activeOpacity={0.8}
+                              >
+                                <MaterialCommunityIcons name={'close' as any} size={12} color="#EF4444" />
+                              </TouchableOpacity>
+                            )}
+                          </TouchableOpacity>
+                        );
+                        return existing ? card : <WithTooltip text={UPLOAD_TIPS[scanLabel]}>{card}</WithTooltip>;
+                      })()}
+                      {/* İmplant Marka search dropdown card */}
+                      {(() => {
+                        const filtered = ALL_IMPLANT_BRANDS.filter(b =>
+                          b.toLowerCase().includes(implantBrandSearch.toLowerCase())
+                        );
+                        return (
+                          <View style={[fus.implantBrandCard, form.implant_brand ? undefined : fus.uploadCardDashed]}>
+                            <View style={[fus.uploadCardTab, { backgroundColor: form.implant_brand ? '#22C55E' : '#8B5CF6', marginBottom: 12 }]} />
+                            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <MaterialCommunityIcons name={'office-building-marker-outline' as any} size={20} color={form.implant_brand ? '#22C55E' : '#8B5CF6'} />
+                                <Text style={[fus.uploadCardLabel, { color: form.implant_brand ? '#0F172A' : '#64748B', flex: 1 }]}>
+                                  İmplant Marka{form.implant_brand ? ': ' : ''}
+                                  {form.implant_brand ? <Text style={{ color: '#8B5CF6' }}>{form.implant_brand}</Text> : null}
+                                </Text>
+                                {form.implant_brand && (
+                                  <TouchableOpacity onPress={() => { setForm(f => ({ ...f, implant_brand: '' })); setImplantBrandSearch(''); setImplantBrandDropOpen(false); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                    <MaterialCommunityIcons name={'close-circle' as any} size={16} color="#CBD5E1" />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                              {/* Search input + dropdown container */}
+                              <View style={{ position: 'relative' as any }}>
+                              <View
+                                ref={implantInputRef}
+                                style={fus.implantSearchRow}
+                              >
+                                <MaterialCommunityIcons name={'magnify' as any} size={16} color="#94A3B8" />
+                                <TextInput
+                                  style={fus.implantSearchInput}
+                                  placeholder="Marka ara..."
+                                  placeholderTextColor="#94A3B8"
+                                  value={implantBrandSearch}
+                                  onChangeText={(t) => { setImplantBrandSearch(t); measureImplantInput(); setImplantBrandDropOpen(true); }}
+                                  onFocus={() => { measureImplantInput(); setImplantBrandDropOpen(true); }}
+                                />
+                              </View>
+                              </View>{/* end search row */}
+                              {implantBrandDropOpen && implantDropPos && (
+                                <WebPortal>
+                                  {/* Backdrop to close on outside click */}
+                                  <Pressable
+                                    style={{ position: 'fixed' as any, inset: 0, zIndex: 99998 }}
+                                    onPress={() => { setImplantBrandDropOpen(false); setImplantBrandSearch(''); }}
+                                  />
+                                  <View style={[fus.implantDropList, {
+                                    position: 'fixed' as any,
+                                    zIndex: 99999,
+                                    left: implantDropPos.left,
+                                    width: implantDropPos.width,
+                                    ...(implantDropPos.top !== undefined ? { top: implantDropPos.top } : { bottom: implantDropPos.bottom }),
+                                  }]}>
+                                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                      {filtered.length === 0 ? (
+                                        <Text style={{ fontSize: 12, color: '#94A3B8', padding: 10, textAlign: 'center' }}>Sonuç bulunamadı</Text>
+                                      ) : filtered.map((brand) => (
+                                        <TouchableOpacity
+                                          key={brand}
+                                          style={[fus.implantDropItem, form.implant_brand === brand && fus.implantDropItemActive]}
+                                          onPress={() => { setForm(f => ({ ...f, implant_brand: brand })); setImplantBrandSearch(''); setImplantBrandDropOpen(false); }}
+                                          activeOpacity={0.75}
+                                        >
+                                          <Text style={[fus.implantDropItemText, form.implant_brand === brand && fus.implantDropItemTextActive]} numberOfLines={1}>
+                                            {brand}
+                                          </Text>
+                                          {form.implant_brand === brand && (
+                                            <MaterialCommunityIcons name={'check' as any} size={14} color="#8B5CF6" />
+                                          )}
+                                        </TouchableOpacity>
+                                      ))}
+                                    </ScrollView>
+                                  </View>
+                                </WebPortal>
+                              )}
+                            </View>
+                          </View>
+                        );
+                      })()}
+                    </View>
+                  </View>
+
+                  {/* ── Grup 4: Ek Dosyalar ── */}
+                  <View style={fus.umGroup}>
+                    <View style={fus.umGroupHeader}>
+                      <View style={[fus.umGroupDot, { backgroundColor: '#F59E0B' }]} />
+                      <Text style={fus.umGroupTitle}>Ek Dosyalar</Text>
+                    </View>
+                    <View style={fus.uploadCardRow}>
+                      {/* PDF */}
+                      {(() => {
+                        const pdfLabel = 'PDF Belgesi';
+                        const existing = form.attachments.find(a => a.name.startsWith(pdfLabel));
+                        const card = (
+                          <TouchableOpacity
+                            key={pdfLabel}
+                            style={[fus.uploadCard, !existing && fus.uploadCardDashed]}
+                            onPress={() => {
+                              if (existing) { openPreviewFromUpload(existing); return; }
+                              if (Platform.OS !== 'web') return;
+                              // @ts-ignore
+                              const input = document.createElement('input');
+                              input.type = 'file'; input.accept = '.pdf,application/pdf';
+                              input.onchange = (e: any) => {
+                                const file = e.target.files?.[0]; if (!file) return;
+                                const newFile: AttachedFile = {
+                                  id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                                  name: `${pdfLabel}.pdf`,
+                                  // @ts-ignore
+                                  uri: URL.createObjectURL(file),
+                                  kind: 'pdf', size: file.size, scope: 'case',
+                                };
+                                setForm(f => ({ ...f, attachments: [...f.attachments.filter(a => !a.name.startsWith(pdfLabel)), newFile] }));
+                              };
+                              // @ts-ignore
+                              document.body.appendChild(input); input.click();
+                              // @ts-ignore
+                              setTimeout(() => { try { document.body.removeChild(input); } catch {} }, 60_000);
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[fus.uploadCardTab, { backgroundColor: existing ? '#22C55E' : '#F59E0B' }]} />
+                            <View style={fus.uploadCardBody}>
+                              <View style={fus.uploadCardIcon}>
+                                <MaterialCommunityIcons name={'file-pdf-box' as any} size={28} color={existing ? '#22C55E' : '#F59E0B'} />
+                              </View>
+                              <Text style={[fus.uploadCardLabel, { color: existing ? '#0F172A' : '#64748B' }]} numberOfLines={2}>
+                                PDF (Reçete vb.)
+                              </Text>
+                            </View>
+                            <View style={[fus.uploadCardBtn, { backgroundColor: existing ? '#22C55E' : '#F59E0B' }]}>
+                              <MaterialCommunityIcons name={existing ? 'check' : 'arrow-up'} size={16} color="#FFFFFF" />
+                            </View>
+                            {existing && (
+                              <TouchableOpacity
+                                style={fus.uploadCardDel}
+                                onPress={(e) => { (e as any).stopPropagation?.(); removeAttachment(existing.id); }}
+                                activeOpacity={0.8}
+                              >
+                                <MaterialCommunityIcons name={'close' as any} size={12} color="#EF4444" />
+                              </TouchableOpacity>
+                            )}
+                          </TouchableOpacity>
+                        );
+                        return existing ? card : <WithTooltip text={UPLOAD_TIPS[pdfLabel]}>{card}</WithTooltip>;
+                      })()}
+                      {/* Referans Fotoğraf */}
+                      {(() => {
+                        const photoLabel = 'Referans Fotoğraf';
+                        const existing = form.attachments.find(a => a.name.startsWith(photoLabel));
+                        const card = (
+                          <TouchableOpacity
+                            key={photoLabel}
+                            style={[fus.uploadCard, !existing && fus.uploadCardDashed]}
+                            onPress={() => existing ? openPreviewFromUpload(existing) : openSpecificPhotoPicker(photoLabel)}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[fus.uploadCardTab, { backgroundColor: existing ? '#22C55E' : '#F59E0B' }]} />
+                            <View style={fus.uploadCardBody}>
+                              {existing ? (
+                                <View style={fus.uploadCardThumbWrap}>
+                                  <Image source={{ uri: existing.uri }} style={fus.uploadCardThumbImg} resizeMode="cover" />
+                                  <View style={fus.uploadCardThumbOverlay}>
+                                    <MaterialCommunityIcons name={'eye-outline' as any} size={18} color="#FFFFFF" />
+                                  </View>
+                                </View>
+                              ) : (
+                                <View style={fus.uploadCardIcon}>
+                                  <MaterialCommunityIcons name={'image-outline' as any} size={28} color={'#F59E0B'} />
+                                </View>
+                              )}
+                              <Text style={[fus.uploadCardLabel, { color: existing ? '#0F172A' : '#64748B' }]} numberOfLines={2}>
+                                Referans Fotoğraf
+                              </Text>
+                            </View>
+                            <View style={[fus.uploadCardBtn, { backgroundColor: existing ? '#22C55E' : '#F59E0B' }]}>
+                              <MaterialCommunityIcons name={existing ? 'check' : 'arrow-up'} size={16} color="#FFFFFF" />
+                            </View>
+                            {existing && (
+                              <TouchableOpacity
+                                style={fus.uploadCardDel}
+                                onPress={(e) => { (e as any).stopPropagation?.(); removeAttachment(existing.id); }}
+                                activeOpacity={0.8}
+                              >
+                                <MaterialCommunityIcons name={'close' as any} size={12} color="#EF4444" />
+                              </TouchableOpacity>
+                            )}
+                          </TouchableOpacity>
+                        );
+                        return existing ? card : <WithTooltip text={UPLOAD_TIPS[photoLabel]}>{card}</WithTooltip>;
+                      })()}
+                    </View>
+                  </View>
+
+                  </View>{/* end umGrid */}
+
+                </ScrollView>
+
+                {/* Footer — Tamam butonu */}
+                <View style={fus.umFooter}>
+                  <TouchableOpacity
+                    style={[fus.umOkBtn, { backgroundColor: P }]}
+                    onPress={() => setUploadModalOpen(false)}
+                    activeOpacity={0.85}
+                  >
+                    <MaterialCommunityIcons name={'check' as any} size={18} color="#FFFFFF" />
+                    <Text style={fus.umOkBtnText}>Tamam</Text>
+                  </TouchableOpacity>
+                </View>
+
+              </View>
+            </View>
+          </Modal>
 
         </ScrollView>
       )}
@@ -1496,9 +2131,9 @@ ${form.notes ? `<div class="card">
         visible={!!previewFile}
         transparent
         animationType="fade"
-        onRequestClose={() => setPreviewFile(null)}
+        onRequestClose={closePreview}
       >
-        <Pressable style={fpv.overlay} onPress={() => setPreviewFile(null)}>
+        <Pressable style={fpv.overlay} onPress={closePreview}>
           <Pressable style={fpv.card} onPress={(e: any) => e.stopPropagation()}>
             {/* Header */}
             <View style={fpv.header}>
@@ -1518,8 +2153,8 @@ ${form.notes ? `<div class="card">
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setPreviewFile(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <MaterialCommunityIcons name={'close' as any} size={20} color="#64748B" />
+              <TouchableOpacity onPress={closePreview} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <MaterialCommunityIcons name={'close' as any} size={16} color="#64748B" />
               </TouchableOpacity>
             </View>
 
@@ -1532,13 +2167,16 @@ ${form.notes ? `<div class="card">
               />
             ) : (previewFile?.kind === 'stl' || previewFile?.kind === 'ply') ? (
               <View style={fpv.viewerWrap}>
+                {/* key forces a full remount (new Three.js scene) for each unique file */}
                 <ModelViewer
-                  initialModels={previewFile ? [{
+                  key={previewFile.id}
+                  initialModels={[{
                     id: previewFile.id,
                     label: previewFile.name,
                     color: previewFile.kind === 'ply' ? '#b0d4e8' : '#e8d5c4',
                     url: previewFile.uri,
-                  }] : []}
+                    format: previewFile.kind as 'stl' | 'ply',
+                  }]}
                 />
               </View>
             ) : previewFile?.kind === 'pdf' ? (
@@ -1639,6 +2277,7 @@ ${form.notes ? `<div class="card">
 function resolveFileKind(name: string): FileKind {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
   if (['jpg', 'jpeg', 'png', 'heic', 'webp', 'gif'].includes(ext)) return 'photo';
+  if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext)) return 'video';
   if (ext === 'stl') return 'stl';
   if (ext === 'ply') return 'ply';
   if (ext === 'pdf') return 'pdf';
@@ -1648,6 +2287,7 @@ function resolveFileKind(name: string): FileKind {
 function kindLabel(kind: FileKind): string {
   switch (kind) {
     case 'photo': return 'Fotoğraf';
+    case 'video': return 'Video';
     case 'stl':   return 'STL';
     case 'ply':   return 'PLY';
     case 'pdf':   return 'PDF';
@@ -1655,9 +2295,31 @@ function kindLabel(kind: FileKind): string {
   }
 }
 
+/** İstenilen dosya türünün başlığını döndürür (asıl filename yerine). */
+function fileDisplayTitle(file: AttachedFile): string {
+  const n = file.name;
+  if (n.startsWith('Ekartörlü Resim')) return 'Ekartörlü Resim';
+  if (n.startsWith('Gülüş Resmi'))     return 'Gülüş Resmi';
+  if (n.startsWith('Gülüş Videosu'))   return 'Gülüş Videosu';
+  if (n.startsWith('Alt Çene'))        return 'Alt Çene Taraması';
+  if (n.startsWith('Üst Çene'))        return 'Üst Çene Taraması';
+  if (n.startsWith('Bite (Kapanış)'))  return 'Bite (Kapanış) Taraması';
+  if (n.startsWith('Scan Body STL'))   return 'Scan Body STL';
+  if (n.startsWith('PDF Belgesi'))     return 'PDF Belgesi';
+  if (n.startsWith('Referans Fotoğraf')) return 'Referans Fotoğraf';
+  switch (file.kind) {
+    case 'photo': return 'Hasta Fotoğrafı';
+    case 'stl':   return 'STL Tarama Dosyası';
+    case 'ply':   return 'PLY Tarama Dosyası';
+    case 'pdf':   return 'PDF Belgesi';
+    default:      return 'Dosya';
+  }
+}
+
 function kindIcon(kind: FileKind): string {
   switch (kind) {
     case 'photo': return 'image-outline';
+    case 'video': return 'video-outline';
     case 'stl':   return 'cube-outline';
     case 'ply':   return 'cube-scan';
     case 'pdf':   return 'file-pdf-box';
@@ -1702,9 +2364,9 @@ function FileRow({ file, onRemove, onPreview }: { file: AttachedFile; onRemove: 
         </TouchableOpacity>
       )}
       <View style={{ flex: 1 }}>
-        <Text style={_fusStatic.fileName} numberOfLines={1}>{file.name}</Text>
-        <Text style={_fusStatic.fileMeta}>
-          {kindLabel(file.kind)}{file.size > 0 ? ` · ${formatBytes(file.size)}` : ''}
+        <Text style={_fusStatic.fileName} numberOfLines={1}>{fileDisplayTitle(file)}</Text>
+        <Text style={_fusStatic.fileMeta} numberOfLines={1}>
+          {file.name}{file.size > 0 ? ` · ${formatBytes(file.size)}` : ''}
         </Text>
       </View>
       {onPreview && (
@@ -1749,37 +2411,212 @@ const makeFusStyles = (P: string) => StyleSheet.create({
   subLabel:  { fontSize: 10, fontFamily: F.semibold, color: '#94A3B8', letterSpacing: 0.8 },
   subHint:   { fontSize: 11, fontFamily: F.regular,  color: '#CBD5E1' },
 
-  /* Hasta fotoğrafı satırı */
-  photoRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 10, paddingHorizontal: 12,
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 0,
-    backgroundColor: '#FAFAFA', marginBottom: 8,
-  } as any,
-  photoIcon: {
-    width: 40, height: 40, borderRadius: 0,
-    backgroundColor: P + '10',
+  sectionDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 },
+
+  /* ── Dosya yükleme tetikleyicisi ── */
+  uploadTrigger: {
+    flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    gap: 10, paddingVertical: 24, flex: 1,
+  },
+  uploadTriggerIcon: {
+    width: 48, height: 48, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  photoThumb: {
-    width: 40, height: 40, borderRadius: 6,
-    overflow: 'hidden' as any, backgroundColor: '#F1F5F9',
-    flexShrink: 0, position: 'relative' as any,
-  },
-  photoThumbImg: { width: 40, height: 40 },
-  photoThumbOverlay: {
-    position: 'absolute' as any, bottom: 0, right: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    width: 16, height: 16, borderTopLeftRadius: 4,
+  uploadTriggerTitle: { fontSize: 15, fontFamily: F.semibold },
+  uploadTriggerSub:   { fontSize: 12, fontFamily: F.regular, color: '#94A3B8', marginTop: 2 },
+  uploadTriggerBadge: {
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3,
     alignItems: 'center', justifyContent: 'center',
   },
-  photoLabel:    { fontSize: 13, fontFamily: F.semibold, color: '#0F172A' },
-  photoFileName: { fontSize: 11, fontFamily: F.regular,  color: '#059669', marginTop: 2 },
-  cameraBtn: {
-    width: 38, height: 38, borderRadius: 0,
+  uploadTriggerBadgeText: { fontSize: 11, fontFamily: F.bold, color: '#FFFFFF' },
+
+  /* ── Upload Modal ── */
+  umOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center', padding: 20,
+  },
+  umCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 24,
+    width: '100%', maxWidth: 1000, maxHeight: '95%' as any,
+    overflow: 'hidden',
+    // @ts-ignore
+    boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+  },
+  umHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 24, paddingVertical: 18,
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
+  umHeaderIcon: {
+    width: 38, height: 38, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
   },
-  sectionDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 },
+  umHeaderTitle: { fontSize: 16, fontFamily: F.bold, color: '#0F172A' },
+  umCloseBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center',
+  },
+  umSectionLabel: {
+    fontSize: 10, fontFamily: F.semibold, color: '#94A3B8',
+    letterSpacing: 0.8, marginBottom: 10,
+  },
+  umFileBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 12, paddingHorizontal: 16,
+    borderRadius: 12, borderWidth: 1.5,
+    borderStyle: 'dashed' as any, borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  umFileBtnText: { fontSize: 13, fontFamily: F.semibold, flex: 1 },
+  umFileBtnHint: { fontSize: 11, fontFamily: F.regular, color: '#94A3B8' },
+  umFooter: {
+    padding: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    alignItems: 'flex-end',
+  },
+  umOkBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 12, paddingHorizontal: 28,
+    borderRadius: 12,
+  },
+  umOkBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#FFFFFF' },
+
+  /* 2×2 grid layout */
+  umGrid: {
+    flexDirection: 'row' as any, flexWrap: 'wrap' as any, gap: 14,
+  },
+  umCol: { flex: 1, minWidth: 0 }, // unused but kept for TS
+
+  /* Grup — each takes ~half width so 2 per row */
+  umGroup: {
+    flexBasis: 'calc(50% - 7px)' as any,
+    flexGrow: 1,
+    backgroundColor: '#FAFBFD',
+    borderRadius: 16,
+    borderWidth: 1, borderColor: '#F1F5F9',
+    padding: 14,
+  },
+  umGroupHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
+  },
+  umGroupDot: {
+    width: 8, height: 8, borderRadius: 4,
+  },
+  umGroupTitle: {
+    fontSize: 13, fontFamily: F.bold, color: '#0F172A',
+  },
+
+  /* ── Kare yükleme kartları ── */
+  uploadCardRow: {
+    flexDirection: 'row' as any, flexWrap: 'wrap' as any, gap: 8,
+  },
+  uploadCard: {
+    width: 100, height: 118, borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#E2E8F0',
+    overflow: 'hidden' as any,
+    position: 'relative' as any,
+  },
+  uploadCardDashed: {
+    borderStyle: 'dashed' as any,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  uploadCardTab: {
+    height: 10, width: '55%', alignSelf: 'center' as any,
+    borderBottomLeftRadius: 6, borderBottomRightRadius: 6,
+    marginBottom: 0,
+  },
+  uploadCardBody: {
+    paddingHorizontal: 8, paddingTop: 6, paddingBottom: 36,
+    alignItems: 'center' as any,
+  },
+  uploadCardIcon: {
+    alignItems: 'center' as any, justifyContent: 'center' as any,
+    width: '100%', paddingVertical: 6,
+  },
+  uploadCardThumbWrap: {
+    width: '100%', height: 54,
+    borderRadius: 8, overflow: 'hidden' as any,
+    position: 'relative' as any, marginBottom: 4,
+  },
+  uploadCardThumbImg: { width: '100%', height: 54 },
+  uploadCardThumbOverlay: {
+    position: 'absolute' as any, inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center' as any, justifyContent: 'center' as any,
+  },
+  uploadCardLabelRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6,
+  },
+  uploadCardLabel: {
+    fontSize: 11, fontFamily: F.semibold, color: '#0F172A', textAlign: 'center' as any,
+  },
+  uploadCardFileName: {
+    fontSize: 10, fontFamily: F.regular, color: '#059669',
+    marginTop: 3, width: '100%',
+  },
+  uploadCardBtn: {
+    position: 'absolute' as any, bottom: 8, right: 8,
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center' as any, justifyContent: 'center' as any,
+  },
+  uploadCardDel: {
+    position: 'absolute' as any, top: 18, right: 8,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center' as any, justifyContent: 'center' as any,
+  },
+
+  /* İmplant brand search dropdown card */
+  implantBrandCard: {
+    flex: 1,
+    borderRadius: 14, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#E2E8F0',
+    overflow: 'visible' as any,
+  },
+  implantSearchRow: {
+    flexDirection: 'row' as any, alignItems: 'center', gap: 8,
+    backgroundColor: '#F8FAFC', borderRadius: 10,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    paddingHorizontal: 10, paddingVertical: 8,
+  },
+  implantSearchInput: {
+    flex: 1, fontSize: 13, fontFamily: F.regular, color: '#0F172A',
+    // @ts-ignore
+    outlineStyle: 'none',
+  },
+  implantDropList: {
+    borderRadius: 12,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden' as any,
+    // @ts-ignore
+    boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+  },
+  implantDropItem: {
+    flexDirection: 'row' as any, alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#F8FAFC',
+  },
+  implantDropItemActive: {
+    backgroundColor: '#F5F3FF',
+  },
+  implantDropItemText: {
+    fontSize: 13, fontFamily: F.regular, color: '#334155', flex: 1,
+  },
+  implantDropItemTextActive: {
+    fontFamily: F.semibold, color: '#8B5CF6',
+  },
+
+  /* Legacy (kept for type-safety, no longer rendered) */
+  photoRow:          { flexDirection: 'row' as any },
+  photoIcon:         { width: 40, height: 40 },
+  photoThumb:        { width: 40, height: 40 },
+  photoThumbImg:     { width: 40, height: 40 },
+  photoThumbOverlay: { position: 'absolute' as any },
+  photoLabel:        { fontSize: 13 },
+  photoFileName:     { fontSize: 11 },
+  cameraBtn:         { width: 38, height: 38 },
   emptyRow:  {
     paddingVertical: 10, paddingHorizontal: 4,
     marginBottom: 8,
@@ -1832,6 +2669,18 @@ const makeFusStyles = (P: string) => StyleSheet.create({
   fileMeta:       { fontSize: 11, fontFamily: F.regular, color: '#94A3B8', marginTop: 1 },
   filePreviewBtn: { padding: 4 },
   fileRemove:     { padding: 4 },
+  /* File groups */
+  fileGroup: {
+    marginBottom: 10,
+  },
+  fileGroupHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    marginBottom: 4, marginTop: 2,
+  },
+  fileGroupLabel: {
+    fontSize: 10, fontFamily: F.semibold, color: '#94A3B8', letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
   /* Total */
   totalRow: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -5011,14 +5860,14 @@ const makeStyles = (P: string) => StyleSheet.create({
   twoCol: { flexDirection: 'row', gap: 12, overflow: 'visible', marginBottom: 14 },
   fieldWrap: { marginBottom: 0 },
   fieldLabel: {
-    fontSize: 11, fontWeight: '500', fontFamily: F.medium, color: '#64748B',
-    marginBottom: 7, letterSpacing: 0.5, textTransform: 'none',
+    fontSize: 13, fontWeight: '600', fontFamily: F.semibold, color: '#475569',
+    marginBottom: 7, letterSpacing: 0.2, textTransform: 'none',
   },
-  fieldSub: { fontSize: 11, fontFamily: F.regular, color: C.textMuted },
+  fieldSub: { fontSize: 12, fontFamily: F.regular, color: C.textMuted },
   fieldInput: {
     borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#0F172A', backgroundColor: '#FFFFFF',
+    fontSize: 15, fontWeight: '400', fontFamily: F.regular, color: '#0F172A', backgroundColor: '#FFFFFF',
     // @ts-ignore
     outlineStyle: 'none',
   },
@@ -5043,8 +5892,8 @@ const makeStyles = (P: string) => StyleSheet.create({
     borderWidth: 1.5, borderColor: '#DDE3ED', backgroundColor: '#FAFBFC',
   },
   chipActive:     { borderColor: P, backgroundColor: '#F1F5F9' },
-  chipText:       { fontSize: 12, fontWeight: '400', fontFamily: F.regular, color: '#64748B' },
-  chipTextActive: { color: P, fontWeight: '500', fontFamily: F.medium },
+  chipText:       { fontSize: 13, fontWeight: '400', fontFamily: F.regular, color: '#64748B' },
+  chipTextActive: { color: P, fontWeight: '600', fontFamily: F.semibold },
   tagChipActive:     { borderColor: C.warning, backgroundColor: C.warningBg },
   tagChipTextActive: { color: C.warning, fontWeight: '500', fontFamily: F.medium },
 
@@ -5055,7 +5904,7 @@ const makeStyles = (P: string) => StyleSheet.create({
     borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11,
   },
-  dateBtnText: { fontSize: 14, fontWeight: '400', fontFamily: F.regular, color: '#0F172A', flex: 1 },
+  dateBtnText: { fontSize: 15, fontWeight: '400', fontFamily: F.regular, color: '#0F172A', flex: 1 },
 
   // New date input styles
   dateInputRow: {
@@ -5305,20 +6154,21 @@ const fpv = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF', borderRadius: 20,
-    width: '100%', maxWidth: 600,
-    overflow: 'hidden',
+    width: '100%', maxWidth: 1100,
+    overflow: 'hidden' as any,
+    maxHeight: '92vh' as any,
   },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 },
   kindBadge: {
-    width: 32, height: 32, borderRadius: 8,
+    width: 26, height: 26, borderRadius: 7,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  title: { fontSize: 13, fontWeight: '700', color: '#0F172A', fontFamily: F.bold },
-  meta:  { fontSize: 11, color: '#94A3B8', fontFamily: F.regular, marginTop: 1 },
+  title: { fontSize: 12, fontWeight: '700', color: '#0F172A', fontFamily: F.bold },
+  meta:  { fontSize: 10, color: '#94A3B8', fontFamily: F.regular, marginTop: 1 },
 
   /* Photo */
   image: {
@@ -5328,7 +6178,8 @@ const fpv = StyleSheet.create({
 
   /* 3D model viewer */
   viewerWrap: {
-    width: '100%', height: 480,
+    width: '100%', height: 640,
+    minHeight: 480,
   },
 
   /* Generic file info */

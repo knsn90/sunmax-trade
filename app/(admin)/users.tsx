@@ -97,10 +97,9 @@ export default function AdminUsersScreen() {
   const activeFilterCount = statusFilter !== 'all' ? 1 : 0;
 
   const TYPE_TABS = [
-    { key: 'all'    as FilterType, label: 'Tümü' },
-    { key: 'admin'  as FilterType, label: 'Admin' },
-    { key: 'lab'    as FilterType, label: 'Lab' },
-    { key: 'doctor' as FilterType, label: 'Hekim' },
+    { key: 'all'   as FilterType, label: 'Tümü' },
+    { key: 'admin' as FilterType, label: 'Admin' },
+    { key: 'lab'   as FilterType, label: 'Lab' },
   ];
 
   const typeBadge = (profile: Profile) =>
@@ -109,19 +108,39 @@ export default function AdminUsersScreen() {
     profile.role      === 'manager' ? { bg: '#EFF6FF', text: '#2563EB', label: 'Müdür',     avatarBg: '#EFF6FF', avatarText: '#2563EB' } :
                                       { bg: '#F1F5F9', text: '#475569', label: 'Teknisyen', avatarBg: '#F1F5F9', avatarText: '#475569' };
 
-  const getSwitchColor = (profile: Profile) =>
-    profile.role === 'manager' ? '#2563EB' : '#0F172A';
+  const getSwitchColor = (_profile: Profile) => '#0F172A';
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-        {/* Toolbar: compact title + actions */}
+        {/* Toolbar: tabs + actions — mirrors ClinicsScreen layout */}
         <View style={styles.toolbarRow}>
-          <View style={styles.toolbarTitle}>
-            <Text style={styles.toolbarSub}>Ağ Yönetimi</Text>
-            <Text style={styles.toolbarName}>Kullanıcılar</Text>
-          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabsScroll}
+            contentContainerStyle={styles.tabsContent}
+          >
+            <View style={styles.tabBar}>
+              {TYPE_TABS.map(tab => {
+                const active = typeFilter === tab.key;
+                const count  = tab.key === 'all'
+                  ? profiles.length
+                  : profiles.filter(p => p.user_type === tab.key).length;
+                return (
+                  <TouchableOpacity key={tab.key}
+                    style={[styles.tabItem, active && styles.tabItemActive]}
+                    onPress={() => setTypeFilter(tab.key)} activeOpacity={0.75}>
+                    <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                      {tab.label}{count > 0 ? `  ${count}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+
           <View style={styles.rightGroup}>
             <TouchableOpacity
               style={[styles.iconBtn, (searchExpanded || search.length > 0) && styles.iconBtnActive]}
@@ -141,26 +160,6 @@ export default function AdminUsersScreen() {
               <Text style={styles.addBtnText}>Kullanıcı Ekle</Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Segmented tab bar */}
-        <View style={styles.tabBar}>
-          {TYPE_TABS.map(tab => {
-            const active = typeFilter === tab.key;
-            const count  = tab.key === 'all'
-              ? profiles.length
-              : profiles.filter(p => p.user_type === tab.key).length;
-            return (
-              <TouchableOpacity key={tab.key}
-                style={[styles.tabItem, active && styles.tabItemActive]}
-                onPress={() => setTypeFilter(tab.key)} activeOpacity={0.8}>
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {tab.label}
-                  {count > 0 ? `  ${count}` : ''}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
         </View>
 
         {/* Expandable search */}
@@ -249,17 +248,26 @@ export default function AdminUsersScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Filter panel */}
+      {/* Filter panel — matches ClinicsScreen right-aligned dropdown */}
       <Modal visible={showFilter} transparent animationType="fade" onRequestClose={() => setShowFilter(false)}>
         <TouchableOpacity style={fp.backdrop} activeOpacity={1} onPress={() => setShowFilter(false)}>
           <View style={fp.panel} onStartShouldSetResponder={() => true}>
             <View style={fp.header}>
-              <Text style={fp.headerTitle}>Filtrele</Text>
-              <TouchableOpacity onPress={() => setShowFilter(false)} style={fp.closeBtn}>
-                <Feather name="x" size={16} color="#0F172A" />
+              <View style={fp.headerLeft}>
+                <MaterialCommunityIcons name={'tune-variant' as any} size={16} color="#0F172A" />
+                <Text style={fp.headerTitle}>Filtrele</Text>
+                {activeFilterCount > 0 && (
+                  <View style={fp.countBadge}>
+                    <Text style={fp.countBadgeText}>{activeFilterCount}</Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => { setDraftStatus('all'); }} activeOpacity={0.7}>
+                <Text style={fp.clearText}>Temizle</Text>
               </TouchableOpacity>
             </View>
-            <View style={fp.body}>
+            <View style={fp.divider} />
+            <View style={fp.section}>
               <Text style={fp.sectionLabel}>DURUM</Text>
               <View style={fp.chipRow}>
                 {([['all','Tümü'],['active','Aktif'],['inactive','Pasif']] as [StatusFilter,string][]).map(([val,lbl]) => (
@@ -270,11 +278,12 @@ export default function AdminUsersScreen() {
                 ))}
               </View>
             </View>
+            <View style={fp.divider} />
             <View style={fp.footer}>
-              <TouchableOpacity style={fp.resetBtn} onPress={() => { setDraftStatus('all'); }}>
-                <Text style={fp.resetText}>Sıfırla</Text>
+              <TouchableOpacity style={fp.cancelBtn} onPress={() => setShowFilter(false)} activeOpacity={0.7}>
+                <Text style={fp.cancelText}>İptal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={fp.applyBtn} onPress={() => { setStatusFilter(draftStatus); setShowFilter(false); }}>
+              <TouchableOpacity style={fp.applyBtn} onPress={() => { setStatusFilter(draftStatus); setShowFilter(false); }} activeOpacity={0.7}>
                 <Text style={fp.applyText}>Uygula</Text>
               </TouchableOpacity>
             </View>
@@ -680,18 +689,15 @@ const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: '#FFFFFF' },
   container: { padding: 24, paddingBottom: 60 },
 
-  // Toolbar
-  toolbarRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  toolbarTitle: { flex: 1 },
-  toolbarSub:   { fontSize: 10, fontWeight: '600', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 2 },
-  toolbarName:  { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-
-  // Segmented tab bar — matches ClinicsScreen pill style
-  tabBar:        { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#F1F5F9', borderRadius: 100, padding: 3, marginBottom: 14, gap: 2 },
-  tabItem:       { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100 },
-  tabItemActive: { backgroundColor: '#FFFFFF', boxShadow: '0 1px 6px rgba(15,23,42,0.12)' } as any,
-  tabText:       { fontSize: 13, fontWeight: '500', color: '#94A3B8' },
-  tabTextActive: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
+  // Toolbar — mirrors ClinicsScreen
+  toolbarRow:   { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  tabsScroll:   { flex: 1 },
+  tabsContent:  { alignItems: 'center', paddingRight: 8 },
+  tabBar:       { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 100, padding: 3, gap: 2 },
+  tabItem:      { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100 },
+  tabItemActive:{ backgroundColor: '#FFFFFF', boxShadow: '0 1px 6px rgba(15,23,42,0.12)' } as any,
+  tabText:      { fontSize: 13, fontWeight: '500', color: '#94A3B8' },
+  tabTextActive:{ fontSize: 13, fontWeight: '600', color: '#0F172A' },
 
   // Icon buttons
   rightGroup:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -739,23 +745,28 @@ const styles = StyleSheet.create({
 });
 
 const fp = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.3)', justifyContent: 'flex-end' },
-  panel:    { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 34 },
-  header:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  closeBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  body:         { padding: 20, gap: 16 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.6, marginBottom: 8 },
-  chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  chip:         { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9' },
-  chipActive:   { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-  chipText:     { fontSize: 13, fontWeight: '600', color: '#64748B' },
-  chipTextActive: { color: '#FFFFFF' },
-  footer:   { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  resetBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
-  resetText:{ fontSize: 14, fontWeight: '600', color: '#64748B' },
-  applyBtn: { flex: 2, paddingVertical: 12, borderRadius: 12, backgroundColor: P, alignItems: 'center' },
-  applyText:{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.25)', alignItems: 'flex-end', paddingTop: 70, paddingRight: 24 },
+  panel:    { width: 300, backgroundColor: '#FFFFFF', borderRadius: 18, overflow: 'hidden',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 32 },
+  header:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
+  headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  countBadge:  { backgroundColor: '#0F172A', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  countBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
+  clearText:   { fontSize: 13, fontWeight: '500', color: '#94A3B8' },
+  divider:     { height: 1, backgroundColor: '#F1F5F9' },
+  section:     { paddingHorizontal: 16, paddingVertical: 14 },
+  sectionLabel:{ fontSize: 11, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 },
+  chipRow:     { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  chip:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1.5, borderColor: '#F1F5F9', backgroundColor: '#FAFAFA' },
+  chipActive:  { borderColor: '#0F172A', backgroundColor: '#F1F5F9' },
+  chipText:    { fontSize: 13, fontWeight: '500', color: '#94A3B8' },
+  chipTextActive: { color: '#0F172A', fontWeight: '600' },
+  footer:      { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
+  cancelBtn:   { flex: 1, paddingVertical: 11, borderRadius: 10, borderWidth: 1.5, borderColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  cancelText:  { fontSize: 14, fontWeight: '600', color: '#6C6C70' },
+  applyBtn:    { flex: 2, paddingVertical: 11, borderRadius: 10, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
+  applyText:   { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 });
 
 const m = StyleSheet.create({

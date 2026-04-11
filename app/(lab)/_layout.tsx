@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 import { C as Colors } from '../../core/theme/colors';
 import { DesktopShell, useIsDesktop } from '../../core/layout/DesktopShell';
 import { usePendingApprovals as useDesignPending } from '../../modules/approvals/hooks/usePendingApprovals';
+import { useStockAlert } from '../../core/hooks/useStockAlert';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return <Text style={{ fontSize: focused ? 24 : 22, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>;
@@ -11,6 +12,7 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 export default function LabLayout() {
   const { approvals: pendingDesign } = useDesignPending();
   const pendingCount = pendingDesign.length;
+  const stockAlert   = useStockAlert();
   const isDesktop = useIsDesktop();
 
   const LAB_NAV = [
@@ -20,6 +22,7 @@ export default function LabLayout() {
     { label: 'Klinikler & Hekimler', emoji: '🏥', href: '/(lab)/clinics', iconName: 'briefcase', iconSet: 'mdi' as const, matchPrefix: true },
     { label: 'Hizmetler',    emoji: '💰', href: '/(lab)/lab-services', iconName: 'tag',          iconSet: 'mdi' as const, matchPrefix: true },
     { label: 'Onaylar',      emoji: '✅', href: '/(lab)/approvals',   iconName: 'check-circle', iconSet: 'mdi' as const, badge: pendingCount > 0, matchPrefix: true },
+    { label: 'Stok',         emoji: '📦', href: '/(lab)/stock',        iconName: 'package',      iconSet: 'mdi' as const, matchPrefix: true, sectionLabel: 'Stok Yönetimi', badgeCount: stockAlert },
     { label: 'Profil',       emoji: '👤', href: '/(lab)/profile',     iconName: 'user',         iconSet: 'mdi' as const, matchPrefix: true },
   ];
 
@@ -44,6 +47,7 @@ export default function LabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Bugün', tabBarIcon: ({ focused }) => <TabIcon emoji="📅" focused={focused} /> }} />
       <Tabs.Screen name="all-orders" options={{ title: 'Tüm İşler', tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} /> }} />
+      <Tabs.Screen name="stock" options={{ title: 'Stok', tabBarIcon: ({ focused }) => <TabIcon emoji="📦" focused={focused} /> }} />
       <Tabs.Screen name="new-order" options={{ title: 'Yeni İş', tabBarIcon: ({ focused }) => <TabIcon emoji="➕" focused={focused} /> }} />
       <Tabs.Screen name="clinics" options={{ title: 'Klinikler', tabBarIcon: ({ focused }) => <TabIcon emoji="🏥" focused={focused} /> }} />
       <Tabs.Screen name="lab-services" options={{ title: 'Hizmetler', tabBarIcon: ({ focused }) => <TabIcon emoji="💰" focused={focused} /> }} />

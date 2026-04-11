@@ -39,7 +39,6 @@ function formatDate(dateStr: string): string {
 
 const TABS = [
   { key: 'all', label: 'Tümü' },
-  { key: 'doctor', label: 'Hekimler' },
   { key: 'lab', label: 'Lab' },
 ];
 
@@ -132,18 +131,10 @@ export default function AdminUsersScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>Kullanıcılar</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={refresh}>
-            <Text style={styles.refreshButtonText}>↻ Yenile</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Tabs */}
         <View style={styles.tabBar}>
           {TABS.map((t) => {
-            const count = t.key === 'all' ? users.length : t.key === 'doctor' ? doctorCount : labCount;
+            const count = t.key === 'all' ? users.length : labCount;
             const active = tab === t.key;
             return (
               <TouchableOpacity
@@ -251,7 +242,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabActive: {
-    backgroundColor: C.accentBg,
+    backgroundColor: C.textPrimary,
   },
   tabText: {
     fontSize: 13,
@@ -259,7 +250,7 @@ const styles = StyleSheet.create({
     color: C.textSecondary,
   },
   tabTextActive: {
-    color: C.accent,
+    color: '#FFFFFF',
   },
   tabCount: {
     backgroundColor: C.border,
@@ -267,7 +258,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
-  tabCountActive: { backgroundColor: C.accent },
+  tabCountActive: { backgroundColor: '#334155' },
   tabCountText: {
     fontSize: 10,
     fontWeight: '700',
@@ -406,7 +397,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   detailButton: {
-    backgroundColor: C.accentBg,
+    backgroundColor: C.textPrimary,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -414,7 +405,7 @@ const styles = StyleSheet.create({
   detailButtonText: {
     fontSize: 12,
     fontWeight: '700',
-    color: C.accent,
+    color: '#FFFFFF',
   },
   emptyBox: {
     alignItems: 'center',

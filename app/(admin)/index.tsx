@@ -64,14 +64,14 @@ const bdg = StyleSheet.create({
   t: { fontSize: 11, fontWeight: '600' },
 });
 
-// ─── KpiCard ──────────────────────────────────────────────────────────────────
-function KpiCard({ icon, label, value, color, bgColor }: {
-  icon: string; label: string; value: number; color: string; bgColor: string;
+// ─── KpiCard — colored full card with white text ───────────────────────────────
+function KpiCard({ icon, label, value, cardColor }: {
+  icon: string; label: string; value: number; cardColor: string;
 }) {
   return (
-    <View style={k.card}>
-      <View style={[k.iconBox, { backgroundColor: bgColor }]}>
-        <MaterialCommunityIcons name={icon as any} size={20} color={color} />
+    <View style={[k.card, { backgroundColor: cardColor }]}>
+      <View style={k.iconCircle}>
+        <MaterialCommunityIcons name={icon as any} size={22} color="#FFFFFF" />
       </View>
       <Text style={k.value}>{value}</Text>
       <Text style={k.label}>{label}</Text>
@@ -80,16 +80,25 @@ function KpiCard({ icon, label, value, color, bgColor }: {
 }
 const k = StyleSheet.create({
   card: {
-    flex: 1, minWidth: 150, backgroundColor: '#FFFFFF',
-    borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: '#F1F5F9',
-    gap: 10,
+    flex: 1,
+    minWidth: 140,
+    borderRadius: 20,
+    padding: 20,
+    gap: 8,
     // @ts-ignore
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    boxShadow: '0 6px 24px rgba(0,0,0,0.12)',
   },
-  iconBox: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  value:   { fontSize: 28, fontWeight: '800', color: '#1C1C1E', letterSpacing: -0.5 },
-  label:   { fontSize: 13, fontWeight: '500', color: '#6C6C70' },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  value: { fontSize: 34, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1 },
+  label: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)' },
 });
 
 // ─── SectionHeader ────────────────────────────────────────────────────────────
@@ -107,34 +116,35 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
   );
 }
 const sh = StyleSheet.create({
-  row:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 8 },
-  title:  { fontSize: 11, fontWeight: '700', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.8 },
+  row:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 4 },
+  title:  { fontSize: 12, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1 },
   btn:    { flexDirection: 'row', alignItems: 'center', gap: 2 },
   action: { fontSize: 13, color: P, fontWeight: '600' },
 });
 
-// ─── Card ─────────────────────────────────────────────────────────────────────
-function Card({ children, style }: { children: React.ReactNode; style?: any }) {
-  return <View style={[cd.wrap, style]}>{children}</View>;
-}
-function CardHeader({ title, sub }: { title: string; sub?: string }) {
+// ─── Chart Card wrapper ────────────────────────────────────────────────────────
+function ChartCard({ children, title, sub, style }: { children: React.ReactNode; title: string; sub?: string; style?: any }) {
   return (
-    <View style={cd.header}>
-      <Text style={cd.title}>{title}</Text>
-      {sub && <Text style={cd.sub}>{sub}</Text>}
+    <View style={[cc.card, style]}>
+      <View style={cc.header}>
+        <Text style={cc.title}>{title}</Text>
+        {sub && <Text style={cc.sub}>{sub}</Text>}
+      </View>
+      {children}
     </View>
   );
 }
-const cd = StyleSheet.create({
-  wrap: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#F1F5F9',
+const cc = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
     // @ts-ignore
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   },
-  header: { paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  header: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#EEF2FF' },
   title:  { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
-  sub:    { fontSize: 12, color: '#AEAEB2', marginTop: 2 },
+  sub:    { fontSize: 12, color: '#94A3B8', marginTop: 2 },
 });
 
 // ─── VerticalBarChart ─────────────────────────────────────────────────────────
@@ -150,10 +160,10 @@ function VerticalBarChart({ data, color }: { data: { label: string; count: numbe
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#1C1C1E', marginBottom: 6 }}>
               {item.count > 0 ? item.count : ''}
             </Text>
-            <View style={{ width: '70%', height: '75%', justifyContent: 'flex-end', borderRadius: 10, backgroundColor: '#F8FAFC', overflow: 'hidden' }}>
-              <View style={{ width: '100%', borderRadius: 10, backgroundColor: isLast ? color : `${color}50`, height: `${pct}%` as any }} />
+            <View style={{ width: '65%', height: '75%', justifyContent: 'flex-end', borderRadius: 8, backgroundColor: '#EEF2FF', overflow: 'hidden' }}>
+              <View style={{ width: '100%', borderRadius: 8, backgroundColor: isLast ? color : `${color}60`, height: `${pct}%` as any }} />
             </View>
-            <Text style={{ fontSize: 10, color: '#AEAEB2', marginTop: 8, fontWeight: '600' }}>{item.label}</Text>
+            <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 8, fontWeight: '600' }}>{item.label}</Text>
           </View>
         );
       })}
@@ -169,11 +179,11 @@ function HorizontalBarChart({ data, color }: { data: { label: string; count: num
       {data.map((item, i) => (
         <View key={i}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={{ fontSize: 13, color: '#6C6C70', flex: 1 }} numberOfLines={1}>{item.label}</Text>
+            <Text style={{ fontSize: 13, color: '#374151', flex: 1 }} numberOfLines={1}>{item.label}</Text>
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#1C1C1E', marginLeft: 8 }}>{item.count}</Text>
           </View>
-          <View style={{ height: 6, backgroundColor: '#F8FAFC', borderRadius: 3, overflow: 'hidden' }}>
-            <View style={{ height: 6, borderRadius: 3, backgroundColor: color, width: `${(item.count / mx) * 100}%` as any }} />
+          <View style={{ height: 6, backgroundColor: '#EEF2FF', borderRadius: 4, overflow: 'hidden' }}>
+            <View style={{ height: 6, borderRadius: 4, backgroundColor: color, width: `${(item.count / mx) * 100}%` as any }} />
           </View>
         </View>
       ))}
@@ -181,21 +191,25 @@ function HorizontalBarChart({ data, color }: { data: { label: string; count: num
   );
 }
 
-// ─── QuickAction ──────────────────────────────────────────────────────────────
-function QuickAction({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+// ─── QuickAction pill button ───────────────────────────────────────────────────
+function QuickAction({
+  icon, label, onPress, iconBg,
+}: {
+  icon: string; label: string; onPress: () => void; iconBg: string;
+}) {
   return (
     <TouchableOpacity style={qa.btn} onPress={onPress} activeOpacity={0.7}>
-      <View style={qa.wrap}>
-        <MaterialCommunityIcons name={icon as any} size={22} color={P} />
+      <View style={[qa.iconBox, { backgroundColor: iconBg }]}>
+        <MaterialCommunityIcons name={icon as any} size={26} color="#FFFFFF" />
       </View>
       <Text style={qa.label}>{label}</Text>
     </TouchableOpacity>
   );
 }
 const qa = StyleSheet.create({
-  btn:   { alignItems: 'center', gap: 8, flex: 1 },
-  wrap:  { width: 52, height: 52, borderRadius: 16, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  label: { fontSize: 11, fontWeight: '600', color: '#6C6C70', textAlign: 'center' },
+  btn:     { alignItems: 'center', gap: 8, width: 72 },
+  iconBox: { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  label:   { fontSize: 11, fontWeight: '600', color: '#374151', textAlign: 'center' },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -316,17 +330,44 @@ export default function AdminDashboard() {
     <SafeAreaView style={s.safe} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-        {/* Header */}
-        <View style={s.pageHeader}>
-          <Text style={s.dateText}>{fmtDate()}</Text>
-          <TouchableOpacity style={s.refreshBtn} onPress={loadStats} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="refresh" size={16} color={P} />
-          </TouchableOpacity>
+        {/* Hero Banner */}
+        <View style={s.heroBanner}>
+          <View style={s.heroDeco1} />
+          <View style={s.heroDeco2} />
+          <View style={s.heroDeco3} />
+          <View style={s.heroContent}>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={s.heroGreet}>Hoş geldiniz 👋</Text>
+              <Text style={s.heroDate}>{fmtDate()}</Text>
+              {!loading && (
+                <View style={s.heroStatRow}>
+                  <View style={s.heroStatPill}>
+                    <MaterialCommunityIcons name="clipboard-list-outline" size={13} color="rgba(255,255,255,0.7)" />
+                    <Text style={s.heroStatText}>{totalOrders} sipariş</Text>
+                  </View>
+                  {overdueOrders > 0 ? (
+                    <View style={[s.heroStatPill, s.heroStatPillAlert]}>
+                      <MaterialCommunityIcons name="alert-circle-outline" size={13} color="#FCA5A5" />
+                      <Text style={[s.heroStatText, { color: '#FCA5A5' }]}>{overdueOrders} geciken</Text>
+                    </View>
+                  ) : (
+                    <View style={[s.heroStatPill, s.heroStatPillOk]}>
+                      <MaterialCommunityIcons name="check-circle-outline" size={13} color="#6EE7B7" />
+                      <Text style={[s.heroStatText, { color: '#6EE7B7' }]}>Geciken yok</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+            <TouchableOpacity style={s.refreshBtn} onPress={loadStats} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="refresh" size={18} color="rgba(255,255,255,0.8)" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {loading ? (
           <View style={s.loadingBox}>
-            <ActivityIndicator color={P} size="large" />
+            <ActivityIndicator color="#2563EB" size="large" />
           </View>
         ) : (
           <>
@@ -338,53 +379,79 @@ export default function AdminDashboard() {
                 activeOpacity={0.7}
               >
                 <View style={s.alertIcon}>
-                  <MaterialCommunityIcons name="alert-circle" size={20} color={CLR.red} />
+                  <MaterialCommunityIcons name="alert-circle" size={20} color="#DC2626" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.alertTitle}>{overdueOrders} geciken sipariş</Text>
                   <Text style={s.alertSub}>Teslim tarihi geçmiş siparişler mevcut</Text>
                 </View>
-                <MaterialCommunityIcons name="chevron-right" size={18} color="#AEAEB2" />
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
               </TouchableOpacity>
             )}
 
             {/* Quick Actions */}
-            <Card style={{ marginBottom: 20 }}>
-              <CardHeader title="Hızlı İşlemler" />
-              <View style={{ flexDirection: 'row', paddingVertical: 20, paddingHorizontal: 16 }}>
-                <QuickAction icon="plus-circle-outline"    label="Yeni İş"      onPress={() => router.push('/(admin)/new-order' as any)} />
-                <QuickAction icon="account-group-outline"  label="Kullanıcılar" onPress={() => router.push('/(admin)/users' as any)} />
-                <QuickAction icon="stethoscope"            label="Hekimler"     onPress={() => router.push('/(admin)/doctors' as any)} />
-                <QuickAction icon="clipboard-list-outline" label="Siparişler"   onPress={() => router.push('/(admin)/orders' as any)} />
-                <QuickAction icon="cog-outline"            label="Profil"       onPress={() => router.push('/(admin)/profile' as any)} />
-              </View>
-            </Card>
+            <SectionHeader title="Hızlı İşlemler" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.quickActionsRow}
+              style={{ marginBottom: 24 }}
+            >
+              <QuickAction icon="plus-circle-outline"    label="Yeni İş"      iconBg="#2563EB" onPress={() => router.push('/(admin)/new-order' as any)} />
+              <QuickAction icon="account-group-outline"  label="Kullanıcılar" iconBg="#7C3AED" onPress={() => router.push('/(admin)/users' as any)} />
+              <QuickAction icon="stethoscope"            label="Hekimler"     iconBg="#0891B2" onPress={() => router.push('/(admin)/doctors' as any)} />
+              <QuickAction icon="clipboard-list-outline" label="Siparişler"   iconBg="#EA580C" onPress={() => router.push('/(admin)/orders' as any)} />
+              <QuickAction icon="cog-outline"            label="Profil"       iconBg="#475569" onPress={() => router.push('/(admin)/profile' as any)} />
+            </ScrollView>
 
             {/* KPI */}
             <SectionHeader title="Genel Bakış" />
             <View style={s.kpiRow}>
-              <KpiCard icon="clipboard-list-outline"    label="Toplam Sipariş"  value={totalOrders}   color={P}          bgColor="#F1F5F9"    />
-              <KpiCard icon="calendar-today"            label="Bugün Eklenen"   value={todayOrders}   color={CLR.blue}   bgColor={CLR.blueBg}  />
-              <KpiCard icon="alert-circle-outline"      label="Geciken"         value={overdueOrders} color={CLR.red}    bgColor={CLR.redBg}   />
-              <KpiCard icon="stethoscope"               label="Kayıtlı Hekim"   value={totalDoctors}  color={CLR.green}  bgColor={CLR.greenBg} />
+              <KpiCard
+                icon="clipboard-list-outline"
+                label="Toplam Sipariş"
+                value={totalOrders}
+                cardColor="#1E3A8A"
+              />
+              <KpiCard
+                icon="calendar-today"
+                label="Bugün Eklenen"
+                value={todayOrders}
+                cardColor="#2563EB"
+              />
+              <KpiCard
+                icon="alert-circle-outline"
+                label="Geciken"
+                value={overdueOrders}
+                cardColor={overdueOrders > 0 ? '#DC2626' : '#059669'}
+              />
+              <KpiCard
+                icon="stethoscope"
+                label="Kayıtlı Hekim"
+                value={totalDoctors}
+                cardColor="#7C3AED"
+              />
               {isWide && (
-                <KpiCard icon="account-multiple-outline" label="Lab Kullanıcısı" value={totalLabUsers} color={CLR.orange} bgColor={CLR.orangeBg} />
+                <KpiCard
+                  icon="account-multiple-outline"
+                  label="Lab Kullanıcısı"
+                  value={totalLabUsers}
+                  cardColor="#0891B2"
+                />
               )}
             </View>
 
             {/* Charts Row 1 */}
             <SectionHeader title="Sipariş Trendi" />
             <View style={[s.chartsRow, !isDesktop && s.chartsCol]}>
-              <Card style={isDesktop ? { flex: 2 } : {}}>
-                <CardHeader title="Son 6 Ay" sub="Aylık sipariş sayısı" />
-                <VerticalBarChart data={monthly} color={P} />
-              </Card>
-              <Card style={isDesktop ? { flex: 1 } : {}}>
-                <CardHeader title="Statü Dağılımı" />
+              <ChartCard title="Son 6 Ay" sub="Aylık sipariş sayısı" style={isDesktop ? { flex: 2 } : {}}>
+                <VerticalBarChart data={monthly} color="#2563EB" />
+              </ChartCard>
+              <ChartCard title="Statü Dağılımı" style={isDesktop ? { flex: 1 } : {}}>
                 <View style={{ paddingTop: 12 }}>
-                  <HorizontalBarChart data={byStatus} color={P} />
+                  <HorizontalBarChart data={byStatus} color="#1E3A8A" />
                 </View>
-              </Card>
+              </ChartCard>
             </View>
 
             {/* Charts Row 2 */}
@@ -393,20 +460,18 @@ export default function AdminDashboard() {
                 <SectionHeader title="Detay Analiz" />
                 <View style={[s.chartsRow, !isDesktop && s.chartsCol]}>
                   {byWorkType.length > 0 && (
-                    <Card style={isDesktop ? { flex: 1 } : {}}>
-                      <CardHeader title="İş Tipi Dağılımı" />
+                    <ChartCard title="İş Tipi Dağılımı" style={isDesktop ? { flex: 1 } : {}}>
                       <View style={{ paddingTop: 12 }}>
-                        <HorizontalBarChart data={byWorkType} color={CLR.orange} />
+                        <HorizontalBarChart data={byWorkType} color="#EA580C" />
                       </View>
-                    </Card>
+                    </ChartCard>
                   )}
                   {byDoctor.length > 0 && (
-                    <Card style={isDesktop ? { flex: 1 } : {}}>
-                      <CardHeader title="Hekim Bazlı" />
+                    <ChartCard title="Hekim Bazlı" style={isDesktop ? { flex: 1 } : {}}>
                       <View style={{ paddingTop: 12 }}>
-                        <HorizontalBarChart data={byDoctor} color={CLR.teal} />
+                        <HorizontalBarChart data={byDoctor} color="#0891B2" />
                       </View>
-                    </Card>
+                    </ChartCard>
                   )}
                 </View>
               </>
@@ -418,7 +483,7 @@ export default function AdminDashboard() {
               action="Tümünü Gör"
               onAction={() => router.push('/(admin)/orders' as any)}
             />
-            <Card>
+            <View style={s.recentCard}>
               <View style={s.tableHead}>
                 <Text style={[s.thCell, { flex: 2 }]}>Sipariş</Text>
                 {isDesktop && <Text style={[s.thCell, { flex: 2 }]}>Hekim</Text>}
@@ -462,7 +527,7 @@ export default function AdminDashboard() {
                   </TouchableOpacity>
                 );
               })}
-            </Card>
+            </View>
           </>
         )}
 
@@ -476,44 +541,105 @@ const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { padding: 24, paddingBottom: 60 },
 
-  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  dateText:   { fontSize: 14, color: '#AEAEB2', fontWeight: '500' },
-  refreshBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  /* ── Hero Banner ── */
+  heroBanner: {
+    backgroundColor: '#0F172A',
+    borderRadius: 24,
+    padding: 28,
+    marginBottom: 24,
+    overflow: 'hidden',
+    minHeight: 140,
+    // @ts-ignore
+    boxShadow: '0 8px 32px rgba(15,23,42,0.20)',
+  },
+  heroDeco1: {
+    position: 'absolute', right: -40, top: -40,
+    width: 180, height: 180, borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  heroDeco2: {
+    position: 'absolute', right: 60, bottom: -50,
+    width: 130, height: 130, borderRadius: 65,
+    backgroundColor: 'rgba(37,99,235,0.18)',
+  },
+  heroDeco3: {
+    position: 'absolute', left: -20, bottom: -30,
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  heroContent: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  heroGreet:   { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
+  heroDate:    { fontSize: 26, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.8 },
+  heroStatRow: { flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap' },
+  heroStatPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  heroStatPillAlert: { backgroundColor: 'rgba(220,38,38,0.25)' },
+  heroStatPillOk:    { backgroundColor: 'rgba(5,150,105,0.2)' },
+  heroStatText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
+
+  refreshBtn: {
+    width: 42, height: 42, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
 
   loadingBox: { alignItems: 'center', paddingVertical: 80 },
 
   alertCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, padding: 16, gap: 14, marginBottom: 20,
-    borderWidth: 1, borderColor: `${CLR.red}22`,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
     // @ts-ignore
-    boxShadow: '0 1px 3px rgba(255,59,48,0.08)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   },
-  alertIcon:  { width: 40, height: 40, borderRadius: 12, backgroundColor: CLR.redBg, alignItems: 'center', justifyContent: 'center' },
+  alertIcon:  { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FFF1F0', alignItems: 'center', justifyContent: 'center' },
   alertTitle: { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
-  alertSub:   { fontSize: 12, color: '#AEAEB2', marginTop: 2 },
+  alertSub:   { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+
+  quickActionsRow: { flexDirection: 'row', gap: 16, paddingHorizontal: 2, paddingVertical: 4 },
 
   kpiRow:    { flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginBottom: 24 },
   chartsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   chartsCol: { flexDirection: 'column' },
 
-  tableHead: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-    backgroundColor: '#FAFBFC',
+  recentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 8,
+    // @ts-ignore
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   },
-  thCell: { fontSize: 11, fontWeight: '700', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tableHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2FF',
+    backgroundColor: '#F8FAFF',
+  },
+  thCell: { fontSize: 11, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   tableRow:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
-  tableRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  tableRowHover:  { backgroundColor: '#FAFBFC' },
+  tableRowBorder: { borderBottomWidth: 1, borderBottomColor: '#EEF2FF' },
+  tableRowHover:  { backgroundColor: '#F8FAFF' },
 
   dot:          { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   orderNo:      { fontSize: 13, fontWeight: '700', color: '#1C1C1E' },
-  urgentTag:    { fontSize: 9, fontWeight: '800', color: CLR.red, backgroundColor: CLR.redBg, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, alignSelf: 'flex-start', marginTop: 2 },
+  urgentTag:    { fontSize: 9, fontWeight: '800', color: '#DC2626', backgroundColor: '#FFF1F0', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, alignSelf: 'flex-start', marginTop: 2 },
   cellText:     { fontSize: 13, color: '#6C6C70' },
-  cellDate:     { fontSize: 12, color: '#AEAEB2', fontWeight: '500' },
-  cellDateOver: { color: CLR.red, fontWeight: '700' },
-  emptyText:    { padding: 24, textAlign: 'center', color: '#AEAEB2', fontSize: 13 },
+  cellDate:     { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  cellDateOver: { color: '#DC2626', fontWeight: '700' },
+  emptyText:    { padding: 24, textAlign: 'center', color: '#94A3B8', fontSize: 13 },
 });

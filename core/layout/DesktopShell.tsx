@@ -53,9 +53,11 @@ export interface NavItem {
   href: string;
   matchPrefix?: boolean;
   badge?: boolean;
+  badgeCount?: number; // shows a numeric count badge (e.g. low-stock count)
   iconName?: string;
   iconSet?: 'ionicons' | 'mci' | 'mdi' | string;
   subtitle?: string;
+  sectionLabel?: string; // renders a section divider + label before this item
 }
 
 interface Props {
@@ -153,32 +155,36 @@ function RightPanel({ accentColor, profile, open, onToggle }: {
       {/* Content */}
       {open && (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={rp.scroll} style={{ flex: 1 }}>
-          {/* Profile */}
-          <View style={rp.profileRow}>
+
+          {/* Profile card — centered */}
+          <View style={rp.profileCard}>
             <View style={[rp.avatar, { backgroundColor: accentColor }]}>
               {profile?.avatar_url
                 ? <Image source={{ uri: profile.avatar_url }} style={rp.avatarImg} />
                 : <Text style={rp.avatarText}>{initials}</Text>}
             </View>
-            <View style={rp.profileMeta}>
-              <Text style={rp.profileName} numberOfLines={1}>{fullName}</Text>
-              <Text style={rp.roleLabel}>{roleLabel}</Text>
+            <Text style={rp.profileName} numberOfLines={1}>{fullName}</Text>
+            <View style={[rp.rolePill, { backgroundColor: accentColor + '18' }]}>
+              <Text style={[rp.roleLabel, { color: accentColor }]}>{roleLabel}</Text>
             </View>
           </View>
 
-          <View style={rp.divider} />
-
-          {/* Stats */}
-          <View style={rp.statsRow}>
+          {/* Stats — 2×2 grid */}
+          <View style={rp.statsCard}>
             {stats.map((st, i) => (
-              <View key={st.label} style={[rp.statCell, i < stats.length - 1 && rp.statCellBorder]}>
+              <View
+                key={st.label}
+                style={[
+                  rp.statItem,
+                  i % 2 === 0 && rp.statItemRight,
+                  i >= 2     && rp.statItemTop,
+                ]}
+              >
                 <Text style={[rp.statValue, st.alert && rp.statValueAlert]}>{st.value}</Text>
                 <Text style={rp.statLabel}>{st.label}</Text>
               </View>
             ))}
           </View>
-
-          <View style={rp.divider} />
 
           {/* Active orders */}
           <Text style={rp.sectionTitle}>
@@ -188,20 +194,26 @@ function RightPanel({ accentColor, profile, open, onToggle }: {
           {pending.length === 0 ? (
             <Text style={rp.emptyText}>Aktif iş bulunmuyor</Text>
           ) : (
-            pending.map((order: any, idx: number) => {
-              const { text, overdue: isOverdue } = daysUntil(order.delivery_date);
-              return (
-                <View key={order.id} style={[rp.orderRow, idx < pending.length - 1 && rp.orderRowBorder]}>
-                  <View style={[rp.statusDot, { backgroundColor: STATUS_COLOR[order.status] ?? '#CBD5E1' }]} />
-                  <View style={rp.orderInfo}>
-                    <Text style={rp.orderType} numberOfLines={1}>{order.work_type}</Text>
-                    <Text style={rp.orderNum}>{order.order_number}</Text>
+            <View style={rp.ordersCard}>
+              {pending.map((order: any, idx: number) => {
+                const { text, overdue: isOverdue } = daysUntil(order.delivery_date);
+                const dotColor = STATUS_COLOR[order.status] ?? '#CBD5E1';
+                return (
+                  <View key={order.id} style={[rp.orderRow, idx < pending.length - 1 && rp.orderRowBorder]}>
+                    <View style={[rp.statusAccent, { backgroundColor: dotColor }]} />
+                    <View style={rp.orderInfo}>
+                      <Text style={rp.orderType} numberOfLines={1}>{order.work_type}</Text>
+                      <Text style={rp.orderNum}>{order.order_number}</Text>
+                    </View>
+                    <View style={[rp.dateChip, isOverdue && rp.dateChipAlert]}>
+                      <Text style={[rp.dateText, isOverdue && rp.dateTextAlert]}>{text}</Text>
+                    </View>
                   </View>
-                  <Text style={[rp.dateText, isOverdue && rp.dateTextAlert]}>{text}</Text>
-                </View>
-              );
-            })
+                );
+              })}
+            </View>
           )}
+
         </ScrollView>
       )}
     </View>
@@ -223,7 +235,7 @@ const rp = StyleSheet.create({
     paddingTop: 20,
     gap: 10,
     borderRightWidth: 1,
-    borderRightColor: '#F1F5F9',
+    borderRightColor: '#EDEFF4',
   },
   toggleHint: {
     fontSize: 9, fontWeight: '700', color: '#AEAEB2',
@@ -233,36 +245,62 @@ const rp = StyleSheet.create({
     transform: [{ rotate: '180deg' }],
     marginTop: 4,
   },
-  scroll: { paddingTop: 20, paddingBottom: 32 },
+  scroll: { paddingTop: 14, paddingBottom: 32 },
 
-  profileRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, gap: 12, marginBottom: 18 },
-  avatar:     { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  avatarImg:  { width: 38, height: 38, borderRadius: 19 },
-  avatarText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  profileMeta: { flex: 1 },
-  profileName: { fontSize: 13, fontWeight: '700', color: '#1C1C1E' },
-  roleLabel:   { fontSize: 11, color: '#AEAEB2', marginTop: 1 },
+  /* Profile — centered card */
+  profileCard: {
+    marginHorizontal: 14, marginBottom: 12,
+    borderRadius: 16, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#F1F5F9',
+    padding: 16, alignItems: 'center', gap: 8,
+  },
+  avatar:      { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImg:   { width: 72, height: 72, borderRadius: 36 },
+  avatarText:  { color: '#fff', fontSize: 22, fontWeight: '800' },
+  profileName: { fontSize: 14, fontWeight: '700', color: '#1C1C1E', textAlign: 'center' },
+  rolePill:    { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
+  roleLabel:   { fontSize: 11, fontWeight: '600' },
 
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginHorizontal: 18, marginBottom: 18 },
-
-  statsRow: { flexDirection: 'row', paddingHorizontal: 18, marginBottom: 18 },
-  statCell: { flex: 1, alignItems: 'center' },
-  statCellBorder: { borderRightWidth: 1, borderRightColor: '#F1F5F9' },
-  statValue: { fontSize: 22, fontWeight: '800', color: '#1C1C1E', letterSpacing: -0.5 },
+  /* Stats — 2×2 white card */
+  statsCard: {
+    marginHorizontal: 14, marginBottom: 12,
+    borderRadius: 16, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#F1F5F9',
+    overflow: 'hidden',
+    flexDirection: 'row', flexWrap: 'wrap',
+  },
+  statItem:      { width: '50%', padding: 14, alignItems: 'center', gap: 3 },
+  statItemRight: { borderRightWidth: 1, borderRightColor: '#F1F5F9' },
+  statItemTop:   { borderTopWidth: 1,   borderTopColor:  '#F1F5F9' },
+  statValue:      { fontSize: 24, fontWeight: '800', color: '#1C1C1E', letterSpacing: -0.5 },
   statValueAlert: { color: '#FF3B30' },
-  statLabel: { fontSize: 9, fontWeight: '600', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 2 },
+  statLabel:      { fontSize: 9, fontWeight: '600', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 18, marginBottom: 6 },
+  /* Section title */
+  sectionTitle: {
+    fontSize: 10, fontWeight: '700', color: '#AEAEB2',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    paddingHorizontal: 14, marginBottom: 8,
+  },
 
-  orderRow:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 10, gap: 10 },
-  orderRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  statusDot: { width: 6, height: 6, borderRadius: 3, marginTop: 1 },
-  orderInfo: { flex: 1 },
-  orderType: { fontSize: 12, fontWeight: '600', color: '#1C1C1E' },
-  orderNum:  { fontSize: 10, color: '#AEAEB2', marginTop: 1 },
-  dateText:  { fontSize: 11, color: '#6C6C70', fontWeight: '500' },
-  dateTextAlert: { color: '#FF3B30', fontWeight: '700' },
-  emptyText: { fontSize: 12, color: '#AEAEB2', paddingHorizontal: 18, paddingTop: 8 },
+  /* Orders — white card */
+  ordersCard: {
+    marginHorizontal: 14,
+    borderRadius: 16, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  orderRow:       { flexDirection: 'row', alignItems: 'center', paddingRight: 12, paddingVertical: 11, gap: 10 },
+  orderRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  statusAccent:   { width: 3, height: 34, borderRadius: 2, marginLeft: 10, flexShrink: 0 },
+  orderInfo:      { flex: 1 },
+  orderType:      { fontSize: 12, fontWeight: '600', color: '#1C1C1E' },
+  orderNum:       { fontSize: 10, color: '#AEAEB2', marginTop: 1 },
+  dateChip:       { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, backgroundColor: '#F1F5F9' },
+  dateChipAlert:  { backgroundColor: '#FEF2F2' },
+  dateText:       { fontSize: 11, color: '#6C6C70', fontWeight: '600' },
+  dateTextAlert:  { color: '#FF3B30', fontWeight: '700' },
+  emptyText:      { fontSize: 12, color: '#AEAEB2', paddingHorizontal: 14, paddingTop: 8 },
 });
 
 // ─── Global Search ────────────────────────────────────────────────────────────
@@ -550,8 +588,17 @@ export function DesktopShell({ navItems, accentColor = C.primary }: Props) {
             const active = isActive(item);
             const hover  = hovered === item.href;
             return (
+              <React.Fragment key={item.href}>
+              {item.sectionLabel && (
+                <View style={s.navSectionRow}>
+                  <View style={s.navSectionLine} />
+                  {!sidebarCollapsed && (
+                    <Text style={s.navSectionLabel}>{item.sectionLabel}</Text>
+                  )}
+                  <View style={s.navSectionLine} />
+                </View>
+              )}
               <TouchableOpacity
-                key={item.href}
                 style={[
                   s.navItem,
                   sidebarCollapsed && s.navItemCollapsed,
@@ -568,10 +615,14 @@ export function DesktopShell({ navItems, accentColor = C.primary }: Props) {
                 {!sidebarCollapsed && (
                   <>
                     <Text style={[s.navLabel, active && { color: accentColor, fontWeight: '600' }]}>{item.label}</Text>
-                    {item.badge && <View style={[s.navBadgeDot, { backgroundColor: active ? accentColor : C.danger }]} />}
+                    {item.badgeCount !== undefined && item.badgeCount > 0
+                      ? <View style={s.navBadgeCount}><Text style={s.navBadgeCountText}>{item.badgeCount}</Text></View>
+                      : item.badge && <View style={[s.navBadgeDot, { backgroundColor: active ? accentColor : C.danger }]} />
+                    }
                   </>
                 )}
               </TouchableOpacity>
+              </React.Fragment>
             );
           })}
         </ScrollView>
@@ -723,6 +774,13 @@ const s = StyleSheet.create({
 
   // Nav
   navScroll: { flex: 1, paddingHorizontal: 8 },
+  navSectionRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 8, paddingTop: 14, paddingBottom: 6, gap: 6,
+  },
+  navSectionLine:  { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
+  navSectionLabel: { fontSize: 9, fontWeight: '700', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 1.2, flexShrink: 0 },
+
   navDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#E5E5EA',
@@ -755,7 +813,9 @@ const s = StyleSheet.create({
   navItemLogout:  { backgroundColor: '#FFF1F0' },
   navLabel:       { flex: 1, fontSize: 13, fontWeight: '500', color: '#3C3C43', letterSpacing: -0.1 },
   navLabelActive: { fontWeight: '600' },
-  navBadgeDot:    { width: 7, height: 7, borderRadius: 4 },
+  navBadgeDot:       { width: 7, height: 7, borderRadius: 4 },
+  navBadgeCount:     { minWidth: 18, height: 18, borderRadius: 9, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  navBadgeCountText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
 
   // Tooltip — appears to the right when collapsed
   tooltip: {

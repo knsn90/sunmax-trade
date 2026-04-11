@@ -1695,8 +1695,6 @@ const cs = StyleSheet.create({
   recDot: {
     width: 10, height: 10, borderRadius: 5,
     backgroundColor: '#EF4444',
-    // @ts-ignore
-    animation: 'pulse 1s infinite',
   },
   recTime: { fontSize: 14, fontWeight: '700', color: '#EF4444', minWidth: 40 },
   recLabel:{ fontSize: 12, color: '#64748B', flex: 1 },

@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ClinicIcon } from '../../core/ui/ClinicIcon';
 import { supabase } from '../../lib/supabase';
@@ -93,24 +92,7 @@ export function PendingApprovalsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerIcon}>
-            <MaterialCommunityIcons name="account-clock-outline" size={20} color="#FFFFFF" />
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>Onay Bekleyen Hekimler</Text>
-            <Text style={styles.headerSub}>
-              {doctors.length > 0
-                ? `${doctors.length} hekim onay bekliyor`
-                : 'Bekleyen kayıt yok'}
-            </Text>
-          </View>
-        </View>
-      </View>
-
+    <View style={styles.safe}>
       {doctors.length === 0 ? (
         <View style={styles.emptyWrap}>
           <MaterialCommunityIcons name="check-circle-outline" size={56} color={C.success} />
@@ -200,32 +182,13 @@ export function PendingApprovalsScreen() {
           )}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: '#D97706',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: { fontSize: 16, fontWeight: '700', fontFamily: F.bold, color: '#0F172A' },
-  headerSub: { fontSize: 12, fontFamily: F.regular, color: C.textMuted, marginTop: 1 },
 
   list: { padding: 16, gap: 12 },
 
@@ -238,12 +201,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
-    shadowColor: '#D97706',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: '#F1F5F9',
   },
   cardTop: { flexDirection: 'row', gap: 12, marginBottom: 12 },
 
