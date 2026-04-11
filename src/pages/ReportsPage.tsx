@@ -383,46 +383,46 @@ export function PnlReportTab() {
     }
 
     const html = `
-      <div style="border-bottom:3px solid #dc2626;padding-bottom:12px;margin-bottom:16px">
-        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#dc2626;margin-bottom:4px">Kar / Zarar Raporu</div>
+      <div style="border-bottom:2px solid #e5e7eb;padding-bottom:12px;margin-bottom:16px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Kar / Zarar Raporu</div>
         <div style="font-size:18px;font-weight:800;color:#111">${selectedFile.file_no}</div>
-        <div style="font-size:11px;color:#666;margin-top:2px">${selectedFile.customer?.name ?? ''} · ${selectedFile.product?.name ?? ''} · ${fN(qty, 3)} MT</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">${selectedFile.customer?.name ?? ''} · ${selectedFile.product?.name ?? ''} · ${fN(qty, 3)} MT</div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
         ${[
-          { l:'Gelir', v:fUSD(pnl.revenue), c:'#1e40af', bg:'#eff6ff' },
-          { l:'Maliyet', v:fUSD(pnl.costs), c:'#374151', bg:'#f9fafb' },
-          { l:'Net Kâr', v:fUSD(pnl.profit), c:col(pnl.profit), bg: pnl.profit>=0?'#f0fdf4':'#fef2f2' },
-          { l:'Kâr Marjı', v:'%'+pnl.margin.toFixed(2), c:col(pnl.profit), bg: pnl.profit>=0?'#f0fdf4':'#fef2f2' },
+          { l:'Gelir', v:fUSD(pnl.revenue), c:'#111827' },
+          { l:'Maliyet', v:fUSD(pnl.costs), c:'#374151' },
+          { l:'Net Kâr', v:fUSD(pnl.profit), c:col(pnl.profit) },
+          { l:'Kâr Marjı', v:'%'+pnl.margin.toFixed(2), c:col(pnl.profit) },
         ].map(card => `
-          <div style="background:${card.bg};border-radius:10px;padding:10px 12px">
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px">
             <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;margin-bottom:5px">${card.l}</div>
-            <div style="font-size:15px;font-weight:900;color:${card.c}">${card.v}</div>
+            <div style="font-size:14px;font-weight:900;color:${card.c}">${card.v}</div>
           </div>`).join('')}
       </div>
 
-      <div style="background:#eff6ff;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:11px;color:#1e40af;font-weight:600">Gelir · ${fN(qty,3)} MT × ${selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
-        <span style="font-size:13px;font-weight:800;color:#1e40af">${fUSD(pnl.revenue)}</span>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:#6b7280">Gelir · ${fN(qty,3)} MT × ${selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
+        <span style="font-size:13px;font-weight:700;color:#111827">${fUSD(pnl.revenue)}</span>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div>
-          <div style="background:#fffbeb;border-radius:8px 8px 0 0;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #fde68a">
-            <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#92400e">Satın Alma Faturaları (${purchaseRows.length})</span>
-            <span style="font-size:11px;font-weight:700;color:#92400e">(${fUSD(purchaseTotal)})</span>
+          <div style="background:#f3f4f6;border-radius:8px 8px 0 0;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;border:1px solid #e5e7eb;border-bottom:0">
+            <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#374151">Satın Alma Faturaları (${purchaseRows.length})</span>
+            <span style="font-size:11px;font-weight:700;color:#374151">(${fUSD(purchaseTotal)})</span>
           </div>
-          <table style="width:100%;border-collapse:collapse;border:1px solid #fde68a;border-top:0;border-radius:0 0 8px 8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 8px 8px;overflow:hidden">
             <tbody>${makeGroupRows(purchaseRows)}</tbody>
           </table>
         </div>
         <div>
-          <div style="background:#f5f3ff;border-radius:8px 8px 0 0;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd6fe">
-            <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#5b21b6">Hizmet Faturaları (${svcRows.length})</span>
-            <span style="font-size:11px;font-weight:700;color:#5b21b6">(${fUSD(svcTotal)})</span>
+          <div style="background:#f3f4f6;border-radius:8px 8px 0 0;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;border:1px solid #e5e7eb;border-bottom:0">
+            <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#374151">Hizmet Faturaları (${svcRows.length})</span>
+            <span style="font-size:11px;font-weight:700;color:#374151">(${fUSD(svcTotal)})</span>
           </div>
-          <table style="width:100%;border-collapse:collapse;border:1px solid #ddd6fe;border-top:0;border-radius:0 0 8px 8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 8px 8px;overflow:hidden">
             <tbody>${makeGroupRows(svcRows)}</tbody>
           </table>
         </div>
@@ -434,9 +434,9 @@ export function PnlReportTab() {
         <span style="font-size:11px;font-weight:600;color:#374151">(${fUSD(pnl.freight)})</span>
       </div>` : ''}
 
-      <div style="border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:${pnl.profit>=0?'#f0fdf4':'#fef2f2'}">
+      <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:#f9fafb">
         <div>
-          <div style="font-size:11px;font-weight:700;color:${col(pnl.profit)}">Net Kâr</div>
+          <div style="font-size:11px;font-weight:700;color:#374151">Net Kâr</div>
           <div style="font-size:9px;color:#9ca3af;margin-top:2px">Toplam Maliyet: ${fUSD(pnl.costs)}</div>
         </div>
         <div style="font-size:20px;font-weight:900;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</div>
@@ -625,35 +625,33 @@ export function PnlReportTab() {
       {/* ══ TEK DOSYA DETAYI ════════════════════════════════════════════ */}
       {viewMode === 'tek' && (
         <>
-          {/* Dosya seçici */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
-            <div className="flex gap-3 items-center flex-wrap">
-              <NativeSelect
-                value={selectedFileId}
-                onChange={(e) => setSelectedFileId(e.target.value)}
-                className="flex-1 md:min-w-[320px] md:flex-none"
+          {/* Toolbar: dosya seçici + yazdır */}
+          <div className="flex gap-2 items-center">
+            <NativeSelect
+              value={selectedFileId}
+              onChange={(e) => setSelectedFileId(e.target.value)}
+              className="flex-1 h-9 text-[12px]"
+            >
+              <option value="">{t('pnl.select_file')}</option>
+              {files.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.file_no} — {f.customer?.name ?? ''} ({f.status})
+                </option>
+              ))}
+            </NativeSelect>
+            {selectedFile && pnl && (
+              <button
+                onClick={printPnl}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 shadow-sm transition-colors shrink-0"
               >
-                <option value="">{t('pnl.select_file')}</option>
-                {files.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.file_no} — {f.customer?.name ?? ''} ({f.status})
-                  </option>
-                ))}
-              </NativeSelect>
-              {selectedFile && pnl && (
-                <button
-                  onClick={printPnl}
-                  className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 shadow-sm transition-colors"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  {t('pnl.print_pdf')}
-                </button>
-              )}
-            </div>
+                <Printer className="h-3.5 w-3.5" />
+                PDF
+              </button>
+            )}
           </div>
 
           {selectedFile && !selectedFile.selling_price && (
-            <div className="text-center py-8 text-gray-400 text-sm">{t('pnl.no_selling_price')}</div>
+            <div className="text-center py-6 text-gray-400 text-sm">{t('pnl.no_selling_price')}</div>
           )}
 
           {selectedFile && pnl && (() => {
@@ -665,62 +663,47 @@ export function PnlReportTab() {
 
             return (
               <>
-                {/* KPI kartları */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* KPI satırı — kompakt */}
+                <div className="grid grid-cols-4 gap-2">
                   {[
-                    { label: 'Gelir',     value: fUSD(pnl.revenue), color: '#1e40af', bg: 'bg-blue-50' },
-                    { label: 'Maliyet',   value: fUSD(pnl.costs),   color: '#374151', bg: 'bg-gray-50' },
-                    { label: 'Net Kâr',   value: fUSD(pnl.profit),  color: col(pnl.profit), bg: pnl.profit >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
-                    { label: 'Kâr Marjı', value: '%' + pnl.margin.toFixed(2), color: col(pnl.profit), bg: pnl.profit >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
+                    { label: 'Gelir',     value: fUSD(pnl.revenue), profit: false },
+                    { label: 'Maliyet',   value: fUSD(pnl.costs),   profit: false },
+                    { label: 'Net Kâr',   value: fUSD(pnl.profit),  profit: true },
+                    { label: 'Kâr Marjı', value: '%' + pnl.margin.toFixed(2), profit: true },
                   ].map((card) => (
-                    <div key={card.label} className={`${card.bg} rounded-2xl border border-gray-100 px-4 py-4`}>
-                      <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{card.label}</div>
-                      <div className="text-[18px] md:text-[22px] font-black leading-tight" style={{ color: card.color }}>{card.value}</div>
+                    <div key={card.label} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{card.label}</div>
+                      <div className="text-[14px] font-black leading-tight tabular-nums text-gray-900" style={card.profit ? { color: col(pnl.profit) } : undefined}>{card.value}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* Detay kart */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                  {/* Kart başlığı */}
-                  <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500">K/Z Detayı — {selectedFile.file_no}</div>
-                      <div className="text-[12px] text-gray-400 mt-0.5">{selectedFile.customer?.name ?? ''} · {fN(qty, 3)} MT</div>
-                    </div>
+                {/* Gelir özeti */}
+                <div className="bg-white border border-gray-100 rounded-xl px-4 py-2.5 flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Gelir</span>
+                    <span className="text-[11px] text-gray-400">{selectedFile.file_no} · {selectedFile.customer?.name ?? ''} · {fN(qty, 3)} MT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
                   </div>
-
-                  <div className="divide-y divide-gray-50">
-                    {/* GELİR */}
-                    <div className="px-6 py-3 flex items-center justify-between bg-blue-50/40">
-                      <div>
-                        <div className="text-[12px] font-bold text-blue-800">Gelir</div>
-                        <div className="text-[11px] text-gray-400 mt-0.5">{fN(qty, 3)} MT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</div>
-                      </div>
-                      <div className="text-[15px] font-black text-blue-700 tabular-nums">{fUSD(pnl.revenue)}</div>
-                    </div>
-
-                  </div>
+                  <span className="text-[13px] font-bold text-gray-900 tabular-nums">{fUSD(pnl.revenue)}</span>
                 </div>
 
                 {/* İki sütun: Satın Alma | Hizmet */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* SATIN ALMA FATURALARI */}
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 flex items-center justify-between bg-amber-50 border-b border-amber-100">
+                    <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Satın Alma Faturaları</span>
-                        <span className="text-[10px] text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full font-bold">{purchaseRows.length}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Satın Alma Faturaları</span>
+                        <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{purchaseRows.length}</span>
                       </div>
-                      <span className="text-[12px] font-bold text-amber-800 tabular-nums">({fUSD(purchaseTotal)})</span>
+                      <span className="text-[12px] font-semibold text-gray-600 tabular-nums">({fUSD(purchaseTotal)})</span>
                     </div>
                     {purchaseRows.length === 0 ? (
                       <div className="px-4 py-6 text-center text-[11px] text-gray-400">Kayıt yok</div>
                     ) : (
                       <div className="divide-y divide-gray-50">
                         {purchaseRows.map((txn) => (
-                          <div key={txn.id} className="px-4 py-2.5 flex items-start justify-between gap-3 hover:bg-amber-50/30 transition-colors">
+                          <div key={txn.id} className="px-4 py-2.5 flex items-start justify-between gap-3 hover:bg-gray-50/60 transition-colors">
                             <div className="min-w-0 flex-1">
                               <div className="text-[11px] text-gray-700 leading-tight">{txn.description || '—'}</div>
                               {txn.supplier?.name && (
@@ -735,9 +718,9 @@ export function PnlReportTab() {
                             </div>
                           </div>
                         ))}
-                        <div className="px-4 py-2.5 flex items-center justify-between bg-amber-50/60">
-                          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">Ara Toplam</span>
-                          <span className="text-[12px] font-black text-amber-700 tabular-nums">({fUSD(purchaseTotal)})</span>
+                        <div className="px-4 py-2.5 flex items-center justify-between bg-gray-50">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Ara Toplam</span>
+                          <span className="text-[12px] font-bold text-gray-700 tabular-nums">({fUSD(purchaseTotal)})</span>
                         </div>
                       </div>
                     )}
@@ -745,20 +728,19 @@ export function PnlReportTab() {
 
                   {/* HİZMET FATURALARI */}
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 flex items-center justify-between bg-violet-50 border-b border-violet-100">
+                    <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-violet-800">Hizmet Faturaları</span>
-                        <span className="text-[10px] text-violet-600 bg-violet-100 border border-violet-200 px-1.5 py-0.5 rounded-full font-bold">{svcRows.length}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Hizmet Faturaları</span>
+                        <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{svcRows.length}</span>
                       </div>
-                      <span className="text-[12px] font-bold text-violet-800 tabular-nums">({fUSD(svcTotal)})</span>
+                      <span className="text-[12px] font-semibold text-gray-600 tabular-nums">({fUSD(svcTotal)})</span>
                     </div>
                     {svcRows.length === 0 ? (
                       <div className="px-4 py-6 text-center text-[11px] text-gray-400">Kayıt yok</div>
                     ) : (
                       <div className="divide-y divide-gray-50">
                         {svcRows.map((txn) => (
-                          <div key={txn.id} className="px-4 py-2.5 flex items-start justify-between gap-3 hover:bg-violet-50/30 transition-colors">
+                          <div key={txn.id} className="px-4 py-2.5 flex items-start justify-between gap-3 hover:bg-gray-50/60 transition-colors">
                             <div className="min-w-0 flex-1">
                               <div className="text-[11px] text-gray-700 leading-tight">{txn.description || '—'}</div>
                               {txn.service_provider?.name && (
@@ -773,9 +755,9 @@ export function PnlReportTab() {
                             </div>
                           </div>
                         ))}
-                        <div className="px-4 py-2.5 flex items-center justify-between bg-violet-50/60">
-                          <span className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">Ara Toplam</span>
-                          <span className="text-[12px] font-black text-violet-700 tabular-nums">({fUSD(svcTotal)})</span>
+                        <div className="px-4 py-2.5 flex items-center justify-between bg-gray-50">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Ara Toplam</span>
+                          <span className="text-[12px] font-bold text-gray-700 tabular-nums">({fUSD(svcTotal)})</span>
                         </div>
                       </div>
                     )}
@@ -790,12 +772,12 @@ export function PnlReportTab() {
                       <span className="text-[12px] font-semibold text-gray-600 tabular-nums">({fUSD(pnl.freight)})</span>
                     </div>
                   )}
-                  <div className="px-5 py-4 flex items-center justify-between" style={{ background: pnl.profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
+                  <div className="px-5 py-4 flex items-center justify-between bg-gray-50/60">
                     <div>
-                      <div className="text-[13px] font-bold" style={{ color: col(pnl.profit) }}>Net Kâr</div>
+                      <div className="text-[13px] font-bold text-gray-700">Net Kâr</div>
                       <div className="text-[10px] text-gray-400 mt-0.5">Toplam Maliyet: {fUSD(pnl.costs)}</div>
                     </div>
-                    <div className="text-[24px] font-black tabular-nums" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</div>
+                    <div className="text-[22px] font-black tabular-nums" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</div>
                   </div>
                 </div>
               </>
