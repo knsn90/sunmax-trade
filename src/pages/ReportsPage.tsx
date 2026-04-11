@@ -283,7 +283,7 @@ export function PnlReportTab() {
   const [selectedFileId, setSelectedFileId] = useState('');
 
   const { data: txns = [] } = useTransactions(
-    selectedFileId ? { tradeFileId: selectedFileId } : undefined,
+    selectedFileId ? { tradeFileId: selectedFileId, approvedOnly: true } : { approvedOnly: true },
   );
 
   const selectedFile = useMemo(
@@ -778,7 +778,7 @@ export function AccountStatementTab() {
   const [txnTypeFilter, setTxnTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const { data: rawTxns = [], isLoading } = useTransactionsByEntityEnhanced(entityType, entityId || undefined);
+  const { data: rawTxns = [], isLoading } = useTransactionsByEntityEnhanced(entityType, entityId || undefined, true);
 
   const entityOptions = entityType === 'customer'
     ? customers
@@ -1420,11 +1420,13 @@ function AnalyticsTab() {
   const [period, setPeriod] = useState<'6m' | '12m' | 'all'>('12m');
 
   const filteredFiles = useMemo(() => {
-    if (period === 'all') return files;
+    // Sadece tamamlanmış dosyalar K/Z raporuna işlenir
+    const completed = files.filter(f => f.status === 'completed');
+    if (period === 'all') return completed;
     const months = period === '6m' ? 6 : 12;
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - months);
-    return files.filter(f => new Date(f.created_at ?? '') >= cutoff);
+    return completed.filter(f => new Date(f.created_at ?? '') >= cutoff);
   }, [files, period]);
 
   // Monthly trend data
@@ -1937,7 +1939,7 @@ export function CustomerReportTab() {
   );
 
   const { data: rawTxns = [], isLoading: txnLoading } = useTransactionsByEntityEnhanced(
-    'customer', customerId || undefined,
+    'customer', customerId || undefined, true,
   );
 
   // Date-filtered transactions

@@ -39,10 +39,11 @@ export function useTransactionsByEntity(
 export function useTransactionsByEntityEnhanced(
   entityType: 'customer' | 'supplier' | 'service_provider',
   entityId: string | undefined,
+  approvedOnly = false,
 ) {
   return useQuery({
-    queryKey: ['transactions', 'entity-enhanced', entityType, entityId],
-    queryFn: () => transactionService.listByEntityEnhanced(entityType, entityId!),
+    queryKey: ['transactions', 'entity-enhanced', entityType, entityId, approvedOnly],
+    queryFn: () => transactionService.listByEntityEnhanced(entityType, entityId!, approvedOnly),
     enabled: !!entityId,
   });
 }

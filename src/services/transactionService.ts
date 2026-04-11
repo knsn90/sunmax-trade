@@ -19,6 +19,8 @@ export interface TransactionFilters {
   tradeFileId?: string;
   status?: PaymentStatus;
   tab?: 'all' | 'buy' | 'svc' | 'cash' | 'sale';
+  /** Sadece onaylanmış kayıtları getir (raporlar için) */
+  approvedOnly?: boolean;
 }
 
 export const PAGE_SIZE = 30;
@@ -60,6 +62,10 @@ export const transactionService = {
         const types = tabMap[filters.tab];
         if (types) query = query.in('transaction_type', types);
       }
+    }
+
+    if (filters?.approvedOnly) {
+      query = query.eq('doc_status', 'approved');
     }
 
     const { data, error } = await query;
@@ -114,6 +120,7 @@ export const transactionService = {
   async listByEntity(
     entityType: 'customer' | 'supplier' | 'service_provider',
     entityId: string,
+    approvedOnly = false,
   ): Promise<Transaction[]> {
     const column = entityType === 'customer'
       ? 'customer_id'
@@ -121,12 +128,15 @@ export const transactionService = {
         ? 'supplier_id'
         : 'service_provider_id';
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('transactions')
       .select(TXN_SELECT)
       .eq(column, entityId)
       .order('transaction_date', { ascending: true });
 
+    if (approvedOnly) query = query.eq('doc_status', 'approved');
+
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []) as Transaction[];
   },
@@ -134,14 +144,17 @@ export const transactionService = {
   async listByEntityEnhanced(
     entityType: 'customer' | 'supplier' | 'service_provider',
     entityId: string,
+    approvedOnly = false,
   ): Promise<Transaction[]> {
     // For service providers: direct query only
     if (entityType === 'service_provider') {
-      const { data, error } = await supabase
+      let query = supabase
         .from('transactions')
         .select(TXN_SELECT)
         .eq('service_provider_id', entityId)
         .order('transaction_date', { ascending: true });
+      if (approvedOnly) query = query.eq('doc_status', 'approved');
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
       return (data ?? []) as Transaction[];
     }
@@ -176,6 +189,7 @@ export const transactionService = {
     } else {
       query = query.eq(txnColumn, entityId);
     }
+    if (approvedOnly) query = query.eq('doc_status', 'approved');
     const { data: mainData, error } = await query.order('transaction_date', { ascending: true });
     if (error) throw new Error(error.message);
 
@@ -184,12 +198,14 @@ export const transactionService = {
     // Uses ilike for case-insensitive matching. Only requires customer_id IS NULL.
     let nameData: typeof mainData = [];
     if (entityName) {
-      const { data: nd } = await supabase
+      let nameQuery = supabase
         .from('transactions')
         .select(TXN_SELECT)
         .ilike('party_name', entityName)
         .is('customer_id', null)
         .order('transaction_date', { ascending: true });
+      if (approvedOnly) nameQuery = nameQuery.eq('doc_status', 'approved');
+      const { data: nd } = await nameQuery;
       nameData = (nd ?? []) as typeof mainData;
     }
 

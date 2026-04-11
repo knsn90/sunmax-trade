@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -59,9 +59,10 @@ function KpiCard({ label, value, icon, color, sub }: {
 }
 
 // ─── Mobile transaction card ───────────────────────────────────────────────────
-function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
+function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint, selected, onSelect }: {
   t: Transaction; writable: boolean; admin: boolean;
   settings: any; onEdit: () => void; onDelete: () => void; onPrint: () => void;
+  selected?: boolean; onSelect?: () => void;
 }) {
   const { t: tc } = useTranslation('common');
   const typeColor = TYPE_COLORS[t.transaction_type] ?? '#6b7280';
@@ -69,7 +70,17 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint }: {
   const isDraft = (t.doc_status ?? 'draft') !== 'approved';
 
   return (
-    <div className="px-4 py-3 flex items-center gap-3">
+    <div className={`px-4 py-3 flex items-center gap-3 ${selected ? 'bg-blue-50/60' : ''}`}>
+      {/* Checkbox */}
+      {onSelect && (
+        <input
+          type="checkbox"
+          checked={!!selected}
+          onChange={onSelect}
+          onClick={e => e.stopPropagation()}
+          className="w-4 h-4 rounded accent-red-600 shrink-0 cursor-pointer"
+        />
+      )}
       {/* Type dot */}
       <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: typeColor + '18' }}>
         <DollarSign className="h-4 w-4" style={{ color: typeColor }} />
@@ -202,6 +213,14 @@ export function AccountingPage() {
   const [editingPurchaseInv, setEditingPurchaseInv] = useState<Transaction | null>(null);
   const [svcInvModalOpen, setSvcInvModalOpen] = useState(false);
   const [editingSvcInv, setEditingSvcInv] = useState<Transaction | null>(null);
+
+  // ── Bulk selection ─────────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteInput, setBulkDeleteInput] = useState('');
+
+  // Reset selection when tab changes
+  useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
 
   const tabDefaultType: Record<AccTab, string | undefined> = {
     all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', ayarlar: undefined,
@@ -342,6 +361,34 @@ export function AccountingPage() {
     if (window.confirm(t('confirm.deleteTransaction'))) deleteTxn.mutate(id);
   }
 
+  function toggleSelectAll(txns: typeof filteredTxns) {
+    const allSel = txns.length > 0 && txns.every(tx => selectedIds.has(tx.id));
+    if (allSel) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(txns.map(tx => tx.id)));
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function executeBulkDelete() {
+    if (bulkDeleteInput.trim().toUpperCase() !== 'SIL') return;
+    const ids = Array.from(selectedIds);
+    setBulkDeleteOpen(false);
+    setBulkDeleteInput('');
+    setSelectedIds(new Set());
+    for (const id of ids) {
+      await deleteTxn.mutateAsync(id);
+    }
+  }
+
   const filteredTxns = useMemo(() => {
     if (!search.trim()) return txns;
     const q = search.toLowerCase();
@@ -361,6 +408,9 @@ export function AccountingPage() {
       i.customer?.name?.toLowerCase().includes(q)
     );
   }, [saleInvoices, search]);
+
+  const allSelected = filteredTxns.length > 0 && filteredTxns.every(tx => selectedIds.has(tx.id));
+  const someSelected = selectedIds.size > 0;
 
   function handleTxnPrint(t: Transaction) {
     if (!settings) return;
@@ -743,6 +793,8 @@ export function AccountingPage() {
                   onEdit={() => openEdit(t)}
                   onDelete={() => handleDelete(t.id)}
                   onPrint={() => handleTxnPrint(t)}
+                  selected={selectedIds.has(t.id)}
+                  onSelect={admin && (t.doc_status ?? 'draft') !== 'approved' ? () => toggleSelect(t.id) : undefined}
                 />
               ))}
             </div>
@@ -760,6 +812,7 @@ export function AccountingPage() {
             <div className="hidden md:block bg-white rounded-2xl shadow-sm">
               <table className="w-full table-fixed">
                 <colgroup>
+                  <col className="w-[36px]" />
                   <col className="w-[88px]" />
                   <col className="w-[15%]" />
                   <col className="w-[18%]" />
@@ -771,6 +824,16 @@ export function AccountingPage() {
                 </colgroup>
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/60">
+                    <th className="px-2 py-2.5 text-center">
+                      {admin && (
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={() => toggleSelectAll(filteredTxns)}
+                          className="w-4 h-4 rounded accent-red-600 cursor-pointer"
+                        />
+                      )}
+                    </th>
                     <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Tarih</th>
                     <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">ID / Dosya</th>
                     <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Firma</th>
@@ -783,10 +846,11 @@ export function AccountingPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filteredTxns.length === 0 ? (
-                    <tr><td colSpan={8} className="py-14 text-center text-[13px] text-gray-400">{t('empty.noTransactions')}</td></tr>
+                    <tr><td colSpan={9} className="py-14 text-center text-[13px] text-gray-400">{t('empty.noTransactions')}</td></tr>
                   ) : filteredTxns.map(txn => {
                     const partyName = txn.customer?.name ?? txn.supplier?.name ?? txn.service_provider?.name ?? txn.party_name ?? '—';
                     const isDraft   = (txn.doc_status ?? 'draft') !== 'approved';
+                    const isChecked = selectedIds.has(txn.id);
                     // BORÇ (debit): alacaklar ve ödenen borçlar
                     //   sale_inv              → müşteri bize borçlu
                     //   payment               → satıcıya ödeme yaptık
@@ -799,7 +863,18 @@ export function AccountingPage() {
                       || (txn.transaction_type === 'advance' && txn.party_type === 'customer');
                     const typeColor = TYPE_COLORS[txn.transaction_type] ?? '#6b7280';
                     return (
-                      <tr key={txn.id} className={`hover:bg-blue-50/20 transition-colors ${isDraft ? 'bg-amber-50/20' : ''}`}>
+                      <tr key={txn.id} className={`hover:bg-blue-50/20 transition-colors ${isChecked ? 'bg-blue-50/40' : isDraft ? 'bg-amber-50/20' : ''}`}>
+                        {/* Checkbox */}
+                        <td className="px-2 py-3 text-center">
+                          {admin && isDraft && (
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSelect(txn.id)}
+                              className="w-4 h-4 rounded accent-red-600 cursor-pointer"
+                            />
+                          )}
+                        </td>
                         {/* Date */}
                         <td className="px-3 py-3 text-[11px] text-gray-500">{fDate(txn.transaction_date)}</td>
                         {/* ID */}
@@ -910,6 +985,72 @@ export function AccountingPage() {
         )}
 
       </div>
+
+      {/* ── Bulk action bar ───────────────────────────────────────────────── */}
+      {someSelected && admin && (
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="flex items-center gap-3 bg-gray-900 text-white px-4 py-2.5 rounded-2xl shadow-xl">
+            <span className="text-[13px] font-semibold">{selectedIds.size} kayıt seçildi</span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-[11px] text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-gray-700"
+            >
+              İptal
+            </button>
+            <button
+              onClick={() => { setBulkDeleteInput(''); setBulkDeleteOpen(true); }}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-[12px] font-semibold transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Toplu Sil
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk delete password dialog ───────────────────────────────────── */}
+      {bulkDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <div className="text-[14px] font-bold text-gray-900">Toplu Silme Onayı</div>
+                <div className="text-[12px] text-gray-500">{selectedIds.size} kayıt kalıcı olarak silinecek</div>
+              </div>
+            </div>
+            <p className="text-[12px] text-gray-600 mb-3">
+              Onaylamak için aşağıya <span className="font-bold text-red-600">SIL</span> yazın:
+            </p>
+            <input
+              type="text"
+              value={bulkDeleteInput}
+              onChange={e => setBulkDeleteInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') executeBulkDelete(); if (e.key === 'Escape') setBulkDeleteOpen(false); }}
+              placeholder="SIL"
+              autoFocus
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-red-400 mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setBulkDeleteOpen(false); setBulkDeleteInput(''); }}
+                className="flex-1 h-9 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={executeBulkDelete}
+                disabled={bulkDeleteInput.trim().toUpperCase() !== 'SIL'}
+                className="flex-1 h-9 rounded-xl bg-red-600 text-white text-[13px] font-semibold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <TransactionModal
         open={txnModalOpen}
