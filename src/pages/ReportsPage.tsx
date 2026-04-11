@@ -367,26 +367,81 @@ export function PnlReportTab() {
 
   function printPnl() {
     if (!selectedFile || !pnl) return;
-    const rows = costRows.map((txn) =>
-      `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:4px 8px;color:#555;padding-left:20px">— ${txn.description}</td><td style="padding:4px 8px;text-align:right">(${fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td></tr>`
-    ).join('');
-    const freightRow = pnl.freight > 0
-      ? `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:4px 8px;color:#555;padding-left:20px">— Navlun / Freight</td><td style="padding:4px 8px;text-align:right">(${fUSD(pnl.freight)})</td></tr>`
-      : '';
+    const qty = selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0;
+    const purchaseRows = costRows.filter(t => t.transaction_type === 'purchase_inv');
+    const svcRows      = costRows.filter(t => t.transaction_type === 'svc_inv');
+    const purchaseTotal = purchaseRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+    const svcTotal      = svcRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+
+    function makeGroupRows(rows: typeof costRows) {
+      if (!rows.length) return '<tr><td colspan="2" style="padding:6px 8px;color:#aaa;font-style:italic">Kayıt yok</td></tr>';
+      return rows.map(txn => `
+        <tr style="border-bottom:1px solid #f3f4f6">
+          <td style="padding:5px 8px;color:#555;font-size:10px">${txn.description || '—'}</td>
+          <td style="padding:5px 8px;text-align:right;color:#374151;font-size:10px;white-space:nowrap">(${fUSD(txn.amount_usd ?? txn.amount ?? 0)})</td>
+        </tr>`).join('');
+    }
+
     const html = `
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:20px;font-weight:300;color:#374151">${t('tabs.pnl')}</div>
-        <div style="font-size:12px;color:#555;margin-top:4px">${selectedFile.file_no} — ${selectedFile.customer?.name ?? ''}</div>
+      <div style="border-bottom:3px solid #dc2626;padding-bottom:12px;margin-bottom:16px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#dc2626;margin-bottom:4px">Kar / Zarar Raporu</div>
+        <div style="font-size:18px;font-weight:800;color:#111">${selectedFile.file_no}</div>
+        <div style="font-size:11px;color:#666;margin-top:2px">${selectedFile.customer?.name ?? ''} · ${selectedFile.product?.name ?? ''} · ${fN(qty, 3)} MT</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;text-align:center">
-        ${[{l:'Hasılat',v:fUSD(pnl.revenue),c:'#1e40af'},{l:'Toplam Maliyet',v:fUSD(pnl.costs),c:'#374151'},{l:'Net Kar',v:fUSD(pnl.profit),c:col(pnl.profit)},{l:'Kar Marjı',v:pnl.margin.toFixed(2)+'%',c:col(pnl.profit)}]
-          .map(card=>`<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px"><div style="font-size:9px;color:#666;text-transform:uppercase;margin-bottom:4px">${card.l}</div><div style="font-size:16px;font-weight:700;color:${card.c}">${card.v}</div></div>`).join('')}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        ${[
+          { l:'Gelir', v:fUSD(pnl.revenue), c:'#1e40af', bg:'#eff6ff' },
+          { l:'Maliyet', v:fUSD(pnl.costs), c:'#374151', bg:'#f9fafb' },
+          { l:'Net Kâr', v:fUSD(pnl.profit), c:col(pnl.profit), bg: pnl.profit>=0?'#f0fdf4':'#fef2f2' },
+          { l:'Kâr Marjı', v:'%'+pnl.margin.toFixed(2), c:col(pnl.profit), bg: pnl.profit>=0?'#f0fdf4':'#fef2f2' },
+        ].map(card => `
+          <div style="background:${card.bg};border-radius:10px;padding:10px 12px">
+            <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;margin-bottom:5px">${card.l}</div>
+            <div style="font-size:15px;font-weight:900;color:${card.c}">${card.v}</div>
+          </div>`).join('')}
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px;color:#555">Hasılat (${fN(selectedFile.delivered_admt??selectedFile.tonnage_mt??0,3)} MT × ${selectedFile.selling_price?fCurrency(selectedFile.selling_price):'—'})</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e40af">${fUSD(pnl.revenue)}</td></tr>
-        ${rows}${freightRow}
-        <tr style="border-top:2px solid #374151"><td style="padding:8px;font-weight:700;font-size:13px">Net Kar</td><td style="padding:8px;text-align:right;font-weight:800;font-size:13px;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</td></tr>
-      </table>`;
+
+      <div style="background:#eff6ff;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:#1e40af;font-weight:600">Gelir · ${fN(qty,3)} MT × ${selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
+        <span style="font-size:13px;font-weight:800;color:#1e40af">${fUSD(pnl.revenue)}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <div style="background:#fffbeb;border-radius:8px 8px 0 0;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #fde68a">
+            <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#92400e">Satın Alma Faturaları (${purchaseRows.length})</span>
+            <span style="font-size:11px;font-weight:700;color:#92400e">(${fUSD(purchaseTotal)})</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #fde68a;border-top:0;border-radius:0 0 8px 8px;overflow:hidden">
+            <tbody>${makeGroupRows(purchaseRows)}</tbody>
+          </table>
+        </div>
+        <div>
+          <div style="background:#f5f3ff;border-radius:8px 8px 0 0;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd6fe">
+            <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#5b21b6">Hizmet Faturaları (${svcRows.length})</span>
+            <span style="font-size:11px;font-weight:700;color:#5b21b6">(${fUSD(svcTotal)})</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #ddd6fe;border-top:0;border-radius:0 0 8px 8px;overflow:hidden">
+            <tbody>${makeGroupRows(svcRows)}</tbody>
+          </table>
+        </div>
+      </div>
+
+      ${pnl.freight > 0 ? `
+      <div style="border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;margin-bottom:14px;display:flex;justify-content:space-between">
+        <span style="font-size:11px;color:#6b7280">Navlun / Freight</span>
+        <span style="font-size:11px;font-weight:600;color:#374151">(${fUSD(pnl.freight)})</span>
+      </div>` : ''}
+
+      <div style="border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:${pnl.profit>=0?'#f0fdf4':'#fef2f2'}">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:${col(pnl.profit)}">Net Kâr</div>
+          <div style="font-size:9px;color:#9ca3af;margin-top:2px">Toplam Maliyet: ${fUSD(pnl.costs)}</div>
+        </div>
+        <div style="font-size:20px;font-weight:900;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</div>
+      </div>`;
+
     openPrint(html, `Kar/Zarar — ${selectedFile.file_no}`);
   }
 
@@ -645,91 +700,102 @@ export function PnlReportTab() {
                       <div className="text-[15px] font-black text-blue-700 tabular-nums">{fUSD(pnl.revenue)}</div>
                     </div>
 
-                    {/* SATIN ALMA FATURALARI */}
-                    {purchaseRows.length > 0 && (
-                      <div>
-                        <div className="px-6 py-2.5 flex items-center justify-between bg-amber-50/60 border-b border-amber-100/60">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-amber-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Satın Alma Faturaları</span>
-                            <span className="text-[10px] text-amber-500 bg-amber-100 px-1.5 py-0.5 rounded-full font-semibold">{purchaseRows.length}</span>
-                          </div>
-                          <span className="text-[13px] font-bold text-amber-700 tabular-nums">({fUSD(purchaseTotal)})</span>
-                        </div>
-                        {purchaseRows.map((txn) => (
-                          <div key={txn.id} className="px-6 py-2.5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                            <div className="flex items-start gap-3 min-w-0">
-                              <div className="w-1.5 h-1.5 rounded-full bg-amber-300 mt-1.5 shrink-0" />
-                              <div className="min-w-0">
-                                <div className="text-[12px] text-gray-700 truncate">{txn.description || '—'}</div>
-                                {txn.supplier?.name && (
-                                  <div className="text-[10px] text-gray-400 mt-0.5">{txn.supplier.name}</div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="shrink-0 ml-4 text-right">
-                              <div className="text-[12px] font-semibold text-gray-700 tabular-nums">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</div>
-                              {txn.currency !== 'USD' && (
-                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  </div>
+                </div>
 
-                    {/* HİZMET FATURALARI */}
-                    {svcRows.length > 0 && (
-                      <div>
-                        <div className="px-6 py-2.5 flex items-center justify-between bg-violet-50/60 border-b border-violet-100/60">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-violet-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700">Hizmet Faturaları</span>
-                            <span className="text-[10px] text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full font-semibold">{svcRows.length}</span>
-                          </div>
-                          <span className="text-[13px] font-bold text-violet-700 tabular-nums">({fUSD(svcTotal)})</span>
-                        </div>
-                        {svcRows.map((txn) => (
-                          <div key={txn.id} className="px-6 py-2.5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                            <div className="flex items-start gap-3 min-w-0">
-                              <div className="w-1.5 h-1.5 rounded-full bg-violet-300 mt-1.5 shrink-0" />
-                              <div className="min-w-0">
-                                <div className="text-[12px] text-gray-700 truncate">{txn.description || '—'}</div>
-                                {txn.service_provider?.name && (
-                                  <div className="text-[10px] text-gray-400 mt-0.5">{txn.service_provider.name}</div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="shrink-0 ml-4 text-right">
-                              <div className="text-[12px] font-semibold text-gray-700 tabular-nums">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</div>
-                              {txn.currency !== 'USD' && (
-                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                {/* İki sütun: Satın Alma | Hizmet */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* SATIN ALMA FATURALARI */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-4 py-3 flex items-center justify-between bg-amber-50 border-b border-amber-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Satın Alma Faturaları</span>
+                        <span className="text-[10px] text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full font-bold">{purchaseRows.length}</span>
                       </div>
-                    )}
-
-                    {/* NAVLUN */}
-                    {pnl.freight > 0 && (
-                      <div className="px-6 py-2.5 flex items-center justify-between border-b border-gray-50">
-                        <div className="flex items-center gap-3">
-                          <div className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
-                          <span className="text-[12px] text-gray-500">Navlun / Freight</span>
-                        </div>
-                        <span className="text-[12px] font-semibold text-gray-600 tabular-nums">({fUSD(pnl.freight)})</span>
-                      </div>
-                    )}
-
-                    {/* NET KÂR */}
-                    <div className="px-6 py-4 flex items-center justify-between" style={{ background: pnl.profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
-                      <div>
-                        <div className="text-[12px] font-bold" style={{ color: col(pnl.profit) }}>Net Kâr</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">Toplam Maliyet: {fUSD(pnl.costs)}</div>
-                      </div>
-                      <div className="text-[22px] font-black tabular-nums" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</div>
+                      <span className="text-[12px] font-bold text-amber-800 tabular-nums">({fUSD(purchaseTotal)})</span>
                     </div>
+                    {purchaseRows.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-[11px] text-gray-400">Kayıt yok</div>
+                    ) : (
+                      <div className="divide-y divide-gray-50">
+                        {purchaseRows.map((txn) => (
+                          <div key={txn.id} className="px-4 py-2.5 flex items-start justify-between gap-3 hover:bg-amber-50/30 transition-colors">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[11px] text-gray-700 leading-tight">{txn.description || '—'}</div>
+                              {txn.supplier?.name && (
+                                <div className="text-[10px] text-gray-400 mt-0.5">{txn.supplier.name}</div>
+                              )}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <div className="text-[11px] font-semibold text-gray-700 tabular-nums">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</div>
+                              {txn.currency !== 'USD' && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="px-4 py-2.5 flex items-center justify-between bg-amber-50/60">
+                          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">Ara Toplam</span>
+                          <span className="text-[12px] font-black text-amber-700 tabular-nums">({fUSD(purchaseTotal)})</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* HİZMET FATURALARI */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-4 py-3 flex items-center justify-between bg-violet-50 border-b border-violet-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-violet-800">Hizmet Faturaları</span>
+                        <span className="text-[10px] text-violet-600 bg-violet-100 border border-violet-200 px-1.5 py-0.5 rounded-full font-bold">{svcRows.length}</span>
+                      </div>
+                      <span className="text-[12px] font-bold text-violet-800 tabular-nums">({fUSD(svcTotal)})</span>
+                    </div>
+                    {svcRows.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-[11px] text-gray-400">Kayıt yok</div>
+                    ) : (
+                      <div className="divide-y divide-gray-50">
+                        {svcRows.map((txn) => (
+                          <div key={txn.id} className="px-4 py-2.5 flex items-start justify-between gap-3 hover:bg-violet-50/30 transition-colors">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[11px] text-gray-700 leading-tight">{txn.description || '—'}</div>
+                              {txn.service_provider?.name && (
+                                <div className="text-[10px] text-gray-400 mt-0.5">{txn.service_provider.name}</div>
+                              )}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <div className="text-[11px] font-semibold text-gray-700 tabular-nums">({fUSD(txn.amount_usd ?? txn.amount ?? 0)})</div>
+                              {txn.currency !== 'USD' && (
+                                <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="px-4 py-2.5 flex items-center justify-between bg-violet-50/60">
+                          <span className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">Ara Toplam</span>
+                          <span className="text-[12px] font-black text-violet-700 tabular-nums">({fUSD(svcTotal)})</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Navlun + Net Kâr */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {pnl.freight > 0 && (
+                    <div className="px-5 py-3 flex items-center justify-between border-b border-gray-50">
+                      <span className="text-[12px] text-gray-500">Navlun / Freight</span>
+                      <span className="text-[12px] font-semibold text-gray-600 tabular-nums">({fUSD(pnl.freight)})</span>
+                    </div>
+                  )}
+                  <div className="px-5 py-4 flex items-center justify-between" style={{ background: pnl.profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
+                    <div>
+                      <div className="text-[13px] font-bold" style={{ color: col(pnl.profit) }}>Net Kâr</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">Toplam Maliyet: {fUSD(pnl.costs)}</div>
+                    </div>
+                    <div className="text-[24px] font-black tabular-nums" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</div>
                   </div>
                 </div>
               </>
