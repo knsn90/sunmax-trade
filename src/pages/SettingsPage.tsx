@@ -5,6 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { companySettingsSchema, type CompanySettingsFormData } from '@/types/forms';
 import { useSettings, useUpdateSettings, useUploadLogo, useRemoveLogo, useBankAccounts, useUpsertBankAccount } from '@/hooks/useSettings';
+import { useTradeFiles, useChangeStatus } from '@/hooks/useTradeFiles';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { isAdmin } from '@/lib/permissions';
 import { useUsers, useCreateUser, useUpdateUserRole, useToggleUserActive, useUpdatePermissions, useDeleteUser } from '@/hooks/useUsers';
@@ -16,7 +19,7 @@ import { LoadingSpinner } from '@/components/ui/shared';
 import {
   Upload, Trash2, Eye, EyeOff, Download, RotateCcw, AlertTriangle, CheckCircle2,
   Building2, Users, Database, Key, CreditCard, ImageIcon, ShieldCheck,
-  Check, X, UserPlus, Lock, Mail, Clock,
+  Check, X, UserPlus, Lock, Mail, Clock, ScanSearch, CircleCheck, Circle, ChevronRight,
 } from 'lucide-react';
 import {
   getBackupSettings, saveBackupSettings, sendBackupEmail,
@@ -27,7 +30,7 @@ import { supabase } from '@/services/supabase';
 import { setLanguage, SUPPORTED_LANGUAGES } from '@/i18n';
 import { Globe } from 'lucide-react';
 
-type SettingsTab = 'company' | 'users' | 'backup';
+type SettingsTab = 'company' | 'users' | 'backup' | 'audit';
 
 // ─── Label helper ─────────────────────────────────────────────────────────────
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -122,6 +125,7 @@ export function SettingsPage() {
     { key: 'company', label: t('tabs.company'), icon: Building2 },
     { key: 'users',   label: t('tabs.users'),   icon: Users },
     { key: 'backup',  label: t('tabs.backup'),  icon: Database },
+    { key: 'audit',   label: 'Belge Denetimi',  icon: ScanSearch },
   ];
 
   const bankFields = [
@@ -341,6 +345,160 @@ export function SettingsPage() {
 
       {/* ── Backup Tab ───────────────────────────────────────────────────────── */}
       {activeTab === 'backup' && <BackupTab />}
+
+      {/* ── Audit Tab ────────────────────────────────────────────────────────── */}
+      {activeTab === 'audit' && <DocumentAuditTab />}
+    </div>
+  );
+}
+
+// ─── Document Audit Tab ───────────────────────────────────────────────────────
+function DocumentAuditTab() {
+  const navigate = useNavigate();
+  const { data: files = [], isLoading: filesLoading } = useTradeFiles();
+  const { data: allTxns = [], isLoading: txnsLoading } = useTransactions({ approvedOnly: false });
+  const changeStatus = useChangeStatus();
+  const [fixing, setFixing] = useState<string | null>(null);
+
+  const isLoading = filesLoading || txnsLoading;
+
+  // Tüm tamamlandı dosyalarını denetle
+  const auditRows = files
+    .filter(f => f.status === 'completed')
+    .map(f => {
+      const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
+      const expectedPurchase = (f.purchase_price ?? 0) * qty;
+      const expectedSale     = (f.selling_price  ?? 0) * qty;
+
+      const fileTxns = allTxns.filter(t => t.trade_file_id === f.id || (t.trade_file as any)?.id === f.id);
+      const purchaseInvs  = fileTxns.filter(t => t.transaction_type === 'purchase_inv');
+      const saleInvs      = fileTxns.filter(t => t.transaction_type === 'sale_inv');
+      const svcInvs       = fileTxns.filter(t => t.transaction_type === 'svc_inv');
+      const purchaseTotal = purchaseInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+      const saleTotal     = saleInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+
+      const checks = {
+        purchaseCovered: purchaseInvs.length > 0 && (expectedPurchase === 0 || purchaseTotal >= expectedPurchase * 0.85),
+        saleCovered:     saleInvs.length > 0     && (expectedSale     === 0 || saleTotal     >= expectedSale     * 0.85),
+        hasSvcInv:       svcInvs.length > 0,
+        hasProforma:     (f.proformas?.length ?? 0) > 0,
+        hasPackingList:  (f.packing_lists?.length ?? 0) > 0,
+        hasCommInvoice:  (f.invoices?.length ?? 0) > 0,
+      };
+
+      const missingCount = Object.values(checks).filter(v => !v).length;
+      return { file: f, checks, missingCount };
+    })
+    .filter(r => r.missingCount > 0)
+    .sort((a, b) => b.missingCount - a.missingCount);
+
+  type CheckKeys = 'purchaseCovered' | 'saleCovered' | 'hasSvcInv' | 'hasProforma' | 'hasPackingList' | 'hasCommInvoice';
+  const CHECK_LABELS: Record<CheckKeys, string> = {
+    purchaseCovered: 'Satın Alma Faturası',
+    saleCovered:     'Satış Faturası',
+    hasSvcInv:       'Hizmet Faturası',
+    hasProforma:     'Proforma Fatura',
+    hasPackingList:  'Packing List',
+    hasCommInvoice:  'Commercial Invoice',
+  };
+
+  async function handleRevert(fileId: string) {
+    setFixing(fileId);
+    try {
+      await changeStatus.mutateAsync({ id: fileId, status: 'delivery' });
+      toast.success('Dosya "Teslimat" durumuna geri alındı — eksik belgeleri tamamlayın');
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setFixing(null);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-gray-400">
+        <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+        Tüm dosyalar taranıyor…
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <SectionHeader icon={ScanSearch} title="Belge Denetimi" description="Tamamlandı statüsündeki tüm dosyaları belgeler açısından tarar" />
+        <div className="flex items-center gap-3">
+          <div className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold ${auditRows.length === 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {auditRows.length === 0
+              ? '✓ Tüm tamamlanmış dosyalar eksiksiz'
+              : `${auditRows.length} dosyada eksik belge var`}
+          </div>
+          <span className="text-[11px] text-gray-400">{files.filter(f => f.status === 'completed').length} tamamlanmış dosya tarandı</span>
+        </div>
+      </div>
+
+      {auditRows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
+          <CheckCircle2 className="h-10 w-10 text-green-400 mb-3" />
+          <p className="text-[14px] font-semibold text-gray-700">Tüm belgeler eksiksiz</p>
+          <p className="text-[12px] text-gray-400 mt-1">Tamamlandı statüsündeki her dosya gerekli belgelere sahip</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {auditRows.map(({ file, checks, missingCount }) => (
+            <div key={file.id} className="bg-white rounded-2xl border border-red-100 overflow-hidden">
+              {/* File header */}
+              <div className="px-5 py-3 bg-red-50/60 flex items-center justify-between gap-3 border-b border-red-100">
+                <div className="flex items-center gap-3 min-w-0">
+                  <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[13px] font-bold text-gray-900 font-mono">{file.file_no}</span>
+                    <span className="text-[11px] text-gray-500 ml-2 truncate">{file.customer?.name ?? '—'}</span>
+                    <span className="ml-2 text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
+                      {missingCount} eksik
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => navigate(`/files/${file.id}`)}
+                    className="h-7 px-3 rounded-lg text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 flex items-center gap-1 transition-colors"
+                  >
+                    Aç <ChevronRight className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => handleRevert(file.id)}
+                    disabled={fixing === file.id}
+                    className="h-7 px-3 rounded-lg text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 flex items-center gap-1 transition-colors disabled:opacity-50"
+                  >
+                    {fixing === file.id ? (
+                      <><span className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" /> Geri alınıyor…</>
+                    ) : (
+                      <><RotateCcw className="h-3 w-3" /> Teslimat'a Geri Al</>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Check list */}
+              <div className="px-5 py-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                {(Object.entries(checks) as [keyof typeof checks, boolean][]).map(([key, ok]) => (
+                  <div key={key} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${ok ? 'bg-green-50' : 'bg-red-50'}`}>
+                    {ok
+                      ? <CircleCheck className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                      : <Circle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                    }
+                    <span className={`text-[11px] font-semibold ${ok ? 'text-green-700' : 'text-red-600'}`}>
+                      {CHECK_LABELS[key]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
