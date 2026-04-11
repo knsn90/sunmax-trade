@@ -13,6 +13,7 @@ import { fDate, fCurrency, fUSD, fN } from '@/lib/formatters';
 import { printInvoice, printReceipt, printTransactionInvoice } from '@/lib/printDocument';
 import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
+import { ApproveWithPasswordDialog } from '@/components/ui/ApproveWithPasswordDialog';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
 import { KasaManager } from '@/components/accounting/KasaManager';
 import { BankAccountManager } from '@/components/accounting/BankAccountManager';
@@ -219,8 +220,7 @@ export function AccountingPage() {
 
   // ── Bulk selection ─────────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkDeleteInput, setBulkDeleteInput] = useState('');
+  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | 'delete' | null>(null);
 
   // Reset selection when tab changes
   useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
@@ -382,14 +382,19 @@ export function AccountingPage() {
   }
 
   async function executeBulkDelete() {
-    if (bulkDeleteInput.trim().toUpperCase() !== 'SIL') return;
     const ids = Array.from(selectedIds);
-    setBulkDeleteOpen(false);
-    setBulkDeleteInput('');
+    setPendingBulkAction(null);
     setSelectedIds(new Set());
     for (const id of ids) {
       await deleteTxn.mutateAsync(id);
     }
+  }
+
+  async function executeBulkStatus(status: 'approved' | 'rejected') {
+    const ids = Array.from(selectedIds);
+    setPendingBulkAction(null);
+    setSelectedIds(new Set());
+    bulkSetStatus.mutate({ ids, status });
   }
 
   const filteredTxns = useMemo(() => {
@@ -990,36 +995,38 @@ export function AccountingPage() {
       </div>
 
       {/* ── Bulk action bar ───────────────────────────────────────────────── */}
+      {/* ── Bulk action bar ───────────────────────────────────────────────── */}
       {someSelected && (admin || canApprove) && (
-        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-2xl shadow-xl">
-            <span className="text-[13px] font-semibold shrink-0">{selectedIds.size} kayıt seçildi</span>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="text-[11px] text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-gray-700 shrink-0"
-            >
-              İptal
-            </button>
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 px-4">
+          <div className="flex items-center gap-2 bg-white border border-gray-200 shadow-xl px-4 py-2.5 rounded-2xl">
+            {/* Count badge */}
+            <div className="flex items-center gap-2 pr-3 border-r border-gray-100">
+              <div className="w-6 h-6 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
+                <span className="text-[11px] font-bold text-white">{selectedIds.size}</span>
+              </div>
+              <span className="text-[13px] font-semibold text-gray-700 shrink-0">kayıt seçildi</span>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="text-[11px] text-gray-400 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100 shrink-0"
+              >
+                İptal
+              </button>
+            </div>
+
             {canApprove && (
               <>
                 <button
-                  onClick={() => {
-                    bulkSetStatus.mutate({ ids: Array.from(selectedIds), status: 'approved' });
-                    setSelectedIds(new Set());
-                  }}
+                  onClick={() => setPendingBulkAction('approve')}
                   disabled={bulkSetStatus.isPending}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
                 >
                   <Check className="h-3.5 w-3.5" />
                   Toplu Onayla
                 </button>
                 <button
-                  onClick={() => {
-                    bulkSetStatus.mutate({ ids: Array.from(selectedIds), status: 'rejected' });
-                    setSelectedIds(new Set());
-                  }}
+                  onClick={() => setPendingBulkAction('reject')}
                   disabled={bulkSetStatus.isPending}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
                 >
                   <X className="h-3.5 w-3.5" />
                   Toplu Reddet
@@ -1028,8 +1035,8 @@ export function AccountingPage() {
             )}
             {admin && (
               <button
-                onClick={() => { setBulkDeleteInput(''); setBulkDeleteOpen(true); }}
-                className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-[12px] font-semibold transition-colors shrink-0"
+                onClick={() => setPendingBulkAction('delete')}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-[12px] font-semibold transition-colors shrink-0"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Toplu Sil
@@ -1039,49 +1046,37 @@ export function AccountingPage() {
         </div>
       )}
 
-      {/* ── Bulk delete password dialog ───────────────────────────────────── */}
-      {bulkDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-                <Trash2 className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <div className="text-[14px] font-bold text-gray-900">Toplu Silme Onayı</div>
-                <div className="text-[12px] text-gray-500">{selectedIds.size} kayıt kalıcı olarak silinecek</div>
-              </div>
-            </div>
-            <p className="text-[12px] text-gray-600 mb-3">
-              Onaylamak için aşağıya <span className="font-bold text-red-600">SIL</span> yazın:
-            </p>
-            <input
-              type="text"
-              value={bulkDeleteInput}
-              onChange={e => setBulkDeleteInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') executeBulkDelete(); if (e.key === 'Escape') setBulkDeleteOpen(false); }}
-              placeholder="SIL"
-              autoFocus
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-red-400 mb-4"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setBulkDeleteOpen(false); setBulkDeleteInput(''); }}
-                className="flex-1 h-9 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                onClick={executeBulkDelete}
-                disabled={bulkDeleteInput.trim().toUpperCase() !== 'SIL'}
-                className="flex-1 h-9 rounded-xl bg-red-600 text-white text-[13px] font-semibold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Sil
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Bulk action password dialogs ──────────────────────────────────── */}
+      <ApproveWithPasswordDialog
+        open={pendingBulkAction === 'approve'}
+        onClose={() => setPendingBulkAction(null)}
+        onConfirm={() => executeBulkStatus('approved')}
+        isPending={bulkSetStatus.isPending}
+        title="Toplu Onay"
+        subtitle={`${selectedIds.size} kaydı onaylamak için şifrenizi girin`}
+        buttonLabel="✅ Onayla"
+        headerClass="bg-gradient-to-r from-green-600 to-emerald-500"
+      />
+      <ApproveWithPasswordDialog
+        open={pendingBulkAction === 'reject'}
+        onClose={() => setPendingBulkAction(null)}
+        onConfirm={() => executeBulkStatus('rejected')}
+        isPending={bulkSetStatus.isPending}
+        title="Toplu Red"
+        subtitle={`${selectedIds.size} kaydı reddetmek için şifrenizi girin`}
+        buttonLabel="❌ Reddet"
+        headerClass="bg-gradient-to-r from-amber-500 to-orange-500"
+      />
+      <ApproveWithPasswordDialog
+        open={pendingBulkAction === 'delete'}
+        onClose={() => setPendingBulkAction(null)}
+        onConfirm={executeBulkDelete}
+        isPending={deleteTxn.isPending}
+        title="Toplu Silme"
+        subtitle={`${selectedIds.size} kaydı kalıcı silmek için şifrenizi girin`}
+        buttonLabel="🗑 Sil"
+        headerClass="bg-gradient-to-r from-red-600 to-rose-500"
+      />
 
       <TransactionModal
         open={txnModalOpen}
