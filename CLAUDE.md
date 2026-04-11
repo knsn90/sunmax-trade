@@ -1,5 +1,9 @@
 # Sunmax Trade — Proje Kuralları
 
+## Dev Server
+
+Her konuşmanın başında `preview_start` aracıyla `sunmax-trade` sunucusunu başlat (`.claude/launch.json` → port 5173). Kod değişikliği tarayıcıda görünüyorsa doğrulama iş akışını uygula.
+
 ## Tech Stack
 
 - **Vite + React + TypeScript** (Next.js DEĞİL — `'use client'` yok, `next/font` yok)

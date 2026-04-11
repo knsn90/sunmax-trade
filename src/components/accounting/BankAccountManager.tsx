@@ -156,13 +156,13 @@ export function BankAccountManager() {
           {/* Kimlik */}
           <FormRow cols={3}>
             <FormGroup label="Banka Adı *">
-              <Input value={form.bank_name} onChange={f('bank_name')} placeholder="örn. Garanti BBVA" />
+              <Input value={form.bank_name} onChange={f('bank_name')} placeholder="örn. Garanti BBVA" className="bg-gray-100 border-0 focus:ring-0" />
             </FormGroup>
             <FormGroup label="Hesap Adı">
-              <Input value={form.account_name} onChange={f('account_name')} placeholder="örn. USD Operasyon" />
+              <Input value={form.account_name} onChange={f('account_name')} placeholder="örn. USD Operasyon" className="bg-gray-100 border-0 focus:ring-0" />
             </FormGroup>
             <FormGroup label="Para Birimi">
-              <NativeSelect value={form.currency} onChange={f('currency')}>
+              <NativeSelect value={form.currency} onChange={f('currency')} className="bg-gray-100 border-0 focus:ring-0">
                 <option value="USD">USD — Dolar</option>
                 <option value="EUR">EUR — Euro</option>
                 <option value="TRY">TRY — Türk Lirası</option>
@@ -175,50 +175,50 @@ export function BankAccountManager() {
           {/* Hesap türü + hesap no */}
           <FormRow cols={3}>
             <FormGroup label="Hesap Türü">
-              <NativeSelect value={form.account_type} onChange={f('account_type')}>
+              <NativeSelect value={form.account_type} onChange={f('account_type')} className="bg-gray-100 border-0 focus:ring-0">
                 {ACCOUNT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </NativeSelect>
             </FormGroup>
             <FormGroup label="Hesap No">
-              <Input value={form.account_number} onChange={f('account_number')} placeholder="0000-0000000-00" className="font-mono text-[12px]" />
+              <Input value={form.account_number} onChange={f('account_number')} placeholder="0000-0000000-00" className="bg-gray-100 border-0 focus:ring-0 font-mono text-[12px]" />
             </FormGroup>
             <FormGroup label="Swift / BIC">
-              <Input value={form.swift_bic} onChange={f('swift_bic')} placeholder="örn. TGBATRIS" className="font-mono text-[12px]" />
+              <Input value={form.swift_bic} onChange={f('swift_bic')} placeholder="örn. TGBATRIS" className="bg-gray-100 border-0 focus:ring-0 font-mono text-[12px]" />
             </FormGroup>
           </FormRow>
 
           {/* Şube */}
           <FormRow cols={2}>
             <FormGroup label="Şube Adı">
-              <Input value={form.branch_name} onChange={f('branch_name')} placeholder="örn. Levent Şubesi" />
+              <Input value={form.branch_name} onChange={f('branch_name')} placeholder="örn. Levent Şubesi" className="bg-gray-100 border-0 focus:ring-0" />
             </FormGroup>
             <FormGroup label="Şube Kodu">
-              <Input value={form.branch_code} onChange={f('branch_code')} placeholder="örn. 0123" className="font-mono text-[12px]" />
+              <Input value={form.branch_code} onChange={f('branch_code')} placeholder="örn. 0123" className="bg-gray-100 border-0 focus:ring-0 font-mono text-[12px]" />
             </FormGroup>
           </FormRow>
 
           {/* IBAN */}
           <FormRow cols={2}>
             <FormGroup label="IBAN (USD)">
-              <Input value={form.iban_usd} onChange={f('iban_usd')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
+              <Input value={form.iban_usd} onChange={f('iban_usd')} placeholder="TR00 0000 0000 0000 0000 00" className="bg-gray-100 border-0 focus:ring-0 font-mono text-[12px]" />
             </FormGroup>
             <FormGroup label="IBAN (EUR)">
-              <Input value={form.iban_eur} onChange={f('iban_eur')} placeholder="TR00 0000 0000 0000 0000 00" className="font-mono text-[12px]" />
+              <Input value={form.iban_eur} onChange={f('iban_eur')} placeholder="TR00 0000 0000 0000 0000 00" className="bg-gray-100 border-0 focus:ring-0 font-mono text-[12px]" />
             </FormGroup>
           </FormRow>
 
           {/* Muhabir banka */}
           <FormGroup label="Muhabir Banka (Correspondent)">
-            <Input value={form.correspondent_bank} onChange={f('correspondent_bank')} placeholder="örn. JP Morgan Chase, New York — CHASUS33" />
+            <Input value={form.correspondent_bank} onChange={f('correspondent_bank')} placeholder="örn. JP Morgan Chase, New York — CHASUS33" className="bg-gray-100 border-0 focus:ring-0" />
           </FormGroup>
 
           {/* Açılış bakiyesi */}
           <FormRow cols={2}>
             <FormGroup label="Açılış Bakiyesi">
-              <Input type="number" step="0.01" value={form.opening_balance} onChange={f('opening_balance')} placeholder="0.00" />
+              <Input type="number" step="0.01" value={form.opening_balance} onChange={f('opening_balance')} placeholder="0.00" className="bg-gray-100 border-0 focus:ring-0" />
             </FormGroup>
             <FormGroup label="Açılış Tarihi">
-              <Input type="date" value={form.opening_balance_date} onChange={f('opening_balance_date')} />
+              <Input type="date" value={form.opening_balance_date} onChange={f('opening_balance_date')} className="bg-gray-100 border-0 focus:ring-0" />
             </FormGroup>
           </FormRow>
 

@@ -1096,25 +1096,63 @@ export function printTransactionInvoice(txn: Transaction, settings: CompanySetti
     svc_inv:      'SERVICE INVOICE',
     sale_inv:     'SALE INVOICE',
   };
-  const title = TYPE_TITLES[txn.transaction_type] ?? 'INVOICE';
-  const docNo = txn.reference_no || txn.id.slice(0, 8).toUpperCase();
-  const curr  = txn.currency ?? 'USD';
-  const party = txn.customer?.name || txn.supplier?.name || txn.service_provider?.name || txn.party_name || '—';
-  const partyLabel = txn.transaction_type === 'sale_inv' ? 'Bill To' : 'From';
+  const title  = TYPE_TITLES[txn.transaction_type] ?? 'INVOICE';
+  const docNo  = txn.reference_no || txn.id.slice(0, 8).toUpperCase();
+  const curr   = txn.currency ?? 'USD';
   const fileNo = txn.trade_file?.file_no ?? '';
+
+  const isPurchase = txn.transaction_type === 'purchase_inv';
+  const isSvc      = txn.transaction_type === 'svc_inv';
+  const isSale     = txn.transaction_type === 'sale_inv';
+
+  // For purchase/service invoices the supplier is the issuer; our company is the bill-to.
+  // For sale invoices our company is the issuer; customer is the bill-to.
+  const issuerName    = isSale
+    ? (settings.company_name || '')
+    : (txn.supplier?.name || txn.service_provider?.name || txn.party_name || '—');
+  const issuerAddr1   = isSale
+    ? (settings.address_line1 || '')
+    : (txn.supplier?.address || txn.service_provider?.address || '');
+  const issuerAddr2   = isSale ? (settings.address_line2 || '') : '';
+  const issuerPhone   = isSale
+    ? (settings.phone || '')
+    : (txn.supplier?.phone || txn.service_provider?.phone || '');
+  const issuerEmail   = isSale
+    ? (settings.email || '')
+    : (txn.supplier?.email || txn.service_provider?.email || '');
+  const issuerCountry = isSale ? '' : (txn.supplier?.country || txn.service_provider?.country || '');
+  const issuerTaxId   = isSale ? '' : (txn.supplier?.tax_id || '');
+
+  const billToName    = isSale
+    ? (txn.customer?.name || txn.party_name || '—')
+    : (settings.company_name || '');
+  const billToAddr    = isSale ? '' : (settings.address_line1 || '');
+
+  // Exchange rate row (show only when currency ≠ USD and rate exists)
+  const hasRate = curr !== 'USD' && txn.exchange_rate && txn.exchange_rate > 0;
+  const amountUsd = txn.amount_usd ?? 0;
+
+  // For purchase invoices, add product/tonnage detail if available from trade_file
+  const tf       = txn.trade_file as (typeof txn.trade_file & { product?: { name: string }; tonnage_mt?: number; purchase_currency?: string }) | undefined;
+  const product  = tf?.product?.name || '';
+  const tonnage  = tf?.tonnage_mt;
 
   const body = `
     <!-- Header -->
     <table style="width:100%;margin-bottom:20px">
       <tr>
         <td style="width:55%;vertical-align:top">
-          ${logoHTML(settings, 60, 160)}
-          <div style="margin-top:6px;font-size:10px;color:#555;line-height:1.7">
-            ${esc(settings.company_name || '')}<br>
-            ${esc(settings.address_line1 || '')}
-            ${settings.address_line2 ? '<br>' + esc(settings.address_line2) : ''}
-            ${settings.phone ? '<br>' + esc(settings.phone) : ''}
-            ${settings.email ? '<br>' + esc(settings.email) : ''}
+          ${isSale ? logoHTML(settings, 60, 160) : ''}
+          <div style="margin-top:${isSale ? 6 : 0}px;font-size:${isSale ? 10 : 14}px;${isSale ? 'color:#555;' : 'font-weight:800;color:#111;'}line-height:1.7">
+            ${esc(issuerName)}
+          </div>
+          <div style="margin-top:4px;font-size:10px;color:#555;line-height:1.7">
+            ${issuerAddr1 ? esc(issuerAddr1) : ''}
+            ${issuerAddr2 ? '<br>' + esc(issuerAddr2) : ''}
+            ${issuerCountry ? '<br>' + esc(issuerCountry) : ''}
+            ${issuerPhone ? '<br>Tel: ' + esc(issuerPhone) : ''}
+            ${issuerEmail ? '<br>' + esc(issuerEmail) : ''}
+            ${issuerTaxId ? '<br>Tax ID: ' + esc(issuerTaxId) : ''}
           </div>
         </td>
         <td style="width:45%;text-align:right;vertical-align:top">
@@ -1136,6 +1174,10 @@ export function printTransactionInvoice(txn: Transaction, settings: CompanySetti
               <td style="padding:3px 10px 3px 0;color:#666;text-align:right">Currency:</td>
               <td style="padding:3px 0;font-weight:700">${curr}</td>
             </tr>
+            ${hasRate ? `<tr>
+              <td style="padding:3px 10px 3px 0;color:#666;text-align:right">Exchange Rate:</td>
+              <td style="padding:3px 0;font-weight:700">1 ${curr} = ${tF(txn.exchange_rate!)} USD</td>
+            </tr>` : ''}
           </table>
         </td>
       </tr>
@@ -1143,11 +1185,27 @@ export function printTransactionInvoice(txn: Transaction, settings: CompanySetti
 
     <div style="border-top:2px solid #111;margin-bottom:16px"></div>
 
-    <!-- Party -->
-    <div style="margin-bottom:16px;padding:10px 14px;border:1px solid #ddd;background:#f9f9f9;border-radius:4px">
-      <div style="font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${partyLabel}</div>
-      <div style="font-size:13px;font-weight:700">${esc(party)}</div>
-    </div>
+    <!-- Bill To / From parties -->
+    <table style="width:100%;margin-bottom:16px;border-collapse:collapse">
+      <tr>
+        <td style="width:50%;vertical-align:top;padding-right:12px">
+          <div style="padding:10px 14px;border:1px solid #ddd;background:#f9f9f9;border-radius:4px;height:100%">
+            <div style="font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bill To</div>
+            <div style="font-size:13px;font-weight:700">${esc(billToName)}</div>
+            ${billToAddr ? `<div style="font-size:10px;color:#555;margin-top:4px">${esc(billToAddr)}</div>` : ''}
+          </div>
+        </td>
+        <td style="width:50%;vertical-align:top;padding-left:12px">
+          ${(isPurchase || isSvc) && txn.trade_file ? `
+          <div style="padding:10px 14px;border:1px solid #ddd;background:#f9f9f9;border-radius:4px">
+            <div style="font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Trade File</div>
+            <div style="font-size:12px;font-weight:700">${esc(fileNo)}</div>
+            ${product ? `<div style="font-size:10px;color:#555;margin-top:2px">${esc(product)}</div>` : ''}
+            ${tonnage != null ? `<div style="font-size:10px;color:#555">Tonnage: ${tF(tonnage)} MT</div>` : ''}
+          </div>` : ''}
+        </td>
+      </tr>
+    </table>
 
     <!-- Items Table -->
     <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:16px">
@@ -1155,41 +1213,48 @@ export function printTransactionInvoice(txn: Transaction, settings: CompanySetti
         <tr style="background:#111;color:#fff">
           <th style="padding:8px 10px;text-align:left">#</th>
           <th style="padding:8px 10px;text-align:left">Description</th>
-          <th style="padding:8px 10px;text-align:right;width:140px">Amount (${curr})</th>
+          ${(isPurchase || isSvc) && tonnage != null ? `<th style="padding:8px 10px;text-align:right;width:90px">Qty (MT)</th>` : ''}
+          <th style="padding:8px 10px;text-align:right;width:150px">Amount (${curr})</th>
+          ${hasRate ? `<th style="padding:8px 10px;text-align:right;width:120px">Amount (USD)</th>` : ''}
         </tr>
       </thead>
       <tbody>
         <tr>
           <td style="padding:9px 10px;border-bottom:1px solid #eee">1</td>
-          <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(txn.description || '—')}</td>
+          <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(txn.description || (product || '—'))}</td>
+          ${(isPurchase || isSvc) && tonnage != null ? `<td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${tF(tonnage)}</td>` : ''}
           <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:700">${tF(txn.amount)}</td>
+          ${hasRate ? `<td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;color:#555">USD ${tF(amountUsd)}</td>` : ''}
         </tr>
       </tbody>
       <tfoot>
         <tr style="background:#f3f4f6">
-          <td colspan="2" style="padding:9px 10px;text-align:right;font-weight:700;border-top:2px solid #ddd">TOTAL</td>
+          <td colspan="${2 + ((isPurchase || isSvc) && tonnage != null ? 1 : 0)}" style="padding:9px 10px;text-align:right;font-weight:700;border-top:2px solid #ddd">TOTAL</td>
           <td style="padding:9px 10px;text-align:right;font-weight:900;font-size:13px;border-top:2px solid #ddd">
             ${curr} ${tF(txn.amount)}
           </td>
+          ${hasRate ? `<td style="padding:9px 10px;text-align:right;font-weight:900;font-size:13px;border-top:2px solid #ddd;color:#555">USD ${tF(amountUsd)}</td>` : ''}
         </tr>
         ${txn.paid_amount > 0 ? `
         <tr>
-          <td colspan="2" style="padding:6px 10px;text-align:right;color:#16a34a;font-weight:600">Paid</td>
+          <td colspan="${2 + ((isPurchase || isSvc) && tonnage != null ? 1 : 0)}" style="padding:6px 10px;text-align:right;color:#16a34a;font-weight:600">Paid</td>
           <td style="padding:6px 10px;text-align:right;color:#16a34a;font-weight:700">- ${curr} ${tF(txn.paid_amount)}</td>
+          ${hasRate ? '<td></td>' : ''}
         </tr>
         <tr style="background:#fef9c3">
-          <td colspan="2" style="padding:8px 10px;text-align:right;font-weight:700">Balance Due</td>
+          <td colspan="${2 + ((isPurchase || isSvc) && tonnage != null ? 1 : 0)}" style="padding:8px 10px;text-align:right;font-weight:700">Balance Due</td>
           <td style="padding:8px 10px;text-align:right;font-weight:900;font-size:13px;color:#dc2626">
             ${curr} ${tF(txn.amount - txn.paid_amount)}
           </td>
+          ${hasRate ? '<td></td>' : ''}
         </tr>` : ''}
       </tfoot>
     </table>
 
-    ${txn.notes ? `
+    ${(() => { try { JSON.parse(txn.notes || ''); return ''; } catch { return txn.notes ? `
     <div style="border:1px solid #ddd;padding:8px 12px;border-radius:4px;font-size:10px;color:#555;margin-bottom:16px">
       <strong>Notes:</strong> ${esc(txn.notes)}
-    </div>` : ''}
+    </div>` : ''; } })()}
 
     <!-- Signatures -->
     <table style="width:100%;margin-top:36px">

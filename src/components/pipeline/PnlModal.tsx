@@ -92,7 +92,7 @@ export function PnlModal({ open, onOpenChange, fileId }: PnlModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>P&L — {file?.file_no ?? '…'}</DialogTitle>
           <DialogDescription>

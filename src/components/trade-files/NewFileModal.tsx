@@ -7,17 +7,27 @@ import { useCreateTradeFile, useUpdateFileInfo, useDeleteTradeFile, useTradeFile
 import { generateTradeFileNo } from '@/lib/generators';
 import { today } from '@/lib/formatters';
 import type { TradeFile } from '@/types/database';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea, NativeSelect } from '@/components/ui/form-elements';
-import { FormRow, FormGroup } from '@/components/ui/shared';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Plus, Trash2 } from 'lucide-react';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+
+// ── Mono stil sabitleri ──────────────────────────────────────────────────────
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+const Lbl = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+);
+const Fld = ({ label, children, className, error }: { label: string; children: React.ReactNode; className?: string; error?: string }) => (
+  <div className={className}>
+    <Lbl>{label}</Lbl>
+    {children}
+    {error && <div className="text-[10px] text-red-500 mt-0.5">{error}</div>}
+  </div>
+);
 
 interface Props {
   open: boolean;
@@ -81,12 +91,10 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
 
   useEffect(() => {
     if (editMode || !selectedCustomerId) return;
-
     const customer     = customers.find(c => c.id === selectedCustomerId);
     const product      = products.find(p => p.id === selectedProductId);
     const customerCode = customer?.code || 'XX';
     const count        = allFiles.filter(f => f.customer_id === selectedCustomerId).length;
-
     let year: number, month: number;
     if (selectedEta) {
       const d = new Date(selectedEta);
@@ -95,7 +103,6 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
       const now = new Date();
       year = now.getFullYear(); month = now.getMonth() + 1;
     }
-
     setValue('file_no', generateTradeFileNo(customerCode, count + 1, year, month, product?.name ?? ''));
   }, [selectedCustomerId, selectedProductId, selectedEta, customers, products, allFiles, editMode, setValue]);
 
@@ -162,24 +169,21 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        {/* ── Header ─────────────────────────────────────────── */}
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
         <DialogHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <DialogTitle className="text-[15px]">
-                {editMode ? 'Dosya Bilgilerini Düzenle' : 'Yeni Dosya'}
-              </DialogTitle>
-              {/* Auto file-no preview badge */}
-              {fileNoValue && (
-                <div className="mt-1.5">
-                  <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">
-                    # {fileNoValue}
-                  </span>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle className="text-[15px] flex-1">
+              {editMode ? 'Dosya Bilgilerini Düzenle' : 'Yeni Dosya'}
+            </DialogTitle>
+            {fileNoValue && (
+              <span className="text-[10px] font-mono font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md shrink-0">
+                # {fileNoValue}
+              </span>
+            )}
             {!editMode && (
               <SmartFill
+                iconOnly
                 mode="new_file"
                 context={{ customers, products }}
                 formName="New File"
@@ -189,13 +193,14 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        {/* ── Form ────────────────────────────────────────────────────────── */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
 
-          {/* ── Müşteri + Ürün ──────────────────────────────── */}
-          <FormRow>
-            <FormGroup label="Müşteri *" error={errors.customer_id?.message}>
+          {/* Müşteri + Ürün */}
+          <div className="grid grid-cols-2 gap-3">
+            <Fld label="Müşteri *" error={errors.customer_id?.message}>
               <div className="flex gap-1.5">
-                <NativeSelect {...register('customer_id')} className="flex-1">
+                <select {...register('customer_id')} className={cn(sel, 'flex-1')}>
                   <option value="">— Seçin —</option>
                   {(() => {
                     const parents = customers.filter(c => !c.parent_customer_id);
@@ -203,7 +208,6 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                     return parents.map((p) => {
                       const children = subs.filter(s => s.parent_customer_id === p.id);
                       return children.length > 0 ? (
-                        // Ana firma optgroup başlığı + seçilebilir option, alt firmalar ↳ ile
                         <optgroup key={p.id} label={p.name}>
                           <option value={p.id}>{p.name}</option>
                           {children.map(s => (
@@ -211,21 +215,18 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                           ))}
                         </optgroup>
                       ) : (
-                        // Alt firması olmayan ana firma — normal seçenek
                         <option key={p.id} value={p.id}>{p.name}</option>
                       );
                     });
                   })()}
-                </NativeSelect>
+                </select>
                 <button
                   type="button"
                   onClick={() => setShowNewCust(!showNewCust)}
                   title="Yeni müşteri ekle"
                   className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center border text-sm font-bold transition-all shrink-0',
-                    showNewCust
-                      ? 'text-white border-transparent shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600',
+                    'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all shrink-0',
+                    showNewCust ? 'text-white' : 'bg-gray-100 text-gray-400 hover:text-gray-600',
                   )}
                   style={showNewCust ? { background: accent } : {}}
                 >
@@ -234,11 +235,11 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               </div>
               {showNewCust && (
                 <div className="flex gap-1.5 mt-1.5">
-                  <Input
+                  <input
+                    className={cn(inp, 'flex-1')}
                     placeholder="Müşteri adı"
                     value={newCustName}
-                    onChange={(e) => setNewCustName(e.target.value)}
-                    className="flex-1 h-8 text-[13px]"
+                    onChange={e => setNewCustName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCust(); } }}
                     autoFocus
                   />
@@ -246,30 +247,28 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                     type="button"
                     onClick={addCust}
                     disabled={createCust.isPending || !newCustName.trim()}
-                    className="px-3 h-8 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
+                    className="px-3 h-8 rounded-lg text-[11px] font-semibold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
                     style={{ background: accent }}
                   >
                     Ekle
                   </button>
                 </div>
               )}
-            </FormGroup>
+            </Fld>
 
-            <FormGroup label="Ürün *" error={errors.product_id?.message}>
+            <Fld label="Ürün *" error={errors.product_id?.message}>
               <div className="flex gap-1.5">
-                <NativeSelect {...register('product_id')} className="flex-1">
+                <select {...register('product_id')} className={cn(sel, 'flex-1')}>
                   <option value="">— Seçin —</option>
-                  {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </NativeSelect>
+                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
                 <button
                   type="button"
                   onClick={() => setShowNewProd(!showNewProd)}
                   title="Yeni ürün ekle"
                   className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center border text-sm font-bold transition-all shrink-0',
-                    showNewProd
-                      ? 'text-white border-transparent shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600',
+                    'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all shrink-0',
+                    showNewProd ? 'text-white' : 'bg-gray-100 text-gray-400 hover:text-gray-600',
                   )}
                   style={showNewProd ? { background: accent } : {}}
                 >
@@ -278,11 +277,11 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               </div>
               {showNewProd && (
                 <div className="flex gap-1.5 mt-1.5">
-                  <Input
+                  <input
+                    className={cn(inp, 'flex-1')}
                     placeholder="Ürün adı"
                     value={newProdName}
-                    onChange={(e) => setNewProdName(e.target.value)}
-                    className="flex-1 h-8 text-[13px]"
+                    onChange={e => setNewProdName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProd(); } }}
                     autoFocus
                   />
@@ -290,82 +289,89 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                     type="button"
                     onClick={addProd}
                     disabled={createProd.isPending || !newProdName.trim()}
-                    className="px-3 h-8 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
+                    className="px-3 h-8 rounded-lg text-[11px] font-semibold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
                     style={{ background: accent }}
                   >
                     Ekle
                   </button>
                 </div>
               )}
-            </FormGroup>
-          </FormRow>
+            </Fld>
+          </div>
 
-          {/* ── Tarih · ETA · Miktar ────────────────────────── */}
-          <FormRow cols={3}>
-            <FormGroup label="Tarih" error={errors.file_date?.message}>
-              <Input type="date" {...register('file_date')} />
-            </FormGroup>
-            <FormGroup label="Tahmini Teslim (ETA)" error={errors.eta?.message}>
-              <Input type="date" {...register('eta')} />
-            </FormGroup>
-            <FormGroup label="Miktar (MT)" error={errors.tonnage_mt?.message}>
-              <Input type="number" step="0.001" {...register('tonnage_mt')} />
-            </FormGroup>
-          </FormRow>
+          {/* Tarih · ETA · Miktar */}
+          <div className="grid grid-cols-3 gap-3">
+            <Fld label="Tarih" error={errors.file_date?.message}>
+              <input type="date" {...register('file_date')} className={inp} />
+            </Fld>
+            <Fld label="ETA" error={errors.eta?.message}>
+              <input type="date" {...register('eta')} className={inp} />
+            </Fld>
+            <Fld label="Miktar (MT)" error={errors.tonnage_mt?.message}>
+              <input type="number" step="0.001" {...register('tonnage_mt')} className={inp} />
+            </Fld>
+          </div>
 
-          {/* ── Dosya No (create mode only) ──────────────────── */}
-          {!editMode && (
-            <FormGroup label="Dosya No" error={errors.file_no?.message} className="mb-2.5">
-              <Input
-                {...register('file_no')}
-                placeholder="Otomatik oluşturulacak…"
-                className="font-mono text-[13px]"
-              />
-            </FormGroup>
-          )}
+          {/* Dosya No · Müşteri Ref */}
+          <div className="grid grid-cols-2 gap-3">
+            {!editMode && (
+              <Fld label="Dosya No" error={errors.file_no?.message}>
+                <input
+                  {...register('file_no')}
+                  placeholder="Otomatik oluşturulacak…"
+                  className={cn(inp, 'font-mono')}
+                />
+              </Fld>
+            )}
+            <Fld label="Müşteri Ref" className={editMode ? 'col-span-2' : ''}>
+              <input {...register('customer_ref')} className={inp} />
+            </Fld>
+          </div>
 
-          {/* ── Müşteri Ref · Notlar ────────────────────────── */}
-          <FormRow>
-            <FormGroup label="Müşteri Ref">
-              <Input {...register('customer_ref')} />
-            </FormGroup>
-            <FormGroup label="Notlar">
-              <Textarea rows={2} {...register('notes')} />
-            </FormGroup>
-          </FormRow>
+          {/* Notlar */}
+          <Fld label="Notlar">
+            <textarea
+              {...register('notes')}
+              rows={4}
+              className="bg-gray-100 rounded-lg px-3 py-2 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full resize-none"
+            />
+          </Fld>
 
-          {/* ── Footer ──────────────────────────────────────── */}
-          <DialogFooter>
-            {/* Sil butonu — sadece düzenleme modunda */}
-            {editMode && fileToEdit && (
+          {/* ── Footer ──────────────────────────────────────────────────────── */}
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
+            <div>
+              {editMode && fileToEdit && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleteFile.isPending}
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {deleteFile.isPending ? 'Siliniyor…' : 'Dosyayı Sil'}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleDelete}
-                disabled={deleteFile.isPending}
-                className="mr-auto flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 border border-red-100 transition-colors disabled:opacity-50"
+                onClick={() => onOpenChange(false)}
+                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                {deleteFile.isPending ? 'Siliniyor…' : 'Dosyayı Sil'}
+                İptal
               </button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              İptal
-            </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="text-white shadow-sm hover:opacity-90 transition-opacity"
-              style={{ background: accent }}
-            >
-              {isPending
-                ? (editMode ? 'Kaydediliyor…' : 'Oluşturuluyor…')
-                : (editMode ? 'Kaydet' : 'Dosya Oluştur')}
-            </Button>
-          </DialogFooter>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                style={{ background: accent }}
+              >
+                {isPending
+                  ? (editMode ? 'Kaydediliyor…' : 'Oluşturuluyor…')
+                  : (editMode ? 'Kaydet' : 'Dosya Oluştur')}
+              </button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

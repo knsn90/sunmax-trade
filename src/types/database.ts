@@ -431,6 +431,8 @@ export interface Transaction extends Timestamps {
   created_by: string | null;
   kasa_id: string | null;
   bank_account_id: string | null;
+  flagged: boolean;
+  flag_note: string | null;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;

@@ -117,6 +117,7 @@ export function KasaManager() {
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="örn. Ana Kasa, USD Kasa"
+                className="bg-gray-100 border-0 focus:ring-0"
               />
             </FormGroup>
             <FormGroup label="Hesap Kodu">
@@ -124,11 +125,11 @@ export function KasaManager() {
                 value={form.account_code}
                 onChange={e => setForm(f => ({ ...f, account_code: e.target.value }))}
                 placeholder="örn. 100, 100.01"
-                className="font-mono text-[12px]"
+                className="bg-gray-100 border-0 focus:ring-0 font-mono text-[12px]"
               />
             </FormGroup>
             <FormGroup label="Para Birimi">
-              <NativeSelect value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+              <NativeSelect value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} className="bg-gray-100 border-0 focus:ring-0">
                 <option value="TRY">TRY — Türk Lirası</option>
                 <option value="USD">USD — Dolar</option>
                 <option value="EUR">EUR — Euro</option>
@@ -146,6 +147,7 @@ export function KasaManager() {
                 value={form.opening_balance}
                 onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
                 placeholder="0.00"
+                className="bg-gray-100 border-0 focus:ring-0"
               />
             </FormGroup>
             <FormGroup label="Açılış Tarihi">
@@ -153,6 +155,7 @@ export function KasaManager() {
                 type="date"
                 value={form.opening_balance_date}
                 onChange={e => setForm(f => ({ ...f, opening_balance_date: e.target.value }))}
+                className="bg-gray-100 border-0 focus:ring-0"
               />
             </FormGroup>
           </FormRow>
@@ -164,6 +167,7 @@ export function KasaManager() {
                 value={form.responsible}
                 onChange={e => setForm(f => ({ ...f, responsible: e.target.value }))}
                 placeholder="Ad Soyad"
+                className="bg-gray-100 border-0 focus:ring-0"
               />
             </FormGroup>
             <FormGroup label="Notlar">
@@ -171,6 +175,7 @@ export function KasaManager() {
                 value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 placeholder="İsteğe bağlı"
+                className="bg-gray-100 border-0 focus:ring-0"
               />
             </FormGroup>
           </FormRow>

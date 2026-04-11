@@ -1,9 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { FormGroup } from '@/components/ui/shared';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCreateTradeFile, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -11,10 +9,14 @@ import { toast } from 'sonner';
 import type { TradeFile } from '@/types/database';
 import { Layers } from 'lucide-react';
 
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const Lbl = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+);
+
 const schema = z.object({
   tonnage_mt: z.number({ invalid_type_error: 'Ton giriniz' }).positive('Pozitif olmalı'),
 });
-
 type Form = z.infer<typeof schema>;
 
 interface Props {
@@ -54,7 +56,6 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
         initialStatus: 'sale',
       });
 
-      // Ana dosyanın tüm satış detaylarını kopyala
       if (parent.supplier_id || parent.selling_price != null || parent.incoterms || parent.payment_terms) {
         await updateSaleDetails.mutateAsync({
           id: created.id,
@@ -89,66 +90,72 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
     }
   }
 
-  // Kalan ton = parent tonnage - existing batches total
-  const usedTon = (parent.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const usedTon      = (parent.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
   const remainingTon = Math.max(0, parent.tonnage_mt - usedTon);
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="max-w-sm">
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-[15px] font-bold text-gray-900">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: accent + '18' }}>
-              <Layers className="h-4 w-4" style={{ color: accent }} />
+          <div className="flex items-center gap-2 pr-8">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: accent + '18' }}>
+              <Layers className="h-3.5 w-3.5" style={{ color: accent }} />
             </div>
-            Yeni Parti Oluştur
-          </DialogTitle>
+            <DialogTitle className="text-[15px] flex-1">Yeni Parti Oluştur</DialogTitle>
+          </div>
         </DialogHeader>
 
         {/* Bilgi satırı */}
-        <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-xl">
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-xl mt-1">
           <div className="flex-1">
-            <p className="text-[11px] text-gray-400 font-medium">Ana Dosya</p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Ana Dosya</p>
             <p className="text-[13px] font-bold text-gray-800">{parent.file_no}</p>
           </div>
           <div className="text-right">
-            <p className="text-[11px] text-gray-400 font-medium">Parti No</p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Parti No</p>
             <p className="text-[13px] font-bold" style={{ color: accent }}>{batchFileNo}</p>
           </div>
           <div className="text-right">
-            <p className="text-[11px] text-gray-400 font-medium">Kalan Ton</p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Kalan Ton</p>
             <p className="text-[13px] font-bold text-amber-600">{remainingTon.toLocaleString('tr-TR')} MT</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
-          <FormGroup label="Tonaj (MT) *" error={errors.tonnage_mt?.message}>
-            <Input
+          <div>
+            <Lbl>Tonaj (MT) *</Lbl>
+            <input
               type="number"
               step="0.001"
-              placeholder={`max ${remainingTon}`}
+              placeholder={`maks. ${remainingTon}`}
               autoFocus
+              className={inp}
               {...register('tonnage_mt', { valueAsNumber: true })}
             />
-          </FormGroup>
+            {errors.tonnage_mt && (
+              <div className="text-[10px] text-red-500 mt-0.5">{errors.tonnage_mt.message}</div>
+            )}
+          </div>
 
-          <DialogFooter className="pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
             <button
               type="button"
               onClick={() => { reset(); onClose(); }}
-              className="px-4 h-9 rounded-xl text-[13px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={createFile.isPending}
-              className="px-5 h-9 rounded-xl text-[13px] font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="px-4 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
               style={{ background: accent }}
             >
               {createFile.isPending ? 'Oluşturuluyor…' : 'Parti Oluştur'}
             </button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

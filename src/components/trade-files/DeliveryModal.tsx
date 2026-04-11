@@ -4,25 +4,34 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { deliverySchema, type DeliveryFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
 import { useConvertToDelivery } from '@/hooks/useTradeFiles';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { FormRow, FormGroup } from '@/components/ui/shared';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Package, Layers } from 'lucide-react';
+
+// ── Mono stil sabitleri ───────────────────────────────────────────────────────
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const Lbl = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+);
+const Fld = ({ label, children, className, error }: { label: string; children: React.ReactNode; className?: string; error?: string }) => (
+  <div className={className}>
+    <Lbl>{label}</Lbl>
+    {children}
+    {error && <div className="text-[10px] text-red-500 mt-0.5">{error}</div>}
+  </div>
+);
 
 interface DeliveryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   file: TradeFile | null;
-  /** Kısmi sevkiyat seçildiğinde çağrılır — ana bileşen BatchModal'ı açar */
   onPartialShipment?: () => void;
 }
 
 export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: DeliveryModalProps) {
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const convertToDelivery = useConvertToDelivery();
-  // step: 'ask' = ilk soru | 'form' = teslimat formu
   const [step, setStep] = useState<'ask' | 'form'>('ask');
 
   const form = useForm<DeliveryFormData>({
@@ -41,22 +50,20 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
 
   const { register, handleSubmit, formState: { errors }, reset } = form;
 
-  // Pre-fill existing delivery data when editing; sync septi_ref ↔ register_no
   useEffect(() => {
     if (open && file) {
-      // Batch dosyalar ve partisi olan dosyalar için direkt forma git (soru adımı yok)
-      const isBatch = !!file.parent_file_id;
+      const isBatch    = !!file.parent_file_id;
       const hasBatches = (file.batches?.length ?? 0) > 0;
       setStep(isBatch || hasBatches ? 'form' : 'ask');
       reset({
-        delivered_admt: file.delivered_admt ?? file.tonnage_mt ?? 0,
+        delivered_admt:  file.delivered_admt ?? file.tonnage_mt ?? 0,
         gross_weight_kg: file.gross_weight_kg ?? undefined,
-        packages: file.packages ?? undefined,
-        arrival_date: file.arrival_date ?? '',
-        bl_number: file.bl_number ?? '',
-        septi_ref: file.septi_ref ?? file.register_no ?? '',
-        insurance_tr: file.insurance_tr ?? '',
-        insurance_ir: file.insurance_ir ?? '',
+        packages:        file.packages ?? undefined,
+        arrival_date:    file.arrival_date ?? '',
+        bl_number:       file.bl_number ?? '',
+        septi_ref:       file.septi_ref ?? file.register_no ?? '',
+        insurance_tr:    file.insurance_tr ?? '',
+        insurance_ir:    file.insurance_ir ?? '',
       });
     }
   }, [open, file, reset]);
@@ -67,9 +74,7 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
       await convertToDelivery.mutateAsync({ id: file.id, data });
       reset();
       onOpenChange(false);
-    } catch {
-      // Error already shown via toast — prevent UI freeze
-    }
+    } catch { /* toast already shown */ }
   }
 
   if (!file) return null;
@@ -77,19 +82,23 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
         <DialogHeader>
-          <DialogTitle>Teslimat Bilgileri</DialogTitle>
-          <DialogDescription>
-            {file.file_no} — {file.customer?.name}
-          </DialogDescription>
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle className="text-[15px] flex-1">Teslimat Bilgileri</DialogTitle>
+            <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md shrink-0">
+              {file.file_no}
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-0.5">{file.customer?.name}</p>
         </DialogHeader>
 
-        {/* ── Adım 0: Yükleme tipi sorusu ─────────────────────────── */}
+        {/* ── Adım 0: Yükleme tipi ────────────────────────────────────────── */}
         {step === 'ask' && (
-          <div className="py-2 space-y-3">
-            <p className="text-[13px] text-gray-600 font-medium">Bu sevkiyat nasıl gerçekleşecek?</p>
+          <div className="py-1 space-y-3">
+            <p className="text-[12px] text-gray-500 font-medium">Bu sevkiyat nasıl gerçekleşecek?</p>
             <div className="grid grid-cols-2 gap-3">
-              {/* Tek yükleme */}
               <button
                 type="button"
                 onClick={() => setStep('form')}
@@ -104,7 +113,6 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
                 </div>
               </button>
 
-              {/* Kısmi sevkiyat */}
               <button
                 type="button"
                 onClick={() => onPartialShipment?.()}
@@ -131,53 +139,70 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
           </div>
         )}
 
-        {/* ── Adım 1: Teslimat formu ────────────────────────────────── */}
-        {step === 'form' && <form onSubmit={handleSubmit(onSubmit)}>
-          <FormRow>
-            <FormGroup label="ADMT *" error={errors.delivered_admt?.message}>
-              <Input type="number" step="0.001" {...register('delivered_admt')} />
-            </FormGroup>
-            <FormGroup label="Gross Weight (KG)">
-              <Input type="number" step="0.001" {...register('gross_weight_kg')} />
-            </FormGroup>
-          </FormRow>
+        {/* ── Adım 1: Teslimat formu ───────────────────────────────────────── */}
+        {step === 'form' && (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
 
-          <FormRow>
-            <FormGroup label="Packages">
-              <Input type="number" {...register('packages')} />
-            </FormGroup>
-            <FormGroup label="Arrival Date">
-              <Input type="date" {...register('arrival_date')} />
-            </FormGroup>
-          </FormRow>
+            {/* ADMT · Brüt Ağırlık */}
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="ADMT *" error={errors.delivered_admt?.message}>
+                <input type="number" step="0.001" {...register('delivered_admt')} className={inp} />
+              </Fld>
+              <Fld label="Brüt Ağırlık (KG)">
+                <input type="number" step="0.001" {...register('gross_weight_kg')} className={inp} />
+              </Fld>
+            </div>
 
-          <FormRow>
-            <FormGroup label="B/L Number">
-              <Input {...register('bl_number')} />
-            </FormGroup>
-            <FormGroup label="SEPTI Ref">
-              <Input {...register('septi_ref')} />
-            </FormGroup>
-          </FormRow>
+            {/* Paket · Varış Tarihi */}
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="Paket Sayısı">
+                <input type="number" {...register('packages')} className={inp} />
+              </Fld>
+              <Fld label="Varış Tarihi">
+                <input type="date" {...register('arrival_date')} className={inp} />
+              </Fld>
+            </div>
 
-          <FormRow>
-            <FormGroup label="Insurance TR">
-              <Input {...register('insurance_tr')} />
-            </FormGroup>
-            <FormGroup label="Insurance IR">
-              <Input {...register('insurance_ir')} />
-            </FormGroup>
-          </FormRow>
+            {/* B/L · SEPTI Ref */}
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="B/L Numarası">
+                <input {...register('bl_number')} className={inp} />
+              </Fld>
+              <Fld label="SEPTI Ref">
+                <input {...register('septi_ref')} className={inp} />
+              </Fld>
+            </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              İptal
-            </Button>
-            <Button type="submit" disabled={convertToDelivery.isPending}>
-              {convertToDelivery.isPending ? 'Kaydediliyor…' : 'Teslimatı Kaydet'}
-            </Button>
-          </DialogFooter>
-        </form>}
+            {/* Sigorta */}
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="Sigorta TR">
+                <input {...register('insurance_tr')} className={inp} />
+              </Fld>
+              <Fld label="Sigorta IR">
+                <input {...register('insurance_ir')} className={inp} />
+              </Fld>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                type="submit"
+                disabled={convertToDelivery.isPending}
+                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                style={{ background: accent }}
+              >
+                {convertToDelivery.isPending ? 'Kaydediliyor…' : 'Teslimatı Kaydet'}
+              </button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

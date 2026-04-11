@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionService, type TransactionFilters, PAGE_SIZE } from '@/services/transactionService';
+import { supabase } from '@/services/supabase';
 import type { TransactionFormData } from '@/types/forms';
 import { toast } from 'sonner';
 
@@ -100,6 +101,24 @@ export function useDeleteTransaction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction deleted');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useFlagTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, flagged, flag_note }: { id: string; flagged: boolean; flag_note: string }) => {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ flagged, flag_note: flag_note || null })
+        .eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success(vars.flagged ? 'Sorunlu olarak işaretlendi' : 'İşaret kaldırıldı');
     },
     onError: (err: Error) => toast.error(err.message),
   });

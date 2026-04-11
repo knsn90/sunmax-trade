@@ -396,28 +396,32 @@ export const transactionService = {
   }> {
     const { data: txns } = await supabase
       .from('transactions')
-      .select('transaction_type, party_type, amount_usd');
+      .select('transaction_type, party_type, amount_usd, doc_status')
+      .neq('doc_status', 'rejected');
 
     const all = txns ?? [];
 
     const sum = (pred: (t: typeof all[0]) => boolean) =>
       all.filter(pred).reduce((s, t) => s + (t.amount_usd ?? 0), 0);
 
-    // Müşteri alacağı = satış faturaları + müşteri avansları − tahsilatlar
-    const customerDebit  = sum(t => t.transaction_type === 'sale_inv' || (t.transaction_type === 'advance' && t.party_type === 'customer'));
-    const customerCredit = sum(t => t.transaction_type === 'receipt');
-    const totalReceivable = Math.max(0, customerDebit - customerCredit);
+    // ALACAK: Müşteri net bakiyesi = satış faturası + müşteri avansı − tahsilat
+    const saleInv     = sum(t => t.transaction_type === 'sale_inv');
+    const custAdvance = sum(t => t.transaction_type === 'advance' && t.party_type === 'customer');
+    const receipts    = sum(t => t.transaction_type === 'receipt');
+    const totalReceivable = Math.max(0, saleInv + custAdvance - receipts);
 
-    // Tedarikçi borcu = satın alma + hizmet faturaları + tedarikçi avansları − ödemeler
-    const supplierCredit = sum(t => t.transaction_type === 'purchase_inv' || t.transaction_type === 'svc_inv' || (t.transaction_type === 'advance' && t.party_type === 'supplier'));
-    const supplierDebit  = sum(t => t.transaction_type === 'payment');
-    const totalPayable = Math.max(0, supplierCredit - supplierDebit);
+    // BORÇ: Tedarikçi net bakiyesi = satın alma + hizmet + tedarikçi avansı − ödeme
+    const purchInv    = sum(t => t.transaction_type === 'purchase_inv');
+    const svcInv      = sum(t => t.transaction_type === 'svc_inv');
+    const suppAdvance = sum(t => t.transaction_type === 'advance' && t.party_type === 'supplier');
+    const payments    = sum(t => t.transaction_type === 'payment');
+    const totalPayable = Math.max(0, purchInv + svcInv + suppAdvance - payments);
 
-    // Gelir = sale_inv + müşteri ön ödemeleri
-    const totalRevenue = sum(t => t.transaction_type === 'sale_inv' || (t.transaction_type === 'advance' && t.party_type === 'customer'));
+    // GELİR = Toplam satış fatura tutarı (tahakkuk esaslı)
+    const totalRevenue = saleInv;
 
-    // Maliyet = purchase_inv + svc_inv + tedarikçi ön ödemeleri
-    const totalCost = sum(t => t.transaction_type === 'purchase_inv' || t.transaction_type === 'svc_inv' || (t.transaction_type === 'advance' && t.party_type === 'supplier'));
+    // GİDERLER = Toplam alım + hizmet fatura tutarı (tahakkuk esaslı)
+    const totalCost = purchInv + svcInv;
 
     return { totalReceivable, totalPayable, totalRevenue, totalCost };
   },

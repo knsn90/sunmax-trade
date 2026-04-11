@@ -6,14 +6,24 @@ import type { TradeFile } from '@/types/database';
 import { useSuppliers } from '@/hooks/useEntities';
 import { useConvertToSale, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useSettings } from '@/hooks/useSettings';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/form-elements';
-import { FormRow, FormGroup } from '@/components/ui/shared';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { journalService } from '@/services/journalService';
+import { cn } from '@/lib/utils';
+
+// ── Mono stil sabitleri ───────────────────────────────────────────────────────
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+const Lbl = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+);
+const Fld = ({ label, children, className, error }: { label: string; children: React.ReactNode; className?: string; error?: string }) => (
+  <div className={className}>
+    <Lbl>{label}</Lbl>
+    {children}
+    {error && <div className="text-[10px] text-red-500 mt-0.5">{error}</div>}
+  </div>
+);
 
 interface ToSaleModalProps {
   open: boolean;
@@ -23,26 +33,20 @@ interface ToSaleModalProps {
 }
 
 const PAYMENT_TERMS_OPTIONS = [
-  { value: '',                        label: '— Select —' },
-  { value: '100% Prepayment',         label: '100% Prepayment' },
-  { value: 'Downpayment',             label: 'Downpayment' },
-  { value: 'Net 30',                  label: 'Net 30 days' },
-  { value: 'Net 60',                  label: 'Net 60 days' },
-  { value: 'Net 90',                  label: 'Net 90 days' },
-  { value: 'Letter of Credit',        label: 'Letter of Credit (L/C)' },
-  { value: 'Cash Against Documents',  label: 'Cash Against Documents (CAD)' },
-  { value: 'Open Account',            label: 'Open Account' },
+  { value: '',                        label: '— Seçin —' },
+  { value: '100% Prepayment',         label: '100% Ön Ödeme' },
+  { value: 'Downpayment',             label: 'Avans (Downpayment)' },
+  { value: 'Net 30',                  label: 'Net 30 gün' },
+  { value: 'Net 60',                  label: 'Net 60 gün' },
+  { value: 'Net 90',                  label: 'Net 90 gün' },
+  { value: 'Letter of Credit',        label: 'Akreditif (L/C)' },
+  { value: 'Cash Against Documents',  label: 'Vesaik Mukabili (CAD)' },
+  { value: 'Open Account',            label: 'Açık Hesap' },
 ];
 
-const CURRENCY_OPTIONS = (
-  <>
-    <option value="USD">USD — US Dollar</option>
-    <option value="EUR">EUR — Euro</option>
-    <option value="TRY">TRY — Turkish Lira</option>
-  </>
-);
-
 export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSaleModalProps) {
+  const { theme } = useTheme();
+  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { data: suppliers = [] } = useSuppliers();
   const { data: settings } = useSettings();
   const convertToSale = useConvertToSale();
@@ -54,7 +58,6 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   const purchFocused = useRef(false);
 
   const mutation = editMode ? updateSaleDetails : convertToSale;
-
   const defCurrency = (settings?.default_currency ?? 'USD') as SaleConversionFormData['purchase_currency'];
 
   const form = useForm<SaleConversionFormData>({
@@ -89,45 +92,35 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   const saleCurrency     = useWatch({ control, name: 'sale_currency' });
   const purchCurrency    = useWatch({ control, name: 'purchase_currency' });
   const isDownpayment    = paymentTerms === 'Downpayment';
-
   const tonnage = Number(file?.tonnage_mt ?? 0);
 
-  // Yüzde değişince → tutar alanını güncelle (kullanıcı tutara odaklanmadıysa)
   useEffect(() => {
     if (advFocused.current) return;
     const base = Number(sellingPrice) * tonnage;
     const rate = Number(advanceRate ?? 0);
-    const computed = base > 0 && rate > 0 ? (Math.round(base * rate / 100 * 100) / 100).toFixed(2) : '';
-    setAdvAmtStr(computed);
+    setAdvAmtStr(base > 0 && rate > 0 ? (Math.round(base * rate / 100 * 100) / 100).toFixed(2) : '');
   }, [advanceRate, sellingPrice, tonnage]);
 
   useEffect(() => {
     if (purchFocused.current) return;
     const base = Number(purchasePrice) * tonnage;
     const rate = Number(purchAdvanceRate ?? 0);
-    const computed = base > 0 && rate > 0 ? (Math.round(base * rate / 100 * 100) / 100).toFixed(2) : '';
-    setPurchAmtStr(computed);
+    setPurchAmtStr(base > 0 && rate > 0 ? (Math.round(base * rate / 100 * 100) / 100).toFixed(2) : '');
   }, [purchAdvanceRate, purchasePrice, tonnage]);
 
-  // Tutar girilince → yüzdeyi hesapla
   function handleAdvanceAmountChange(val: string) {
     setAdvAmtStr(val);
     const amt = parseFloat(val);
     const base = Number(sellingPrice) * tonnage;
-    if (!isNaN(amt) && base > 0) {
-      setValue('advance_rate', Math.round(amt / base * 10000) / 100);
-    }
+    if (!isNaN(amt) && base > 0) setValue('advance_rate', Math.round(amt / base * 10000) / 100);
   }
   function handlePurchAdvanceAmountChange(val: string) {
     setPurchAmtStr(val);
     const amt = parseFloat(val);
     const base = Number(purchasePrice) * tonnage;
-    if (!isNaN(amt) && base > 0) {
-      setValue('purchase_advance_rate', Math.round(amt / base * 10000) / 100);
-    }
+    if (!isNaN(amt) && base > 0) setValue('purchase_advance_rate', Math.round(amt / base * 10000) / 100);
   }
 
-  // Özet satırı için hesaplama
   const advanceAmount      = tonnage > 0 && Number(sellingPrice) > 0
     ? Math.round(Number(sellingPrice) * tonnage * Number(advanceRate ?? 0) / 100 * 100) / 100 : 0;
   const purchAdvanceAmount = tonnage > 0 && Number(purchasePrice) > 0
@@ -167,7 +160,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         sale_currency: defCurrency,
         payment_terms: settings?.payment_terms ?? '',
         advance_rate: 0,
-      purchase_advance_rate: 0,
+        purchase_advance_rate: 0,
         transport_mode: 'truck',
         eta: '',
         vessel_name: '',
@@ -181,47 +174,33 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
     if (!file) return;
     await mutation.mutateAsync({ id: file.id, data });
 
-    // Post customer advance receivable (sale side)
     const rate    = Number(data.advance_rate ?? 0);
     const selling = Number(data.selling_price ?? 0);
-    const tonnage = Number(file.tonnage_mt ?? 0);
-    if (data.payment_terms === 'Downpayment' && rate > 0 && selling > 0 && tonnage > 0) {
-      const advanceAmt = Math.round(selling * tonnage * rate / 100 * 100) / 100;
+    const ton     = Number(file.tonnage_mt ?? 0);
+    if (data.payment_terms === 'Downpayment' && rate > 0 && selling > 0 && ton > 0) {
+      const advanceAmt = Math.round(selling * ton * rate / 100 * 100) / 100;
       setPosting(true);
       try {
         await journalService.postAdvanceReceivable({
-          tradeFileId: file.id,
-          fileNo:       file.file_no,
-          customerId:   file.customer_id,
-          customerName: (file.customer as any)?.name ?? '',
-          amount:       advanceAmt,
-          currency:     data.sale_currency,
-          advanceRate:  rate,
+          tradeFileId: file.id, fileNo: file.file_no, customerId: file.customer_id,
+          customerName: (file.customer as any)?.name ?? '', amount: advanceAmt,
+          currency: data.sale_currency, advanceRate: rate,
         });
-      } finally {
-        setPosting(false);
-      }
+      } finally { setPosting(false); }
     }
 
-    // Post supplier advance payable (purchase side)
-    const purchaseRate    = Number(data.purchase_advance_rate ?? 0);
-    const purchasePrice   = Number(data.purchase_price ?? 0);
-    if (purchaseRate > 0 && purchasePrice > 0 && tonnage > 0 && data.supplier_id) {
-      const supplierAdvAmt = Math.round(purchasePrice * tonnage * purchaseRate / 100 * 100) / 100;
+    const purchaseRate  = Number(data.purchase_advance_rate ?? 0);
+    const purchPrice    = Number(data.purchase_price ?? 0);
+    if (purchaseRate > 0 && purchPrice > 0 && ton > 0 && data.supplier_id) {
+      const supplierAdvAmt = Math.round(purchPrice * ton * purchaseRate / 100 * 100) / 100;
       setPosting(true);
       try {
         await journalService.postAdvancePayable({
-          tradeFileId:  file.id,
-          fileNo:       file.file_no,
-          supplierId:   data.supplier_id,
-          supplierName: (file.supplier as any)?.name ?? '',
-          amount:       supplierAdvAmt,
-          currency:     data.purchase_currency,
-          advanceRate:  purchaseRate,
+          tradeFileId: file.id, fileNo: file.file_no, supplierId: data.supplier_id,
+          supplierName: (file.supplier as any)?.name ?? '', amount: supplierAdvAmt,
+          currency: data.purchase_currency, advanceRate: purchaseRate,
         });
-      } finally {
-        setPosting(false);
-      }
+      } finally { setPosting(false); }
     }
 
     onOpenChange(false);
@@ -231,195 +210,198 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="xl">
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
         <DialogHeader>
-          <DialogTitle>{editMode ? 'Edit Sale Details' : 'Convert to Sale'}</DialogTitle>
-          <DialogDescription>
-            {file.file_no} — {file.customer?.name}
-          </DialogDescription>
+          <div className="flex items-center gap-2 pr-8">
+            <DialogTitle className="text-[15px] flex-1">
+              {editMode ? 'Satış Detaylarını Düzenle' : 'Satışa Çevir'}
+            </DialogTitle>
+            <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md shrink-0">
+              {file.file_no}
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-0.5">{file.customer?.name}</p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <FormRow>
-            <FormGroup label="Supplier *" error={errors.supplier_id?.message}>
-              <NativeSelect {...register('supplier_id')}>
-                <option value="">— Select Supplier —</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </NativeSelect>
-            </FormGroup>
-            <FormGroup label="Transport Mode">
-              <NativeSelect {...register('transport_mode')}>
-                <option value="truck">By Truck</option>
-                <option value="railway">By Railway</option>
-                <option value="sea">By Sea</option>
-              </NativeSelect>
-            </FormGroup>
-          </FormRow>
+        {/* ── Form ────────────────────────────────────────────────────────── */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
 
-          {/* Prices + Currencies side by side */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            {/* Purchase side */}
-            <div className="border border-blue-100 bg-blue-50/40 rounded-xl p-3 space-y-2">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-                📦 Purchase (from Supplier)
-              </p>
-              <FormGroup label="Purchase Price (per MT) *" error={errors.purchase_price?.message}>
-                <Input type="number" step="0.01" {...register('purchase_price')} />
-              </FormGroup>
-              <FormGroup label="Purchase Currency">
-                <NativeSelect {...register('purchase_currency')}>
-                  {CURRENCY_OPTIONS}
-                </NativeSelect>
-              </FormGroup>
+          {/* Tedarikçi · Taşıma */}
+          <div className="grid grid-cols-2 gap-3">
+            <Fld label="Tedarikçi *" error={errors.supplier_id?.message}>
+              <select {...register('supplier_id')} className={sel}>
+                <option value="">— Seçin —</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </Fld>
+            <Fld label="Taşıma Şekli">
+              <select {...register('transport_mode')} className={sel}>
+                <option value="truck">Kara (Tır)</option>
+                <option value="railway">Demiryolu</option>
+                <option value="sea">Deniz</option>
+              </select>
+            </Fld>
+          </div>
+
+          {/* Alım · Satış fiyat kartları */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Alım */}
+            <div className="bg-blue-50/60 rounded-xl p-3 space-y-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-blue-600">📦 Alım (Tedarikçi)</div>
+              <Fld label="Alım Fiyatı (MT) *" error={errors.purchase_price?.message}>
+                <input type="number" step="0.01" {...register('purchase_price')} className={cn(inp, 'bg-blue-100/60')} />
+              </Fld>
+              <Fld label="Para Birimi">
+                <select {...register('purchase_currency')} className={cn(sel, 'bg-blue-100/60')}>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="TRY">TRY</option>
+                  <option value="AED">AED</option>
+                </select>
+              </Fld>
             </div>
 
-            {/* Sale side */}
-            <div className="border border-green-100 bg-green-50/40 rounded-xl p-3 space-y-2">
-              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">
-                💰 Sale (to Customer)
-              </p>
-              <FormGroup label="Selling Price (per MT) *" error={errors.selling_price?.message}>
-                <Input type="number" step="0.01" {...register('selling_price')} />
-              </FormGroup>
-              <FormGroup label="Sale Currency">
-                <NativeSelect {...register('sale_currency')}>
-                  {CURRENCY_OPTIONS}
-                </NativeSelect>
-              </FormGroup>
+            {/* Satış */}
+            <div className="bg-green-50/60 rounded-xl p-3 space-y-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-green-600">💰 Satış (Müşteri)</div>
+              <Fld label="Satış Fiyatı (MT) *" error={errors.selling_price?.message}>
+                <input type="number" step="0.01" {...register('selling_price')} className={cn(inp, 'bg-green-100/60')} />
+              </Fld>
+              <Fld label="Para Birimi">
+                <select {...register('sale_currency')} className={cn(sel, 'bg-green-100/60')}>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="TRY">TRY</option>
+                  <option value="AED">AED</option>
+                </select>
+              </Fld>
             </div>
           </div>
 
-          <FormRow>
-            <FormGroup label="Freight Cost">
-              <Input type="number" step="0.01" {...register('freight_cost')} />
-            </FormGroup>
-            <FormGroup label="Incoterms *" error={errors.incoterms?.message}>
-              <Input {...register('incoterms')} />
-            </FormGroup>
-          </FormRow>
+          {/* Navlun · Incoterms */}
+          <div className="grid grid-cols-2 gap-3">
+            <Fld label="Navlun">
+              <input type="number" step="0.01" {...register('freight_cost')} className={inp} />
+            </Fld>
+            <Fld label="Incoterms *" error={errors.incoterms?.message}>
+              <input {...register('incoterms')} className={inp} />
+            </Fld>
+          </div>
 
-          <FormRow>
-            <FormGroup label="Port of Loading *" error={errors.port_of_loading?.message}>
-              <Input {...register('port_of_loading')} />
-            </FormGroup>
-            <FormGroup label="Port of Discharge">
-              <Input {...register('port_of_discharge')} />
-            </FormGroup>
-          </FormRow>
+          {/* Yükleme · Boşaltma Limanı */}
+          <div className="grid grid-cols-2 gap-3">
+            <Fld label="Yükleme Limanı *" error={errors.port_of_loading?.message}>
+              <input {...register('port_of_loading')} className={inp} />
+            </Fld>
+            <Fld label="Boşaltma Limanı">
+              <input {...register('port_of_discharge')} className={inp} />
+            </Fld>
+          </div>
 
-          <FormRow cols={3}>
-            <FormGroup label="ETA">
-              <Input type="date" {...register('eta')} />
-            </FormGroup>
-            <FormGroup label="Vessel Name">
-              <Input placeholder="e.g. MV ATLAS" {...register('vessel_name')} />
-            </FormGroup>
-            <FormGroup label="Register No">
-              <Input {...register('register_no')} />
-            </FormGroup>
-          </FormRow>
+          {/* ETA · Gemi · Kayıt No */}
+          <div className="grid grid-cols-3 gap-3">
+            <Fld label="ETA">
+              <input type="date" {...register('eta')} className={inp} />
+            </Fld>
+            <Fld label="Gemi Adı">
+              <input placeholder="örn. MV ATLAS" {...register('vessel_name')} className={inp} />
+            </Fld>
+            <Fld label="Kayıt No">
+              <input {...register('register_no')} className={inp} />
+            </Fld>
+          </div>
 
-          <FormRow>
-            <FormGroup label="Proforma Ref">
-              <Input {...register('proforma_ref')} />
-            </FormGroup>
-            <FormGroup label="Payment Terms">
-              <NativeSelect {...register('payment_terms')}>
-                {PAYMENT_TERMS_OPTIONS.map((o) => (
+          {/* Proforma Ref · Ödeme Koşulları */}
+          <div className="grid grid-cols-2 gap-3">
+            <Fld label="Proforma Ref">
+              <input {...register('proforma_ref')} className={inp} />
+            </Fld>
+            <Fld label="Ödeme Koşulları">
+              <select {...register('payment_terms')} className={sel}>
+                {PAYMENT_TERMS_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
-              </NativeSelect>
-            </FormGroup>
-          </FormRow>
+              </select>
+            </Fld>
+          </div>
 
+          {/* Avans bölümü — sadece Downpayment seçiliyse */}
           {isDownpayment && (
-            <div className="space-y-3 mb-3">
-              {/* Müşteri Ön Ödeme */}
-              <div className="border border-green-100 bg-green-50/30 rounded-xl p-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 mb-2">
-                  Müşteri Ön Ödeme
-                </p>
+            <div className="space-y-2">
+              {/* Müşteri avansı */}
+              <div className="bg-green-50/50 rounded-xl p-3">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-green-700 mb-2">Müşteri Ön Ödeme</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormGroup label="Yüzde (%)" error={errors.advance_rate?.message}>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      placeholder="örn. 30"
-                      {...register('advance_rate')}
-                    />
-                  </FormGroup>
-                  <FormGroup label={`Tutar (${saleCurrency || 'USD'})`}>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="örn. 75000"
+                  <Fld label="Yüzde (%)" error={errors.advance_rate?.message}>
+                    <input type="number" min="0" max="100" step="0.01" placeholder="örn. 30"
+                      {...register('advance_rate')} className={cn(inp, 'bg-green-100/60')} />
+                  </Fld>
+                  <Fld label={`Tutar (${saleCurrency || 'USD'})`}>
+                    <input type="number" step="0.01" placeholder="örn. 75000"
                       value={advAmtStr}
                       onFocus={() => { advFocused.current = true; }}
                       onBlur={() => { advFocused.current = false; }}
-                      onChange={(e) => handleAdvanceAmountChange(e.target.value)}
-                    />
-                  </FormGroup>
+                      onChange={e => handleAdvanceAmountChange(e.target.value)}
+                      className={cn(inp, 'bg-green-100/60')} />
+                  </Fld>
                 </div>
                 {tonnage > 0 && Number(sellingPrice) > 0 && Number(advanceRate) > 0 && (
-                  <p className="text-[11px] text-green-700 mt-1.5 font-medium">
-                    = {Number(sellingPrice).toLocaleString()} × {tonnage} MT × %{Number(advanceRate)} = <strong>${advanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  <p className="text-[10px] text-green-700 mt-1.5 font-medium">
+                    {Number(sellingPrice).toLocaleString()} × {tonnage} MT × %{Number(advanceRate)} = <strong>${advanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                   </p>
                 )}
               </div>
 
-              {/* Satıcı Ön Ödeme */}
-              <div className="border border-blue-100 bg-blue-50/30 rounded-xl p-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">
-                  Satıcı Ön Ödeme
-                </p>
+              {/* Tedarikçi avansı */}
+              <div className="bg-blue-50/50 rounded-xl p-3">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-blue-700 mb-2">Tedarikçi Ön Ödeme</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormGroup label="Yüzde (%)" error={errors.purchase_advance_rate?.message}>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      placeholder="örn. 30"
-                      {...register('purchase_advance_rate')}
-                    />
-                  </FormGroup>
-                  <FormGroup label={`Tutar (${purchCurrency || 'USD'})`}>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="örn. 60000"
+                  <Fld label="Yüzde (%)" error={errors.purchase_advance_rate?.message}>
+                    <input type="number" min="0" max="100" step="0.01" placeholder="örn. 30"
+                      {...register('purchase_advance_rate')} className={cn(inp, 'bg-blue-100/60')} />
+                  </Fld>
+                  <Fld label={`Tutar (${purchCurrency || 'USD'})`}>
+                    <input type="number" step="0.01" placeholder="örn. 60000"
                       value={purchAmtStr}
                       onFocus={() => { purchFocused.current = true; }}
                       onBlur={() => { purchFocused.current = false; }}
-                      onChange={(e) => handlePurchAdvanceAmountChange(e.target.value)}
-                    />
-                  </FormGroup>
+                      onChange={e => handlePurchAdvanceAmountChange(e.target.value)}
+                      className={cn(inp, 'bg-blue-100/60')} />
+                  </Fld>
                 </div>
                 {tonnage > 0 && Number(purchasePrice) > 0 && Number(purchAdvanceRate) > 0 && (
-                  <p className="text-[11px] text-blue-700 mt-1.5 font-medium">
-                    = {Number(purchasePrice).toLocaleString()} × {tonnage} MT × %{Number(purchAdvanceRate)} = <strong>${purchAdvanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  <p className="text-[10px] text-blue-700 mt-1.5 font-medium">
+                    {Number(purchasePrice).toLocaleString()} × {tonnage} MT × %{Number(purchAdvanceRate)} = <strong>${purchAdvanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                   </p>
                 )}
               </div>
             </div>
           )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending || posting}>
+          {/* ── Footer ──────────────────────────────────────────────────────── */}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending || posting}
+              className="px-4 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+              style={{ background: accent }}
+            >
               {posting
                 ? 'Muhasebeye İşleniyor…'
                 : mutation.isPending
-                  ? (editMode ? 'Saving…' : 'Converting…')
-                  : (editMode ? 'Save Changes' : 'Convert to Sale')}
-            </Button>
-          </DialogFooter>
+                  ? (editMode ? 'Kaydediliyor…' : 'Çevriliyor…')
+                  : (editMode ? 'Kaydet' : 'Satışa Çevir')}
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

@@ -62,7 +62,7 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
           onClick={handleApproveClick}
           disabled={pending}
           title="Onayla"
-          className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50"
+          className="p-1 rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 transition-colors disabled:opacity-50"
         >
           <Check className="h-3.5 w-3.5" />
         </button>
@@ -70,7 +70,7 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
           onClick={handleRejectClick}
           disabled={pending}
           title="Reddet"
-          className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 transition-colors disabled:opacity-50"
+          className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -83,8 +83,8 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
       <button
         onClick={() => setStatus.mutate({ id, status: 'draft' })}
         disabled={pending}
-        title="Reset to Draft"
-        className="p-1.5 rounded-lg bg-amber-50 text-amber-500 hover:bg-amber-100 border border-amber-200 transition-colors disabled:opacity-50"
+        title="Taslağa Döndür"
+        className="p-1 rounded-lg text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-50"
       >
         <RotateCcw className="h-3.5 w-3.5" />
       </button>
@@ -98,8 +98,8 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
           setStatus.mutate({ id, status: 'draft' });
       }}
       disabled={pending}
-      title="Revert to Draft"
-      className="p-1.5 rounded-lg bg-gray-100 text-gray-400 hover:bg-gray-200 border border-gray-200 transition-colors disabled:opacity-50"
+      title="Taslağa Döndür"
+      className="p-1 rounded-lg text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50"
     >
       <RotateCcw className="h-3.5 w-3.5" />
     </button>

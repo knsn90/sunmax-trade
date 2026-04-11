@@ -98,7 +98,7 @@
   "txType": {
     "svc_inv": "Hizmet Faturası",
     "purchase_inv": "Satın Alma Faturası",
-    "receipt": "Makbuz",
+    "receipt": "Tahsilat",
     "payment": "Ödeme",
     "sale_inv": "Satış Faturası",
     "advance": "Ön Ödeme",
