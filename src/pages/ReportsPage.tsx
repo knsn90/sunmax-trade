@@ -1156,20 +1156,20 @@ export function AccountStatementTab() {
     const rows = txnsWithBalance.map((txn, i) => {
       const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
       const origAmt = txn.currency !== 'USD'
-        ? `<div style="font-size:9px;color:#94a3b8;margin-top:1px">${fCurrency(txn.amount, txn.currency)}</div>` : '';
+        ? `<span style="font-size:7.5px;color:#94a3b8;display:block">${fCurrency(txn.amount, txn.currency)}</span>` : '';
       return `
       <tr style="border-bottom:1px solid #e2e8f0;background:${bg}">
-        <td style="padding:5px 8px;white-space:nowrap;color:#475569;font-size:10px">${fDate(txn.transaction_date)}</td>
-        <td style="padding:5px 8px;color:#334155;font-size:10px">${TYPE_LABEL[txn.transaction_type] ?? txn.transaction_type}</td>
-        <td style="padding:5px 8px;font-family:monospace;color:#64748b;font-size:9.5px">${txn.reference_no || '—'}</td>
-        <td style="padding:5px 8px;color:#334155;font-size:10px;max-width:160px">${txn.description || '—'}</td>
-        <td style="padding:5px 8px;text-align:center">
-          <span style="font-size:10px;font-weight:700;color:#1e293b">${txn.currency}</span>
+        <td style="padding:3px 6px;white-space:nowrap;color:#475569;font-size:8.5px">${fDate(txn.transaction_date)}</td>
+        <td style="padding:3px 6px;color:#334155;font-size:8.5px">${TYPE_LABEL[txn.transaction_type] ?? txn.transaction_type}</td>
+        <td style="padding:3px 6px;font-family:monospace;color:#64748b;font-size:8px">${txn.reference_no || '—'}</td>
+        <td style="padding:3px 6px;color:#334155;font-size:8.5px;max-width:140px">${txn.description || '—'}</td>
+        <td style="padding:3px 6px;text-align:center">
+          <span style="font-size:8.5px;font-weight:700;color:#1e293b">${txn.currency}</span>
           ${origAmt}
         </td>
-        <td style="padding:5px 8px;text-align:right;color:#b91c1c;font-weight:600;font-size:10px">${txn.isDebit  ? fUSD(txn.amt) : ''}</td>
-        <td style="padding:5px 8px;text-align:right;color:#065f46;font-weight:600;font-size:10px">${!txn.isDebit ? fUSD(txn.amt) : ''}</td>
-        <td style="padding:5px 8px;text-align:right;font-weight:700;font-size:10px;color:${txn.balance > 0 ? '#92400e' : txn.balance < 0 ? '#065f46' : '#94a3b8'}">${fUSD(Math.abs(txn.balance))}${balSuffix(txn.balance)}</td>
+        <td style="padding:3px 6px;text-align:right;color:#b91c1c;font-weight:600;font-size:8.5px">${txn.isDebit  ? fUSD(txn.amt) : ''}</td>
+        <td style="padding:3px 6px;text-align:right;color:#065f46;font-weight:600;font-size:8.5px">${!txn.isDebit ? fUSD(txn.amt) : ''}</td>
+        <td style="padding:3px 6px;text-align:right;font-weight:700;font-size:8.5px;color:${txn.balance > 0 ? '#92400e' : txn.balance < 0 ? '#065f46' : '#94a3b8'}">${fUSD(Math.abs(txn.balance))}${balSuffix(txn.balance)}</td>
       </tr>`;
     }).join('');
 
@@ -1195,12 +1195,12 @@ export function AccountStatementTab() {
       .meta{display:flex;gap:20px;align-items:center;font-size:9.5px;color:#64748b;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e2e8f0}
       .meta strong{color:#1e293b;font-weight:700}
       table{width:100%;border-collapse:collapse}
-      thead tr{background:#f1f5f9;border-bottom:2px solid #cbd5e1}
-      th{padding:6px 8px;font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748b;white-space:nowrap}
+      thead tr{background:#f1f5f9;border-bottom:1px solid #cbd5e1}
+      th{padding:3px 6px;font-size:7.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748b;white-space:nowrap}
       .th-r{text-align:right}
       .th-c{text-align:center}
       tfoot tr{background:#f8fafc;border-top:2px solid #cbd5e1}
-      tfoot td{padding:7px 8px;font-size:10px;font-weight:700}
+      tfoot td{padding:4px 6px;font-size:8.5px;font-weight:700}
       .stmt-footer{margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:8.5px;color:#94a3b8}
     </style>`;
 
