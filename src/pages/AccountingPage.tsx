@@ -25,9 +25,10 @@ import { LoadingSpinner } from '@/components/ui/shared';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useCanApprove, useBulkSetDocStatus } from '@/hooks/useApproval';
 import {
   TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2,
-  Printer, Pencil, Trash2, Plus, Search, AlertTriangle, BookCheck,
+  Printer, Pencil, Trash2, Plus, Search, AlertTriangle, BookCheck, Check, X,
 } from 'lucide-react';
 
 type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash' | 'ayarlar';
@@ -140,6 +141,8 @@ export function AccountingPage() {
   const { profile } = useAuth();
   const writable = canWriteTransactions(profile?.role);
   const admin = isAdmin(profile?.role);
+  const canApprove = useCanApprove();
+  const bulkSetStatus = useBulkSetDocStatus('transactions');
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
@@ -987,23 +990,51 @@ export function AccountingPage() {
       </div>
 
       {/* ── Bulk action bar ───────────────────────────────────────────────── */}
-      {someSelected && admin && (
+      {someSelected && (admin || canApprove) && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-3 bg-gray-900 text-white px-4 py-2.5 rounded-2xl shadow-xl">
-            <span className="text-[13px] font-semibold">{selectedIds.size} kayıt seçildi</span>
+          <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-2xl shadow-xl">
+            <span className="text-[13px] font-semibold shrink-0">{selectedIds.size} kayıt seçildi</span>
             <button
               onClick={() => setSelectedIds(new Set())}
-              className="text-[11px] text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-gray-700"
+              className="text-[11px] text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-gray-700 shrink-0"
             >
               İptal
             </button>
-            <button
-              onClick={() => { setBulkDeleteInput(''); setBulkDeleteOpen(true); }}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-[12px] font-semibold transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Toplu Sil
-            </button>
+            {canApprove && (
+              <>
+                <button
+                  onClick={() => {
+                    bulkSetStatus.mutate({ ids: Array.from(selectedIds), status: 'approved' });
+                    setSelectedIds(new Set());
+                  }}
+                  disabled={bulkSetStatus.isPending}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Toplu Onayla
+                </button>
+                <button
+                  onClick={() => {
+                    bulkSetStatus.mutate({ ids: Array.from(selectedIds), status: 'rejected' });
+                    setSelectedIds(new Set());
+                  }}
+                  disabled={bulkSetStatus.isPending}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-[12px] font-semibold transition-colors disabled:opacity-50 shrink-0"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Toplu Reddet
+                </button>
+              </>
+            )}
+            {admin && (
+              <button
+                onClick={() => { setBulkDeleteInput(''); setBulkDeleteOpen(true); }}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-[12px] font-semibold transition-colors shrink-0"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Toplu Sil
+              </button>
+            )}
           </div>
         </div>
       )}

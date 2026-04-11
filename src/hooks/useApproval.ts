@@ -33,6 +33,26 @@ export function useSetDocStatus(table: ApprovableTable) {
   });
 }
 
+export function useBulkSetDocStatus(table: ApprovableTable) {
+  const qc = useQueryClient();
+  const { profile } = useAuth();
+
+  return useMutation({
+    mutationFn: ({ ids, status }: { ids: string[]; status: DocStatus }) =>
+      approvalService.bulkSetStatus(table, ids, status, profile?.id),
+    onSuccess: (_, { ids, status }) => {
+      QUERY_KEY_MAP[table].forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
+      qc.invalidateQueries({ queryKey: ['trade-files'] });
+      const label =
+        status === 'approved' ? `✅ ${ids.length} kayıt onaylandı` :
+        status === 'rejected' ? `❌ ${ids.length} kayıt reddedildi` :
+        `🔄 ${ids.length} kayıt taslağa döndürüldü`;
+      toast.success(label);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 /** Returns true if current user can approve/reject documents */
 export function useCanApprove(): boolean {
   const { profile } = useAuth();
