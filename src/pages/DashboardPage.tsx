@@ -125,7 +125,7 @@ function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{label}</div>
-          <div className="text-[15px] font-extrabold text-gray-900 leading-tight truncate">{value}</div>
+          <div className="text-[14px] font-extrabold text-gray-900 leading-tight tabular-nums">{value}</div>
           {sub && (
             <div className="flex items-center gap-1 mt-0.5">
               {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-green-500 shrink-0" />}

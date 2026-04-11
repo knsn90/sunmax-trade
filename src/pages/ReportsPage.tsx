@@ -449,7 +449,7 @@ export function PnlReportTab() {
     <div className="space-y-4">
 
       {/* ── Görünüm seçici ──────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-full md:w-fit">
         {([
           { key: 'ozet', label: 'Tüm Dosyalar Özeti' },
           { key: 'tek',  label: 'Dosya Detayı' },
@@ -457,7 +457,7 @@ export function PnlReportTab() {
           <button
             key={tab.key}
             onClick={() => setViewMode(tab.key)}
-            className={`px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+            className={`flex-1 md:flex-none px-4 h-9 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
               viewMode === tab.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -477,8 +477,8 @@ export function PnlReportTab() {
               { label: 'Ort. Kar Marjı', value: avgMargin.toFixed(1) + '%', profit: true },
             ].map(card => (
               <div key={card.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 px-2 py-3 md:p-4 text-center overflow-hidden">
-                <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 leading-tight">{card.label}</div>
-                <div className="text-[13px] md:text-xl font-black leading-tight break-all text-gray-900"
+                <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 leading-tight">{card.label}</div>
+                <div className="text-[11px] md:text-xl font-black leading-tight tabular-nums text-gray-900"
                   style={card.profit ? { color: col(totalProfit) } : undefined}>{card.value}</div>
               </div>
             ))}
@@ -539,81 +539,119 @@ export function PnlReportTab() {
             {allFilesRows.length === 0 ? (
               <div className="py-14 text-center text-sm text-gray-400">Hesaplanmış P&L verisi bulunamadı</div>
             ) : (
-              <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px]">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Dosya / Müşteri</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Ürün</th>
-                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Hasılat</th>
-                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Maliyet</th>
-                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Net Kar</th>
-                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Marj %</th>
-                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Durum</th>
-                    <th className="px-4 py-2.5 w-20" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {allFilesRows.map((row, i) => (
-                    <tr key={row.file.id} className={`hover:bg-gray-50/60 transition-colors ${i % 2 === 1 ? 'bg-gray-50/30' : ''}`}>
-                      <td className="px-4 py-3">
-                        <div className="text-[12px] font-bold font-mono text-gray-800">{row.file.file_no}</div>
-                        <div className="text-[10px] text-gray-400">{row.file.customer?.name ?? '—'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-[11px] text-gray-600 truncate max-w-[120px]">
-                        {row.file.product?.name ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right text-[12px] font-semibold text-gray-700 tabular-nums">
-                        {fUSD(row.revenue)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-[12px] text-gray-600 tabular-nums">
-                        ({fUSD(row.costs)})
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-[13px] font-black tabular-nums" style={{ color: col(row.profit) }}>
-                          {fUSD(row.profit)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-[11px] font-bold tabular-nums" style={{ color: col(row.profit) }}>
-                          %{row.margin.toFixed(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                          {row.file.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => { setSelectedFileId(row.file.id); setViewMode('tek'); }}
-                          className="text-[11px] font-semibold hover:underline"
-                          style={{ color: accent }}
-                        >
-                          Detay →
-                        </button>
-                      </td>
-                    </tr>
+              <>
+                {/* Mobile: card list */}
+                <div className="divide-y divide-gray-50 md:hidden">
+                  {allFilesRows.map((row) => (
+                    <button
+                      key={row.file.id}
+                      onClick={() => { setSelectedFileId(row.file.id); setViewMode('tek'); }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50/60 active:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-[12px] font-bold font-mono text-gray-800">{row.file.file_no}</span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400">{row.file.status}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-400 truncate">{row.file.customer?.name ?? '—'}</div>
+                          <div className="text-[10px] text-gray-300 truncate mt-0.5">{row.file.product?.name ?? '—'}</div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-[13px] font-black tabular-nums" style={{ color: col(row.profit) }}>{fUSD(row.profit)}</div>
+                          <div className="text-[10px] font-semibold tabular-nums mt-0.5" style={{ color: col(row.profit) }}>%{row.margin.toFixed(1)}</div>
+                          <div className="text-[10px] text-gray-400 tabular-nums mt-0.5">{fUSD(row.revenue)}</div>
+                        </div>
+                      </div>
+                    </button>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-gray-200 bg-gray-50">
-                    <td colSpan={2} className="px-4 py-2.5 text-[11px] font-bold text-gray-600">TOPLAM</td>
-                    <td className="px-4 py-2.5 text-right text-[12px] font-black text-gray-700 tabular-nums">{fUSD(totalRevenue)}</td>
-                    <td className="px-4 py-2.5 text-right text-[12px] font-bold text-gray-600 tabular-nums">
-                      ({fUSD(allFilesRows.reduce((s, r) => s + r.costs, 0))})
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-[13px] font-black tabular-nums" style={{ color: col(totalProfit) }}>
-                      {fUSD(totalProfit)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-[12px] font-black" style={{ color: col(totalProfit) }}>
-                      %{avgMargin.toFixed(1)}
-                    </td>
-                    <td colSpan={2} />
-                  </tr>
-                </tfoot>
-              </table>
-              </div>
+                  {/* Mobile total row */}
+                  <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-gray-600">TOPLAM</span>
+                    <div className="text-right">
+                      <div className="text-[13px] font-black tabular-nums" style={{ color: col(totalProfit) }}>{fUSD(totalProfit)}</div>
+                      <div className="text-[10px] text-gray-400 tabular-nums">{fUSD(totalRevenue)} hasılat</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop: table */}
+                <div className="hidden md:block overflow-x-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Dosya / Müşteri</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Ürün</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Hasılat</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Maliyet</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Net Kar</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Marj %</th>
+                      <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Durum</th>
+                      <th className="px-4 py-2.5 w-20" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {allFilesRows.map((row, i) => (
+                      <tr key={row.file.id} className={`hover:bg-gray-50/60 transition-colors ${i % 2 === 1 ? 'bg-gray-50/30' : ''}`}>
+                        <td className="px-4 py-3">
+                          <div className="text-[12px] font-bold font-mono text-gray-800">{row.file.file_no}</div>
+                          <div className="text-[10px] text-gray-400">{row.file.customer?.name ?? '—'}</div>
+                        </td>
+                        <td className="px-4 py-3 text-[11px] text-gray-600 truncate max-w-[120px]">
+                          {row.file.product?.name ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-[12px] font-semibold text-gray-700 tabular-nums">
+                          {fUSD(row.revenue)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-[12px] text-gray-600 tabular-nums">
+                          ({fUSD(row.costs)})
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-[13px] font-black tabular-nums" style={{ color: col(row.profit) }}>
+                            {fUSD(row.profit)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-[11px] font-bold tabular-nums" style={{ color: col(row.profit) }}>
+                            %{row.margin.toFixed(1)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                            {row.file.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => { setSelectedFileId(row.file.id); setViewMode('tek'); }}
+                            className="text-[11px] font-semibold hover:underline"
+                            style={{ color: accent }}
+                          >
+                            Detay →
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-gray-200 bg-gray-50">
+                      <td colSpan={2} className="px-4 py-2.5 text-[11px] font-bold text-gray-600">TOPLAM</td>
+                      <td className="px-4 py-2.5 text-right text-[12px] font-black text-gray-700 tabular-nums">{fUSD(totalRevenue)}</td>
+                      <td className="px-4 py-2.5 text-right text-[12px] font-bold text-gray-600 tabular-nums">
+                        ({fUSD(allFilesRows.reduce((s, r) => s + r.costs, 0))})
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-[13px] font-black tabular-nums" style={{ color: col(totalProfit) }}>
+                        {fUSD(totalProfit)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-[12px] font-black" style={{ color: col(totalProfit) }}>
+                        %{avgMargin.toFixed(1)}
+                      </td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                </table>
+                </div>
+              </>
             )}
           </div>
         </>
@@ -661,7 +699,7 @@ export function PnlReportTab() {
             return (
               <>
                 {/* KPI satırı — kompakt */}
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {[
                     { label: 'Gelir',     value: fUSD(pnl.revenue), profit: false },
                     { label: 'Maliyet',   value: fUSD(pnl.costs),   profit: false },
@@ -670,7 +708,7 @@ export function PnlReportTab() {
                   ].map((card) => (
                     <div key={card.label} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5">
                       <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{card.label}</div>
-                      <div className="text-[14px] font-black leading-tight tabular-nums text-gray-900" style={card.profit ? { color: col(pnl.profit) } : undefined}>{card.value}</div>
+                      <div className="text-[13px] font-black leading-tight tabular-nums text-gray-900" style={card.profit ? { color: col(pnl.profit) } : undefined}>{card.value}</div>
                     </div>
                   ))}
                 </div>
