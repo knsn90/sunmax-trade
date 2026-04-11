@@ -472,13 +472,14 @@ export function PnlReportTab() {
           {/* KPI kartlar */}
           <div className="grid grid-cols-3 gap-2 md:gap-3">
             {[
-              { label: 'Toplam Hasılat', value: fUSD(totalRevenue), color: '#1e40af' },
-              { label: 'Toplam Net Kar', value: fUSD(totalProfit),  color: col(totalProfit) },
-              { label: 'Ort. Kar Marjı', value: avgMargin.toFixed(1) + '%', color: col(totalProfit) },
+              { label: 'Toplam Hasılat', value: fUSD(totalRevenue), profit: false },
+              { label: 'Toplam Net Kar', value: fUSD(totalProfit),  profit: true },
+              { label: 'Ort. Kar Marjı', value: avgMargin.toFixed(1) + '%', profit: true },
             ].map(card => (
               <div key={card.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 px-2 py-3 md:p-4 text-center overflow-hidden">
                 <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 leading-tight">{card.label}</div>
-                <div className="text-[13px] md:text-xl font-black leading-tight break-all" style={{ color: card.color }}>{card.value}</div>
+                <div className="text-[13px] md:text-xl font-black leading-tight break-all text-gray-900"
+                  style={card.profit ? { color: col(totalProfit) } : undefined}>{card.value}</div>
               </div>
             ))}
           </div>
@@ -562,7 +563,7 @@ export function PnlReportTab() {
                       <td className="px-4 py-3 text-[11px] text-gray-600 truncate max-w-[120px]">
                         {row.file.product?.name ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-right text-[12px] font-semibold text-blue-700 tabular-nums">
+                      <td className="px-4 py-3 text-right text-[12px] font-semibold text-gray-700 tabular-nums">
                         {fUSD(row.revenue)}
                       </td>
                       <td className="px-4 py-3 text-right text-[12px] text-gray-600 tabular-nums">
@@ -574,11 +575,7 @@ export function PnlReportTab() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                          row.margin >= 10 ? 'bg-green-100 text-green-700'
-                          : row.margin >= 0  ? 'bg-amber-100 text-amber-700'
-                          : 'bg-red-100 text-red-600'
-                        }`}>
+                        <span className="text-[11px] font-bold tabular-nums" style={{ color: col(row.profit) }}>
                           %{row.margin.toFixed(1)}
                         </span>
                       </td>
@@ -602,7 +599,7 @@ export function PnlReportTab() {
                 <tfoot>
                   <tr className="border-t-2 border-gray-200 bg-gray-50">
                     <td colSpan={2} className="px-4 py-2.5 text-[11px] font-bold text-gray-600">TOPLAM</td>
-                    <td className="px-4 py-2.5 text-right text-[12px] font-black text-blue-700 tabular-nums">{fUSD(totalRevenue)}</td>
+                    <td className="px-4 py-2.5 text-right text-[12px] font-black text-gray-700 tabular-nums">{fUSD(totalRevenue)}</td>
                     <td className="px-4 py-2.5 text-right text-[12px] font-bold text-gray-600 tabular-nums">
                       ({fUSD(allFilesRows.reduce((s, r) => s + r.costs, 0))})
                     </td>
