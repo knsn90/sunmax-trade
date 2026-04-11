@@ -705,8 +705,14 @@ export function PnlReportTab() {
           {selectedFile && pnl && (() => {
             const purchaseRows = costRows.filter(t => t.transaction_type === 'purchase_inv');
             const svcRows      = costRows.filter(t => t.transaction_type === 'svc_inv');
+            const saleRows     = txns.filter(t => t.transaction_type === 'sale_inv');
             const purchaseTotal = purchaseRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
             const svcTotal      = svcRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+            const saleTotal     = saleRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+            // Fatura toplamı varsa onu kullan, yoksa formül bazlı gelir
+            const displayRevenue = saleTotal > 0 ? saleTotal : pnl.revenue;
+            const displayProfit  = displayRevenue - pnl.costs;
+            const displayMargin  = displayRevenue > 0 ? (displayProfit / displayRevenue) * 100 : 0;
             const qty = selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0;
 
             return (
@@ -714,25 +720,56 @@ export function PnlReportTab() {
                 {/* KPI satırı — kompakt */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {[
-                    { label: 'Gelir',     value: fUSD(pnl.revenue), profit: false },
-                    { label: 'Maliyet',   value: fUSD(pnl.costs),   profit: false },
-                    { label: 'Net Kâr',   value: fUSD(pnl.profit),  profit: true },
-                    { label: 'Kâr Marjı', value: '%' + pnl.margin.toFixed(2), profit: true },
+                    { label: 'Gelir',     value: fUSD(displayRevenue), profit: false },
+                    { label: 'Maliyet',   value: fUSD(pnl.costs),      profit: false },
+                    { label: 'Net Kâr',   value: fUSD(displayProfit),  profit: true },
+                    { label: 'Kâr Marjı', value: '%' + displayMargin.toFixed(2), profit: true },
                   ].map((card) => (
                     <div key={card.label} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5">
                       <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{card.label}</div>
-                      <div className="text-[13px] font-black leading-tight tabular-nums text-gray-900" style={card.profit ? { color: col(pnl.profit) } : undefined}>{card.value}</div>
+                      <div className="text-[13px] font-black leading-tight tabular-nums text-gray-900" style={card.profit ? { color: col(displayProfit) } : undefined}>{card.value}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* Gelir özeti */}
-                <div className="bg-white border border-gray-100 rounded-xl px-4 py-2.5 flex items-center justify-between shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Gelir</span>
-                    <span className="text-[11px] text-gray-400">{selectedFile.file_no} · {selectedFile.customer?.name ?? ''} · {fN(qty, 3)} MT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
+                {/* SATIŞ FATURALARI — sale_inv transaction'ları varsa göster */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Satış Faturaları</span>
+                      <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{saleRows.length}</span>
+                    </div>
+                    <span className="text-[12px] font-semibold text-gray-600 tabular-nums">{fUSD(saleTotal || pnl.revenue)}</span>
                   </div>
-                  <span className="text-[13px] font-bold text-gray-900 tabular-nums">{fUSD(pnl.revenue)}</span>
+                  {saleRows.length === 0 ? (
+                    <div className="px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-[11px] text-gray-400">{selectedFile.file_no} · {selectedFile.customer?.name ?? ''} · {fN(qty, 3)} MT × {selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
+                      <span className="text-[11px] font-semibold text-gray-700 tabular-nums">{fUSD(pnl.revenue)}</span>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {saleRows.map((txn) => (
+                        <div key={txn.id} className="px-4 py-2.5 flex items-start justify-between gap-3 hover:bg-gray-50/60 transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] text-gray-700 leading-tight">{txn.description || txn.reference_no || '—'}</div>
+                            {txn.trade_file?.file_no && txn.trade_file.file_no !== selectedFile.file_no && (
+                              <div className="text-[10px] text-gray-400 mt-0.5">{txn.trade_file.file_no}</div>
+                            )}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="text-[11px] font-semibold text-gray-700 tabular-nums">{fUSD(txn.amount_usd ?? txn.amount ?? 0)}</div>
+                            {txn.currency !== 'USD' && (
+                              <div className="text-[10px] text-gray-400 tabular-nums">{fCurrency(txn.amount, txn.currency)}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <div className="px-4 py-2.5 flex items-center justify-between bg-gray-50">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Ara Toplam</span>
+                        <span className="text-[12px] font-bold text-gray-700 tabular-nums">{fUSD(saleTotal)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* İki sütun: Satın Alma | Hizmet */}
