@@ -1429,7 +1429,7 @@ export function AccountStatementTab() {
                 <div className="text-[13px] md:text-[17px] font-extrabold text-green-700 break-all leading-tight">{fUSD(totalAlacak)}</div>
                 <div className="text-[10px] text-gray-400 mt-0.5">{txnsWithBalance.length} işlem</div>
               </div>
-              <div className="px-3 md:px-5 py-3 md:py-4" style={netBakiye !== 0 ? { background: netBakiye > 0 ? '#fffbeb' : '#f0fdf4' } : {}}>
+              <div className="px-3 md:px-5 py-3 md:py-4">
                 <div className="text-[8px] md:text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Net Bakiye</div>
                 <div className="flex items-baseline gap-1 flex-wrap">
                   <span className="text-[13px] md:text-[17px] font-extrabold break-all leading-tight"
