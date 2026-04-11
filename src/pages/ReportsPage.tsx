@@ -282,13 +282,24 @@ export function PnlReportTab() {
   const [sortBy, setSortBy]     = useState<'profit' | 'margin' | 'revenue'>('profit');
   const [selectedFileId, setSelectedFileId] = useState('');
 
-  const { data: txns = [] } = useTransactions(
-    selectedFileId ? { tradeFileId: selectedFileId, approvedOnly: true } : { approvedOnly: true },
-  );
-
   const selectedFile = useMemo(
     () => files.find((f) => f.id === selectedFileId) ?? null,
     [files, selectedFileId],
+  );
+
+  // Ana dosya seçildiğinde batch alt-dosyalarını da dahil et
+  const selectedFileIds = useMemo(() => {
+    if (!selectedFileId) return undefined;
+    const batchIds = files
+      .filter((f) => f.parent_file_id === selectedFileId)
+      .map((f) => f.id);
+    return [selectedFileId, ...batchIds];
+  }, [selectedFileId, files]);
+
+  const { data: txns = [] } = useTransactions(
+    selectedFileIds
+      ? { tradeFileIds: selectedFileIds, approvedOnly: true }
+      : { approvedOnly: true },
   );
 
   // ── Tek dosya P&L ───────────────────────────────────────────────────────
