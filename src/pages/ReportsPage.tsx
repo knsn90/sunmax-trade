@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
-import { useTradeFiles } from '@/hooks/useTradeFiles';
+import { useTradeFiles, useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEntities';
 import { useTransactions, useTransactionsByEntityEnhanced } from '@/hooks/useTransactions';
 import { useSettings } from '@/hooks/useSettings';
@@ -276,6 +276,8 @@ export function PnlReportTab() {
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { data: files = [] } = useTradeFiles();
+  // Batch dosyaları bulmak için (tradeFileService.list parent_file_id=null filtreler)
+  const { data: allFiles = [] } = useAllTradeFiles();
 
   // ── Görünüm: tek dosya detayı veya tüm dosyalar özeti ──────────────────
   const [viewMode, setViewMode] = useState<'ozet' | 'tek'>('ozet');
@@ -288,13 +290,14 @@ export function PnlReportTab() {
   );
 
   // Ana dosya seçildiğinde batch alt-dosyalarını da dahil et
+  // allFiles kullanıyoruz — tradeFileService.list() batch'leri hariç tutar
   const selectedFileIds = useMemo(() => {
     if (!selectedFileId) return undefined;
-    const batchIds = files
+    const batchIds = allFiles
       .filter((f) => f.parent_file_id === selectedFileId)
       .map((f) => f.id);
     return [selectedFileId, ...batchIds];
-  }, [selectedFileId, files]);
+  }, [selectedFileId, allFiles]);
 
   const { data: txns = [] } = useTransactions(
     selectedFileIds
