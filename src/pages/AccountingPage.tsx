@@ -493,10 +493,6 @@ export function AccountingPage() {
                 <option value="">{t('filters.allTypes')}</option>
                 {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance'] as const).map(k => <option key={k} value={k}>{tc('txType.' + k)}</option>)}
               </NativeSelect>
-              <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-40" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                <option value="">{t('filters.allStatuses')}</option>
-                {(['open','partial','paid'] as const).map(k => <option key={k} value={k}>{tc('payStatus.' + k)}</option>)}
-              </NativeSelect>
               <button
                 onClick={() => setFlagFilter(v => !v)}
                 title="Sadece sorunlu işlemleri göster"
