@@ -8,8 +8,6 @@ import { useCreateInvoice, useUpdateInvoice } from '@/hooks/useDocuments';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers } from '@/hooks/useEntities';
-import { transactionService } from '@/services/transactionService';
-import { useQueryClient } from '@tanstack/react-query';
 import { today, fCurrency } from '@/lib/formatters';
 import { formatInvoiceNo } from '@/lib/generators';
 import { parseInvoiceExcel, downloadInvoiceTemplate } from '@/lib/excelImport';
@@ -79,7 +77,6 @@ export function InvoiceModal({
   const { t: tc } = useTranslation('common');
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
-  const qc = useQueryClient();
 
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -240,39 +237,7 @@ export function InvoiceModal({
           invoiceType: effectiveType,
         });
 
-        if (isSale) {
-          await transactionService.create({
-            transaction_date: data.invoice_date,
-            transaction_type: 'sale_inv',
-            trade_file_id: effectiveFile.id,
-            party_type: 'customer',
-            customer_id: effectiveFile.customer_id,
-            supplier_id: '',
-            service_provider_id: '',
-            party_name: effectiveFile.customer?.name ?? '',
-            description: `Satış Faturası ${invNo}`,
-            reference_no: invNo,
-            currency: data.currency,
-            amount: total,
-            exchange_rate: 1,
-            paid_amount: 0,
-            payment_status: 'open',
-            payment_method: paymentMethod,
-            bank_name: '',
-            bank_account_no: '',
-            swift_bic: '',
-            card_type: '',
-            cash_receiver: '',
-            masraf_turu: masrafTuru,
-            masraf_tutar: masrafTutar,
-            masraf_currency: masrafCurrency,
-            masraf_rate: masrafRate,
-            notes: '',
-            kasa_id: '',
-            bank_account_id: '',
-          });
-          qc.invalidateQueries({ queryKey: ['transactions'] });
-        }
+        // Transaction is created by useCreateInvoice via syncSaleInvoiceTransaction — no duplicate needed here.
       } else {
         toast.error('Lütfen bir ticaret dosyası seçin');
         return;
