@@ -384,10 +384,15 @@ export function PnlReportTab() {
   function printPnl() {
     if (!selectedFile || !pnl) return;
     const qty = selectedFile.delivered_admt ?? selectedFile.tonnage_mt ?? 0;
-    const purchaseRows = costRows.filter(t => t.transaction_type === 'purchase_inv');
-    const svcRows      = costRows.filter(t => t.transaction_type === 'svc_inv');
+    const purchaseRows  = costRows.filter(t => t.transaction_type === 'purchase_inv');
+    const svcRows       = costRows.filter(t => t.transaction_type === 'svc_inv');
+    const saleInvRows   = txns.filter(t => t.transaction_type === 'sale_inv');
     const purchaseTotal = purchaseRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
     const svcTotal      = svcRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+    const saleInvTotal  = saleInvRows.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+    const printRevenue  = saleInvTotal > 0 ? saleInvTotal : pnl.revenue;
+    const printProfit   = printRevenue - pnl.costs;
+    const printMargin   = printRevenue > 0 ? (printProfit / printRevenue) * 100 : 0;
 
     function makeGroupRows(rows: typeof costRows) {
       if (!rows.length) return '<tr><td colspan="2" style="padding:6px 8px;color:#aaa;font-style:italic">Kayıt yok</td></tr>';
@@ -398,6 +403,26 @@ export function PnlReportTab() {
         </tr>`).join('');
     }
 
+    const saleInvRowsHtml = saleInvRows.length === 0
+      ? `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+           <span style="font-size:11px;color:#6b7280">Gelir · ${fN(qty,3)} MT × ${selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
+           <span style="font-size:13px;font-weight:700;color:#111827">${fUSD(pnl.revenue)}</span>
+         </div>`
+      : `<div style="margin-bottom:14px">
+           <div style="background:#f3f4f6;border-radius:8px 8px 0 0;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;border:1px solid #e5e7eb;border-bottom:0">
+             <span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#374151">Satış Faturaları (${saleInvRows.length})</span>
+             <span style="font-size:11px;font-weight:700;color:#374151">${fUSD(saleInvTotal)}</span>
+           </div>
+           <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-top:0">
+             <tbody>${saleInvRows.map(txn => `
+               <tr style="border-bottom:1px solid #f3f4f6">
+                 <td style="padding:5px 8px;color:#555;font-size:10px">${txn.description || txn.reference_no || '—'}</td>
+                 <td style="padding:5px 8px;text-align:right;color:#374151;font-size:10px;white-space:nowrap">${fUSD(txn.amount_usd ?? txn.amount ?? 0)}</td>
+               </tr>`).join('')}
+             </tbody>
+           </table>
+         </div>`;
+
     const html = `
       <div style="border-bottom:2px solid #e5e7eb;padding-bottom:12px;margin-bottom:16px">
         <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Kar / Zarar Raporu</div>
@@ -407,10 +432,10 @@ export function PnlReportTab() {
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
         ${[
-          { l:'Gelir', v:fUSD(pnl.revenue), c:'#111827' },
-          { l:'Maliyet', v:fUSD(pnl.costs), c:'#374151' },
-          { l:'Net Kâr', v:fUSD(pnl.profit), c:col(pnl.profit) },
-          { l:'Kâr Marjı', v:'%'+pnl.margin.toFixed(2), c:col(pnl.profit) },
+          { l:'Gelir',     v:fUSD(printRevenue),            c:'#111827' },
+          { l:'Maliyet',   v:fUSD(pnl.costs),               c:'#374151' },
+          { l:'Net Kâr',   v:fUSD(printProfit),             c:col(printProfit) },
+          { l:'Kâr Marjı', v:'%'+printMargin.toFixed(2),   c:col(printProfit) },
         ].map(card => `
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px">
             <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;margin-bottom:5px">${card.l}</div>
@@ -418,10 +443,7 @@ export function PnlReportTab() {
           </div>`).join('')}
       </div>
 
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:11px;color:#6b7280">Gelir · ${fN(qty,3)} MT × ${selectedFile.selling_price ? fCurrency(selectedFile.selling_price) : '—'}</span>
-        <span style="font-size:13px;font-weight:700;color:#111827">${fUSD(pnl.revenue)}</span>
-      </div>
+      ${saleInvRowsHtml}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div>
