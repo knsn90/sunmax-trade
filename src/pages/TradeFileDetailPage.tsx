@@ -40,7 +40,7 @@ import {
   ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
   Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
   MoreVertical, X, RotateCcw, Bell, AlertTriangle, ExternalLink,
-  CheckCircle, Layers,
+  CheckCircle, Layers, ShieldAlert, CircleCheck, Circle,
 } from 'lucide-react';
 
 // ── Action sheet item ─────────────────────────────────────────────────────────
@@ -354,6 +354,7 @@ export function TradeFileDetailPage() {
   const [delayEta, setDelayEta] = useState('');
   const [delayNotes, setDelayNotes] = useState('');
   const noteDelay = useNoteDelay();
+  const [completionBlockerOpen, setCompletionBlockerOpen] = useState(false);
   const [dropboxLoading, setDropboxLoading] = useState(false);
   const [dropboxUploadingId, setDropboxUploadingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -527,11 +528,44 @@ export function TradeFileDetailPage() {
     }
   }
 
+  // ── Tamamlandı belge kontrolleri ─────────────────────────────────────────────
+  const completionChecks = (() => {
+    if (!file) return null;
+    const qty = file.delivered_admt ?? file.tonnage_mt ?? 0;
+    const expectedPurchase = (file.purchase_price ?? 0) * qty;
+    const expectedSale     = (file.selling_price  ?? 0) * qty;
+
+    const purchaseInvs = fileTxns.filter(t => t.transaction_type === 'purchase_inv');
+    const saleInvs     = fileTxns.filter(t => t.transaction_type === 'sale_inv');
+    const svcInvs      = fileTxns.filter(t => t.transaction_type === 'svc_inv');
+    const purchaseTotal = purchaseInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+    const saleTotal     = saleInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
+
+    // Tonaj kontrolü: en az %85 karşılanmış olmalı (küçük yuvarlama farklarına tolerans)
+    const purchaseCovered = purchaseInvs.length > 0 && (expectedPurchase === 0 || purchaseTotal >= expectedPurchase * 0.85);
+    const saleCovered     = saleInvs.length > 0     && (expectedSale     === 0 || saleTotal     >= expectedSale     * 0.85);
+    const hasSvcInv       = svcInvs.length > 0;
+    const hasProforma     = (file.proformas?.length ?? 0) > 0;
+    const hasPackingList  = (file.packing_lists?.length ?? 0) > 0;
+    const hasCommInvoice  = (file.invoices?.length ?? 0) > 0;
+
+    return { purchaseCovered, saleCovered, hasSvcInv, hasProforma, hasPackingList, hasCommInvoice };
+  })();
+
+  function checkAndComplete() {
+    if (!completionChecks) return;
+    const { purchaseCovered, saleCovered, hasSvcInv, hasProforma, hasPackingList, hasCommInvoice } = completionChecks;
+    const allOk = purchaseCovered && saleCovered && hasSvcInv && hasProforma && hasPackingList && hasCommInvoice;
+    if (allOk) {
+      changeStatus.mutate({ id: file!.id, status: 'completed' });
+    } else {
+      setCompletionBlockerOpen(true);
+    }
+  }
+
   function handlePartialCTA() {
     if (allBatchesDone) {
-      if (window.confirm('Tüm partiler tamamlandı. Ana dosya tamamlandı olarak işaretlensin mi?')) {
-        changeStatus.mutate({ id: file!.id, status: 'completed' });
-      }
+      checkAndComplete();
     } else {
       const remaining = (file!.batches ?? []).filter(b => b.status !== 'completed').length;
       toast.warning(`${remaining} parti henüz tamamlanmadı — önce tüm teslimat partilerini tamamlayın`);
@@ -620,6 +654,10 @@ export function TradeFileDetailPage() {
     if (newStatus === 'cancelled') {
       setCancelReasonText('');
       setCancelModalOpen(true);
+      return;
+    }
+    if (newStatus === 'completed') {
+      checkAndComplete();
       return;
     }
     if (window.confirm(t('detail.statusConfirm', { label: tc('status.' + newStatus) })))
@@ -746,6 +784,85 @@ export function TradeFileDetailPage() {
 
   return (
     <div className="-mx-4 md:mx-0 bg-gray-50 min-h-screen pb-8 md:h-full md:min-h-0 md:pb-0">
+
+      {/* ── Completion Blocker Modal ─────────────────────────────────────── */}
+      <Dialog open={completionBlockerOpen} onOpenChange={setCompletionBlockerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <ShieldAlert className="h-5 w-5 shrink-0" />
+              Dosya Tamamlanamıyor
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-[13px] text-gray-500 mb-4">
+              Dosyayı tamamlandı olarak işaretlemek için aşağıdaki belgelerin tamamlanması gerekiyor:
+            </p>
+            <div className="space-y-2">
+              {completionChecks && ([
+                {
+                  ok: completionChecks.purchaseCovered,
+                  label: 'Satın Alma Faturası',
+                  sub: 'Tüm tonajı kapsayan purchase_inv işlemi',
+                },
+                {
+                  ok: completionChecks.saleCovered,
+                  label: 'Satış Faturası',
+                  sub: 'Tüm tonajı kapsayan sale_inv işlemi',
+                },
+                {
+                  ok: completionChecks.hasSvcInv,
+                  label: 'En Az 1 Hizmet Faturası',
+                  sub: 'Nakliye, sigorta veya diğer hizmetler',
+                },
+                {
+                  ok: completionChecks.hasProforma,
+                  label: 'Proforma Fatura',
+                  sub: 'Belgeler bölümünde proforma oluşturulmalı',
+                },
+                {
+                  ok: completionChecks.hasPackingList,
+                  label: 'Packing List',
+                  sub: 'Paketleme listesi oluşturulmalı',
+                },
+                {
+                  ok: completionChecks.hasCommInvoice,
+                  label: 'Commercial Invoice',
+                  sub: 'Ticari fatura oluşturulmalı',
+                },
+              ].map(item => (
+                <div key={item.label} className={`flex items-start gap-3 px-3 py-2.5 rounded-xl ${item.ok ? 'bg-green-50' : 'bg-red-50'}`}>
+                  {item.ok
+                    ? <CircleCheck className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                    : <Circle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                  }
+                  <div>
+                    <div className={`text-[12px] font-semibold ${item.ok ? 'text-green-700' : 'text-red-700'}`}>{item.label}</div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">{item.sub}</div>
+                  </div>
+                </div>
+              )))}
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setCompletionBlockerOpen(false)}
+              className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              Kapat
+            </button>
+            {completionChecks && Object.values(completionChecks).every(Boolean) && (
+              <button
+                onClick={() => { setCompletionBlockerOpen(false); changeStatus.mutate({ id: file!.id, status: 'completed' }); }}
+                className="px-4 py-2 rounded-xl text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ background: accent }}
+              >
+                Tamamla
+              </button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Cancel Reason Modal */}
       <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
@@ -875,7 +992,7 @@ export function TradeFileDetailPage() {
               )
             ) : file.status === 'delivery' ? (
               <button
-                onClick={() => { if (window.confirm('Bu dosya tamamlandı olarak işaretlensin mi?')) changeStatus.mutate({ id: file!.id, status: 'completed' }); }}
+                onClick={checkAndComplete}
                 className="flex-1 h-10 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-80"
                 style={{ background: accent }}
               >
@@ -1425,7 +1542,7 @@ export function TradeFileDetailPage() {
                 )}
                 {writable && file.status === 'delivery' && (
                   <button
-                    onClick={() => { if (window.confirm('Bu dosya tamamlandı olarak işaretlensin mi?')) changeStatus.mutate({ id: file!.id, status: 'completed' }); }}
+                    onClick={checkAndComplete}
                     className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"
                     style={{ background: accent }}>
                     <CheckCircle className="h-3.5 w-3.5" /> Teslimatı Tamamla
