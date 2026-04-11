@@ -15,7 +15,7 @@ import { FormRow, FormGroup } from '@/components/ui/shared';
 import { cn } from '@/lib/utils';
 import {
   HelpCircle, Banknote, Building2, CreditCard,
-  ChevronDown, ChevronUp, Package, DollarSign,
+  ChevronDown, ChevronUp, Package, DollarSign, Plus, Trash2,
 } from 'lucide-react';
 
 const TXN_TYPES = [
@@ -34,13 +34,33 @@ const PAYMENT_METHODS = [
   { value: 'kredi_karti' as const,    label: 'Kredi Kartı',    icon: <CreditCard className="h-4 w-4" /> },
 ] as const;
 
+const KDV_OPTIONS = [
+  { value: 0,  label: '%0 (İstisna)' },
+  { value: 1,  label: '%1' },
+  { value: 10, label: '%10' },
+  { value: 20, label: '%20' },
+];
+
+interface PurchaseLine {
+  aciklama: string;
+  netAgirlik: number;
+  birimFiyat: number;
+  kdvOrani: number;
+}
+
+const emptyLine = (): PurchaseLine => ({
+  aciklama: '', netAgirlik: 0, birimFiyat: 0, kdvOrani: 0,
+});
+
+function lineTotal(l: PurchaseLine) {
+  return l.netAgirlik * l.birimFiyat * (1 + l.kdvOrani / 100);
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  /** Mevcut işlem — varsa düzenleme modu */
   transaction?: Transaction | null;
   onSwitchToTransaction?: (type: string) => void;
-  /** Dosya detayından açıldıysa bu dosyayı ön seçili yap */
   defaultTradeFileId?: string;
 }
 
@@ -64,23 +84,24 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   );
   const pickedFile = supplierFiles.find(f => f.id === fileId) ?? null;
 
-  // ── Ürün Bilgileri ────────────────────────────────────────────────────
-  const [aciklama,    setAciklama]    = useState('');
-  const [netAgirlik,  setNetAgirlik]  = useState(0);
+  // ── Header-level ürün bilgileri ───────────────────────────────────────
   const [brutAgirlik, setBrutAgirlik] = useState(0);
   const [kapAdeti,    setKapAdeti]    = useState(0);
   const [mensei,      setMensei]      = useState('');
 
-  // ── Fiyat ve Döviz ────────────────────────────────────────────────────
-  const [currency,   setCurrency]   = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
-  const [birimFiyat, setBirimFiyat] = useState(0);
-  const [dovizKuru,  setDovizKuru]  = useState(1);
-  // 'direct'  → 1 EUR = X USD  (tutar × kur)
-  // 'inverse' → 1 USD = X EUR  (tutar / kur)
-  const [kurYon, setKurYon] = useState<'direct' | 'inverse'>('direct');
+  // ── Satır Kalemleri ───────────────────────────────────────────────────
+  const [lines, setLines] = useState<PurchaseLine[]>([emptyLine()]);
 
-  // ── Vergi ─────────────────────────────────────────────────────────────
-  const [kdvOrani, setKdvOrani] = useState(0);
+  function addLine() { setLines(prev => [...prev, emptyLine()]); }
+  function removeLine(i: number) { setLines(prev => prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)); }
+  function updateLine<K extends keyof PurchaseLine>(i: number, key: K, val: PurchaseLine[K]) {
+    setLines(prev => prev.map((l, idx) => idx === i ? { ...l, [key]: val } : l));
+  }
+
+  // ── Para Birimi & Kur ─────────────────────────────────────────────────
+  const [currency,   setCurrency]   = useState<'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP'>('USD');
+  const [dovizKuru,  setDovizKuru]  = useState(1);
+  const [kurYon,     setKurYon]     = useState<'direct' | 'inverse'>('direct');
 
   // ── Ödeme ─────────────────────────────────────────────────────────────
   const [paymentMethod,  setPaymentMethod]  = useState<'' | 'nakit' | 'banka_havalesi' | 'kredi_karti'>('');
@@ -91,28 +112,23 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const [masrafRate,     setMasrafRate]     = useState(1);
 
   // ── Hesaplamalar ──────────────────────────────────────────────────────
-  const malHizmetTutari = netAgirlik * birimFiyat;
-  const kdvTutari       = malHizmetTutari * kdvOrani / 100;
-  const toplamYerel     = malHizmetTutari + kdvTutari;   // seçili dövizde toplam
-  const isNonUsd        = currency !== 'USD';
-  const toplamUsd       = !isNonUsd
+  const toplamYerel = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const isNonUsd    = currency !== 'USD';
+  const toplamUsd   = !isNonUsd
     ? toplamYerel
     : kurYon === 'direct'
-      ? toplamYerel * dovizKuru                          // 1 EUR = X USD
-      : dovizKuru > 0 ? toplamYerel / dovizKuru : 0;    // 1 USD = X EUR
-  const toplamTry       = toplamUsd * dovizKuru;         // eski uyumluluk (notesObj)
+      ? toplamYerel * dovizKuru
+      : dovizKuru > 0 ? toplamYerel / dovizKuru : 0;
 
   // ── Reset / Pre-fill ──────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
 
     if (transaction) {
-      // Düzenleme modu: mevcut veriyi doldur
       setFaturaTarihi(transaction.transaction_date);
       setFaturaNo(transaction.reference_no ?? '');
       setSupplierId(transaction.supplier_id ?? '');
       setFileId(transaction.trade_file_id ?? '');
-      setAciklama(transaction.description ?? '');
       setCurrency((transaction.currency ?? 'USD') as typeof currency);
       setDovizKuru(transaction.exchange_rate ?? 1);
       setPaymentMethod((transaction.payment_method ?? '') as typeof paymentMethod);
@@ -122,53 +138,66 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       setMasrafRate(transaction.masraf_rate ?? 1);
       setMasrafOpen((transaction.masraf_tutar ?? 0) > 0);
 
-      // notes alanından ek bilgileri çıkar
-      let notesObj: Record<string, number | string> = {};
+      let notesObj: Record<string, unknown> = {};
       try { notesObj = JSON.parse(transaction.notes ?? '{}'); } catch { /* ignore */ }
 
-      const bp = Number(notesObj.birim_fiyat ?? 0);
-      const kv = Number(notesObj.kdv_orani ?? 0);
-      setBirimFiyat(bp);
-      setKdvOrani(kv);
       setBrutAgirlik(Number(notesObj.brut_agirlik_kg ?? 0));
       setKapAdeti(Number(notesObj.kap_adeti ?? 0));
       setMensei(String(notesObj.mensei ?? ''));
       setKurYon((notesObj.kur_yon as 'direct' | 'inverse') ?? 'direct');
 
-      // net_agirlik: önce notes'tan al, yoksa amount'tan hesapla
-      if (notesObj.net_agirlik) {
-        setNetAgirlik(Number(notesObj.net_agirlik));
-      } else if (bp > 0) {
-        const divisor = bp * (1 + kv / 100);
-        setNetAgirlik(divisor > 0 ? parseFloat((transaction.amount / divisor).toFixed(3)) : 0);
+      // Satırlar: yeni format
+      if (Array.isArray(notesObj.lines) && (notesObj.lines as unknown[]).length > 0) {
+        setLines((notesObj.lines as PurchaseLine[]).map(l => ({
+          aciklama:   l.aciklama   ?? '',
+          netAgirlik: Number(l.netAgirlik ?? 0),
+          birimFiyat: Number(l.birimFiyat ?? 0),
+          kdvOrani:   Number(l.kdvOrani   ?? 0),
+        })));
       } else {
-        setNetAgirlik(0);
+        // Eski tek-satır format
+        const bp = Number(notesObj.birim_fiyat ?? 0);
+        const kv = Number(notesObj.kdv_orani ?? 0);
+        let netAgirlik = Number(notesObj.net_agirlik ?? 0);
+        if (!netAgirlik && bp > 0) {
+          const divisor = bp * (1 + kv / 100);
+          netAgirlik = divisor > 0 ? parseFloat((transaction.amount / divisor).toFixed(3)) : 0;
+        }
+        setLines([{
+          aciklama:   transaction.description ?? '',
+          netAgirlik,
+          birimFiyat: bp,
+          kdvOrani:   kv,
+        }]);
       }
     } else {
-      // Yeni kayıt: formu sıfırla
       setFaturaNo(''); setFaturaTarihi(today());
       setSupplierId(''); setFileId(defaultTradeFileId ?? '');
-      setAciklama(''); setNetAgirlik(0); setBrutAgirlik(0); setKapAdeti(0); setMensei('');
-      setCurrency('USD'); setBirimFiyat(0); setDovizKuru(1); setKurYon('direct');
-      setKdvOrani(0);
-      setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru('');
-      setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
+      setBrutAgirlik(0); setKapAdeti(0); setMensei('');
+      setLines([emptyLine()]);
+      setCurrency('USD'); setDovizKuru(1); setKurYon('direct');
+      setPaymentMethod(''); setMasrafOpen(false);
+      setMasrafTuru(''); setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1);
     }
   }, [open, transaction, defaultTradeFileId]);
 
   useEffect(() => {
-    // Yeni kayıt modunda tedarikçi değişince dosyayı sıfırla
     if (!transaction) setFileId('');
   }, [supplierId, transaction]);
 
   useEffect(() => {
-    // Dosya seçilince ürün bilgilerini otomatik doldur (sadece yeni kayıt modunda)
     if (!pickedFile || transaction) return;
-    setAciklama(pickedFile.product?.name ?? '');
-    setNetAgirlik(pickedFile.delivered_admt ?? pickedFile.tonnage_mt ?? 0);
+    // Dosya seçilince sadece ilk satırı ve header alanlarını otomatik doldur
+    setLines(prev => prev.map((l, i) =>
+      i === 0 ? {
+        ...l,
+        aciklama:   pickedFile.product?.name ?? l.aciklama,
+        netAgirlik: pickedFile.delivered_admt ?? pickedFile.tonnage_mt ?? l.netAgirlik,
+        birimFiyat: pickedFile.purchase_price ?? l.birimFiyat,
+      } : l,
+    ));
     setBrutAgirlik(pickedFile.gross_weight_kg ?? 0);
     setKapAdeti(pickedFile.packages ?? 0);
-    setBirimFiyat(pickedFile.purchase_price ?? 0);
     setCurrency((pickedFile.purchase_currency as typeof currency) ?? 'USD');
   }, [pickedFile, transaction]);
 
@@ -179,17 +208,23 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
     if (toplamUsd <= 0) { toast.error('Tutar sıfırdan büyük olmalı'); return; }
 
     const supplier = suppliers.find(s => s.id === supplierId);
+
     const notesObj = {
-      net_agirlik:     netAgirlik   || undefined,
-      brut_agirlik_kg: brutAgirlik  || undefined,
-      kap_adeti:       kapAdeti     || undefined,
-      mensei:          mensei       || undefined,
-      birim_fiyat:     birimFiyat,
-      kdv_orani:       kdvOrani,
-      kdv_tutari:      kdvTutari,
-      toplam_try:      toplamTry    || undefined,
+      lines: lines.map(l => ({
+        aciklama:   l.aciklama,
+        netAgirlik: l.netAgirlik || undefined,
+        birimFiyat: l.birimFiyat,
+        kdvOrani:   l.kdvOrani,
+      })),
+      brut_agirlik_kg: brutAgirlik || undefined,
+      kap_adeti:       kapAdeti    || undefined,
+      mensei:          mensei      || undefined,
       kur_yon:         isNonUsd ? kurYon : undefined,
     };
+
+    const description = lines.length === 1
+      ? (lines[0].aciklama || 'Satın Alma Faturası')
+      : lines.map(l => l.aciklama).filter(Boolean).join(', ') || 'Satın Alma Faturası';
 
     const payload = {
       transaction_date:    faturaTarihi,
@@ -200,10 +235,10 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       supplier_id:         supplierId,
       service_provider_id: '',
       party_name:          supplier?.name ?? '',
-      description:         aciklama || 'Satın Alma Faturası',
+      description,
       reference_no:        faturaNo,
       currency,
-      amount:              toplamYerel,    // orijinal dövizde tutar; exchange_rate ile USD'ye çevrilir
+      amount:              toplamYerel,
       exchange_rate:       isNonUsd ? dovizKuru : 1,
       paid_amount:         transaction?.paid_amount ?? 0,
       payment_status:      (transaction?.payment_status ?? 'open') as 'open' | 'partial' | 'paid',
@@ -237,26 +272,23 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Satın Alma Faturasını Düzenle' : 'Satın Alma Faturası'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
 
-          {/* ── İşlem Türü (sadece yeni kayıt modunda, tür değiştirme için) ── */}
+          {/* ── İşlem Türü ── */}
           {!isEdit && onSwitchToTransaction && (
             <FormRow cols={2}>
               <FormGroup label="İşlem Türü">
-                <NativeSelect
-                  value="purchase_inv"
-                  onChange={e => {
-                    if (e.target.value !== 'purchase_inv') {
-                      onOpenChange(false);
-                      onSwitchToTransaction(e.target.value);
-                    }
-                  }}
-                >
+                <NativeSelect value="purchase_inv" onChange={e => {
+                  if (e.target.value !== 'purchase_inv') {
+                    onOpenChange(false);
+                    onSwitchToTransaction(e.target.value);
+                  }
+                }}>
                   {TXN_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </NativeSelect>
               </FormGroup>
@@ -266,11 +298,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
           {/* ── Fatura No + Tarih ── */}
           <FormRow cols={2}>
             <FormGroup label="Fatura No *">
-              <Input
-                value={faturaNo}
-                onChange={e => setFaturaNo(e.target.value)}
-                placeholder="AKS2026000000192"
-              />
+              <Input value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="AKS2026000000192" />
             </FormGroup>
             <FormGroup label="Fatura Tarihi *">
               <Input type="date" value={faturaTarihi} onChange={e => setFaturaTarihi(e.target.value)} />
@@ -297,74 +325,13 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
             </FormGroup>
           </FormRow>
 
-          {/* ── Ürün Bilgileri ── */}
-          <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Package className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ürün Bilgileri</span>
-            </div>
-
-            <FormRow cols={2}>
-              <FormGroup label="Malzeme / Açıklama">
-                <Input
-                  value={aciklama}
-                  onChange={e => setAciklama(e.target.value)}
-                  placeholder="SELÜLOZ - ODUN HAMURU"
-                />
-              </FormGroup>
-              <FormGroup label="Menşei">
-                <Input
-                  value={mensei}
-                  onChange={e => setMensei(e.target.value)}
-                  placeholder="FINLAND"
-                />
-              </FormGroup>
-            </FormRow>
-
-            <FormRow cols={3}>
-              <FormGroup label="Net Ağırlık / ADMT">
-                <Input
-                  type="number" step="0.001"
-                  value={netAgirlik || ''}
-                  onChange={e => setNetAgirlik(Number(e.target.value))}
-                  placeholder="0.000"
-                />
-              </FormGroup>
-              <FormGroup label="Brüt Ağırlık (KG)">
-                <Input
-                  type="number" step="0.001"
-                  value={brutAgirlik || ''}
-                  onChange={e => setBrutAgirlik(Number(e.target.value))}
-                  placeholder="0.000"
-                />
-              </FormGroup>
-              <FormGroup label="Kap Adeti">
-                <Input
-                  type="number" step="1"
-                  value={kapAdeti || ''}
-                  onChange={e => setKapAdeti(Number(e.target.value))}
-                  placeholder="0"
-                />
-              </FormGroup>
-            </FormRow>
-          </div>
-
-          {/* ── Fiyat & Döviz ── */}
+          {/* ── Para Birimi & Kur ── */}
           <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Fiyat & Döviz</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Para Birimi & Kur</span>
             </div>
-
-            <FormRow cols={3}>
-              <FormGroup label="Birim Fiyatı *">
-                <Input
-                  type="number" step="0.001"
-                  value={birimFiyat || ''}
-                  onChange={e => setBirimFiyat(Number(e.target.value))}
-                  placeholder="0.000"
-                />
-              </FormGroup>
+            <FormRow cols={2}>
               <FormGroup label="Para Birimi">
                 <NativeSelect value={currency} onChange={e => setCurrency(e.target.value as typeof currency)}>
                   <option value="USD">USD</option>
@@ -374,18 +341,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                   <option value="TRY">TRY</option>
                 </NativeSelect>
               </FormGroup>
-              <FormGroup label="KDV Oranı">
-                <NativeSelect value={kdvOrani} onChange={e => setKdvOrani(Number(e.target.value))}>
-                  <option value={0}>%0 (İstisna)</option>
-                  <option value={1}>%1</option>
-                  <option value={10}>%10</option>
-                  <option value={20}>%20</option>
-                </NativeSelect>
-              </FormGroup>
-            </FormRow>
-
-            {isNonUsd && (
-              <FormRow cols={2}>
+              {isNonUsd && (
                 <div className="flex flex-col gap-1">
                   <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Döviz Kuru</span>
                   <div className="flex items-center gap-1.5">
@@ -401,58 +357,134 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                         USD→{currency}
                       </button>
                     </div>
-                    <Input
-                      type="number" step="0.0001"
-                      value={dovizKuru || ''}
-                      onChange={e => setDovizKuru(Number(e.target.value))}
-                      placeholder="0.0000"
-                      className="min-w-0"
-                    />
+                    <Input type="number" step="0.0001" value={dovizKuru || ''} onChange={e => setDovizKuru(Number(e.target.value))} placeholder="0.0000" className="min-w-0" />
                   </div>
                 </div>
-              </FormRow>
-            )}
-
-            {/* Özet satırları */}
-            <div className="border-t border-gray-200 pt-3 space-y-1.5 text-[12px]">
-              <div className="flex justify-between text-gray-500">
-                <span>Net Ağırlık × Birim Fiyat</span>
-                <span className="font-semibold">{fCurrency(malHizmetTutari, currency)}</span>
-              </div>
-              {kdvOrani > 0 && (
-                <div className="flex justify-between text-gray-500">
-                  <span>KDV (%{kdvOrani})</span>
-                  <span className="font-semibold">{fCurrency(kdvTutari, currency)}</span>
-                </div>
               )}
+            </FormRow>
+          </div>
+
+          {/* ── Satın Alma Kalemleri ── */}
+          <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Package className="h-3.5 w-3.5 text-gray-400" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ürün Kalemleri</span>
+            </div>
+
+            {/* Tablo başlığı */}
+            <div className="grid gap-1.5 text-[9px] font-bold uppercase tracking-wider text-gray-400 px-1"
+              style={{ gridTemplateColumns: '2fr 110px 110px 90px 80px 32px' }}>
+              <span>Açıklama / Malzeme</span>
+              <span>Net Ağırlık (MT)</span>
+              <span>Birim Fiyat</span>
+              <span>KDV</span>
+              <span className="text-right">Tutar</span>
+              <span />
+            </div>
+
+            <div className="space-y-1.5">
+              {lines.map((line, i) => (
+                <div key={i} className="grid gap-1.5 items-center"
+                  style={{ gridTemplateColumns: '2fr 110px 110px 90px 80px 32px' }}>
+                  <Input
+                    value={line.aciklama}
+                    onChange={e => updateLine(i, 'aciklama', e.target.value)}
+                    placeholder="Ürün / malzeme açıklaması…"
+                    className="h-8 text-[12px]"
+                  />
+                  <Input
+                    type="number" step="0.001"
+                    value={line.netAgirlik || ''}
+                    onChange={e => updateLine(i, 'netAgirlik', Number(e.target.value))}
+                    placeholder="0.000"
+                    className="h-8 text-[12px]"
+                  />
+                  <Input
+                    type="number" step="0.001"
+                    value={line.birimFiyat || ''}
+                    onChange={e => updateLine(i, 'birimFiyat', Number(e.target.value))}
+                    placeholder="0.000"
+                    className="h-8 text-[12px]"
+                  />
+                  <NativeSelect
+                    value={line.kdvOrani}
+                    onChange={e => updateLine(i, 'kdvOrani', Number(e.target.value))}
+                    className="h-8 text-[12px]"
+                  >
+                    {KDV_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </NativeSelect>
+                  <div className="text-right text-[11px] font-semibold text-gray-700 tabular-nums pr-1">
+                    {fCurrency(lineTotal(line), currency)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeLine(i)}
+                    disabled={lines.length === 1}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={addLine}
+              className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-gray-300 rounded-xl text-[12px] font-semibold text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Satır Ekle
+            </button>
+
+            {/* Özet */}
+            <div className="border-t border-gray-200 pt-3 space-y-1.5 text-[12px]">
+              {lines.length > 1 && lines.map((l, i) => lineTotal(l) > 0 && (
+                <div key={i} className="flex justify-between text-gray-400">
+                  <span className="truncate max-w-[60%]">{l.aciklama || `Kalem ${i + 1}`}</span>
+                  <span className="tabular-nums">{fCurrency(lineTotal(l), currency)}</span>
+                </div>
+              ))}
               <div className="flex justify-between font-extrabold text-gray-900 pt-1 border-t border-gray-200">
                 <span>Toplam ({currency})</span>
                 <span>{fCurrency(toplamYerel, currency)}</span>
               </div>
               {isNonUsd && dovizKuru > 0 && (
                 <div className="flex justify-between text-gray-400 text-[11px]">
-                  <span>USD Karşılığı ({kurYon === 'direct' ? `1 ${currency} = ${fN(dovizKuru,4)} USD` : `1 USD = ${fN(dovizKuru,4)} ${currency}`})</span>
-                  <span className="font-semibold text-gray-600">{fCurrency(toplamUsd, 'USD')}</span>
+                  <span>USD Karşılığı ({kurYon === 'direct' ? `1 ${currency} = ${fN(dovizKuru, 4)} USD` : `1 USD = ${fN(dovizKuru, 4)} ${currency}`})</span>
+                  <span className="font-semibold text-gray-600 tabular-nums">{fCurrency(toplamUsd, 'USD')}</span>
                 </div>
               )}
             </div>
+          </div>
+
+          {/* ── Header-level ürün bilgileri ── */}
+          <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ek Bilgiler</span>
+            <FormRow cols={3}>
+              <FormGroup label="Menşei">
+                <Input value={mensei} onChange={e => setMensei(e.target.value)} placeholder="FINLAND" />
+              </FormGroup>
+              <FormGroup label="Brüt Ağırlık (KG)">
+                <Input type="number" step="0.001" value={brutAgirlik || ''} onChange={e => setBrutAgirlik(Number(e.target.value))} placeholder="0.000" />
+              </FormGroup>
+              <FormGroup label="Kap Adeti">
+                <Input type="number" step="1" value={kapAdeti || ''} onChange={e => setKapAdeti(Number(e.target.value))} placeholder="0" />
+              </FormGroup>
+            </FormRow>
           </div>
 
           {/* ── Ödeme Türü ── */}
           <FormGroup label="Ödeme Türü">
             <div className="grid grid-cols-4 gap-2">
               {PAYMENT_METHODS.map(pm => (
-                <button
-                  key={pm.value}
-                  type="button"
-                  onClick={() => setPaymentMethod(pm.value)}
+                <button key={pm.value} type="button" onClick={() => setPaymentMethod(pm.value)}
                   className={cn(
                     'flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl border text-[11px] font-semibold transition-all',
                     paymentMethod === pm.value
                       ? 'bg-gray-900 text-white border-gray-900'
                       : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700',
-                  )}
-                >
+                  )}>
                   {pm.icon}
                   {pm.label}
                 </button>
@@ -461,11 +493,8 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
           </FormGroup>
 
           {/* ── Masraf ── */}
-          <button
-            type="button"
-            onClick={() => setMasrafOpen(v => !v)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-300 rounded-xl text-[12px] font-semibold text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
-          >
+          <button type="button" onClick={() => setMasrafOpen(v => !v)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-300 rounded-xl text-[12px] font-semibold text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors">
             {masrafOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             + Masraf / Komisyon Ekle
           </button>
@@ -501,11 +530,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
-          <Button
-            variant="secondary"
-            onClick={handleSubmit}
-            disabled={isSaving}
-          >
+          <Button variant="secondary" onClick={handleSubmit} disabled={isSaving}>
             {isSaving ? 'Kaydediliyor…' : isEdit ? 'Güncelle' : 'Kaydet'}
           </Button>
         </DialogFooter>
