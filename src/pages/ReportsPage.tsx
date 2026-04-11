@@ -308,26 +308,27 @@ export function PnlReportTab() {
 
   const costRows = txns.filter((t) => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
 
-  // ── Tüm dosyalar özeti — pnl_data veya tahmini ─────────────────────────
+  // ── Tüm dosyalar özeti — gerçek işlemlerden hesapla ────────────────────
+  // txns, selectedFileId=null olduğunda tüm onaylı işlemleri içerir.
+  // Detay görünümüyle tutarlı olması için aynı yöntemi kullan:
+  // maliyet = purchase_inv + svc_inv işlemlerinin toplamı + freight_cost
   const allFilesRows = useMemo(() => {
+    // Tüm onaylı maliyet işlemlerini dosya bazında grupla
+    const costByFile = new Map<string, number>();
+    for (const t of txns) {
+      if (!['purchase_inv', 'svc_inv'].includes(t.transaction_type)) continue;
+      const fid = t.trade_file_id ?? (t.trade_file as any)?.id;
+      if (!fid) continue;
+      costByFile.set(fid, (costByFile.get(fid) ?? 0) + (t.amount_usd ?? t.amount ?? 0));
+    }
+
     return files
       .map(f => {
-        // pnl_data varsa kullan, yoksa tahmini hesapla
-        if (f.pnl_data) {
-          return {
-            file: f,
-            revenue:  f.pnl_data.revenue,
-            costs:    f.pnl_data.totalCost,
-            profit:   f.pnl_data.netProfit,
-            margin:   f.pnl_data.margin,
-            currency: f.pnl_data.curr || f.sale_currency || f.currency,
-            hasData:  true,
-          };
-        }
-        // Tahmini: sadece file alanlarından
         const qty     = f.delivered_admt ?? f.tonnage_mt ?? 0;
         const revenue = (f.selling_price ?? 0) * qty;
-        const costs   = (f.purchase_price ?? 0) * qty + (f.freight_cost ?? 0);
+        const txnCost = costByFile.get(f.id) ?? 0;
+        const freight = f.freight_cost ?? 0;
+        const costs   = txnCost > 0 ? txnCost + freight : (f.purchase_price ?? 0) * qty + freight;
         const profit  = revenue - costs;
         const margin  = revenue > 0 ? (profit / revenue) * 100 : 0;
         return {
@@ -343,7 +344,7 @@ export function PnlReportTab() {
         if (sortBy === 'revenue') return b.revenue - a.revenue;
         return b.profit - a.profit;
       });
-  }, [files, sortBy]);
+  }, [files, txns, sortBy]);
 
   // ── Ürün bazında özet ───────────────────────────────────────────────────
   const byProduct = useMemo(() => {
