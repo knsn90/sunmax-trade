@@ -207,31 +207,39 @@ export function LoginPage() {
 
       // Belirli bir firmadan giriş yapılıyorsa üyelik kontrolü yap
       if (branding?.id) {
-        // Oturum açan kullanıcının ID'sini al
         const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-        const { data: membership, error: membershipError } = await supabase
-          .from('user_tenants')
-          .select('user_id')
-          .eq('tenant_id', branding.id)
-          .eq('user_id', currentUser?.id ?? '')
-          .eq('is_active', true)
-          .maybeSingle();
-
-        // Süper admin değilse ve bu firmada üye değilse → giriş reddet
+        // 1. profiles.tenant_id kontrolü (mevcut sistem)
         const { data: prof } = await supabase
           .from('profiles')
-          .select('is_super_admin')
+          .select('is_super_admin, tenant_id')
+          .eq('id', currentUser?.id ?? '')
           .single();
 
-        // user_tenants tablosu henüz oluşturulmamışsa kontrolü atla
-        const tableNotFound =
-          membershipError?.code === '42P01' ||
-          membershipError?.message?.includes('does not exist') ||
-          membershipError?.message?.includes('relation') ||
-          membershipError?.code === 'PGRST116';
+        const isSuperAdmin = prof?.is_super_admin === true;
+        const isProfileMember = prof?.tenant_id === branding.id;
 
-        if (!tableNotFound && !membership && !prof?.is_super_admin) {
+        // 2. user_tenants kontrolü (yeni sistem — tablo yoksa atla)
+        let isUserTenantMember = false;
+        if (!isSuperAdmin && !isProfileMember) {
+          const { data: membership, error: membershipError } = await supabase
+            .from('user_tenants')
+            .select('user_id')
+            .eq('tenant_id', branding.id)
+            .eq('user_id', currentUser?.id ?? '')
+            .eq('is_active', true)
+            .maybeSingle();
+
+          const tableNotFound =
+            !!membershipError &&
+            (membershipError.code === '42P01' ||
+              membershipError.message?.includes('does not exist') ||
+              membershipError.message?.includes('relation'));
+
+          isUserTenantMember = tableNotFound || !!membership;
+        }
+
+        if (!isSuperAdmin && !isProfileMember && !isUserTenantMember) {
           await supabase.auth.signOut();
           setError('Bu firmada hesabınız bulunmuyor.');
           return;
