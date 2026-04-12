@@ -1,12 +1,8 @@
-import { useState } from 'react';
 import { Check, X, RotateCcw } from 'lucide-react';
 import { useSetDocStatus, useCanApprove } from '@/hooks/useApproval';
-import { ApproveWithPasswordDialog } from '@/components/ui/ApproveWithPasswordDialog';
 import type { DocStatus } from '@/types/database';
 
 type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists' | 'transactions';
-
-const PASSWORD_PROTECTED: ApprovableTable[] = ['invoices', 'proformas', 'packing_lists', 'transactions'];
 
 interface Props {
   table: ApprovableTable;
@@ -17,49 +13,16 @@ interface Props {
 export function ApprovalActions({ table, id, currentStatus }: Props) {
   const canApprove = useCanApprove();
   const setStatus = useSetDocStatus(table);
-  const [showApproveDialog, setShowApproveDialog] = useState(false);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   if (!canApprove) return null;
 
-  const needsPassword = PASSWORD_PROTECTED.includes(table);
   const pending = setStatus.isPending;
-
-  function handleApproveClick() {
-    if (needsPassword) setShowApproveDialog(true);
-    else setStatus.mutate({ id, status: 'approved' });
-  }
-
-  function handleRejectClick() {
-    if (needsPassword) setShowRejectDialog(true);
-    else setStatus.mutate({ id, status: 'rejected' });
-  }
 
   if (currentStatus === 'draft') {
     return (
       <>
-        <ApproveWithPasswordDialog
-          open={showApproveDialog}
-          onClose={() => setShowApproveDialog(false)}
-          onConfirm={() => { setShowApproveDialog(false); setStatus.mutate({ id, status: 'approved' }); }}
-          isPending={pending}
-          title="Onay Şifresi"
-          subtitle="Belgeyi onaylamak için şifrenizi girin"
-          buttonLabel="✅ Onayla"
-          headerClass="bg-gradient-to-r from-green-600 to-emerald-500"
-        />
-        <ApproveWithPasswordDialog
-          open={showRejectDialog}
-          onClose={() => setShowRejectDialog(false)}
-          onConfirm={() => { setShowRejectDialog(false); setStatus.mutate({ id, status: 'rejected' }); }}
-          isPending={pending}
-          title="Red Şifresi"
-          subtitle="Belgeyi reddetmek için şifrenizi girin"
-          buttonLabel="❌ Reddet"
-          headerClass="bg-gradient-to-r from-red-600 to-rose-500"
-        />
         <button
-          onClick={handleApproveClick}
+          onClick={(e) => { e.stopPropagation(); setStatus.mutate({ id, status: 'approved' }); }}
           disabled={pending}
           title="Onayla"
           className="p-1 rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 transition-colors disabled:opacity-50"
@@ -67,7 +30,7 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
           <Check className="h-3.5 w-3.5" />
         </button>
         <button
-          onClick={handleRejectClick}
+          onClick={(e) => { e.stopPropagation(); setStatus.mutate({ id, status: 'rejected' }); }}
           disabled={pending}
           title="Reddet"
           className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
@@ -81,7 +44,7 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
   if (currentStatus === 'rejected') {
     return (
       <button
-        onClick={() => setStatus.mutate({ id, status: 'draft' })}
+        onClick={(e) => { e.stopPropagation(); setStatus.mutate({ id, status: 'draft' }); }}
         disabled={pending}
         title="Taslağa Döndür"
         className="p-1 rounded-lg text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-50"
@@ -93,7 +56,8 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
 
   return (
     <button
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation();
         if (window.confirm('Revert to draft? Document will become editable again.'))
           setStatus.mutate({ id, status: 'draft' });
       }}
