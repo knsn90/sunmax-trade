@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import * as LabelPrimitive from '@radix-ui/react-label';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ─── Label ──────────────────────────────────────────────────────────────────
 
@@ -107,8 +107,12 @@ function Separator({ className, ...props }: React.HTMLAttributes<HTMLDivElement>
 }
 
 // ─── DateInput ──────────────────────────────────────────────────────────────
-// DD/MM/YYYY maskeli tarih girişi. value/onChange → YYYY-MM-DD (ISO 8601).
-// react-hook-form Controller ile kullan.
+// Özel takvim popup'ı olan tarih girişi.
+// value/onChange → YYYY-MM-DD. react-hook-form Controller ile kullan.
+
+const TR_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+                   'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const TR_DAYS   = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
 function isoToDisplay(iso: string): string {
   if (!iso || iso.length < 10) return '';
@@ -117,20 +121,154 @@ function isoToDisplay(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
-function displayToISO(display: string): string {
-  const raw = display.replace(/\D/g, '');
-  if (raw.length < 8) return '';
-  const d = raw.slice(0, 2);
-  const m = raw.slice(2, 4);
-  const y = raw.slice(4, 8);
-  if (parseInt(d) < 1 || parseInt(d) > 31) return '';
-  if (parseInt(m) < 1 || parseInt(m) > 12) return '';
-  return `${y}-${m}-${d}`;
+function buildISO(y: number, m: number, d: number): string {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function parseISO(iso: string): { y: number; m: number; d: number } | null {
+  if (!iso || iso.length < 10) return null;
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return { y, m: m - 1, d };
+}
+
+// Pazartesi = 0 başlangıçlı grid (TR takvim düzeni)
+function getCalendarCells(year: number, month: number) {
+  const firstDate = new Date(year, month, 1);
+  // 0=Pzt…6=Paz (JS 0=Pzr)
+  const firstDow = (firstDate.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev  = new Date(year, month, 0).getDate();
+
+  const cells: Array<{ day: number; type: 'prev' | 'curr' | 'next' }> = [];
+  for (let i = firstDow - 1; i >= 0; i--)
+    cells.push({ day: daysInPrev - i, type: 'prev' });
+  for (let d = 1; d <= daysInMonth; d++)
+    cells.push({ day: d, type: 'curr' });
+  const rem = 42 - cells.length;
+  for (let d = 1; d <= rem; d++)
+    cells.push({ day: d, type: 'next' });
+  return cells;
+}
+
+interface CalendarPickerProps {
+  value: string;
+  onConfirm: (iso: string) => void;
+  onClose: () => void;
+}
+
+function CalendarPicker({ value, onConfirm, onClose }: CalendarPickerProps) {
+  const accent = 'var(--color-accent, #2563eb)';
+  const today = new Date();
+  const parsed = parseISO(value);
+
+  const [viewY, setViewY] = useState(parsed?.y ?? today.getFullYear());
+  const [viewM, setViewM] = useState(parsed?.m ?? today.getMonth());
+  const [sel, setSel]     = useState<{ y: number; m: number; d: number } | null>(parsed);
+
+  const cells = getCalendarCells(viewY, viewM);
+  const years = Array.from({ length: 12 }, (_, i) => today.getFullYear() - 2 + i);
+
+  function prevMonth() { if (viewM === 0) { setViewY(y => y - 1); setViewM(11); } else setViewM(m => m - 1); }
+  function nextMonth() { if (viewM === 11) { setViewY(y => y + 1); setViewM(0); } else setViewM(m => m + 1); }
+
+  function isSel(d: number) { return sel && sel.y === viewY && sel.m === viewM && sel.d === d; }
+  function isToday(d: number) { return today.getFullYear() === viewY && today.getMonth() === viewM && today.getDate() === d; }
+
+  function selDisplay() {
+    if (!sel) return '—';
+    return `${String(sel.d).padStart(2,'0')} ${TR_MONTHS[sel.m]} ${sel.y}`;
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 w-72 select-none">
+      {/* Ay / Yıl başlığı */}
+      <div className="flex items-center gap-1 mb-3">
+        <button type="button" onClick={prevMonth}
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 flex items-center gap-1 justify-center">
+          <select
+            value={viewM}
+            onChange={e => setViewM(Number(e.target.value))}
+            className="bg-gray-50 rounded-lg px-2 py-1 text-[12px] font-bold text-gray-800 border-0 focus:outline-none cursor-pointer appearance-none text-center"
+          >
+            {TR_MONTHS.map((mn, i) => <option key={i} value={i}>{mn}</option>)}
+          </select>
+          <select
+            value={viewY}
+            onChange={e => setViewY(Number(e.target.value))}
+            className="bg-gray-50 rounded-lg px-2 py-1 text-[12px] font-bold text-gray-800 border-0 focus:outline-none cursor-pointer appearance-none text-center"
+          >
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <button type="button" onClick={nextMonth}
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500">
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Gün başlıkları */}
+      <div className="grid grid-cols-7 mb-1">
+        {TR_DAYS.map(d => (
+          <div key={d} className="text-center text-[9px] font-bold text-gray-400 py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Günler grid */}
+      <div className="grid grid-cols-7">
+        {cells.map((cell, i) => {
+          const isCurr = cell.type === 'curr';
+          const selected = isCurr && isSel(cell.day);
+          const todayCell = isCurr && isToday(cell.day);
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={!isCurr}
+              onClick={() => isCurr && setSel({ y: viewY, m: viewM, d: cell.day })}
+              className={cn(
+                'h-8 w-full flex items-center justify-center text-[12px] rounded-full transition-all',
+                !isCurr && 'text-gray-300 cursor-default',
+                isCurr && !selected && 'text-gray-700 hover:bg-gray-100 cursor-pointer',
+                todayCell && !selected && 'font-bold',
+                selected && 'text-white font-bold',
+              )}
+              style={selected ? { background: accent } : todayCell ? { color: accent } : {}}
+            >
+              {cell.day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+        <span className="text-[11px] font-semibold text-gray-600">{selDisplay()}</span>
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose}
+            className="text-[12px] font-semibold text-gray-400 hover:text-gray-600 transition-colors">
+            İptal
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (sel) { onConfirm(buildISO(sel.y, sel.m, sel.d)); } else onClose(); }}
+            className="text-[12px] font-bold transition-colors"
+            style={{ color: accent }}
+          >
+            Onayla
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface DateInputProps {
-  value?: string;          // YYYY-MM-DD
-  onChange?: (v: string) => void;  // YYYY-MM-DD
+  value?: string;
+  onChange?: (v: string) => void;
   onBlur?: () => void;
   placeholder?: string;
   className?: string;
@@ -138,78 +276,55 @@ interface DateInputProps {
 }
 
 function DateInput({ value = '', onChange, onBlur, placeholder = 'GG/AA/YYYY', className, disabled }: DateInputProps) {
-  const [text, setText] = useState(() => isoToDisplay(value));
-  const nativeRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Dışarıdan value değişince display'i güncelle
+  // Click outside → kapat
+  const handleOutside = useCallback((e: MouseEvent) => {
+    if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+  }, []);
   useEffect(() => {
-    const display = isoToDisplay(value);
-    // Yalnızca ISO değer gerçekten farklıysa güncelle (döngüyü önler)
-    if (displayToISO(text) !== value) {
-      setText(display);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+    if (open) document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [open, handleOutside]);
 
-  function handleText(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
-    let formatted = raw.slice(0, 2);
-    if (raw.length > 2) formatted += '/' + raw.slice(2, 4);
-    if (raw.length > 4) formatted += '/' + raw.slice(4, 8);
-    setText(formatted);
-    const iso = displayToISO(formatted);
-    if (iso && onChange) onChange(iso);
-    else if (!iso && raw.length === 0 && onChange) onChange('');
-  }
-
-  function handleNative(e: React.ChangeEvent<HTMLInputElement>) {
-    const iso = e.target.value;
-    setText(isoToDisplay(iso));
+  function handleConfirm(iso: string) {
     if (onChange) onChange(iso);
-  }
-
-  function openPicker() {
-    if (disabled) return;
-    try { (nativeRef.current as HTMLInputElement & { showPicker?: () => void })?.showPicker?.(); } catch { /* ignore */ }
+    setOpen(false);
+    if (onBlur) onBlur();
   }
 
   return (
-    <div className="relative">
-      <input
-        type="text"
-        value={text}
-        onChange={handleText}
-        onBlur={onBlur}
-        placeholder={placeholder}
-        maxLength={10}
-        disabled={disabled}
-        className={cn(
-          'flex h-9 w-full rounded-xl border border-gray-200 bg-white px-3 pr-9 text-[13px] text-gray-800',
-          'placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          className,
-        )}
-      />
-      {/* Gizli native date input — sadece takvim açmak için */}
-      <input
-        ref={nativeRef}
-        type="date"
-        value={value}
-        onChange={handleNative}
-        disabled={disabled}
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden
-      />
+    <div ref={wrapRef} className="relative">
+      {/* Input alanı */}
       <button
         type="button"
-        onClick={openPicker}
         disabled={disabled}
-        tabIndex={-1}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors disabled:pointer-events-none"
+        onClick={() => !disabled && setOpen(v => !v)}
+        className={cn(
+          'flex h-9 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-3 pr-3 text-[13px]',
+          'focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          open && 'ring-2 ring-gray-200',
+          className,
+        )}
       >
-        <CalendarDays className="h-4 w-4" />
+        <span className={value ? 'text-gray-800' : 'text-gray-400'}>
+          {value ? isoToDisplay(value) : placeholder}
+        </span>
+        <CalendarDays className="h-4 w-4 text-gray-400 shrink-0" />
       </button>
+
+      {/* Popup takvim */}
+      {open && (
+        <div className="absolute z-[200] mt-1.5 left-0">
+          <CalendarPicker
+            value={value}
+            onConfirm={handleConfirm}
+            onClose={() => setOpen(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
