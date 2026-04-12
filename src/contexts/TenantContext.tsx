@@ -87,6 +87,23 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Süper admin'in tenant_id'si null ise (önceden "Tüm Firmalar"a dönülmüş veya ilk giriş)
+      // → localStorage cache'den son firmayı geri yükle
+      if (!effectiveTenantId && profile.is_super_admin) {
+        try {
+          const cached = localStorage.getItem(TENANT_CACHE_KEY);
+          if (cached) {
+            const cachedTenant = JSON.parse(cached) as Tenant;
+            if (cachedTenant?.id) {
+              const { error } = await supabase.rpc('super_admin_switch_tenant', {
+                p_tenant_id: cachedTenant.id,
+              });
+              if (!error) effectiveTenantId = cachedTenant.id;
+            }
+          }
+        } catch { /* ignore */ }
+      }
+
       // Aktif tenant'ı yükle
       const tenantId = effectiveTenantId;
       let tenant: Tenant | null = null;
