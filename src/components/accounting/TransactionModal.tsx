@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { transactionSchema, type TransactionFormData } from '@/types/forms';
 import type { Transaction } from '@/types/database';
@@ -14,12 +14,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
+import { DateInput } from '@/components/ui/form-elements';
 import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight, Plus, ChevronUp } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 
 const TxnLbl = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">{children}</div>
 );
 const TxnFld = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
   <div className={className}><TxnLbl>{label}</TxnLbl>{children}</div>
@@ -133,10 +133,8 @@ export function TransactionModal({
 }: TransactionModalProps) {
   const { t } = useTranslation('accounting');
   const { t: tc } = useTranslation('common');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
-  const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
-  const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+  const inp = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-2 focus:ring-red-500/20 w-full';
+  const sel = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
   const Lbl = TxnLbl;
   const Fld = TxnFld;
   // Reusable exchange-rate + USD columns (only rendered when isNonUSD)
@@ -144,7 +142,7 @@ export function TransactionModal({
     <>
       <div>
         <Lbl>{kurYon === 'direct' ? `1 ${currency} = ? USD` : `1 USD = ? ${currency}`}</Lbl>
-        <div className="flex h-8 rounded-lg overflow-hidden bg-gray-100">
+        <div className="flex min-h-[46px] rounded-xl overflow-hidden bg-[#f2f4f7]">
           <input type="text" inputMode="decimal" {...register('exchange_rate')}
             placeholder="0.0000"
             className="flex-1 min-w-0 bg-transparent px-3 text-[12px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
@@ -381,10 +379,7 @@ export function TransactionModal({
     : allFiles;
 
   // Grouped for optgroup display
-  const txnParentFiles     = files.filter(f => !f.parent_file_id);
-  const txnBatchFiles      = files.filter(f =>  !!f.parent_file_id);
-  const txnParentMap       = new Map(allFiles.filter(f => !f.parent_file_id).map(f => [f.id, f.file_no]));
-  const txnParentsWithBatch = [...new Set(txnBatchFiles.map(b => b.parent_file_id!))];
+  const txnParentFiles = files.filter(f => !f.parent_file_id);
 
   // ── Handle party selection ────────────────────────────────────────────────
   function handlePartyChange(party: SelectedParty | null) {
@@ -550,7 +545,18 @@ export function TransactionModal({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Fld label={`${tc('form.date')} *`}>
-                  <input type="date" {...register('transaction_date')} className={inp} />
+                  <Controller
+                    name="transaction_date"
+                    control={control}
+                    render={({ field }) => (
+                      <DateInput
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className={inp}
+                      />
+                    )}
+                  />
                 </Fld>
                 <Fld label="Gider Kategorisi">
                   <select
@@ -640,7 +646,18 @@ export function TransactionModal({
             <>
               <div className="grid grid-cols-3 gap-3">
                 <Fld label={`${tc('form.date')} *`}>
-                  <input type="date" {...register('transaction_date')} className={inp} />
+                  <Controller
+                    name="transaction_date"
+                    control={control}
+                    render={({ field }) => (
+                      <DateInput
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className={inp}
+                      />
+                    )}
+                  />
                 </Fld>
                 <Fld label={`${t('transaction.modal.description')} *`}>
                   <input {...register('description')} placeholder="Örn. Kasadan bankaya para yatırma" className={inp} />
@@ -713,7 +730,18 @@ export function TransactionModal({
               {/* Tarih + Taraf */}
               <div className="grid grid-cols-[180px_1fr] gap-3 items-start">
                 <Fld label={`${tc('form.date')} *`}>
-                  <input type="date" {...register('transaction_date')} className={inp} />
+                  <Controller
+                    name="transaction_date"
+                    control={control}
+                    render={({ field }) => (
+                      <DateInput
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className={inp}
+                      />
+                    )}
+                  />
                 </Fld>
                 <Fld label={partyLabel[txnType] ?? t('transaction.modal.party')}>
                   {ocrPartyHint && (
@@ -728,27 +756,13 @@ export function TransactionModal({
                 </Fld>
               </div>
 
-              {/* Ticaret Dosyası */}
+              {/* Ticaret Dosyası — sadece ana dosyalar */}
               <Fld label={t('transaction.modal.tradeFile')}>
                 <select {...register('trade_file_id')} className={sel}>
                   <option value="">{t('transaction.modal.tradeFileSelect')}</option>
-                  {/* Ana dosyalar — batch'i olmayanlar */}
-                  {txnParentFiles.filter(f => !txnParentsWithBatch.includes(f.id)).map(f => (
+                  {txnParentFiles.map(f => (
                     <option key={f.id} value={f.id}>{f.file_no} – {f.customer?.name ?? ''}</option>
                   ))}
-                  {/* Batch'i olan ana dosyalar → alt partiler optgroup */}
-                  {txnParentsWithBatch.map(parentId => {
-                    const children = txnBatchFiles.filter(b => b.parent_file_id === parentId);
-                    return (
-                      <optgroup key={parentId} label={`↳ Alt Partiler — ${txnParentMap.get(parentId) ?? ''}`}>
-                        {children.map(b => (
-                          <option key={b.id} value={b.id}>
-                            {b.file_no}  {b.tonnage_mt ? `(${b.tonnage_mt} MT)` : ''}
-                          </option>
-                        ))}
-                      </optgroup>
-                    );
-                  })}
                 </select>
               </Fld>
 
@@ -988,8 +1002,8 @@ export function TransactionModal({
               {tc('btn.cancel')}
             </button>
             <button type="submit" disabled={createTxn.isPending || updateTxn.isPending || createTransfer.isPending}
-              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-              style={{ background: accent }}>
+              className="h-9 px-5 rounded-xl text-[13px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all shadow-sm"
+              style={{ fontFamily: 'Manrope, sans-serif', background: 'linear-gradient(135deg, #b70011, #dc2626)' }}>
               {isEdit ? t('transaction.modal.btnUpdate') : t('transaction.modal.btnSave')}
             </button>
           </div>

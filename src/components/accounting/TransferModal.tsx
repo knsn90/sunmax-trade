@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useKasalar } from '@/hooks/useKasalar';
@@ -12,7 +12,7 @@ import { SmartFill } from '@/components/ui/SmartFill';
 import { OcrButton } from '@/components/ui/OcrButton';
 import type { OcrResult } from '@/lib/openai';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, Textarea } from '@/components/ui/form-elements';
+import { NativeSelect, Textarea, DateInput } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { ArrowRight, ArrowLeftRight, Banknote, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -41,8 +41,7 @@ interface Props {
 const mo = 'bg-gray-100 border-0 focus:ring-0';
 
 export function TransferModal({ open, onOpenChange }: Props) {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: kasalar = [] } = useKasalar();
   const { data: bankAccounts = [] } = useBankAccounts();
   const createTransfer = useCreateTransfer();
@@ -242,7 +241,13 @@ export function TransferModal({ open, onOpenChange }: Props) {
           {/* Tarih & Referans No */}
           <FormRow cols={2}>
             <FormGroup label="Tarih *">
-              <Input type="date" {...register('transfer_date')} className={mo} />
+              <Controller
+                name="transfer_date"
+                control={control}
+                render={({ field }) => (
+                  <DateInput value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} className={mo} />
+                )}
+              />
             </FormGroup>
             <FormGroup label="Referans No">
               <Input {...register('reference_no')} placeholder="Tahsilat, dekont no" className={mo} />

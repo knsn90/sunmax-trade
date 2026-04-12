@@ -14,6 +14,7 @@ import { OcrButton } from '@/components/ui/OcrButton';
 import type { OcrResult } from '@/lib/openai';
 import { PartyCombobox, type SelectedParty } from '@/components/accounting/PartyCombobox';
 import { cn } from '@/lib/utils';
+import { DateInput } from '@/components/ui/form-elements';
 import {
   HelpCircle, Banknote, Building2, CreditCard,
   ChevronDown, ChevronUp, Plus, Trash2, X,
@@ -82,8 +83,7 @@ interface Props {
 }
 
 export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTradeFileId, onSwitchToTransaction }: Props) {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: allFiles = [] } = useAllTradeFiles(['sale', 'delivery', 'completed']);
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
@@ -249,7 +249,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                 <input className={inp} value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="ÖRN: GÜM-2026-001" />
               </Field>
               <Field label="Fatura Tarihi">
-                <input type="date" className={inp} value={faturaTarihi} onChange={e => setFaturaTarihi(e.target.value)} />
+                <DateInput value={faturaTarihi} onChange={setFaturaTarihi} className={inp} />
               </Field>
             </div>
           </div>

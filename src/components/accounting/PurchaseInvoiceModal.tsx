@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { DateInput } from '@/components/ui/form-elements';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { OcrButton } from '@/components/ui/OcrButton';
 import type { OcrResult } from '@/lib/openai';
@@ -74,8 +75,7 @@ interface Props {
 }
 
 export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitchToTransaction, defaultTradeFileId }: Props) {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: suppliers = [] } = useSuppliers();
   const { data: allFiles  = [] } = useAllTradeFiles(['sale', 'delivery', 'completed']);
   const createTxn = useCreateTransaction();
@@ -269,7 +269,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                 <input className={inp} value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="AKS2026000000192" />
               </Field>
               <Field label="Fatura Tarihi *">
-                <input type="date" className={inp} value={faturaTarihi} onChange={e => setFaturaTarihi(e.target.value)} />
+                <DateInput value={faturaTarihi} onChange={setFaturaTarihi} className={inp} />
               </Field>
             </div>
           </div>
