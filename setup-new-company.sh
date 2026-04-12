@@ -50,7 +50,7 @@ step "Şirket Bilgileri"
 
 read -rp "$(echo -e "${BOLD}Şirket adı${NC} (slug, boşluksuz, örn: acmecorp): ")" COMPANY_SLUG
 COMPANY_SLUG="${COMPANY_SLUG// /-}"
-COMPANY_SLUG="${COMPANY_SLUG,,}"  # küçük harf
+COMPANY_SLUG="$(echo "$COMPANY_SLUG" | tr "[:upper:]" "[:lower:]")"  # küçük harf
 
 if [[ -z "$COMPANY_SLUG" ]]; then
   error "Şirket adı boş olamaz."

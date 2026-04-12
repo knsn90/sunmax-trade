@@ -2,10 +2,14 @@ import { useMemo, useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { fCurrency, fDate, fUSD } from '@/lib/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/form-elements';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
+
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] font-mono text-gray-900 placeholder:text-gray-400 border-0 shadow-none outline-none focus:outline-none w-full';
+const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none outline-none w-full appearance-none cursor-pointer';
+function Lbl({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>;
+}
 
 /**
  * exchange_rate convention (same as transactionService):
@@ -94,61 +98,68 @@ export function FxReportTab() {
     <div className="space-y-4">
 
       {/* ── Filtre & Kapanış Kurları ──────────────────────────────────── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
-          Kapanış Kurları — bugünkü kur (yerel para / 1 USD)
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          {CURRENCIES.map(cur => (
-            <div key={cur}>
-              <label className="text-[11px] font-medium text-gray-500 block mb-1">
-                {cur} kuru
-              </label>
-              <Input
-                type="number"
-                step="0.0001"
-                placeholder={RATE_PLACEHOLDERS[cur]}
-                value={closingRates[cur]}
-                onChange={e => setClosingRates(prev => ({ ...prev, [cur]: e.target.value }))}
-                className="text-[12px] font-mono"
-              />
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50/80 border-b border-gray-100">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+            Kapanış Kurları — Yerel Para / 1 USD
+          </span>
+        </div>
+        <div className="px-4 py-3 space-y-3">
+          {/* Kur inputları */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {CURRENCIES.map(cur => (
+              <div key={cur}>
+                <Lbl>{cur} Kuru</Lbl>
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder={RATE_PLACEHOLDERS[cur]}
+                  value={closingRates[cur]}
+                  onChange={e => setClosingRates(prev => ({ ...prev, [cur]: e.target.value }))}
+                  className={inp}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-gray-100 my-1" />
+
+          {/* Filtreler + Butonlar */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[140px]">
+              <Lbl>Para Birimi</Lbl>
+              <select className={sel} value={currencyFilter} onChange={e => setCurrencyFilter(e.target.value)}>
+                <option value="">Tüm Dövizler</option>
+                {availableCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div>
-            <label className="text-[11px] font-medium text-gray-500 block mb-1">Para Birimi</label>
-            <NativeSelect value={currencyFilter} onChange={e => setCurrencyFilter(e.target.value)}>
-              <option value="">Tüm Dövizler</option>
-              {availableCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
-            </NativeSelect>
+            <div className="min-w-[170px]">
+              <Lbl>Ödeme Durumu</Lbl>
+              <select className={sel} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="">Tüm Durumlar</option>
+                <option value="open">Açık</option>
+                <option value="partial">Kısmi Ödendi</option>
+                <option value="paid">Ödendi (Realize)</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              {ran && (
+                <button
+                  onClick={() => { setRan(false); setCurrencyFilter(''); setStatusFilter(''); setClosingRates({ EUR: '', AED: '', TRY: '', GBP: '' }); }}
+                  className="h-8 px-3 rounded-lg text-[11px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                  Sıfırla
+                </button>
+              )}
+              <button
+                onClick={() => setRan(true)}
+                className="h-8 px-4 rounded-xl text-white text-[12px] font-semibold hover:opacity-90 transition-opacity shadow-sm"
+                style={{ background: accent }}
+              >
+                Hesapla
+              </button>
+            </div>
           </div>
-          <div>
-            <label className="text-[11px] font-medium text-gray-500 block mb-1">Ödeme Durumu</label>
-            <NativeSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">Tüm Durumlar</option>
-              <option value="open">Açık</option>
-              <option value="partial">Kısmi Ödendi</option>
-              <option value="paid">Ödendi (Realize)</option>
-            </NativeSelect>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => setRan(true)}
-            className="px-4 h-9 rounded-xl text-white text-[12px] font-semibold hover:opacity-90 transition-opacity"
-            style={{ background: accent }}
-          >
-            Raporu Hesapla
-          </button>
-          <button
-            onClick={() => { setRan(false); setCurrencyFilter(''); setStatusFilter(''); }}
-            className="px-4 h-9 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            Sıfırla
-          </button>
         </div>
       </div>
 

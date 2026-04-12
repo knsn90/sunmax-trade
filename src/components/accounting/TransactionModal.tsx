@@ -4,7 +4,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { transactionSchema, type TransactionFormData } from '@/types/forms';
 import type { Transaction } from '@/types/database';
-import { useTradeFiles } from '@/hooks/useTradeFiles';
+import { useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { useKasalar } from '@/hooks/useKasalar';
 import { useBankAccounts } from '@/hooks/useSettings';
@@ -17,6 +17,13 @@ import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombo
 import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight, Plus, ChevronUp } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+
+const TxnLbl = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+);
+const TxnFld = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
+  <div className={className}><TxnLbl>{label}</TxnLbl>{children}</div>
+);
 
 const TR_BANKS = [
   '— Seçin —',
@@ -54,6 +61,25 @@ const TR_BANKS = [
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
+
+const EXPENSE_CATEGORIES = [
+  'Kira',
+  'Elektrik / Enerji',
+  'Doğalgaz',
+  'Su',
+  'İnternet / Telefon',
+  'Maaş / Personel',
+  'SGK',
+  'Sigorta',
+  'Vergi',
+  'Ofis / Kırtasiye',
+  'Bakım / Onarım',
+  'Ulaşım',
+  'Yemek / Temsil',
+  'Reklam / Pazarlama',
+  'Hukuki / Danışmanlık',
+  'Diğer',
+];
 
 interface TransactionModalProps {
   open: boolean;
@@ -111,19 +137,15 @@ export function TransactionModal({
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
   const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
-  const Lbl = ({ children }: { children: React.ReactNode }) => (
-    <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
-  );
-  const Fld = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
-    <div className={className}><Lbl>{label}</Lbl>{children}</div>
-  );
+  const Lbl = TxnLbl;
+  const Fld = TxnFld;
   // Reusable exchange-rate + USD columns (only rendered when isNonUSD)
   const RateFields = () => (
     <>
       <div>
         <Lbl>{kurYon === 'direct' ? `1 ${currency} = ? USD` : `1 USD = ? ${currency}`}</Lbl>
         <div className="flex h-8 rounded-lg overflow-hidden bg-gray-100">
-          <input type="number" step="0.0001" {...register('exchange_rate')}
+          <input type="text" inputMode="decimal" {...register('exchange_rate')}
             placeholder="0.0000"
             className="flex-1 min-w-0 bg-transparent px-3 text-[12px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
             onChange={(e) => { register('exchange_rate').onChange(e); if (!usdFocused.current) setUsdStr(''); }}
@@ -145,7 +167,7 @@ export function TransactionModal({
       <Fld label="USD Karşılığı">
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 pointer-events-none">$</span>
-          <input type="number" step="0.01" value={usdStr} onChange={handleUsdChange}
+          <input type="text" inputMode="decimal" value={usdStr} onChange={handleUsdChange}
             onFocus={() => { usdFocused.current = true; }}
             onBlur={() => { usdFocused.current = false; setUsdStr(usdEquivalent > 0 ? usdEquivalent.toFixed(2) : ''); }}
             placeholder="0.00" className={`${inp} pl-6`}
@@ -351,12 +373,18 @@ export function TransactionModal({
   // Fetch ALL files once (cached) — filter client-side by selected customer.
   // Avoids a new network request on every customer change and eliminates the
   // "empty while loading" flash that the server-side filter approach had.
-  const { data: allFiles = [] } = useTradeFiles();
+  const { data: allFiles = [] } = useAllTradeFiles();
   const files = selectedParty?.entityType === 'customer'
     ? allFiles.filter(f => f.customer_id === selectedParty.id)
     : selectedParty?.entityType === 'supplier'
     ? allFiles.filter(f => f.supplier_id === selectedParty.id)
     : allFiles;
+
+  // Grouped for optgroup display
+  const txnParentFiles     = files.filter(f => !f.parent_file_id);
+  const txnBatchFiles      = files.filter(f =>  !!f.parent_file_id);
+  const txnParentMap       = new Map(allFiles.filter(f => !f.parent_file_id).map(f => [f.id, f.file_no]));
+  const txnParentsWithBatch = [...new Set(txnBatchFiles.map(b => b.parent_file_id!))];
 
   // ── Handle party selection ────────────────────────────────────────────────
   function handlePartyChange(party: SelectedParty | null) {
@@ -428,6 +456,7 @@ export function TransactionModal({
       sale_inv: 'customer',
       advance: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'customer',
       payment: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'other',
+      expense: 'other',
     };
     data.party_type = typeToParty[data.transaction_type];
 
@@ -477,6 +506,7 @@ export function TransactionModal({
                   sale_inv:     'Yeni Satış Faturası',
                   purchase_inv: 'Yeni Satın Alma Faturası',
                   svc_inv:      'Yeni Hizmet Faturası',
+                  expense:      'Yeni Gider',
                 } as Record<string, string>)[txnType] ?? t('transaction.modal.titleNew')
             }</DialogTitle>
             <div className="flex gap-1.5 shrink-0">
@@ -488,7 +518,7 @@ export function TransactionModal({
           {/* ── İşlem türü pill seçici ── */}
           {!isEdit && (
             <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none mt-3">
-              {(['sale_inv','purchase_inv','svc_inv','receipt','payment','advance','ic_transfer'] as const).map(k => (
+              {(['sale_inv','purchase_inv','svc_inv','receipt','payment','advance','ic_transfer','expense'] as const).map(k => (
                 <button
                   key={k}
                   type="button"
@@ -515,8 +545,98 @@ export function TransactionModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-1">
 
-          {/* ── İÇ TRANSFER FORMU ─────────────────────────────────────────── */}
-          {txnType === 'ic_transfer' ? (
+          {/* ── GİDER FORMU ───────────────────────────────────────────────── */}
+          {txnType === 'expense' ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Fld label={`${tc('form.date')} *`}>
+                  <input type="date" {...register('transaction_date')} className={inp} />
+                </Fld>
+                <Fld label="Gider Kategorisi">
+                  <select
+                    className={sel}
+                    defaultValue=""
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      setValue('notes', cat);
+                    }}
+                  >
+                    <option value="">— Seçin —</option>
+                    {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Fld>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Fld label={`${t('transaction.modal.description')} *`}>
+                  <input {...register('description')} placeholder="Örn. Ocak 2026 kira ödemesi" className={inp} />
+                </Fld>
+                <Fld label={t('transaction.modal.referenceNo')}>
+                  <input {...register('reference_no')} placeholder="Fatura / dekont no" className={inp} />
+                </Fld>
+              </div>
+              <div className={`grid gap-3 ${isNonUSD ? 'grid-cols-4' : 'grid-cols-2'}`}>
+                <Fld label={tc('form.currency')}>
+                  <select {...register('currency')} className={sel}>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="AED">AED</option>
+                    <option value="TRY">TRY</option>
+                  </select>
+                </Fld>
+                <Fld label={`${t('transaction.modal.amount')} *`}>
+                  <input type="text" inputMode="decimal" {...register('amount')} className={inp} />
+                </Fld>
+                {isNonUSD && <RateFields />}
+              </div>
+              <Fld label="Ödeme Türü">
+                <div className="flex gap-2">
+                  {([
+                    { value: '',               label: 'Belirtilmedi', Icon: HelpCircle },
+                    { value: 'nakit',          label: 'Nakit',        Icon: Banknote   },
+                    { value: 'banka_havalesi', label: 'Banka',        Icon: Landmark   },
+                    { value: 'kredi_karti',    label: 'Kredi Kartı',  Icon: CreditCard },
+                  ] as const).map(({ value, label, Icon }) => {
+                    const active = paymentMethod === value;
+                    return (
+                      <button key={value} type="button" onClick={() => setValue('payment_method', value)}
+                        className={cn('flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-xl text-[10px] font-semibold transition-all',
+                          active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400 hover:text-gray-700 hover:bg-gray-200')}
+                      >
+                        <Icon className="h-4 w-4" strokeWidth={1.5} />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Fld>
+              {paymentMethod === 'banka_havalesi' && (
+                <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                  <Lbl>Ödenen Hesap</Lbl>
+                  <select {...register('bank_account_id')} className={sel}
+                    onChange={(e) => {
+                      register('bank_account_id').onChange(e);
+                      const acc = bankAccounts.find(a => a.id === e.target.value);
+                      if (acc) { setValue('bank_name', acc.bank_name); setValue('bank_account_no', acc.iban_usd || acc.iban_eur || ''); setValue('swift_bic', acc.swift_bic || ''); }
+                      else { setValue('bank_name', ''); setValue('bank_account_no', ''); setValue('swift_bic', ''); }
+                    }}>
+                    <option value="">— Hesap seçin —</option>
+                    {bankAccounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.bank_name}{a.account_name ? ` — ${a.account_name}` : ''}{a.currency ? ` · ${a.currency}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {paymentMethod === 'nakit' && kasalar.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                  <Lbl>Hangi Kasadan Çıktı?</Lbl>
+                  <select {...register('kasa_id')} className={sel}>
+                    <option value="">— Kasa seçin —</option>
+                    {kasalar.map(k => <option key={k.id} value={k.id}>{k.name} ({k.currency})</option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          ) : txnType === 'ic_transfer' ? (
             <>
               <div className="grid grid-cols-3 gap-3">
                 <Fld label={`${tc('form.date')} *`}>
@@ -540,7 +660,7 @@ export function TransactionModal({
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
-                  <input type="number" step="0.01" {...register('amount')} className={inp} />
+                  <input type="text" inputMode="decimal" {...register('amount')} className={inp} />
                 </Fld>
                 {isNonUSD && <RateFields />}
               </div>
@@ -612,9 +732,23 @@ export function TransactionModal({
               <Fld label={t('transaction.modal.tradeFile')}>
                 <select {...register('trade_file_id')} className={sel}>
                   <option value="">{t('transaction.modal.tradeFileSelect')}</option>
-                  {files.map((f) => (
+                  {/* Ana dosyalar — batch'i olmayanlar */}
+                  {txnParentFiles.filter(f => !txnParentsWithBatch.includes(f.id)).map(f => (
                     <option key={f.id} value={f.id}>{f.file_no} – {f.customer?.name ?? ''}</option>
                   ))}
+                  {/* Batch'i olan ana dosyalar → alt partiler optgroup */}
+                  {txnParentsWithBatch.map(parentId => {
+                    const children = txnBatchFiles.filter(b => b.parent_file_id === parentId);
+                    return (
+                      <optgroup key={parentId} label={`↳ Alt Partiler — ${txnParentMap.get(parentId) ?? ''}`}>
+                        {children.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.file_no}  {b.tonnage_mt ? `(${b.tonnage_mt} MT)` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
                 </select>
               </Fld>
 
@@ -637,7 +771,7 @@ export function TransactionModal({
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
-                  <input type="number" step="0.01" {...register('amount')} className={inp} />
+                  <input type="text" inputMode="decimal" {...register('amount')} className={inp} />
                 </Fld>
                 {isNonUSD && <RateFields />}
               </div>
@@ -789,7 +923,7 @@ export function TransactionModal({
           )}
 
           {/* Masraf / Komisyon */}
-          {txnType !== 'ic_transfer' && (
+          {txnType !== 'ic_transfer' && txnType !== 'expense' && (
             <div>
               {!masrafOpen ? (
                 <button type="button" onClick={() => setMasrafOpen(true)}
@@ -828,11 +962,11 @@ export function TransactionModal({
                       </div>
                       <div className={`grid gap-3 ${isMasrafNonUSD ? 'grid-cols-3' : 'grid-cols-2'}`}>
                         <Fld label="Tutar">
-                          <input type="number" step="0.01" min="0" {...register('masraf_tutar')} placeholder="0.00" className={inp} />
+                          <input type="text" inputMode="decimal" {...register('masraf_tutar')} placeholder="0.00" className={inp} />
                         </Fld>
                         {isMasrafNonUSD && (
                           <Fld label={`Kur (1 USD = ? ${masrafCurrency})`}>
-                            <input type="number" step="0.0001" min="0" {...register('masraf_rate')} placeholder="örn. 32.50" className={inp} />
+                            <input type="text" inputMode="decimal" {...register('masraf_rate')} placeholder="örn. 32.50" className={inp} />
                           </Fld>
                         )}
                         <Fld label="USD Karşılığı">

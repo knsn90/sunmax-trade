@@ -26,6 +26,15 @@ export function useTradeFiles(filters?: {
   });
 }
 
+/** Tüm dosyalar — alt partiler (batch) dahil. Fatura modallarında dosya seçimi için. */
+export function useAllTradeFiles(statuses?: TradeFileStatus[]) {
+  return useQuery({
+    queryKey: ['trade-files', 'all-with-batches', statuses],
+    queryFn: () => tradeFileService.listAll(statuses),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
 export function useTradeFile(id: string | undefined) {
   const qc = useQueryClient();
   return useQuery({
@@ -155,8 +164,11 @@ export function useChangeStatus() {
       tradeFileService.changeStatus(id, status, cancelReason),
     onSuccess: (file) => {
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
-      toast.success(`Status changed to ${file.status}`);
+      toast.success(`Durum değiştirildi: ${file.status}`);
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => {
+      console.error('[changeStatus]', err);
+      toast.error(err.message || 'Durum güncellenemedi');
+    },
   });
 }

@@ -373,14 +373,12 @@ function DocumentAuditTab() {
       const fileTxns = allTxns.filter(t => t.trade_file_id === f.id || (t.trade_file as any)?.id === f.id);
       const purchaseInvs  = fileTxns.filter(t => t.transaction_type === 'purchase_inv');
       const saleInvs      = fileTxns.filter(t => t.transaction_type === 'sale_inv');
-      const svcInvs       = fileTxns.filter(t => t.transaction_type === 'svc_inv');
       const purchaseTotal = purchaseInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
       const saleTotal     = saleInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
 
       const checks = {
         purchaseCovered: purchaseInvs.length > 0 && (expectedPurchase === 0 || purchaseTotal >= expectedPurchase * 0.85),
         saleCovered:     saleInvs.length > 0     && (expectedSale     === 0 || saleTotal     >= expectedSale     * 0.85),
-        hasSvcInv:       svcInvs.length > 0,
         hasProforma:     (f.proformas?.length ?? 0) > 0,
         hasPackingList:  (f.packing_lists?.length ?? 0) > 0,
         hasCommInvoice:  (f.invoices?.length ?? 0) > 0,
@@ -392,11 +390,10 @@ function DocumentAuditTab() {
     .filter(r => r.missingCount > 0)
     .sort((a, b) => b.missingCount - a.missingCount);
 
-  type CheckKeys = 'purchaseCovered' | 'saleCovered' | 'hasSvcInv' | 'hasProforma' | 'hasPackingList' | 'hasCommInvoice';
+  type CheckKeys = 'purchaseCovered' | 'saleCovered' | 'hasProforma' | 'hasPackingList' | 'hasCommInvoice';
   const CHECK_LABELS: Record<CheckKeys, string> = {
     purchaseCovered: 'Satın Alma Faturası',
     saleCovered:     'Satış Faturası',
-    hasSvcInv:       'Hizmet Faturası',
     hasProforma:     'Proforma Fatura',
     hasPackingList:  'Packing List',
     hasCommInvoice:  'Commercial Invoice',

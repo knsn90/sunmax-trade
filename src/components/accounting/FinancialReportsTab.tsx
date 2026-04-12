@@ -6,7 +6,7 @@ import { useTransfers } from '@/hooks/useTransfers';
 import type { Transaction, Kasa, BankAccount, AccountTransfer } from '@/types/database';
 import { fCurrency, fDate } from '@/lib/formatters';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Banknote, Landmark, TrendingUp, CalendarDays, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Sparkles, X, RefreshCw } from 'lucide-react';
+import { Banknote, Landmark, CalendarDays, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Sparkles, X, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { streamFinanceAnalysis } from '@/lib/financeAI';
 
@@ -85,12 +85,11 @@ type LedgerRow =
   | { kind: 'txn';      txn: Transaction;       moneyIn: boolean; running: number }
   | { kind: 'transfer'; transfer: AccountTransfer; moneyIn: boolean; running: number; otherName: string };
 
-// ─── Nakit Pozisyonu Kartı ───────────────────────────────────────────────────
+// ─── Nakit Pozisyonu Kartı — Mono KPI stili ─────────────────────────────────
 function PositionCard({
   name,
   currency,
   balance,
-  icon,
   onClick,
   selected,
   accent,
@@ -98,46 +97,27 @@ function PositionCard({
   name: string;
   currency: string;
   balance: number;
-  icon: React.ReactNode;
   onClick: () => void;
   selected: boolean;
   accent: string;
 }) {
   const positive = balance >= 0;
+  const balanceColor = positive ? '#16a34a' : '#dc2626';
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        'w-full text-left bg-white rounded-2xl border shadow-sm p-4 transition-all hover:shadow-md',
-        selected ? 'ring-2' : 'border-gray-100',
-      )}
-      style={selected ? { outline: `2px solid ${accent}`, outlineOffset: '-2px' } : undefined}
+      className="w-full text-left bg-white rounded-xl border px-3 py-2.5 transition-all outline-none"
+      style={{
+        borderColor: selected ? accent : '#f3f4f6',
+        boxShadow: selected ? `0 0 0 1px ${accent}` : undefined,
+      }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: selected ? accent + '18' : '#f3f4f620' }}
-          >
-            <span style={{ color: selected ? accent : '#9ca3af' }}>{icon}</span>
-          </div>
-          <div>
-            <div className="text-[12px] font-bold text-gray-800 truncate max-w-[140px]">{name}</div>
-            <div className="text-[10px] text-gray-400 font-mono">{currency}</div>
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <div
-            className={cn('text-[16px] font-black tabular-nums', positive ? 'text-emerald-700' : 'text-red-600')}
-          >
-            {fCurrency(Math.abs(balance), currency as any)}
-          </div>
-          <div className={cn('text-[10px] font-semibold mt-0.5', positive ? 'text-emerald-500' : 'text-red-400')}>
-            {positive ? 'Bakiye' : 'Açık'}
-          </div>
-        </div>
+      <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 truncate">{name}</div>
+      <div className="text-[14px] font-black leading-tight tabular-nums" style={{ color: balanceColor }}>
+        {fCurrency(Math.abs(balance), currency as any)}
       </div>
+      <div className="text-[9px] font-semibold mt-0.5 text-gray-400">{currency} · {positive ? 'Bakiye' : 'Açık'}</div>
     </button>
   );
 }
@@ -471,81 +451,76 @@ export function FinancialReportsTab() {
 
       {/* ── BÖLÜM 1: Nakit Pozisyonu ──────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-gray-400" />
-          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
-            Nakit Pozisyonu
-          </span>
+        <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Nakit Pozisyonu</span>
           <button
             onClick={handleAiAnalysis}
             disabled={aiLoading}
-            className="ml-auto flex items-center gap-1.5 px-3 h-7 rounded-xl text-[11px] font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[10px] font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-60"
             style={{ background: accent }}
           >
             {aiLoading
-              ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analiz Ediliyor…</>
-              : <><Sparkles className="h-3 w-3" /> AI Analizi</>
+              ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />Analiz…</>
+              : <><Sparkles className="h-3 w-3" />AI Analizi</>
             }
           </button>
         </div>
-        <div className="p-4 space-y-4">
 
-          {/* Kasalar */}
-          {kasalar.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Banknote className="h-3.5 w-3.5 text-gray-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Kasalar</span>
+        {kasalar.length === 0 && bankAccounts.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-gray-400">
+            <Banknote className="h-8 w-8 mb-2 opacity-20" />
+            <p className="text-sm font-medium text-gray-500">Henüz kasa veya banka hesabı yok</p>
+            <p className="text-xs mt-1">Muhasebe → Ayarlar'dan ekleyebilirsiniz</p>
+          </div>
+        ) : (
+          <div className="p-3 space-y-3">
+            {/* Kasalar */}
+            {kasalar.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Kasalar</span>
+                  <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{kasalar.length}</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {kasaBalances.map(({ kasa, balance }) => (
+                    <PositionCard
+                      key={kasa.id}
+                      name={kasa.name}
+                      currency={kasa.currency}
+                      balance={balance}
+                      selected={selectedAccount?.kind === 'kasa' && selectedAccount.kasa.id === kasa.id}
+                      onClick={() => setSelectedAccount({ kind: 'kasa', kasa })}
+                      accent={accent}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                {kasaBalances.map(({ kasa, balance }) => (
-                  <PositionCard
-                    key={kasa.id}
-                    name={kasa.name}
-                    currency={kasa.currency}
-                    balance={balance}
-                    icon={<Banknote className="h-4 w-4" />}
-                    selected={selectedAccount?.kind === 'kasa' && selectedAccount.kasa.id === kasa.id}
-                    onClick={() => setSelectedAccount({ kind: 'kasa', kasa })}
-                    accent={accent}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Banka Hesapları */}
-          {bankAccounts.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Landmark className="h-3.5 w-3.5 text-gray-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Banka Hesapları</span>
+            {/* Banka Hesapları */}
+            {bankAccounts.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Banka Hesapları</span>
+                  <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{bankAccounts.length}</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {bankBalances.map(({ bank, balance }) => (
+                    <PositionCard
+                      key={bank.id}
+                      name={`${bank.bank_name}${bank.account_name ? ` — ${bank.account_name}` : ''}`}
+                      currency={bank.currency ?? 'USD'}
+                      balance={balance}
+                      selected={selectedAccount?.kind === 'bank' && selectedAccount.bank.id === bank.id}
+                      onClick={() => setSelectedAccount({ kind: 'bank', bank })}
+                      accent={accent}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                {bankBalances.map(({ bank, balance }) => (
-                  <PositionCard
-                    key={bank.id}
-                    name={`${bank.bank_name}${bank.account_name ? ` — ${bank.account_name}` : ''}`}
-                    currency={bank.currency ?? 'USD'}
-                    balance={balance}
-                    icon={<Landmark className="h-4 w-4" />}
-                    selected={selectedAccount?.kind === 'bank' && selectedAccount.bank.id === bank.id}
-                    onClick={() => setSelectedAccount({ kind: 'bank', bank })}
-                    accent={accent}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {kasalar.length === 0 && bankAccounts.length === 0 && (
-            <div className="flex flex-col items-center py-10 text-gray-400">
-              <Banknote className="h-8 w-8 mb-2 opacity-20" />
-              <p className="text-sm font-medium text-gray-500">Henüz kasa veya banka hesabı yok</p>
-              <p className="text-xs mt-1">Muhasebe → Ayarlar'dan ekleyebilirsiniz</p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── BÖLÜM 1.5: AI Analiz Paneli ──────────────────────────────────── */}

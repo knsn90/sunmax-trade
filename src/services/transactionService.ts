@@ -6,7 +6,7 @@ import { toUSD } from '@/lib/formatters';
 
 const TXN_SELECT = `
   *,
-  trade_file:trade_files!trade_file_id(file_no,tonnage_mt,delivered_admt,product:products!product_id(name)),
+  trade_file:trade_files!trade_file_id(file_no,tonnage_mt,delivered_admt,parent_file_id,product:products!product_id(name)),
   customer:customers!customer_id(name),
   supplier:suppliers!supplier_id(name),
   service_provider:service_providers!service_provider_id(name),
@@ -17,8 +17,9 @@ const TXN_SELECT = `
 export interface TransactionFilters {
   type?: TransactionType;
   tradeFileId?: string;
+  tradeFileIds?: string[];
   status?: PaymentStatus;
-  tab?: 'all' | 'buy' | 'svc' | 'cash' | 'sale';
+  tab?: 'all' | 'buy' | 'svc' | 'cash' | 'sale' | 'expense';
   /** Sadece onaylanmış kayıtları getir (raporlar için) */
   approvedOnly?: boolean;
 }
@@ -38,6 +39,9 @@ export const transactionService = {
     }
     if (filters?.tradeFileId) {
       query = query.eq('trade_file_id', filters.tradeFileId);
+    }
+    if (filters?.tradeFileIds?.length) {
+      query = query.in('trade_file_id', filters.tradeFileIds);
     }
     if (filters?.status) {
       query = query.eq('payment_status', filters.status);
@@ -59,6 +63,7 @@ export const transactionService = {
         const tabMap: Record<string, TransactionType[]> = {
           svc: ['svc_inv'],
           cash: ['receipt', 'payment'],
+          expense: ['expense'],
         };
         const types = tabMap[filters.tab];
         if (types) query = query.in('transaction_type', types);
@@ -254,6 +259,7 @@ export const transactionService = {
         receipt: 'customer',
         payment: 'other',
         sale_inv: 'customer',
+        expense: 'other',
       };
       partyType = typeToParty[input.transaction_type] as TransactionFormData['party_type'];
     }

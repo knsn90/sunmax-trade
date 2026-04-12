@@ -228,7 +228,10 @@ export interface TradeFile extends Timestamps {
   packing_lists?: PackingList[];
   proformas?: Proforma[];
   // Alt partiler (detail sorgusunda gelir)
-  batches?: Pick<TradeFile, 'id' | 'file_no' | 'batch_no' | 'status' | 'tonnage_mt' | 'transport_mode' | 'eta'>[];
+  batches?: (Pick<TradeFile, 'id' | 'file_no' | 'batch_no' | 'status' | 'tonnage_mt' | 'transport_mode' | 'eta'> & {
+    packing_lists?: { id: string; packing_list_no: string; doc_status: string; total_admt: number | null }[];
+    invoices?: { id: string; invoice_no: string; invoice_date: string | null; total: number | null; doc_status: string; invoice_type: 'commercial' | 'sale'; currency: string | null }[];
+  })[];
 }
 
 export interface PnlData {

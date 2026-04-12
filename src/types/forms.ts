@@ -204,7 +204,7 @@ export type ProformaFormData = z.infer<typeof proformaSchema>;
 
 export const transactionSchema = z.object({
   transaction_date: z.string().min(1, 'Date required'),
-  transaction_type: z.enum(['svc_inv', 'purchase_inv', 'receipt', 'payment', 'sale_inv', 'advance', 'ic_transfer']),
+  transaction_type: z.enum(['svc_inv', 'purchase_inv', 'receipt', 'payment', 'sale_inv', 'advance', 'ic_transfer', 'expense']),
   trade_file_id: z.string().optional(),
   party_type: z.enum(['customer', 'supplier', 'service_provider', 'other']).optional(),
   customer_id: z.string().optional(),

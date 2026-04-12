@@ -31,7 +31,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { TransportPlanSection } from '@/components/transport/TransportPlanSection';
-import { ObligationsSection } from '@/components/trade-files/ObligationsSection';
 import { NotesSection } from '@/components/trade-files/NotesSection';
 import { AttachmentsSection } from '@/components/trade-files/AttachmentsSection';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -40,7 +39,7 @@ import {
   ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
   Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
   MoreVertical, X, RotateCcw, Bell, AlertTriangle, ExternalLink,
-  CheckCircle, Layers, ShieldAlert, CircleCheck, Circle,
+  CheckCircle, Layers,
 } from 'lucide-react';
 
 // ── Action sheet item ─────────────────────────────────────────────────────────
@@ -324,7 +323,11 @@ export function TradeFileDetailPage() {
   const deletePL = useDeletePackingList();
   const deletePI = useDeleteProforma();
   const defaultBank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
-  const { data: fileTxns = [] } = useTransactions({ tradeFileId: id });
+  const batchIds = (file?.batches ?? []).map(b => b.id).filter((x): x is string => !!x);
+  const allFileIds = batchIds.length > 0 ? [id, ...batchIds].filter((x): x is string => !!x) : undefined;
+  const { data: fileTxns = [] } = useTransactions(
+    allFileIds ? { tradeFileIds: allFileIds } : { tradeFileId: id }
+  );
   const { theme } = useTheme();
   const isDonezo = theme === 'donezo';
   const accent = isDonezo ? '#dc2626' : '#2563eb';
@@ -333,8 +336,13 @@ export function TradeFileDetailPage() {
   const [editSaleOpen, setEditSaleOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [editFileOpen, setEditFileOpen] = useState(false);
+  const [batchDocsOpen, setBatchDocsOpen] = useState(false);
+  const [batchDocsType, setBatchDocsType] = useState<'invoice' | 'packing_list'>('invoice');
   const [purchaseInvOpen, setPurchaseInvOpen] = useState(false);
   const [svcInvOpen, setSvcInvOpen] = useState(false);
+  const [batchSelectorOpen, setBatchSelectorOpen] = useState<'purchase' | 'svc' | null>(null);
+  const [revertConfirm, setRevertConfirm] = useState(false);
+  const [selectedBatchFileId, setSelectedBatchFileId] = useState<string | null>(null);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [proformaOpen, setProformaOpen] = useState(false);
   const [packingOpen, setPackingOpen] = useState(false);
@@ -376,20 +384,20 @@ export function TradeFileDetailPage() {
 
   const handleOpenDropbox = useCallback(async () => {
     if (!file) return;
-    const customerName = file.customer?.name ?? 'Unknown';
-    const fileNo = file.file_no;
     setDropboxLoading(true);
     try {
-      // Her zaman createTradeFolder çağır — klasör silinmişse yeniden oluşturur,
-      // zaten varsa Dropbox API sessizce mevcut klasörü döndürür.
-      const res = await dropboxService.createTradeFolder(customerName, fileNo);
-      const folderPath = res.folderPath as string;
-      const folderUrl = res.folderUrl as string;
-      // DB'deki URL değiştiyse güncelle
-      if (folderUrl !== file.dropbox_folder_url) {
-        await dropboxService.saveFolderToDb(file.id, folderPath, folderUrl);
-        queryClient.invalidateQueries({ queryKey: tradeFileKeys.detail(file.id) });
+      // Klasör URL'i DB'de kayıtlıysa direkt aç — Dropbox API çağrısı yapma
+      if (file.dropbox_folder_url) {
+        window.open(file.dropbox_folder_url, '_blank');
+        return;
       }
+      // Klasör henüz yok → oluştur ve kaydet
+      const customerName = file.customer?.name ?? 'Unknown';
+      const res = await dropboxService.createTradeFolder(customerName, file.file_no);
+      const folderPath = res.folderPath as string;
+      const folderUrl  = res.folderUrl  as string;
+      await dropboxService.saveFolderToDb(file.id, folderPath, folderUrl);
+      queryClient.invalidateQueries({ queryKey: tradeFileKeys.detail(file.id) });
       window.open(folderUrl, '_blank');
     } catch (e) {
       const { toast } = await import('sonner');
@@ -397,7 +405,7 @@ export function TradeFileDetailPage() {
     } finally {
       setDropboxLoading(false);
     }
-  }, [file]);
+  }, [file, queryClient]);
 
   const handleUploadToDropbox = useCallback(async (docId: string, docName: string, html: string) => {
     if (!file) return;
@@ -406,7 +414,7 @@ export function TradeFileDetailPage() {
       const { toast } = await import('sonner');
       const upRes = await dropboxService.uploadDocument(
         file.customer?.name ?? 'Unknown',
-        file.file_no,
+        dropboxFileNo,
         docName,
         html,
       );
@@ -434,7 +442,7 @@ export function TradeFileDetailPage() {
     const customerName = file.customer?.name;
     if (!customerName) return;
 
-    dropboxService.createTradeFolder(customerName, file.file_no)
+    dropboxService.createTradeFolder(customerName, file.file_no.replace(/\//g, '-'))
       .then(async (res) => {
         const folderPath = res.folderPath as string;
         const folderUrl = res.folderUrl as string;
@@ -483,6 +491,8 @@ export function TradeFileDetailPage() {
   // ── Parti / kısmi sevkiyat hesaplamaları ────────────────────────────────────
   const isBatch    = !!file.parent_file_id;                          // bu dosya bir alt parti mi?
   const isPartial  = !isBatch && (file.batches?.length ?? 0) > 0;   // ana dosyada parti var mı?
+  // Dropbox klasör adı olarak file_no'yu kullan (edge function "/" → nested folder yapıyor)
+  const dropboxFileNo = file.file_no;
   // Kalan tonaj: tüm parti tonajları ana dosyadan düşülür
   const usedTonnage   = (file.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
   const remainingTonnage = Math.max(0, file.tonnage_mt - usedTonnage);
@@ -537,25 +547,120 @@ export function TradeFileDetailPage() {
 
     const purchaseInvs = fileTxns.filter(t => t.transaction_type === 'purchase_inv');
     const saleInvs     = fileTxns.filter(t => t.transaction_type === 'sale_inv');
-    const svcInvs      = fileTxns.filter(t => t.transaction_type === 'svc_inv');
+
     const purchaseTotal = purchaseInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
     const saleTotal     = saleInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
 
-    // Tonaj kontrolü: en az %85 karşılanmış olmalı (küçük yuvarlama farklarına tolerans)
-    const purchaseCovered = purchaseInvs.length > 0 && (expectedPurchase === 0 || purchaseTotal >= expectedPurchase * 0.85);
-    const saleCovered     = saleInvs.length > 0     && (expectedSale     === 0 || saleTotal     >= expectedSale     * 0.85);
-    const hasSvcInv       = svcInvs.length > 0;
-    const hasProforma     = (file.proformas?.length ?? 0) > 0;
-    const hasPackingList  = (file.packing_lists?.length ?? 0) > 0;
-    const hasCommInvoice  = (file.invoices?.length ?? 0) > 0;
+    // Alt partilerde satın alma/satış faturası ve proforma zorunlu değil
+    const purchaseCovered = isBatch ? true :
+      purchaseInvs.length > 0 && (expectedPurchase === 0 || purchaseTotal >= expectedPurchase * 0.85);
+    const saleCovered     = isBatch ? true :
+      saleInvs.length > 0     && (expectedSale     === 0 || saleTotal     >= expectedSale     * 0.85);
 
-    return { purchaseCovered, saleCovered, hasSvcInv, hasProforma, hasPackingList, hasCommInvoice };
+    const hasProforma     = (isBatch || isPartial) ? true : (file.proformas?.length ?? 0) > 0;
+
+    // Ana dosya (isPartial) için: kendi belgesi varsa OK,
+    // yoksa herhangi bir alt partide varsa da OK
+    const ownPackingList  = (file.packing_lists?.length ?? 0) > 0;
+    const ownCommInvoice  = (file.invoices?.filter(i => i.invoice_type === 'commercial').length ?? 0) > 0;
+    const batchPackingList = isPartial
+      ? (file.batches ?? []).some(b => (b.packing_lists?.length ?? 0) > 0)
+      : false;
+    const batchCommInvoice = isPartial
+      ? (file.batches ?? []).some(b => (b.invoices ?? []).some(i => i.invoice_type === 'commercial'))
+      : false;
+
+    const hasPackingList  = ownPackingList  || batchPackingList;
+    const hasCommInvoice  = ownCommInvoice  || batchCommInvoice;
+
+    return { purchaseCovered, saleCovered, hasProforma, hasPackingList, hasCommInvoice };
   })();
+
+  // Banner: "Tamamlandı" ama belgeler eksik → uyarı + geri al butonu
+  const completedWithMissingDocs =
+    file.status === 'completed' &&
+    completionChecks &&
+    !Object.values(completionChecks).every(Boolean);
+
+  type CheckKey = 'purchaseCovered' | 'saleCovered' | 'hasProforma' | 'hasPackingList' | 'hasCommInvoice';
+  const CHECKS_LABELS: { key: CheckKey; label: string }[] = [
+    { key: 'purchaseCovered', label: 'Satın Alma Faturası' },
+    { key: 'saleCovered',     label: 'Satış Faturası' },
+
+    { key: 'hasProforma',     label: 'Proforma Fatura' },
+    { key: 'hasPackingList',  label: 'Packing List' },
+    { key: 'hasCommInvoice',  label: 'Commercial Invoice' },
+  ] as const;
+
+  const docWarningBanner = completedWithMissingDocs && completionChecks ? (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Eksik Belgeler Tespit Edildi</span>
+        </div>
+        {writable && (
+          revertConfirm ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-gray-500">Emin misin?</span>
+              <button
+                onClick={async () => {
+                  setRevertConfirm(false);
+                  try {
+                    await changeStatus.mutateAsync({ id: file!.id, status: 'delivery' });
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    console.error('[revert-to-delivery]', e);
+                    toast.error(msg || 'Durum güncellenemedi');
+                  }
+                }}
+                disabled={changeStatus.isPending}
+                className="px-3 py-1.5 rounded-xl text-[11px] font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {changeStatus.isPending ? '…' : 'Evet, Geri Al'}
+              </button>
+              <button
+                onClick={() => setRevertConfirm(false)}
+                className="px-3 py-1.5 rounded-xl text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                İptal
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setRevertConfirm(true)}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Teslimat'a Geri Al
+            </button>
+          )
+        )}
+      </div>
+      {/* Badge list */}
+      <div className="px-5 py-3 flex flex-wrap gap-2">
+        {CHECKS_LABELS.map(({ key, label }) => (
+          <span
+            key={key}
+            className={cn(
+              'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold',
+              completionChecks[key]
+                ? 'bg-gray-100 text-gray-400'
+                : 'bg-red-50 text-red-500',
+            )}
+          >
+            {completionChecks[key] ? '✓' : '✗'} {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  ) : null;
 
   function checkAndComplete() {
     if (!completionChecks) return;
-    const { purchaseCovered, saleCovered, hasSvcInv, hasProforma, hasPackingList, hasCommInvoice } = completionChecks;
-    const allOk = purchaseCovered && saleCovered && hasSvcInv && hasProforma && hasPackingList && hasCommInvoice;
+    const { purchaseCovered, saleCovered, hasProforma, hasPackingList, hasCommInvoice } = completionChecks;
+    const allOk = purchaseCovered && saleCovered && hasProforma && hasPackingList && hasCommInvoice;
     if (allOk) {
       changeStatus.mutate({ id: file!.id, status: 'completed' });
     } else {
@@ -585,6 +690,7 @@ export function TradeFileDetailPage() {
         { key: 'request',   label: 'Talep' },
         { key: 'sale',      label: 'Satış' },
         { key: 'delivery',  label: 'Teslimat' },
+        { key: 'documents', label: 'Belgeler' },
         { key: 'completed', label: 'Tamamlandı' },
       ];
   const isCancelled = file.status === 'cancelled';
@@ -602,26 +708,67 @@ export function TradeFileDetailPage() {
         <div className="flex items-center gap-0">
           {STAGES.map((stage, idx) => {
             const isDone   = currentStageIdx > idx;
-            const isActive = currentStageIdx === idx;
+            // Tamamlandı statüsünde son adım (completed) da tik almalı
+            const isActive = currentStageIdx === idx && file.status !== 'completed';
+            const isCompleted = currentStageIdx === idx && file.status === 'completed';
+
+            // ── Belgeler pseudo-step özel mantık ─────────────────────────────
+            const isDocStage = stage.key === 'documents';
+            const allDocsDone = completionChecks
+              ? Object.values(completionChecks).every(Boolean)
+              : false;
+            const docReady   = isDocStage && !isDone && !isCompleted && file.status === 'delivery' && allDocsDone;
+            const docWarning = isDocStage && !allDocsDone && (
+              (!isDone && !isCompleted && ['delivery', 'sale'].includes(file.status)) ||
+              (file.status === 'completed')
+            );
+            // Tik gösterilecek mi?
+            const showCheck = isDone || isCompleted || docReady;
+            // Kenarlık+beyaz stil mi? (isDone veya isCompleted ama docWarning değil)
+            const showOutline = showCheck && !docReady && !docWarning;
+
             return (
               <div key={stage.key} className="flex items-center flex-1 last:flex-none">
                 {/* circle + label */}
-                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                <div
+                  className={cn('flex flex-col items-center gap-1.5 shrink-0', isDocStage && !isDone && !isCompleted ? 'cursor-pointer' : '')}
+                  onClick={isDocStage && !isDone && !isCompleted ? () => setCompletionBlockerOpen(true) : undefined}
+                  title={isDocStage && !isDone && !isCompleted ? 'Belge durumunu görmek için tıkla' : undefined}
+                >
                   <div
                     className={cn(
                       'w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300',
-                      isDone   ? 'text-white'     : '',
-                      isActive ? 'text-white ring-[3px] ring-offset-1' : '',
-                      !isDone && !isActive ? 'bg-gray-100 text-gray-300' : '',
+                      showOutline  ? 'bg-white border-2' : '',
+                      isActive     ? 'text-white ring-[3px] ring-offset-1' : '',
+                      docReady     ? 'text-white' : '',
+                      docWarning   ? 'text-white' : '',
+                      showCheck && !showOutline && !docWarning ? 'text-white' : '',
+                      !showCheck && !isActive && !docReady && !docWarning ? 'bg-gray-100 text-gray-300' : '',
                     )}
                     style={{
-                      background: isDone || isActive ? accent : undefined,
-                      ...(isActive ? { '--tw-ring-color': accent + '40' } as React.CSSProperties : {}),
+                      // Outline stil: beyaz arka plan, kırmızı kenarlık, kırmızı tik
+                      ...(showOutline ? { borderColor: accent, color: accent } : {}),
+                      // Aktif: dolu kırmızı
+                      ...(isActive ? { background: accent, '--tw-ring-color': accent + '40' } as React.CSSProperties : {}),
+                      // docReady: dolu yeşil
+                      ...(docReady ? { background: '#16a34a' } : {}),
+                      // docWarning: dolu amber
+                      ...(docWarning ? { background: '#d97706' } : {}),
                     }}
                   >
-                    {isDone ? (
-                      <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    {showCheck && !docWarning ? (
+                      // Kırmızı tik (outline için) veya beyaz tik (diğerleri için)
+                      <svg
+                        className="h-3 w-3"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        style={showOutline ? { color: accent } : { color: '#fff' }}
+                      >
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : docWarning ? (
+                      <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                     ) : (
                       <span className="text-[9px] font-black">{idx + 1}</span>
@@ -629,16 +776,18 @@ export function TradeFileDetailPage() {
                   </div>
                   <span className={cn(
                     'text-[9px] font-bold uppercase tracking-wider whitespace-nowrap',
-                    isDone   ? 'text-gray-300' : '',
-                    isActive ? 'text-gray-700' : '',
-                    !isDone && !isActive ? 'text-gray-300' : '',
+                    showOutline                            ? 'text-gray-400' : '',
+                    isActive                               ? 'text-gray-700' : '',
+                    docReady                               ? 'text-green-600' : '',
+                    docWarning                             ? 'text-amber-600' : '',
+                    !showCheck && !isActive && !docReady && !docWarning ? 'text-gray-300' : '',
                   )}>{stage.label}</span>
                 </div>
                 {/* connector */}
                 {idx < STAGES.length - 1 && (
                   <div
                     className="flex-1 h-px mx-2 mb-4 rounded-full transition-all duration-500"
-                    style={{ background: isDone ? accent + '50' : '#e5e7eb' }}
+                    style={{ background: (isDone || isCompleted) ? accent + '50' : '#e5e7eb' }}
                   />
                 )}
               </div>
@@ -757,8 +906,10 @@ export function TradeFileDetailPage() {
               onClick={() => { setActionsOpen(false); setEditInvoice(null); setInvoiceOpen(true); }} />
             <ActionItem icon={<Package className="h-4 w-4" />} label={t('detail.actions.packingList')}
               onClick={() => { setActionsOpen(false); setEditPL(null); setPackingOpen(true); }} />
-            <ActionItem icon={<FileText className="h-4 w-4" />} label={t('detail.actions.proformaInvoice')}
-              onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
+            {!isPartial && !isBatch && (
+              <ActionItem icon={<FileText className="h-4 w-4" />} label={t('detail.actions.proformaInvoice')}
+                onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
+            )}
           </>
         )}
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
@@ -787,80 +938,56 @@ export function TradeFileDetailPage() {
 
       {/* ── Completion Blocker Modal ─────────────────────────────────────── */}
       <Dialog open={completionBlockerOpen} onOpenChange={setCompletionBlockerOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
-              <ShieldAlert className="h-5 w-5 shrink-0" />
-              Dosya Tamamlanamıyor
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            <p className="text-[13px] text-gray-500 mb-4">
-              Dosyayı tamamlandı olarak işaretlemek için aşağıdaki belgelerin tamamlanması gerekiyor:
-            </p>
-            <div className="space-y-2">
-              {completionChecks && ([
-                {
-                  ok: completionChecks.purchaseCovered,
-                  label: 'Satın Alma Faturası',
-                  sub: 'Tüm tonajı kapsayan purchase_inv işlemi',
-                },
-                {
-                  ok: completionChecks.saleCovered,
-                  label: 'Satış Faturası',
-                  sub: 'Tüm tonajı kapsayan sale_inv işlemi',
-                },
-                {
-                  ok: completionChecks.hasSvcInv,
-                  label: 'En Az 1 Hizmet Faturası',
-                  sub: 'Nakliye, sigorta veya diğer hizmetler',
-                },
-                {
-                  ok: completionChecks.hasProforma,
-                  label: 'Proforma Fatura',
-                  sub: 'Belgeler bölümünde proforma oluşturulmalı',
-                },
-                {
-                  ok: completionChecks.hasPackingList,
-                  label: 'Packing List',
-                  sub: 'Paketleme listesi oluşturulmalı',
-                },
-                {
-                  ok: completionChecks.hasCommInvoice,
-                  label: 'Commercial Invoice',
-                  sub: 'Ticari fatura oluşturulmalı',
-                },
-              ].map(item => (
-                <div key={item.label} className={`flex items-start gap-3 px-3 py-2.5 rounded-xl ${item.ok ? 'bg-green-50' : 'bg-red-50'}`}>
-                  {item.ok
-                    ? <CircleCheck className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                    : <Circle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
-                  }
-                  <div>
-                    <div className={`text-[12px] font-semibold ${item.ok ? 'text-green-700' : 'text-red-700'}`}>{item.label}</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">{item.sub}</div>
-                  </div>
-                </div>
-              )))}
+        <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Belge Kontrolü</span>
             </div>
+            <p className="text-[13px] font-semibold text-gray-800">Dosya tamamlanamıyor</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Aşağıdaki belgeler tamamlanmadan dosya kapatılamaz.</p>
           </div>
-          <DialogFooter>
+          {/* Checklist */}
+          <div className="divide-y divide-dashed divide-gray-100">
+            {completionChecks && ([
+              { ok: completionChecks.purchaseCovered, label: 'Satın Alma Faturası', sub: 'Tonajı kapsayan purchase_inv' },
+              { ok: completionChecks.saleCovered,     label: 'Satış Faturası',      sub: 'Tonajı kapsayan sale_inv' },
+
+              { ok: completionChecks.hasProforma,     label: 'Proforma Fatura',     sub: 'Belgeler → Proforma' },
+              { ok: completionChecks.hasPackingList,  label: 'Packing List',        sub: 'Belgeler → Ambalaj Listesi' },
+              { ok: completionChecks.hasCommInvoice,  label: 'Commercial Invoice',  sub: 'Belgeler → Ticari Fatura' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center justify-between px-6 py-3">
+                <div>
+                  <div className={cn('text-[12px] font-semibold', item.ok ? 'text-gray-700' : 'text-gray-900')}>{item.label}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{item.sub}</div>
+                </div>
+                {item.ok
+                  ? <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">✓ Tamam</span>
+                  : <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">✗ Eksik</span>
+                }
+              </div>
+            )))}
+          </div>
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
             <button
               onClick={() => setCompletionBlockerOpen(false)}
-              className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
             >
               Kapat
             </button>
             {completionChecks && Object.values(completionChecks).every(Boolean) && (
               <button
                 onClick={() => { setCompletionBlockerOpen(false); changeStatus.mutate({ id: file!.id, status: 'completed' }); }}
-                className="px-4 py-2 rounded-xl text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+                className="px-4 py-2 rounded-xl text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: accent }}
               >
                 Tamamla
               </button>
             )}
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -900,68 +1027,75 @@ export function TradeFileDetailPage() {
       ══════════════════════════════════════════════════════════════ */}
       <div className="md:hidden pb-28">
         {/* Header card */}
-        <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm px-4 pt-4 pb-5">
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 active:opacity-60">
-              <ArrowLeft className="h-4 w-4" /> {tc('btn.back')}
+        <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm overflow-hidden">
+          {/* Üst çubuk: geri + durum */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-50">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-400 active:opacity-60">
+              <ArrowLeft className="h-3.5 w-3.5" /> Geri
             </button>
-            <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
-              {tc('status.' + file.status)}
-            </span>
+            <div className="flex items-center gap-2">
+              {/* Dosya no */}
+              {editingFileNo ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    className="text-[10px] font-mono border border-gray-200 rounded px-2 py-0.5 outline-none w-40 bg-white"
+                    value={fileNoInput}
+                    onChange={e => setFileNoInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveFileNo(); if (e.key === 'Escape') setEditingFileNo(false); }}
+                    autoFocus
+                  />
+                  <button onClick={handleSaveFileNo} className="text-[10px] text-green-600 font-semibold">✓</button>
+                  <button onClick={() => setEditingFileNo(false)} className="text-[10px] text-gray-400">✕</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setFileNoInput(file.file_no); setEditingFileNo(true); }}
+                  className="text-[10px] font-mono text-gray-400 tracking-wider flex items-center gap-1 group"
+                >
+                  {file.file_no}
+                  <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 transition-opacity" />
+                </button>
+              )}
+              {/* Durum pill */}
+              <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold', meta.pill)}>
+                {tc('status.' + file.status)}
+              </span>
+            </div>
           </div>
-          {/* Alt Parti badge — mobil */}
+
+          {/* Alt Parti breadcrumb */}
           {isBatch && (
             <button
               onClick={() => navigate(`/files/${file.parent_file_id}`)}
-              className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 rounded-xl bg-violet-50 border border-violet-100 w-full active:bg-violet-100 transition-colors"
+              className="w-full flex items-center gap-2 px-4 py-2 border-b border-gray-50 active:bg-gray-50 transition-colors"
             >
-              <Layers className="h-3 w-3 text-violet-500 shrink-0" />
-              <span className="text-[10px] font-bold text-violet-500 uppercase tracking-wide">Alt Parti</span>
-              <span className="text-[10px] font-mono text-violet-700 font-semibold ml-0.5">← {parentFileNo}</span>
+              <Layers className="h-3 w-3 text-gray-400 shrink-0" />
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Alt Parti</span>
+              <span className="text-[10px] font-mono text-gray-500 ml-auto">{parentFileNo} →</span>
             </button>
           )}
-          <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[14px] font-bold shrink-0 shadow-sm mt-0.5" style={{ background: avatarBg }}>
+
+          {/* Müşteri bilgisi */}
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-[13px] font-bold shrink-0 shadow-sm" style={{ background: avatarBg }}>
               {custInitials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[15px] font-bold text-gray-900 leading-snug">{custName}</div>
+              <div className="text-[14px] font-bold text-gray-900 leading-snug truncate">{custName}</div>
               {parentCust && (
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide">Muhasebe</span>
-                  <span className="text-[11px] font-semibold text-violet-700">{parentCust.name}</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase tracking-wider">Muhasebe</span>
+                  <span className="text-[11px] text-gray-500 truncate">{parentCust.name}</span>
                 </div>
               )}
-              <div className="text-[12px] text-gray-500 mt-0.5">{file.product?.name ?? '—'}</div>
-              <div className="inline-flex mt-2 bg-gray-100 rounded-lg px-2 py-1">
-                {editingFileNo ? (
-                  <div className="flex items-center gap-1">
-                    <input
-                      className="text-[11px] font-mono border border-gray-200 rounded px-2 py-0.5 outline-none w-52 bg-white"
-                      value={fileNoInput}
-                      onChange={e => setFileNoInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') handleSaveFileNo(); if (e.key === 'Escape') setEditingFileNo(false); }}
-                      autoFocus
-                    />
-                    <button onClick={handleSaveFileNo} className="text-[10px] text-green-600 font-semibold px-1">✓</button>
-                    <button onClick={() => setEditingFileNo(false)} className="text-[10px] text-gray-400 px-1">✕</button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => { setFileNoInput(file.file_no); setEditingFileNo(true); }}
-                    className="text-[10px] font-mono text-gray-500 tracking-wider hover:text-gray-700 flex items-center gap-1 group"
-                  >
-                    {file.file_no}
-                    <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                )}
-              </div>
+              <div className="text-[11px] text-gray-400 mt-0.5">{file.product?.name ?? '—'}</div>
             </div>
           </div>
         </div>
 
         {/* Status stepper */}
         <div className="mx-4 mt-3">{statusStepper}</div>
+        {docWarningBanner && <div className="mx-4 mt-2">{docWarningBanner}</div>}
 
         {/* Combined file info card */}
         <div className="mx-4 mt-3 mb-3">{fileInfoCard}</div>
@@ -1101,14 +1235,6 @@ export function TradeFileDetailPage() {
           )}
         </Section>
 
-        {/* ── Obligations ──────────────────────────────────────────────── */}
-        <ObligationsSection
-          file={file}
-          writable={writable}
-          collapsed={!!collapsed.m_obligations}
-          onToggle={() => toggleCard('m_obligations')}
-        />
-
         {/* ── Delivery ─────────────────────────────────────────────────── */}
         {file.delivered_admt && (
           <Section
@@ -1140,8 +1266,8 @@ export function TradeFileDetailPage() {
           (file.packing_lists?.length ?? 0) > 0) && (
           <Section title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}
             collapsible isCollapsed={!!collapsed.m_docs} onToggle={() => toggleCard('m_docs')}>
-            {/* Proformas */}
-            {file.proformas?.map((pi) => (
+            {/* Proformas — sadece normal dosyalarda */}
+            {!isPartial && !isBatch && file.proformas?.map((pi) => (
               <DocRow
                 key={pi.id}
                 no={pi.proforma_no}
@@ -1272,11 +1398,17 @@ export function TradeFileDetailPage() {
           onToggle={() => toggleCard('m_expenses')}
           right={writable ? (
             <div className="flex gap-1.5">
-              <button onClick={() => setPurchaseInvOpen(true)}
+              <button onClick={() => {
+                if (isPartial) { setSelectedBatchFileId(null); setBatchSelectorOpen('purchase'); }
+                else setPurchaseInvOpen(true);
+              }}
                 className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
                 <Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}
               </button>
-              <button onClick={() => setSvcInvOpen(true)}
+              <button onClick={() => {
+                if (isPartial) { setSelectedBatchFileId(null); setBatchSelectorOpen('svc'); }
+                else setSvcInvOpen(true);
+              }}
                 className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500">
                 <Plus className="h-3 w-3" /> {t('detail.expenses.addService')}
               </button>
@@ -1319,7 +1451,7 @@ export function TradeFileDetailPage() {
         )}
 
         {/* ── Transport Plan ───────────────────────────────────────────── */}
-        {['sale', 'delivery', 'completed'].includes(file.status) && (
+        {!isPartial && ['sale', 'delivery', 'completed'].includes(file.status) && (
           <Section title={t('detail.transport.title')} icon={<Truck className="h-3.5 w-3.5" />}
             collapsible isCollapsed={!!collapsed.m_transport} onToggle={() => toggleCard('m_transport')}>
             <TransportPlanSection file={file} writable={writable} />
@@ -1472,26 +1604,49 @@ export function TradeFileDetailPage() {
                       : <p className="text-[10px] text-gray-400">Klasör oluştur / aç</p>}
                   </div>
                 </button>
-                {isSaleOrDel && writable && (
+                {isSaleOrDel && (
                   <>
-                    <button onClick={() => { setEditInvoice(null); setInvoiceOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                    {/* Ticari Fatura: partial dosyada batch listesi, değilse yeni oluştur */}
+                    <button
+                      onClick={() => isPartial
+                        ? (setBatchDocsType('invoice'), setBatchDocsOpen(true))
+                        : (writable && (setEditInvoice(null), setInvoiceOpen(true)))
+                      }
+                      className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left"
+                    >
                       <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
-                        <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
+                        <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" />
                       </div>
-                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.commercialInvoice')}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.commercialInvoice')}</span>
+                        {isPartial && <p className="text-[10px] text-gray-400">Alt partilerden görüntüle</p>}
+                      </div>
                     </button>
-                    <button onClick={() => { setEditPL(null); setPackingOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                    {/* Ambalaj Listesi */}
+                    <button
+                      onClick={() => isPartial
+                        ? (setBatchDocsType('packing_list'), setBatchDocsOpen(true))
+                        : (writable && (setEditPL(null), setPackingOpen(true)))
+                      }
+                      className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left"
+                    >
                       <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
-                        <Package className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
+                        <Package className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" />
                       </div>
-                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.packingList')}</span>
-                    </button>
-                    <button onClick={() => { setEditPI(null); setProformaOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
-                      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
-                        <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" style={{ color: undefined }} />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.packingList')}</span>
+                        {isPartial && <p className="text-[10px] text-gray-400">Alt partilerden görüntüle</p>}
                       </div>
-                      <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.proformaInvoice')}</span>
                     </button>
+                    {/* Proforma — sadece normal dosyalarda oluşturulabilir */}
+                    {writable && !isPartial && !isBatch && (
+                      <button onClick={() => { setEditPI(null); setProformaOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                        <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
+                          <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" />
+                        </div>
+                        <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.proformaInvoice')}</span>
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -1504,6 +1659,7 @@ export function TradeFileDetailPage() {
 
             {/* Status stepper */}
             {statusStepper}
+            {docWarningBanner}
 
             {/* Action buttons row */}
             <div className="flex items-center justify-between gap-3">
@@ -1685,14 +1841,6 @@ export function TradeFileDetailPage() {
               />
             )}
 
-            {/* Obligations */}
-            <ObligationsSection
-              file={file}
-              writable={writable}
-              collapsed={!!collapsed.obligations}
-              onToggle={() => toggleCard('obligations')}
-            />
-
             {/* Delivery */}
             {file.delivered_admt && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -1734,7 +1882,7 @@ export function TradeFileDetailPage() {
                   {collapsed.documents ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
                 </div>
                 {!collapsed.documents && <div className="px-4 py-2">
-                  {file.proformas?.map((pi) => (
+                  {!isPartial && !isBatch && file.proformas?.map((pi) => (
                     <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'}>
                       <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
                       {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
@@ -1783,8 +1931,14 @@ export function TradeFileDetailPage() {
                 <div className="flex items-center gap-2">
                   {writable && (
                     <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setPurchaseInvOpen(true)} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
-                      <button onClick={() => setSvcInvOpen(true)} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
+                      <button onClick={() => {
+                          if (isPartial) { setSelectedBatchFileId(null); setBatchSelectorOpen('purchase'); }
+                          else setPurchaseInvOpen(true);
+                        }} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addPurchase')}</button>
+                      <button onClick={() => {
+                          if (isPartial) { setSelectedBatchFileId(null); setBatchSelectorOpen('svc'); }
+                          else setSvcInvOpen(true);
+                        }} className="h-6 px-2.5 rounded-full text-[10px] font-semibold flex items-center gap-1 bg-gray-100 text-gray-500"><Plus className="h-3 w-3" /> {t('detail.expenses.addService')}</button>
                     </div>
                   )}
                   {collapsed.expenses ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
@@ -1815,7 +1969,7 @@ export function TradeFileDetailPage() {
             </div>
 
             {/* Transport Plan */}
-            {['sale', 'delivery', 'completed'].includes(file.status) && (
+            {!isPartial && ['sale', 'delivery', 'completed'].includes(file.status) && (
               <div>
                 {/* Thin divider-style toggle — no extra card since TransportPlanSection renders its own cards */}
                 <button
@@ -1917,19 +2071,161 @@ export function TradeFileDetailPage() {
         file={file}
         onPartialShipment={() => { setDeliveryOpen(false); setBatchOpen(true); }}
       />
+      {/* ── Alt Parti Belge Listesi Modal ───────────────────────────────────── */}
+      <Dialog open={batchDocsOpen} onOpenChange={setBatchDocsOpen}>
+        <DialogContent size="lg">
+          <div className="sticky top-0 bg-white z-10 pb-3 border-b border-gray-50">
+            <p className="text-[14px] font-bold text-gray-900">
+              {batchDocsType === 'invoice' ? 'Commercial Invoice' : 'Ambalaj Listesi'} — Alt Partiler
+            </p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{file.customer?.name} · {file.file_no}</p>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            {(file.batches ?? []).length === 0 && (
+              <p className="text-[12px] text-gray-400 text-center py-8">Alt parti bulunamadı</p>
+            )}
+            {(file.batches ?? []).map((batch) => {
+              const docs = batchDocsType === 'invoice'
+                ? (batch.invoices ?? []).filter(i => i.invoice_type === 'commercial')
+                : (batch.packing_lists ?? []);
+              return (
+                <div key={batch.id} className="bg-gray-50 rounded-xl overflow-hidden">
+                  {/* Batch başlık */}
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded-md">{batch.file_no}</span>
+                      <span className="text-[10px] text-gray-400">{batch.tonnage_mt ? `${batch.tonnage_mt} MT` : ''}</span>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/files/${batch.id}`)}
+                      className="text-[10px] font-semibold text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Dosyaya git
+                    </button>
+                  </div>
+                  {/* Belgeler */}
+                  {docs.length === 0 ? (
+                    <div className="px-4 py-3 text-[11px] text-gray-400 italic">Belge yok</div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {batchDocsType === 'invoice'
+                        ? (batch.invoices ?? []).filter(i => i.invoice_type === 'commercial').map(inv => (
+                          <div key={inv.id} className="flex items-center justify-between px-4 py-3">
+                            <div>
+                              <p className="text-[12px] font-semibold text-gray-800">{inv.invoice_no}</p>
+                              <p className="text-[10px] text-gray-400">{inv.invoice_date ? fDate(inv.invoice_date) : '—'}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {inv.total != null && (
+                                <span className="text-[12px] font-bold text-gray-900">
+                                  {fCurrency(inv.total, (inv.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY' | 'AED')}
+                                </span>
+                              )}
+                              <span className={cn(
+                                'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                                inv.doc_status === 'approved'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-amber-100 text-amber-700',
+                              )}>
+                                {inv.doc_status === 'approved' ? 'Onaylı' : 'Taslak'}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                        : (batch.packing_lists ?? []).map(pl => (
+                          <div key={pl.id} className="flex items-center justify-between px-4 py-3">
+                            <div>
+                              <p className="text-[12px] font-semibold text-gray-800">{pl.packing_list_no}</p>
+                              {pl.total_admt != null && (
+                                <p className="text-[10px] text-gray-400">{fN(pl.total_admt, 3)} ADMT</p>
+                              )}
+                            </div>
+                            <span className={cn(
+                              'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                              pl.doc_status === 'approved'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-amber-100 text-amber-700',
+                            )}>
+                              {pl.doc_status === 'approved' ? 'Onaylı' : 'Taslak'}
+                            </span>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end pt-3 border-t border-gray-100 mt-2">
+            <button
+              onClick={() => setBatchDocsOpen(false)}
+              className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              Kapat
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Parti Seçici: Fatura hangi alt parti için? ──────────────────────── */}
+      <Dialog open={!!batchSelectorOpen} onOpenChange={(o) => { if (!o) setBatchSelectorOpen(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-[14px] font-bold text-gray-900">
+              {batchSelectorOpen === 'purchase' ? 'Satın Alma Faturası' : 'Hizmet Faturası'} — Parti Seç
+            </DialogTitle>
+            <p className="text-[11px] text-gray-400 mt-0.5">Fatura hangi alt parti için düzenlenecek?</p>
+          </DialogHeader>
+
+          <div className="mt-3 space-y-1.5">
+            {(file.batches ?? []).map(batch => (
+              <button
+                key={batch.id}
+                onClick={() => {
+                  const type = batchSelectorOpen;
+                  setSelectedBatchFileId(batch.id);
+                  setBatchSelectorOpen(null);
+                  if (type === 'purchase') setTimeout(() => setPurchaseInvOpen(true), 50);
+                  else setTimeout(() => setSvcInvOpen(true), 50);
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-50 border border-gray-100 transition-colors text-left group"
+              >
+                <div>
+                  <p className="text-[13px] font-semibold text-gray-800">{batch.file_no}</p>
+                  <p className="text-[10px] text-gray-400">{batch.tonnage_mt ? `${batch.tonnage_mt} MT` : ''} · {batch.status}</p>
+                </div>
+                <span className="text-[10px] font-mono text-gray-300 group-hover:text-gray-500">Seç →</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex justify-end pt-3 border-t border-gray-100 mt-2">
+            <button
+              onClick={() => setBatchSelectorOpen(null)}
+              className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              İptal
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <InvoiceModal open={invoiceOpen} onOpenChange={setInvoiceOpen} file={file} invoice={editInvoice} />
       <InvoiceModal open={saleInvoiceOpen} onOpenChange={setSaleInvoiceOpen} file={file} invoice={editSaleInvoice} invoiceType="sale" />
       <ProformaModal open={proformaOpen} onOpenChange={setProformaOpen} file={file} proforma={editPI} />
       <PackingListModal open={packingOpen} onOpenChange={setPackingOpen} file={file} packingList={editPL} />
       <PurchaseInvoiceModal
         open={purchaseInvOpen}
-        onOpenChange={setPurchaseInvOpen}
-        defaultTradeFileId={file.id}
+        onOpenChange={(open) => { setPurchaseInvOpen(open); if (!open) setSelectedBatchFileId(null); }}
+        defaultTradeFileId={selectedBatchFileId ?? file.id}
       />
       <ServiceInvoiceModal
         open={svcInvOpen}
-        onOpenChange={setSvcInvOpen}
-        defaultTradeFileId={file.id}
+        onOpenChange={(open) => { setSvcInvOpen(open); if (!open) setSelectedBatchFileId(null); }}
+        defaultTradeFileId={selectedBatchFileId ?? file.id}
       />
     </div>
   );

@@ -3,34 +3,76 @@ import { supabase } from './supabase';
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-async function callDropbox(body: Record<string, unknown>) {
+/** Supabase edge function'ına istek at — 30 sn timeout, 401'de bir kez token yenile. */
+async function callDropbox(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const getAuthToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? SUPABASE_ANON_KEY;
+  };
+
+  const doFetch = async (token: string) => {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 30_000); // 30 sn timeout
+    try {
+      return await fetch(`${SUPABASE_URL}/functions/v1/dropbox`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(tid);
+    }
+  };
+
+  const parseResponse = (res: Response, text: string): Record<string, unknown> => {
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new Error(`Edge fn yanıt hatası (HTTP ${res.status}): ${text.slice(0, 400) || '(boş yanıt)'}`);
+    }
+    if (!data?.success) {
+      const errorMsg = (data?.error as string)
+        || `Dropbox API hatası: ${JSON.stringify(data).slice(0, 300)}`;
+      throw new Error(errorMsg);
+    }
+    return data;
+  };
+
+  let token = await getAuthToken();
   let res: Response;
-  try {
-    res = await fetch(`${SUPABASE_URL}/functions/v1/dropbox`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (fetchErr) {
-    throw new Error(`Ağ hatası: ${(fetchErr as Error).message}`);
+  try { res = await doFetch(token); }
+  catch (fetchErr) {
+    const msg = (fetchErr as Error).name === 'AbortError'
+      ? 'Dropbox isteği zaman aşımına uğradı (30 sn)'
+      : `Ağ hatası: ${(fetchErr as Error).message}`;
+    throw new Error(msg);
   }
 
-  // Read body as text first — avoids "body already used" issues when parsing fails
   const text = await res.text().catch(() => '');
 
-  let data: Record<string, unknown>;
-  try {
-    data = JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    throw new Error(`Edge fn yanıt hatası (HTTP ${res.status}): ${text.slice(0, 400) || '(boş yanıt)'}`);
+  // 401 → token'ı yenile, bir kez daha dene
+  if (res.status === 401) {
+    const { data: refreshData } = await supabase.auth.refreshSession().catch(() => ({ data: { session: null } }));
+    token = refreshData.session?.access_token ?? SUPABASE_ANON_KEY;
+    let res2: Response;
+    try { res2 = await doFetch(token); }
+    catch (fetchErr2) {
+      const msg = (fetchErr2 as Error).name === 'AbortError'
+        ? 'Dropbox isteği zaman aşımına uğradı (30 sn)'
+        : `Ağ hatası (retry): ${(fetchErr2 as Error).message}`;
+      throw new Error(msg);
+    }
+    const text2 = await res2.text().catch(() => '');
+    return parseResponse(res2, text2);
   }
 
-  if (!data?.success) throw new Error((data?.error as string) ?? 'Dropbox error');
-  return data;
+  return parseResponse(res, text);
 }
 
 export const dropboxService = {

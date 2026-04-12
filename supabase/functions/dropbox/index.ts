@@ -42,7 +42,7 @@ async function apiCall(token: string, endpoint: string, body: unknown): Promise<
   }
 }
 
-/** Klasörü oluştur, zaten varsa 409 → sessizce devam et */
+/** Klasörü oluştur, zaten varsa veya çakışma varsa sessizce devam et */
 async function createFolder(token: string, path: string): Promise<void> {
   const res = await fetch("https://api.dropboxapi.com/2/files/create_folder_v2", {
     method: "POST",
@@ -53,46 +53,67 @@ async function createFolder(token: string, path: string): Promise<void> {
     body: JSON.stringify({ path, autorename: false }),
   });
   const data = await res.json();
-  // Zaten mevcut ise hata yok say
-  if (data.error_summary && !data.error_summary.startsWith("path/conflict/folder")) {
-    throw new Error("Create folder error: " + JSON.stringify(data));
-  }
+  if (!data.error_summary) return; // başarılı
+  const errSummary: string = data.error_summary;
+  // Klasör veya dosya zaten varsa sessizce geç
+  if (errSummary.startsWith("path/conflict/")) return;
+  // "already_exists" varyantı
+  if (errSummary.includes("already_exists")) return;
+  // Diğer hatalar gerçek hata
+  throw new Error("Create folder error: " + errSummary);
 }
 
-/** Klasör için paylaşım linki oluştur veya mevcut olanı getir */
+/** Dropbox web linki üret (fallback) */
+function dropboxWebUrl(path: string): string {
+  // /Family Room/... → https://www.dropbox.com/home/Family%20Room/...
+  return "https://www.dropbox.com/home" + path.split("/").map(encodeURIComponent).join("/");
+}
+
+/** Klasör için paylaşım linki oluştur veya mevcut olanı getir.
+ *  Hiçbir koşulda throw yapmaz — hata durumunda Dropbox web linki döner. */
 async function getOrCreateSharedLink(token: string, path: string): Promise<string> {
-  // Önce oluşturmayı dene
-  const createRes = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      path,
-      settings: { requested_visibility: "public" },
-    }),
-  });
-  const createData = await createRes.json();
-
-  if (createData.url) return createData.url;
-
-  // Zaten var — mevcut linkleri listele
-  if (createData.error_summary?.startsWith("shared_link_already_exists")) {
-    const listRes = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
+  try {
+    // 1. Yeni link oluşturmayı dene (team/personal plan gerektirebilir)
+    const createRes = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ path, direct_only: true }),
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ path, settings: { requested_visibility: "public" } }),
     });
-    const listData = await listRes.json();
-    const link = listData.links?.[0]?.url;
-    if (link) return link;
-  }
+    const createData = await createRes.json();
 
-  throw new Error("Shared link error: " + JSON.stringify(createData));
+    if (createData.url) return createData.url;
+
+    const errSummary: string = createData.error_summary ?? "";
+
+    // 2. Zaten var — mevcut linkleri getir
+    if (errSummary.includes("shared_link_already_exists")) {
+      // direct_only ile dene
+      const r1 = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ path, direct_only: true }),
+      });
+      const d1 = await r1.json();
+      if (d1.links?.[0]?.url) return d1.links[0].url;
+
+      // direct_only olmadan dene
+      const r2 = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      const d2 = await r2.json();
+      if (d2.links?.[0]?.url) return d2.links[0].url;
+    }
+
+    // 3. Herhangi bir hata durumunda Dropbox web linkini döndür
+    console.warn("[dropbox] getOrCreateSharedLink fallback, error_summary:", errSummary, "path:", path);
+    return dropboxWebUrl(path);
+  } catch (e) {
+    // Ağ hatası veya parse hatası → yine Dropbox web linki
+    console.warn("[dropbox] getOrCreateSharedLink exception:", e, "path:", path);
+    return dropboxWebUrl(path);
+  }
 }
 
 /** Binary bayt dizisini Dropbox'a yükle ve paylaşım linki döndür */
@@ -332,9 +353,10 @@ serve(async (req) => {
 
     throw new Error(`Unknown action: ${action}`);
   } catch (err) {
-    console.error("[dropbox] error:", (err as Error).message);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[dropbox] error:", msg);
     return new Response(
-      JSON.stringify({ success: false, error: (err as Error).message }),
+      JSON.stringify({ success: false, error: msg }),
       { status: 200, headers: { ...CORS, "Content-Type": "application/json" } },
     );
   }

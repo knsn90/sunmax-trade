@@ -5,7 +5,7 @@ import { supabase } from '@/services/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { User, Lock, KeyRound, CheckCircle, AlertCircle, Camera, Loader2 } from 'lucide-react';
-import { APPROVE_PASSWORD_KEY, DEFAULT_APPROVE_PASSWORD } from '@/components/ui/ApproveWithPasswordDialog';
+import { APPROVE_PASSWORD_KEY } from '@/components/ui/ApproveWithPasswordDialog';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function Alert({ type, msg }: { type: 'success' | 'error'; msg: string }) {
@@ -102,28 +102,21 @@ export function ProfilePage() {
   }
 
   // ── Change password ────────────────────────────────────────────────────────
-  const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass]         = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [passMsg, setPassMsg]         = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [passLoading, setPassLoading] = useState(false);
 
   async function changePassword() {
-    if (!currentPass) { setPassMsg({ type: 'error', msg: t('errors.currentPasswordRequired') }); return; }
     if (newPass.length < 6) { setPassMsg({ type: 'error', msg: t('errors.passwordLength') }); return; }
     if (newPass !== confirmPass) { setPassMsg({ type: 'error', msg: t('errors.passwordMismatch') }); return; }
     setPassLoading(true);
     setPassMsg(null);
     try {
-      const { error: reAuthErr } = await supabase.auth.signInWithPassword({
-        email: user?.email ?? '',
-        password: currentPass,
-      });
-      if (reAuthErr) throw new Error(t('errors.incorrectPassword'));
       const { error } = await supabase.auth.updateUser({ password: newPass });
       if (error) throw error;
       setPassMsg({ type: 'success', msg: t('success.passwordChanged') });
-      setCurrentPass(''); setNewPass(''); setConfirmPass('');
+      setNewPass(''); setConfirmPass('');
     } catch (err: unknown) {
       setPassMsg({ type: 'error', msg: err instanceof Error ? err.message : tc('btn.saving') });
     } finally {
@@ -132,20 +125,17 @@ export function ProfilePage() {
   }
 
   // ── Approve password ───────────────────────────────────────────────────────
-  const currentApprove = localStorage.getItem(APPROVE_PASSWORD_KEY) ?? DEFAULT_APPROVE_PASSWORD;
-  const [oldApprove, setOldApprove]         = useState('');
   const [newApprove, setNewApprove]         = useState('');
   const [confirmApprove, setConfirmApprove] = useState('');
   const [approveMsg, setApproveMsg]         = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   function changeApprovePassword() {
     setApproveMsg(null);
-    if (oldApprove !== currentApprove) { setApproveMsg({ type: 'error', msg: t('errors.approvalPasswordIncorrect') }); return; }
     if (newApprove.length < 4)         { setApproveMsg({ type: 'error', msg: t('errors.approvalPasswordLength') }); return; }
     if (newApprove !== confirmApprove) { setApproveMsg({ type: 'error', msg: t('errors.approvalPasswordMismatch') }); return; }
     localStorage.setItem(APPROVE_PASSWORD_KEY, newApprove);
     setApproveMsg({ type: 'success', msg: t('success.approvalPasswordChanged') });
-    setOldApprove(''); setNewApprove(''); setConfirmApprove('');
+    setNewApprove(''); setConfirmApprove('');
   }
 
   const initials = (profile?.full_name ?? user?.email ?? '?')
@@ -247,10 +237,6 @@ export function ProfilePage() {
           <Card icon={<Lock className="h-3.5 w-3.5" />} title={t('sections.changePassword')}>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.currentPassword')}</label>
-                <Input type="password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} placeholder={t('form.currentPasswordPlaceholder')} />
-              </div>
-              <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.newPassword')}</label>
                 <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder={t('form.newPasswordPlaceholder')} />
               </div>
@@ -260,7 +246,7 @@ export function ProfilePage() {
                   onKeyDown={e => e.key === 'Enter' && changePassword()} />
               </div>
               {passMsg && <Alert {...passMsg} />}
-              <Button onClick={changePassword} disabled={passLoading || !newPass || !currentPass} className="w-full bg-red-600 hover:bg-red-700 text-white">
+              <Button onClick={changePassword} disabled={passLoading || !newPass} className="w-full bg-red-600 hover:bg-red-700 text-white">
                 {passLoading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t('buttons.changing')}</> : t('buttons.changePassword')}
               </Button>
             </div>
@@ -271,10 +257,6 @@ export function ProfilePage() {
             <p className="text-xs text-gray-400 mb-4">{t('approvalDesc')}</p>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.currentApprovalPassword')}</label>
-                <Input type="password" value={oldApprove} onChange={e => setOldApprove(e.target.value)} placeholder={t('form.currentApprovalPasswordPlaceholder')} />
-              </div>
-              <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">{t('form.newApprovalPassword')}</label>
                 <Input type="password" value={newApprove} onChange={e => setNewApprove(e.target.value)} placeholder={t('form.newApprovalPasswordPlaceholder')} />
               </div>
@@ -284,7 +266,7 @@ export function ProfilePage() {
                   onKeyDown={e => e.key === 'Enter' && changeApprovePassword()} />
               </div>
               {approveMsg && <Alert {...approveMsg} />}
-              <Button onClick={changeApprovePassword} disabled={!oldApprove || !newApprove} className="w-full bg-red-600 hover:bg-red-700 text-white">
+              <Button onClick={changeApprovePassword} disabled={!newApprove} className="w-full bg-red-600 hover:bg-red-700 text-white">
                 {t('buttons.changeApprovalPassword')}
               </Button>
             </div>

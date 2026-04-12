@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSuppliers } from '@/hooks/useEntities';
-import { useTradeFiles } from '@/hooks/useTradeFiles';
+import { useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { today, fCurrency, fN } from '@/lib/formatters';
 import { toast } from 'sonner';
@@ -77,7 +77,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const { theme } = useTheme();
   const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const { data: suppliers = [] } = useSuppliers();
-  const { data: allFiles  = [] } = useTradeFiles();
+  const { data: allFiles  = [] } = useAllTradeFiles(['sale', 'delivery', 'completed']);
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
   const isEdit = !!transaction;
@@ -101,8 +101,16 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const [masrafRate,   setMasrafRate]   = useState(1);
   const [masrafKurYon, setMasrafKurYon] = useState<'direct' | 'inverse'>('direct');
 
-  const supplierFiles = allFiles.filter(f => f.supplier_id === supplierId && ['sale', 'delivery', 'completed'].includes(f.status));
-  const pickedFile    = supplierFiles.find(f => f.id === fileId) ?? null;
+  // Tedarikçiye göre filtrele — hem ana dosyalar hem alt partiler (status zaten listAll'dan geliyor)
+  const supplierFiles  = allFiles.filter(f => f.supplier_id === supplierId);
+  const parentFiles    = supplierFiles.filter(f => !f.parent_file_id);
+  const batchFiles     = supplierFiles.filter(f =>  !!f.parent_file_id);
+  // Parent id → file_no (optgroup başlığı için)
+  const parentMap      = new Map(allFiles.filter(f => !f.parent_file_id).map(f => [f.id, f.file_no]));
+  // Hangi parent'ların batch'i var (sadece bunlar için optgroup açılır)
+  const parentsWithBatch = [...new Set(batchFiles.map(b => b.parent_file_id!))];
+
+  const pickedFile     = supplierFiles.find(f => f.id === fileId) ?? null;
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
   const toplamYerel = lines.reduce((s, l) => s + lineTotal(l), 0);
@@ -294,9 +302,28 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
               <Field label="Ticaret Dosyası">
                 <select className={cn(sel, !supplierId && 'opacity-50')} value={fileId} onChange={e => setFileId(e.target.value)} disabled={!supplierId}>
                   <option value="">— Opsiyonel —</option>
-                  {supplierFiles.map(f => (
-                    <option key={f.id} value={f.id}>{f.file_no}{f.product?.name ? ` — ${f.product.name}` : ''}</option>
+
+                  {/* Ana dosyalar — batch'i olmayanlar */}
+                  {parentFiles.filter(f => !parentsWithBatch.includes(f.id)).map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.file_no}{f.product?.name ? ` — ${f.product.name}` : ''}
+                    </option>
                   ))}
+
+                  {/* Batch'i olan ana dosyalar → kendi satırı + alt partiler optgroup */}
+                  {parentsWithBatch.map(parentId => {
+                    const parent = parentFiles.find(f => f.id === parentId);
+                    const children = batchFiles.filter(b => b.parent_file_id === parentId);
+                    return (
+                      <optgroup key={parentId} label={`↳ Alt Partiler — ${parentMap.get(parentId) ?? ''}${parent?.product?.name ? ' · ' + parent.product.name : ''}`}>
+                        {children.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.file_no}  {b.tonnage_mt ? `(${b.tonnage_mt} MT)` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
                 </select>
               </Field>
             </div>
@@ -328,7 +355,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                         USD→{currency}
                       </button>
                     </div>
-                    <input type="number" step="0.0001" className={cn(inp, 'flex-1')} value={dovizKuru || ''} onChange={e => setDovizKuru(Number(e.target.value))} placeholder="0.0000" />
+                    <input type="text" inputMode="decimal" className={cn(inp, 'flex-1')} value={dovizKuru || ''} onChange={e => setDovizKuru(Number(e.target.value))} placeholder="0.0000" />
                   </div>
                 </Field>
               )}
@@ -352,8 +379,8 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                 <div key={i} className="grid gap-2 items-center"
                   style={{ gridTemplateColumns: '2fr 110px 110px 80px 70px 32px' }}>
                   <input className={inp} value={line.aciklama} onChange={e => updateLine(i, 'aciklama', e.target.value)} placeholder="Ürün / malzeme…" />
-                  <input type="number" step="0.001" className={inp} value={line.netAgirlik || ''} onChange={e => updateLine(i, 'netAgirlik', Number(e.target.value))} placeholder="0.000" />
-                  <input type="number" step="0.001" className={inp} value={line.birimFiyat || ''} onChange={e => updateLine(i, 'birimFiyat', Number(e.target.value))} placeholder="0.000" />
+                  <input type="text" inputMode="decimal" className={inp} value={line.netAgirlik || ''} onChange={e => updateLine(i, 'netAgirlik', Number(e.target.value))} placeholder="0.000" />
+                  <input type="text" inputMode="decimal" className={inp} value={line.birimFiyat || ''} onChange={e => updateLine(i, 'birimFiyat', Number(e.target.value))} placeholder="0.000" />
                   <select className={sel} value={line.kdvOrani} onChange={e => updateLine(i, 'kdvOrani', Number(e.target.value))}>
                     {KDV_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -403,10 +430,10 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                 <input className={inp} value={mensei} onChange={e => setMensei(e.target.value)} placeholder="FINLAND" />
               </Field>
               <Field label="Brüt Ağırlık (KG)">
-                <input type="number" step="0.001" className={inp} value={brutAgirlik || ''} onChange={e => setBrutAgirlik(Number(e.target.value))} placeholder="0.000" />
+                <input type="text" inputMode="decimal" className={inp} value={brutAgirlik || ''} onChange={e => setBrutAgirlik(Number(e.target.value))} placeholder="0.000" />
               </Field>
               <Field label="Kap Adeti">
-                <input type="number" step="1" className={inp} value={kapAdeti || ''} onChange={e => setKapAdeti(Number(e.target.value))} placeholder="0" />
+                <input type="text" inputMode="decimal" className={inp} value={kapAdeti || ''} onChange={e => setKapAdeti(Number(e.target.value))} placeholder="0" />
               </Field>
             </div>
           </div>
@@ -441,7 +468,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                     <input className={inp} value={masrafTuru} onChange={e => setMasrafTuru(e.target.value)} placeholder="Örn. Banka komisyonu" />
                   </Field>
                   <Field label="Tutar">
-                    <input type="number" step="0.01" className={inp} value={masrafTutar || ''} onChange={e => setMasrafTutar(Number(e.target.value))} />
+                    <input type="text" inputMode="decimal" className={inp} value={masrafTutar || ''} onChange={e => setMasrafTutar(Number(e.target.value))} />
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -469,7 +496,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                             USD→{masrafCurrency}
                           </button>
                         </div>
-                        <input type="number" step="0.0001" className={cn(inp, 'flex-1')} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} placeholder="0.0000" />
+                        <input type="text" inputMode="decimal" className={cn(inp, 'flex-1')} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} placeholder="0.0000" />
                       </div>
                     </Field>
                   )}

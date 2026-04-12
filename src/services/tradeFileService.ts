@@ -25,13 +25,38 @@ const FILE_DETAIL_SELECT = `
   invoices(*),
   packing_lists(*, packing_list_items(*)),
   proformas(*),
-  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, transport_mode, eta)
+  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, transport_mode, eta, packing_lists(id, packing_list_no, doc_status, total_admt), invoices(id, invoice_no, invoice_date, total, doc_status, invoice_type, currency))
 `;
 
 // Minimal select for mutations — no joins, avoids Supabase load
 const MUTATION_SELECT = 'id, file_no, status';
 
+// Minimal select for "all files including batches" — used in invoice modals
+const FILE_SELECT_ALL = `
+  id, file_no, status, tonnage_mt, delivered_admt, selling_price, purchase_price,
+  purchase_currency, sale_currency, currency, freight_cost, parent_file_id, batch_no,
+  supplier_id, customer_id,
+  customer:customers!customer_id(id, name),
+  product:products!product_id(id, name),
+  supplier:suppliers!supplier_id(id, name)
+`;
+
 export const tradeFileService = {
+  /** Tüm dosyalar — alt partiler (batch) dahil. Fatura modallarında dosya seçimi için. */
+  async listAll(statuses?: TradeFileStatus[]): Promise<TradeFile[]> {
+    let query = supabase
+      .from('trade_files')
+      .select(FILE_SELECT_ALL)
+      .order('file_no', { ascending: true });
+
+    if (statuses?.length) {
+      query = query.in('status', statuses);
+    }
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as TradeFile[];
+  },
+
   async list(filters?: {
     status?: TradeFileStatus;
     customerId?: string;

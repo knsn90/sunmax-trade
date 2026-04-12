@@ -1302,20 +1302,23 @@ export function AccountStatementTab() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
 
         {/* Kişi türü tab bar */}
-        <div className="flex border-b border-gray-50">
-          {(['customer', 'supplier', 'service_provider'] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => { setEntityType(type); setEntityId(''); setEntityOpen(false); setEntitySearch(''); }}
-              className={cn(
-                'flex-1 py-2.5 text-[12px] font-semibold transition-all border-b-2 -mb-px',
-                entityType === type ? '' : 'border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50',
-              )}
-              style={entityType === type ? { borderBottomColor: accent, color: accent } : {}}
-            >
-              {ENTITY_TYPE_LABELS[type]}
-            </button>
-          ))}
+        <div className="px-3 pt-3 pb-1">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
+            {(['customer', 'supplier', 'service_provider'] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => { setEntityType(type); setEntityId(''); setEntityOpen(false); setEntitySearch(''); }}
+                className={cn(
+                  'flex-1 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap outline-none',
+                  entityType === type
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700',
+                )}
+              >
+                {ENTITY_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Toolbar */}
@@ -2329,7 +2332,7 @@ export function CustomerReportTab() {
     const fsTfLbl = isRtl ? '12.5px' : '10px';    // tfoot label
     const fsTfVal = isRtl ? '14px'   : '11px';    // tfoot value
     const TH = `padding:7px 10px;text-align:left;font-size:${fsHead};font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;white-space:nowrap;background:#f8fafc;border-bottom:1px solid #e2e8f0`;
-    const TD = `padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:${fsBase};color:#374151`;
+    const TD = `padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:${fsBase};color:#374151;white-space:nowrap`;
     const TDZ = TD + ';background:#fafbfc'; // zebra
     const hdr = (cols: string[], aligns: string[] = []) =>
       `<tr>${cols.map((c, i) => { const a = aligns[i] ?? (isRtl ? 'right' : 'left'); const ea = isRtl ? (a === 'left' ? 'right' : a === 'right' ? 'left' : a) : a; return `<th style="${TH};text-align:${ea}">${c}</th>`; }).join('')}</tr>`;
@@ -2342,11 +2345,11 @@ export function CustomerReportTab() {
       </div>`;
 
     const payRows = payments.map((t, i) =>
-      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#1d4ed8">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${translateDesc(t.description ?? '')}</td></tr>`
+      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${translateDesc(t.description ?? '')}</td></tr>`
     ).join('');
 
     const prdRows = saleInvoices.map((t, i) =>
-      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};color:#374151">${translateDesc(t.description ?? '') || (t.trade_file as any)?.product?.name || '—'}</td><td style="${i%2?TDZ:TD};color:#64748b">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)} ${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#15803d">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${(t.trade_file as any)?.file_no ?? t.reference_no ?? '—'}</td></tr>`
+      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};color:#374151">${translateDesc(t.description ?? '') || (t.trade_file as any)?.product?.name || '—'}</td><td style="${i%2?TDZ:TD};color:#64748b">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)} ${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${(t.trade_file as any)?.file_no ?? t.reference_no ?? '—'}</td></tr>`
     ).join('');
 
     const advRows = advances.map((t, i) => {
@@ -2354,7 +2357,7 @@ export function CustomerReportTab() {
       const product = t.trade_file?.product?.name;
       const fileInfo = [product, admt != null ? `${fN(admt, 3)} MT` : null].filter(Boolean).join(' — ');
       const desc = [fileInfo, t.description].filter(Boolean).join(' · ');
-      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#6d28d9">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#374151;font-size:${fsDesc}">${translateDesc(desc) || '—'}</td></tr>`;
+      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#374151;font-size:${fsDesc}">${translateDesc(desc) || '—'}</td></tr>`;
     }).join('');
 
     const tfootRow = (label: string, value: string, color: string, colspan = 4) =>
@@ -2375,11 +2378,11 @@ export function CustomerReportTab() {
       ? `<table style="width:100%;border-collapse:collapse">
           <thead>${hdr(L.advHdr, ['center','left','right','left','right','left'])}</thead>
           <tbody>${advRows || `<tr><td colspan="6" style="padding:12px;color:#94a3b8;text-align:center;font-size:10px">${L.noAdvance}</td></tr>`}</tbody>
-          <tfoot>${tfootRow(L.totalAdvances, fUSD(totalAdvances), '#6d28d9')}</tfoot>
+          <tfoot>${tfootRow(L.totalAdvances, fUSD(totalAdvances), '#111827')}</tfoot>
         </table>`
-      : `<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px">
+      : `<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px">
           <span style="font-size:10px;color:#6b7280;font-weight:600">${L.totalAdvances}:</span>
-          <span style="font-size:13px;font-weight:800;color:#6d28d9">${fUSD(totalAdvances)}</span>
+          <span style="font-size:13px;font-weight:800;color:#111827">${fUSD(totalAdvances)}</span>
         </div>`;
 
     const dateRange = (dateFrom || dateTo)
@@ -2421,23 +2424,23 @@ export function CustomerReportTab() {
       </div>
 
       <!-- TABLE 1: PAYMENTS -->
-      ${sectionHead(1, L.payments, '#2563eb')}
+      ${sectionHead(1, L.payments, '#374151')}
       <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
         <thead>${hdr(L.payHdr, ['center','left','right','left','right','left'])}</thead>
         <tbody>${payRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noPayment}</td></tr>`}</tbody>
-        <tfoot>${tfootRow(L.totalPayments, fUSD(totalPayments), '#1d4ed8')}</tfoot>
+        <tfoot>${tfootRow(L.totalPayments, fUSD(totalPayments), '#111827')}</tfoot>
       </table>
 
       <!-- TABLE 2: PRODUCTS -->
-      ${sectionHead(2, L.products, '#16a34a')}
+      ${sectionHead(2, L.products, '#374151')}
       <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
         <thead>${hdr(L.prdHdr, ['center','left','right','right','right','left'])}</thead>
         <tbody>${prdRows || `<tr><td colspan="6" style="padding:14px;color:#94a3b8;text-align:center;font-size:10px">${L.noProduct}</td></tr>`}</tbody>
-        <tfoot>${tfootRow(L.totalProducts, fUSD(totalProducts), '#15803d')}</tfoot>
+        <tfoot>${tfootRow(L.totalProducts, fUSD(totalProducts), '#111827')}</tfoot>
       </table>
 
       <!-- TABLE 3: ADVANCES -->
-      ${sectionHead(3, L.advances, '#7c3aed')}
+      ${sectionHead(3, L.advances, '#374151')}
       ${advSection}
 
       <!-- BALANCE -->
@@ -2448,9 +2451,9 @@ export function CustomerReportTab() {
             <div>
               <div style="font-size:${isRtl ? '13px' : '9.5px'};color:#475569;font-weight:600;margin-bottom:5px">${L.balanceText}</div>
               <div style="display:flex;gap:14px;flex-wrap:wrap">
-                <span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">${L.products}: <strong style="color:#15803d;font-weight:1000">${fUSD(totalProducts)}</strong></span>
-                ${totalAdvances > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.advances}: <strong style="color:#7c3aed;font-weight:1000">${fUSD(totalAdvances)}</strong></span>` : ''}
-                ${totalPayments > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.payments}: <strong style="color:#1d4ed8;font-weight:1000">${fUSD(totalPayments)}</strong></span>` : ''}
+                <span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">${L.products}: <strong style="color:#374151;font-weight:1000">${fUSD(totalProducts)}</strong></span>
+                ${totalAdvances > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.advances}: <strong style="color:#374151;font-weight:1000">${fUSD(totalAdvances)}</strong></span>` : ''}
+                ${totalPayments > 0 ? `<span style="font-size:${isRtl ? '12px' : '9.5px'};color:#64748b">− ${L.payments}: <strong style="color:#374151;font-weight:1000">${fUSD(totalPayments)}</strong></span>` : ''}
               </div>
             </div>
           </div>
@@ -2696,40 +2699,38 @@ export function CustomerReportTab() {
 
       {customerId && !isLoading && (
         <>
-          {/* Quick info 2×2 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="grid grid-cols-2 divide-x divide-gray-50">
-              <div className="px-5 py-4 border-b border-gray-50">
-                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Ödemeler</div>
-                <div className="text-[18px] font-extrabold text-blue-700">{fUSD(totalPayments)}</div>
-              </div>
-              <div className="px-5 py-4 border-b border-gray-50">
-                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Satın Alım</div>
-                <div className="text-[18px] font-extrabold text-green-700">{fUSD(totalProducts)}</div>
-              </div>
-              <div className="px-5 py-4">
-                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Ön Ödemeler</div>
-                <div className="text-[18px] font-extrabold text-violet-700">{fUSD(totalAdvances)}</div>
-              </div>
-              <div className="px-5 py-4" style={balance !== 0 ? { background: balance > 0 ? '#fffbeb' : '#f0fdf4' } : {}}>
-                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Net Bakiye</div>
-                <div className="flex items-baseline gap-1.5 flex-wrap">
-                  <span className="text-[18px] font-extrabold" style={{ color: balance > 0 ? '#b45309' : balance < 0 ? '#15803d' : '#6b7280' }}>
-                    {fUSD(Math.abs(balance))}
-                  </span>
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest" style={{ color: balance > 0 ? '#b45309' : balance < 0 ? '#15803d' : '#9ca3af' }}>
-                    {balance > 0 ? 'Borçlu' : balance < 0 ? 'Alacaklı' : 'Kapalı'}
-                  </span>
+          {/* KPI row — 4 Mono kartı */}
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: 'Ödemeler',    value: fUSD(totalPayments),  profit: false },
+              { label: 'Satın Alım',  value: fUSD(totalProducts),  profit: false },
+              { label: 'Ön Ödemeler', value: fUSD(totalAdvances),  profit: false },
+              { label: 'Net Bakiye',  value: fUSD(Math.abs(balance)), profit: true,
+                badge: balance > 0 ? 'Borçlu' : balance < 0 ? 'Alacaklı' : 'Kapalı',
+                color: balance > 0 ? '#b45309' : balance < 0 ? '#15803d' : '#6b7280' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{kpi.label}</div>
+                <div
+                  className="text-[14px] font-black leading-tight tabular-nums"
+                  style={{ color: kpi.profit ? kpi.color : '#111827' }}
+                >
+                  {kpi.value}
                 </div>
+                {kpi.profit && kpi.badge && (
+                  <div className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: kpi.color }}>
+                    {kpi.badge}
+                  </div>
+                )}
               </div>
-            </div>
+            ))}
           </div>
 
           {/* Table 1: Payments */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-[9px] font-extrabold flex items-center justify-center shrink-0">1</span>
+                <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-700 text-[9px] font-extrabold flex items-center justify-center shrink-0">1</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.payments}</span>
               </div>
               <span className="text-[10px] text-gray-400">{payments.length} {L.records}</span>
@@ -2753,15 +2754,15 @@ export function CustomerReportTab() {
                         <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(t.transaction_date)}</td>
                         <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
                         <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
-                        <td className="px-4 py-3 text-[13px] font-bold text-blue-700 text-right">{fUSD(t.amount_usd ?? 0)}</td>
+                        <td className="px-4 py-3 text-[13px] font-bold text-gray-900 text-right">{fUSD(t.amount_usd ?? 0)}</td>
                         <td className="px-4 py-3 text-[11px] text-gray-400">{t.description ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-blue-50/60 border-t-2 border-blue-100">
+                    <tr className="bg-gray-50 border-t-2 border-gray-100">
                       <td colSpan={4} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalPayments}</td>
-                      <td className="px-4 py-3 text-[14px] font-black text-blue-700 text-right">{fUSD(totalPayments)}</td>
+                      <td className="px-4 py-3 text-[14px] font-black text-gray-900 text-right">{fUSD(totalPayments)}</td>
                       <td />
                     </tr>
                   </tfoot>
@@ -2774,7 +2775,7 @@ export function CustomerReportTab() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-green-100 text-green-700 text-[9px] font-extrabold flex items-center justify-center shrink-0">2</span>
+                <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-700 text-[9px] font-extrabold flex items-center justify-center shrink-0">2</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.products}</span>
               </div>
               <span className="text-[10px] text-gray-400">
@@ -2801,7 +2802,7 @@ export function CustomerReportTab() {
                         <td className="px-4 py-3 text-[12px] text-gray-700">{t.description || '—'}</td>
                         <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
                         <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
-                        <td className="px-4 py-3 text-[13px] font-bold text-green-700 text-right">{fUSD(t.amount_usd ?? 0)}</td>
+                        <td className="px-4 py-3 text-[13px] font-bold text-gray-900 text-right">{fUSD(t.amount_usd ?? 0)}</td>
                         <td className="px-4 py-3 text-[10px] font-mono text-gray-400">
                           {t.trade_file?.file_no ?? t.reference_no ?? '—'}
                         </td>
@@ -2809,9 +2810,9 @@ export function CustomerReportTab() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-green-50/60 border-t-2 border-green-100">
+                    <tr className="bg-gray-50 border-t-2 border-gray-100">
                       <td colSpan={5} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalProducts}</td>
-                      <td className="px-4 py-3 text-[14px] font-black text-green-700 text-right">{fUSD(totalProducts)}</td>
+                      <td className="px-4 py-3 text-[14px] font-black text-gray-900 text-right">{fUSD(totalProducts)}</td>
                       <td />
                     </tr>
                   </tfoot>
@@ -2824,7 +2825,7 @@ export function CustomerReportTab() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-600 text-[9px] font-extrabold flex items-center justify-center shrink-0">3</span>
+                <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-700 text-[9px] font-extrabold flex items-center justify-center shrink-0">3</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{L.advances}</span>
               </div>
               <span className="text-[10px] text-gray-400">{advances.length} {L.records}</span>
@@ -2852,7 +2853,7 @@ export function CustomerReportTab() {
                           <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(t.transaction_date)}</td>
                           <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
                           <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
-                          <td className="px-4 py-3 text-[13px] font-bold text-violet-700 text-right">{fUSD(t.amount_usd ?? 0)}</td>
+                          <td className="px-4 py-3 text-[13px] font-bold text-gray-900 text-right">{fUSD(t.amount_usd ?? 0)}</td>
                           <td className="px-4 py-3 text-[11px] text-gray-600">
                             {fileInfo && <span className="font-medium">{fileInfo}</span>}
                             {fileInfo && t.description ? <span className="text-gray-400"> · </span> : null}
@@ -2863,9 +2864,9 @@ export function CustomerReportTab() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-violet-50/60 border-t-2 border-violet-100">
+                    <tr className="bg-gray-50 border-t-2 border-gray-100">
                       <td colSpan={4} className="px-4 py-3 text-[11px] font-bold text-right text-gray-600">{L.totalAdvances}</td>
-                      <td className="px-4 py-3 text-[14px] font-black text-violet-700 text-right">{fUSD(totalAdvances)}</td>
+                      <td className="px-4 py-3 text-[14px] font-black text-gray-900 text-right">{fUSD(totalAdvances)}</td>
                       <td />
                     </tr>
                   </tfoot>
@@ -2874,7 +2875,7 @@ export function CustomerReportTab() {
             ) : (
               <div className="px-5 py-4 flex items-center gap-3">
                 <span className="text-[12px] text-gray-500 font-medium">{L.totalAdvances}:</span>
-                <span className="text-[16px] font-black text-violet-700">{fUSD(totalAdvances)}</span>
+                <span className="text-[16px] font-black text-gray-900">{fUSD(totalAdvances)}</span>
               </div>
             )}
           </div>
@@ -2887,17 +2888,17 @@ export function CustomerReportTab() {
             <div className="px-5 py-1">
               <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                 <span className="text-[12px] text-gray-500">{L.products}</span>
-                <span className="text-[13px] font-bold text-green-700">+{fUSD(totalProducts)}</span>
+                <span className="text-[13px] font-bold text-gray-700">+{fUSD(totalProducts)}</span>
               </div>
               {totalAdvances > 0 && (
                 <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                   <span className="text-[12px] text-gray-500">{L.advances}</span>
-                  <span className="text-[13px] font-bold text-violet-700">+{fUSD(totalAdvances)}</span>
+                  <span className="text-[13px] font-bold text-gray-700">+{fUSD(totalAdvances)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                 <span className="text-[12px] text-gray-500">{L.payments}</span>
-                <span className="text-[13px] font-bold text-blue-700">−{fUSD(totalPayments)}</span>
+                <span className="text-[13px] font-bold text-gray-700">−{fUSD(totalPayments)}</span>
               </div>
               <div className="flex justify-between items-center py-3">
                 <span className="text-[13px] font-bold text-gray-900">Net Bakiye</span>

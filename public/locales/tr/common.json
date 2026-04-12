@@ -102,7 +102,8 @@
     "payment": "Ödeme",
     "sale_inv": "Satış Faturası",
     "advance": "Ön Ödeme",
-    "ic_transfer": "İç Transfer"
+    "ic_transfer": "İç Transfer",
+    "expense": "Gider"
   },
   "payStatus": {
     "open": "Açık",

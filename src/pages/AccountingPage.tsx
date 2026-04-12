@@ -14,6 +14,7 @@ import { printInvoice, printReceipt, printTransactionInvoice } from '@/lib/print
 import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
 import { ApproveWithPasswordDialog } from '@/components/ui/ApproveWithPasswordDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
 import { KasaManager } from '@/components/accounting/KasaManager';
 import { BankAccountManager } from '@/components/accounting/BankAccountManager';
@@ -33,7 +34,7 @@ import {
   Printer, Pencil, Trash2, Plus, Search, AlertTriangle, BookCheck, Check, X, Flag,
 } from 'lucide-react';
 
-type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash' | 'ayarlar';
+type AccTab = 'all' | 'buy' | 'svc' | 'sale' | 'cash' | 'expense' | 'ayarlar';
 
 const TYPE_COLORS: Record<string, string> = {
   purchase_inv: '#f59e0b',
@@ -155,13 +156,14 @@ export function AccountingPage() {
     { key: 'svc',     label: t('tabs.services') },
     { key: 'sale',    label: t('tabs.saleInvoices') },
     { key: 'cash',    label: t('tabs.cashFlow') },
+    { key: 'expense', label: 'Giderler' },
     { key: 'ayarlar', label: 'Ayarlar' },
   ];
 
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<AccTab>(() => {
     const t = (location.state as { tab?: string } | null)?.tab;
-    return (['all','buy','svc','sale','cash','ayarlar'].includes(t ?? '') ? t : 'all') as AccTab;
+    return (['all','buy','svc','sale','cash','expense','ayarlar'].includes(t ?? '') ? t : 'all') as AccTab;
   });
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -170,9 +172,9 @@ export function AccountingPage() {
 
   // 'all' tab loads everything at once (for client-side search)
   // buy / svc / cash / sale tabs use paginated infinite loading
-  const isPaginatedTab = activeTab === 'buy' || activeTab === 'svc' || activeTab === 'cash';
+  const isPaginatedTab = activeTab === 'buy' || activeTab === 'svc' || activeTab === 'cash' || activeTab === 'expense';
   const paginatedFilters = {
-    tab: activeTab as 'buy' | 'svc' | 'cash',
+    tab: activeTab as 'buy' | 'svc' | 'cash' | 'expense',
     type: typeFilter as TransactionType | undefined || undefined,
     status: statusFilter as PaymentStatus | undefined || undefined,
   };
@@ -229,7 +231,7 @@ export function AccountingPage() {
   useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
 
   const tabDefaultType: Record<AccTab, string | undefined> = {
-    all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', ayarlar: undefined,
+    all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', expense: 'expense', ayarlar: undefined,
   };
 
   // ── Unposted advances ──────────────────────────────────────────────────────
@@ -495,7 +497,7 @@ export function AccountingPage() {
               <div className="hidden md:flex items-center gap-2">
                 <NativeSelect className="h-9 rounded-xl border-gray-200 text-[12px] w-44" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                   <option value="">{t('filters.allTypes')}</option>
-                  {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance'] as const).map(k => <option key={k} value={k}>{tc('txType.' + k)}</option>)}
+                  {(['svc_inv','purchase_inv','receipt','payment','sale_inv','advance','expense'] as const).map(k => <option key={k} value={k}>{tc('txType.' + k)}</option>)}
                 </NativeSelect>
                 <button
                   onClick={() => setFlagFilter(v => !v)}
@@ -1094,16 +1096,29 @@ export function AccountingPage() {
         buttonLabel="❌ Reddet"
         headerClass="bg-gradient-to-r from-amber-500 to-orange-500"
       />
-      <ApproveWithPasswordDialog
-        open={pendingBulkAction === 'revert'}
-        onClose={() => setPendingBulkAction(null)}
-        onConfirm={() => executeBulkStatus('draft')}
-        isPending={bulkSetStatus.isPending}
-        title="Taslağa Döndür"
-        subtitle={`${selectedIds.size} kaydı taslağa döndürmek için şifrenizi girin`}
-        buttonLabel="↩ Taslağa Döndür"
-        headerClass="bg-gradient-to-r from-gray-600 to-gray-500"
-      />
+      <Dialog open={pendingBulkAction === 'revert'} onOpenChange={(o) => { if (!o) setPendingBulkAction(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[15px] font-bold">Taslağa Döndür</DialogTitle>
+          </DialogHeader>
+          <p className="text-[13px] text-gray-500">{selectedIds.size} kaydı taslağa döndürmek istediğinizden emin misiniz?</p>
+          <DialogFooter className="gap-2">
+            <button
+              onClick={() => setPendingBulkAction(null)}
+              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              İptal
+            </button>
+            <button
+              onClick={() => { executeBulkStatus('draft'); setPendingBulkAction(null); }}
+              disabled={bulkSetStatus.isPending}
+              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-white bg-gray-700 hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {bulkSetStatus.isPending ? '…' : '↩ Taslağa Döndür'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ApproveWithPasswordDialog
         open={pendingBulkAction === 'delete'}
         onClose={() => setPendingBulkAction(null)}
