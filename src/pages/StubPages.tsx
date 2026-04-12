@@ -10,10 +10,8 @@ import {
 } from '@/hooks/useEntities';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite, isAdmin } from '@/lib/permissions';
-import { Input } from '@/components/ui/input';
-import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { LoadingSpinner, FormRow, FormGroup } from '@/components/ui/shared';
+import { LoadingSpinner } from '@/components/ui/shared';
 import { AIFormFill } from '@/components/ui/AIFormFill';
 import { Search, Pencil, Trash2, Plus, Tag, Check } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -150,8 +148,7 @@ export function ProductsPage() {
   const { t } = useTranslation('products');
   const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const writable = canWrite(profile?.role);
   const adminRole = isAdmin(profile?.role);
   const { data: products = [], isLoading } = useProducts();
@@ -340,71 +337,135 @@ export function ProductsPage() {
           </table>
         </div>
 
-        {/* Product Modal */}
+        {/* Product Modal — Mono tasarım */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{editing ? t('modal.editProduct') : t('modal.newProduct')}</DialogTitle></DialogHeader>
+          <DialogContent className="max-w-lg !p-0 overflow-hidden">
+            {/* Başlık */}
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+                {editing ? t('modal.editProduct') : t('modal.newProduct')}
+              </p>
+              <h2 className="text-[18px] font-extrabold text-gray-900 leading-tight">
+                {editing ? editing.name : t('modal.newProduct')}
+              </h2>
+            </div>
+
             <form onSubmit={handleSubmit(onSubmit)}>
-              <AIFormFill
-                formType="new_product"
-                onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ProductFormData>) })}
-                placeholder={t('modal.aiPlaceholder')}
-              />
-              <FormRow>
-                <FormGroup label={t('modal.productName')} error={errors.name?.message}>
-                  <Input {...register('name')} />
-                </FormGroup>
-                <FormGroup label={t('modal.unit')}>
-                  <NativeSelect {...register('unit')}>
-                    <option value="ADMT">ADMT</option>
-                    <option value="MT">MT</option>
-                    <option value="KG">KG</option>
-                  </NativeSelect>
-                </FormGroup>
-              </FormRow>
+              <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
 
-              {/* Category selector */}
-              <FormGroup label={t('modal.category')} className="mb-2.5">
-                <div className="flex gap-1.5 flex-wrap">
-                  <button type="button"
-                    onClick={() => setValue('category_id', null)}
-                    className="px-3 h-7 rounded-full text-[11px] font-semibold border transition-all"
-                    style={!selectedCatId ? { borderColor: accent, background: accent + '18', color: accent } : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
-                    —
-                  </button>
-                  {categories.map(cat => (
-                    <button key={cat.id} type="button"
-                      onClick={() => setValue('category_id', cat.id)}
-                      className="px-3 h-7 rounded-full text-[11px] font-semibold border transition-all flex items-center gap-1"
-                      style={selectedCatId === cat.id
-                        ? { borderColor: cat.color, background: cat.color + '20', color: cat.color }
-                        : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
-                      {selectedCatId === cat.id && <Check className="h-3 w-3" />}
-                      {cat.name}
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => { setModalOpen(false); setCatModalOpen(true); }}
-                    className="px-3 h-7 rounded-full text-[11px] font-semibold border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 transition-all flex items-center gap-1">
-                    <Plus className="h-3 w-3" /> {tc('btn.new')}
-                  </button>
+                {/* AI Fill */}
+                <AIFormFill
+                  formType="new_product"
+                  onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ProductFormData>) })}
+                  placeholder={t('modal.aiPlaceholder')}
+                />
+
+                {/* Bölüm: Temel Bilgiler */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Temel Bilgiler</p>
+                  <div className="grid grid-cols-[1fr_100px] gap-3">
+                    <div>
+                      <label className="text-[11px] font-medium text-gray-500 mb-1 block">{t('modal.productName')} *</label>
+                      <input
+                        {...register('name')}
+                        className="w-full h-9 px-3 rounded-xl bg-gray-50 border border-gray-100 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-gray-300 transition"
+                      />
+                      {errors.name && <p className="text-[11px] text-red-500 mt-1">{errors.name.message}</p>}
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-gray-500 mb-1 block">{t('modal.unit')}</label>
+                      <select
+                        {...register('unit')}
+                        className="w-full h-9 px-3 rounded-xl bg-gray-50 border border-gray-100 text-[13px] text-gray-900 focus:outline-none focus:bg-white focus:border-gray-300 transition appearance-none"
+                      >
+                        <option value="ADMT">ADMT</option>
+                        <option value="MT">MT</option>
+                        <option value="KG">KG</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              </FormGroup>
 
-              <FormRow>
-                <FormGroup label={t('modal.hsCode')}><Input {...register('hs_code')} placeholder={t('modal.hsCodePlaceholder')} /></FormGroup>
-                <FormGroup label={t('modal.originCountry')}><Input {...register('origin_country')} placeholder={t('modal.originCountryPlaceholder')} /></FormGroup>
-              </FormRow>
-              <FormRow>
-                <FormGroup label={t('modal.speciesPulpType')}><Input {...register('species')} placeholder={t('modal.speciesPlaceholder')} /></FormGroup>
-                <FormGroup label={t('modal.grade')}><Input {...register('grade')} placeholder={t('modal.gradePlaceholder')} /></FormGroup>
-              </FormRow>
-              <FormGroup label={t('modal.description')} className="mb-2.5">
-                <Textarea rows={2} {...register('description')} placeholder={t('modal.descriptionPlaceholder')} />
-              </FormGroup>
-              <DialogFooter>
-                <button type="button" onClick={() => setModalOpen(false)} className="px-4 h-9 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">{tc('btn.cancel')}</button>
-                <button type="submit" disabled={createP.isPending || updateP.isPending} className="px-4 h-9 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: accent }}>{tc('btn.save')}</button>
-              </DialogFooter>
+                {/* Bölüm: Kategori */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{t('modal.category')}</p>
+                    <button type="button" onClick={() => { setModalOpen(false); setCatModalOpen(true); }}
+                      className="text-[10px] font-semibold text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors">
+                      <Plus className="h-3 w-3" /> {tc('btn.new')}
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <button type="button"
+                      onClick={() => setValue('category_id', null)}
+                      className={`px-3 h-7 rounded-lg text-[11px] font-semibold border transition-all ${
+                        !selectedCatId
+                          ? 'bg-gray-900 border-gray-900 text-white'
+                          : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                      }`}>
+                      —
+                    </button>
+                    {categories.map(cat => (
+                      <button key={cat.id} type="button"
+                        onClick={() => setValue('category_id', cat.id)}
+                        className={`px-3 h-7 rounded-lg text-[11px] font-semibold border transition-all flex items-center gap-1.5 ${
+                          selectedCatId === cat.id
+                            ? 'bg-gray-900 border-gray-900 text-white'
+                            : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}>
+                        {selectedCatId === cat.id && <Check className="h-3 w-3" />}
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bölüm: Teknik Bilgiler */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Teknik Bilgiler</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: 'hs_code',        label: t('modal.hsCode'),          placeholder: t('modal.hsCodePlaceholder') },
+                      { key: 'origin_country',  label: t('modal.originCountry'),   placeholder: t('modal.originCountryPlaceholder') },
+                      { key: 'species',         label: t('modal.speciesPulpType'), placeholder: t('modal.speciesPlaceholder') },
+                      { key: 'grade',           label: t('modal.grade'),           placeholder: t('modal.gradePlaceholder') },
+                    ].map(({ key, label, placeholder }) => (
+                      <div key={key}>
+                        <label className="text-[11px] font-medium text-gray-500 mb-1 block">{label}</label>
+                        <input
+                          {...register(key as keyof ProductFormData)}
+                          placeholder={placeholder}
+                          className="w-full h-9 px-3 rounded-xl bg-gray-50 border border-gray-100 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-gray-300 transition"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Açıklama */}
+                <div>
+                  <label className="text-[11px] font-medium text-gray-500 mb-1 block">{t('modal.description')}</label>
+                  <textarea
+                    {...register('description')}
+                    rows={2}
+                    placeholder={t('modal.descriptionPlaceholder')}
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-gray-300 transition resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/60">
+                <button type="button" onClick={() => setModalOpen(false)}
+                  className="text-[12px] font-semibold text-gray-400 hover:text-gray-600 transition-colors px-3 py-2 rounded-xl hover:bg-gray-100">
+                  {tc('btn.cancel')}
+                </button>
+                <button type="submit" disabled={createP.isPending || updateP.isPending}
+                  className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                  style={{ background: accent }}>
+                  {createP.isPending || updateP.isPending ? '...' : tc('btn.save')}
+                </button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
