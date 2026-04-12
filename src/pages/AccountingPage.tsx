@@ -172,9 +172,9 @@ export function AccountingPage() {
 
   // 'all' tab loads everything at once (for client-side search)
   // buy / svc / cash / sale tabs use paginated infinite loading
-  const isPaginatedTab = activeTab === 'buy' || activeTab === 'svc' || activeTab === 'cash' || activeTab === 'expense';
+  const isPaginatedTab = activeTab === 'buy' || activeTab === 'svc' || activeTab === 'cash';
   const paginatedFilters = {
-    tab: activeTab as 'buy' | 'svc' | 'cash' | 'expense',
+    tab: activeTab as 'buy' | 'svc' | 'cash',
     type: typeFilter as TransactionType | undefined || undefined,
     status: statusFilter as PaymentStatus | undefined || undefined,
   };
@@ -192,12 +192,16 @@ export function AccountingPage() {
       status: statusFilter as PaymentStatus | undefined || undefined,
     } : undefined,
   );
+  const { data: expenseTxns = [], isLoading: expenseLoading } = useTransactions(
+    activeTab === 'expense' ? { tab: 'expense' } : undefined,
+  );
 
-  const isLoading = isPaginatedTab ? infiniteLoading : allLoading;
+  const isLoading = isPaginatedTab ? infiniteLoading : activeTab === 'expense' ? expenseLoading : allLoading;
   const txns = useMemo(() => {
     if (isPaginatedTab) return infiniteData?.pages.flatMap(p => p.data) ?? [];
+    if (activeTab === 'expense') return expenseTxns;
     return allTxns;
-  }, [isPaginatedTab, infiniteData, allTxns]);
+  }, [isPaginatedTab, activeTab, infiniteData, allTxns, expenseTxns]);
   const totalCount = isPaginatedTab ? (infiniteData?.pages[0]?.count ?? 0) : txns.length;
 
   // sale_inv transactions (advance receivables) shown separately in sale tab
