@@ -69,36 +69,36 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      // Login sonrası hedef firma sessionStorage'da varsa → switch yap (reload yok!)
+      // Login sonrası hedef firma sessionStorage'da varsa → switch yap
       const loginTarget = sessionStorage.getItem('login_target_tenant');
       sessionStorage.removeItem('login_target_tenant');
 
       let effectiveTenantId = profile.tenant_id;
 
-      if (loginTarget && profile.tenant_id !== loginTarget) {
-        // Süper admin → super_admin_switch_tenant (her zaman mevcut)
-        // Normal kullanıcı → switch_my_tenant (user_tenants tablosu gerektirir)
-        const rpcName = profile.is_super_admin
-          ? 'super_admin_switch_tenant'
-          : 'switch_my_tenant';
-        const { error } = await supabase.rpc(rpcName, { p_tenant_id: loginTarget });
-        if (!error) {
-          effectiveTenantId = loginTarget;
+      if (loginTarget) {
+        // Hedef firmayı HER ZAMAN uygula — RPC başarısız olsa bile UI doğru tenant'ı göstersin.
+        // RPC, profiles.tenant_id'yi günceller (RLS için); başarısızsa sadece bu oturum etkilenir.
+        effectiveTenantId = loginTarget;
+
+        if (profile.tenant_id !== loginTarget) {
+          const rpcName = profile.is_super_admin
+            ? 'super_admin_switch_tenant'
+            : 'switch_my_tenant';
+          // Hata yok sayılır; effectiveTenantId zaten loginTarget olarak ayarlandı
+          await supabase.rpc(rpcName, { p_tenant_id: loginTarget });
         }
       }
 
-      // Süper admin'in tenant_id'si null ise (önceden "Tüm Firmalar"a dönülmüş veya ilk giriş)
-      // → localStorage cache'den son firmayı geri yükle
+      // Süper admin'in tenant_id'si null ise → localStorage cache'den son firmayı geri yükle
       if (!effectiveTenantId && profile.is_super_admin) {
         try {
           const cached = localStorage.getItem(TENANT_CACHE_KEY);
           if (cached) {
             const cachedTenant = JSON.parse(cached) as Tenant;
             if (cachedTenant?.id) {
-              const { error } = await supabase.rpc('super_admin_switch_tenant', {
-                p_tenant_id: cachedTenant.id,
-              });
-              if (!error) effectiveTenantId = cachedTenant.id;
+              effectiveTenantId = cachedTenant.id;
+              // RLS güncelle
+              await supabase.rpc('super_admin_switch_tenant', { p_tenant_id: cachedTenant.id });
             }
           }
         } catch { /* ignore */ }
