@@ -28,6 +28,27 @@ import { fDate } from '@/lib/formatters';
 const CURRENCIES = ['USD', 'EUR', 'TRY'] as const;
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', TRY: '₺' };
 
+const CARD_GRADIENTS = [
+  'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+  'linear-gradient(135deg, #2e1065 0%, #6d28d9 100%)',
+  'linear-gradient(135deg, #052e16 0%, #065f46 100%)',
+  'linear-gradient(135deg, #4c0519 0%, #be123c 100%)',
+  'linear-gradient(135deg, #172554 0%, #1d4ed8 100%)',
+  'linear-gradient(135deg, #042f2e 0%, #0f766e 100%)',
+];
+
+const PRODUCT_LOGOS: { match: string; logo: string }[] = [
+  { match: 'upm',     logo: '/images/logos/upm.svg' },
+  { match: 'domtar',  logo: '/images/logos/domtar.svg' },
+  { match: 'georgia', logo: '/images/logos/gp.svg' },
+  { match: 'cmpc',    logo: '/images/logos/cmpc.svg' },
+];
+function getProductLogo(name?: string | null) {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  return PRODUCT_LOGOS.find(s => lower.includes(s.match))?.logo ?? null;
+}
+
 // ─── Price Entry Modal ────────────────────────────────────────────────────────
 
 interface EntryModalProps {
@@ -741,57 +762,62 @@ export function PriceListPage() {
 
         {/* Mobile Cards */}
         {!isLoading && filtered.length > 0 && (
-          <div className="md:hidden space-y-2">
-            {filtered.map(entry => {
+          <div className="md:hidden space-y-3 px-1">
+            {filtered.map((entry, i) => {
               const expired = isExpired(entry);
+              const logo = getProductLogo(entry.product?.name);
               return (
-                <div key={entry.id} className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <button
-                        onClick={() => openHistory(entry.product_id)}
-                        className="text-sm font-semibold text-gray-900 hover:underline text-left"
-                      >
-                        {entry.product?.name ?? '—'}
-                      </button>
-                      <p className="text-xs text-gray-500 mt-0.5">{entry.supplier?.name ?? '—'}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-gray-900">
-                        {CURRENCY_SYMBOLS[entry.currency] ?? ''}{entry.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                      </div>
-                      <div className="text-[10px] text-gray-400">{entry.currency}</div>
-                    </div>
+                <div
+                  key={entry.id}
+                  className="rounded-[1.5rem] p-5"
+                  style={{
+                    background: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                  }}
+                >
+                  {/* Top row: currency pill + date */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/20 text-white">
+                      {entry.currency}
+                    </span>
+                    <span className="text-[10px] font-semibold text-white/50">{fDate(entry.price_date)}</span>
                   </div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div>
-                      <span className="text-[10px] text-gray-400 block">{t('table.priceDate')}</span>
-                      <span className="text-xs text-gray-700">{fDate(entry.price_date)}</span>
+                  {/* Price + logo */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div
+                      className="text-[32px] font-black text-white leading-none tracking-tight"
+                      style={{ fontFamily: 'Manrope, sans-serif' }}
+                    >
+                      {CURRENCY_SYMBOLS[entry.currency] ?? ''}{entry.price.toLocaleString('tr-TR')}
                     </div>
-                    {entry.valid_until && (
-                      <div>
-                        <span className="text-[10px] text-gray-400 block">{t('table.validUntil')}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-lg font-medium ${expired ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
-                          {fDate(entry.valid_until)}
-                        </span>
-                      </div>
+                    {logo && (
+                      <img src={logo} alt="" className="h-9 object-contain shrink-0"
+                        style={{ filter: 'brightness(0) invert(1)', opacity: 0.75 }} />
                     )}
                   </div>
-                  {entry.notes && (
-                    <p className="text-xs text-gray-400 truncate">{entry.notes}</p>
+                  <div className="h-px bg-white/15 mb-3" />
+                  {/* Product + supplier */}
+                  <button onClick={() => openHistory(entry.product_id)} className="text-left w-full">
+                    <div className="text-[13px] font-bold text-white leading-snug mb-0.5">{entry.product?.name ?? '—'}</div>
+                    <div className="text-[10px] text-white/45">{entry.supplier?.name ?? '—'}</div>
+                  </button>
+                  {/* Valid until */}
+                  {entry.valid_until && (
+                    <div className="mt-3">
+                      <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg ${expired ? 'bg-red-500/30 text-red-200' : 'bg-white/15 text-white/70'}`}>
+                        {expired ? 'Süresi doldu' : `Geçerli: ${fDate(entry.valid_until)}`}
+                      </span>
+                    </div>
                   )}
+                  {/* Actions */}
                   {canWrite && (
-                    <div className="flex items-center gap-2 pt-1 border-t border-gray-50">
-                      <button
-                        onClick={() => openEdit(entry)}
-                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
+                    <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/10">
+                      <button onClick={() => openEdit(entry)}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-white/70 hover:text-white transition-colors">
                         <Pencil className="h-3 w-3" /> {tc('btn.edit')}
                       </button>
-                      <button
-                        onClick={() => handleDelete(entry)}
-                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
-                      >
+                      <button onClick={() => handleDelete(entry)}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-white/70 hover:text-red-300 transition-colors">
                         <Trash2 className="h-3 w-3" /> {tc('btn.delete')}
                       </button>
                     </div>
