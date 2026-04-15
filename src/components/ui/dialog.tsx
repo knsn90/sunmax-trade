@@ -44,18 +44,17 @@ const DialogContent = React.forwardRef<
 >(({ className, children, size = 'default', dismissible = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
   const isMobile = useIsMobile();
 
-  // On mobile: split first child (DialogHeader) from the rest so the
-  // header stays outside the scroll container and never covers content.
+  // Separate DialogHeader (first child) from body so the header is
+  // always rendered OUTSIDE the scroll container — on both mobile & desktop.
+  // This prevents the header from ever scrolling over form labels.
   const childArray = React.Children.toArray(children);
   const firstIsHeader =
-    isMobile &&
     childArray.length > 0 &&
     React.isValidElement(childArray[0]) &&
-    // Match by displayName so it works after minification
     (childArray[0].type as { displayName?: string })?.displayName === 'DialogHeader';
 
-  const mobileHeader = firstIsHeader ? childArray[0] : null;
-  const mobileBody   = firstIsHeader ? childArray.slice(1) : childArray;
+  const headerChild = firstIsHeader ? childArray[0] : null;
+  const bodyChildren = firstIsHeader ? childArray.slice(1) : childArray;
 
   return (
     <DialogPortal>
@@ -79,7 +78,9 @@ const DialogContent = React.forwardRef<
           onEscapeKeyDown?.(e);
         }}
         className={cn(
+          // Mobile: full-screen
           'fixed inset-0 z-50 w-full h-full',
+          // Desktop: centered modal
           'md:inset-auto md:h-auto md:bottom-auto md:left-[50%] md:top-[5vh] md:translate-x-[-50%]',
           size === 'default' && 'md:max-w-[600px]',
           size === 'lg'      && 'md:max-w-[800px]',
@@ -88,12 +89,13 @@ const DialogContent = React.forwardRef<
         )}
         {...props}
       >
+        {/* Outer shell — flex-col so header never overlaps scrolled content */}
         <motion.div
           className={cn(
-            // Mobile: flex-col so header is pinned and body scrolls independently
-            'flex flex-col h-full bg-[#f7f9fc]',
-            // Desktop: classic scrollable modal card
-            'md:block md:relative md:rounded-2xl md:bg-white md:p-6 md:shadow-xl md:max-h-[90vh] md:h-auto md:overflow-y-auto',
+            // Mobile: full-screen flex column, gray page background
+            'relative flex flex-col h-full bg-[#f7f9fc]',
+            // Desktop: rounded modal card, max height, flex column still
+            'md:rounded-2xl md:bg-white md:shadow-xl md:max-h-[90vh] md:h-auto',
             className,
           )}
           initial={isMobile ? { x: '100%' } : { opacity: 0, y: 40, scale: 0.98 }}
@@ -101,29 +103,22 @@ const DialogContent = React.forwardRef<
           exit={isMobile ? { x: '100%' } : { opacity: 0, y: 20, scale: 0.97 }}
           transition={{ duration: isMobile ? 0.28 : 0.22, ease: [0.25, 0.1, 0.25, 1] }}
         >
-          {isMobile ? (
-            <>
-              {/* Mobile: pinned header (never scrolls) */}
-              {mobileHeader}
+          {/* ── Pinned header (never scrolls) ──────────────────────── */}
+          {headerChild}
 
-              {/* Mobile: scrollable body */}
-              <div
-                className="flex-1 overflow-y-auto px-5 pb-8"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' }}
-              >
-                {mobileBody}
-              </div>
-            </>
-          ) : (
-            <>
-              {children}
-              {/* X close — desktop only */}
-              <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-50 hover:opacity-100 transition-opacity flex items-center justify-center">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </DialogPrimitive.Close>
-            </>
-          )}
+          {/* ── Scrollable body ────────────────────────────────────── */}
+          <div
+            className="flex-1 overflow-y-auto px-5 pt-3 pb-8 md:px-6 md:pt-2 md:pb-6"
+            style={isMobile ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' } : undefined}
+          >
+            {bodyChildren}
+          </div>
+
+          {/* X close — desktop only (absolute in top-right of header area) */}
+          <DialogPrimitive.Close className="hidden md:flex absolute right-4 top-4 rounded-sm opacity-50 hover:opacity-100 transition-opacity items-center justify-center">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
         </motion.div>
       </DialogPrimitive.Content>
     </DialogPortal>
@@ -132,21 +127,21 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = 'DialogContent';
 
 /**
- * DialogHeader
- * - Mobile: pinned top bar with back-arrow (← Geri). No sticky needed —
- *   DialogContent places it outside the scroll area.
- * - Desktop: sticky compact header (unchanged behaviour).
+ * DialogHeader — rendered OUTSIDE the scroll area by DialogContent,
+ * so it never covers scrolled form labels.
+ *
+ * Mobile: white nav bar with ← back arrow.
+ * Desktop: white header row with title + (optional) action buttons.
  */
 function DialogHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        // Mobile: full-width white bar, flex row, back arrow on left
         'shrink-0 flex items-center gap-2',
+        // Mobile
         'bg-white/95 [backdrop-filter:blur(20px)] w-full px-3 py-2 border-b border-gray-100',
-        // Desktop: sticky compact (negative margins cancel p-6 of parent)
-        'md:sticky md:top-0 md:z-10 md:block md:bg-white md:[backdrop-filter:none]',
-        'md:-mx-6 md:px-6 md:-mt-6 md:pt-6 md:pb-4 md:border-0 md:mb-3',
+        // Desktop — no negative margins needed (no parent padding to cancel)
+        'md:bg-white md:[backdrop-filter:none] md:px-6 md:pt-6 md:pb-4 md:border-b md:border-gray-100',
         className,
       )}
       {...props}
@@ -159,7 +154,7 @@ function DialogHeader({ className, children, ...props }: React.HTMLAttributes<HT
         <ArrowLeft className="h-5 w-5 text-gray-900" />
       </DialogPrimitive.Close>
 
-      {/* Title / action area */}
+      {/* Title / action buttons — flex-1 on mobile, contents on desktop */}
       <div className="flex-1 min-w-0 md:contents">
         {children}
       </div>
