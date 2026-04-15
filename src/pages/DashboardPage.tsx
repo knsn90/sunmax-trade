@@ -1262,8 +1262,7 @@ export function DashboardPage() {
           {/* anchor at button position: top-right */}
           <div
             className="absolute"
-            style={{ top: '4.8rem', right: '1.25rem' }}
-            onClick={e => e.stopPropagation()}
+            style={{ top: '4.8rem', right: '1.25rem', width: 48, height: 48 }}
           >
             {/* Yeni Dosya — sol (180°) */}
             <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(calc(-50% - 110px), -50%)' }}>
