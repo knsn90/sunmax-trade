@@ -251,6 +251,7 @@ const CARD_GRADIENTS = [
 function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/database').PriceList[]; onNavigate: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const rafRef = useRef<number | null>(null);
 
   const updateCards = useCallback(() => {
     const el = scrollRef.current;
@@ -260,21 +261,34 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
       if (!card) return;
       const cardCenter = card.offsetLeft + card.offsetWidth / 2;
       const dist = Math.abs(viewCenter - cardCenter);
-      const progress = Math.min(dist / (card.offsetWidth * 0.65), 1);
-      card.style.transform = `scale(${1 - progress * 0.1})`;
-      card.style.opacity   = `${1 - progress * 0.5}`;
-      card.style.filter    = progress > 0.15 ? `blur(${(progress * 2.5).toFixed(1)}px)` : '';
+      const progress = Math.min(dist / (card.offsetWidth * 0.7), 1);
+      const scale = 1 - progress * 0.08;
+      const opacity = 1 - progress * 0.45;
+      card.style.transform = `scale(${scale.toFixed(4)})`;
+      card.style.opacity = opacity.toFixed(4);
+      // blur only when far from center to avoid perf hit during scroll
+      card.style.filter = progress > 0.3 ? `blur(${(progress * 2).toFixed(1)}px)` : '';
     });
-    // dot tracking removed
   }, [prices.length]);
+
+  const onScroll = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      updateCards();
+    });
+  }, [updateCards]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.addEventListener('scroll', updateCards, { passive: true });
-    setTimeout(updateCards, 60);
-    return () => el.removeEventListener('scroll', updateCards);
-  }, [updateCards]);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    setTimeout(updateCards, 80);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [onScroll, updateCards]);
 
   if (prices.length === 0) return <p className="text-[13px] text-gray-400 px-1">Fiyat girişi yok</p>;
 
@@ -304,7 +318,6 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
               scrollSnapAlign: 'center',
               background: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
               boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
-              transition: 'transform 0.25s ease, opacity 0.25s ease, filter 0.25s ease',
               willChange: 'transform, opacity, filter',
             } as React.CSSProperties}
             onClick={onNavigate}
