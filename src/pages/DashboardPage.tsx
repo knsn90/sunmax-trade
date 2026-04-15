@@ -239,17 +239,17 @@ function SortableWidget({ id, isFull, children }: {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: '$', EUR: '€', TRY: '₺' };
 
-// Tedarikçi adına göre logo eşleştirme (küçük harf kısmi eşleşme)
-const SUPPLIER_LOGOS: { match: string; logo: string }[] = [
+// Ürün adına göre logo eşleştirme (küçük harf kısmi eşleşme)
+const PRODUCT_LOGOS: { match: string; logo: string }[] = [
   { match: 'upm',           logo: '/images/logos/upm.svg' },
   { match: 'domtar',        logo: '/images/logos/domtar.svg' },
   { match: 'georgia',       logo: '/images/logos/gp.svg' },
   { match: 'cmpc',          logo: '/images/logos/cmpc.svg' },
 ];
-function getSupplierLogo(supplierName: string | undefined): string | null {
-  if (!supplierName) return null;
-  const lower = supplierName.toLowerCase();
-  return SUPPLIER_LOGOS.find(s => lower.includes(s.match))?.logo ?? null;
+function getProductLogo(productName: string | undefined): string | null {
+  if (!productName) return null;
+  const lower = productName.toLowerCase();
+  return PRODUCT_LOGOS.find(s => lower.includes(s.match))?.logo ?? null;
 }
 
 const CARD_GRADIENTS = [
@@ -355,10 +355,10 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
             <div className="text-[13px] font-bold text-white leading-snug mb-1">{entry.product?.name ?? '—'}</div>
             <div className="flex items-center justify-between gap-2">
               <div className="text-[10px] text-white/45 truncate">{entry.supplier?.name ?? '—'}</div>
-              {getSupplierLogo(entry.supplier?.name) && (
+              {getProductLogo(entry.product?.name) && (
                 <img
-                  src={getSupplierLogo(entry.supplier?.name)!}
-                  alt={entry.supplier?.name ?? ''}
+                  src={getProductLogo(entry.product?.name)!}
+                  alt={entry.product?.name ?? ''}
                   className="h-5 shrink-0 object-contain"
                   style={{ filter: 'brightness(0) invert(1)', opacity: 0.6 }}
                 />
