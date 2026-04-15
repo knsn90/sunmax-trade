@@ -25,9 +25,18 @@ export const priceListService = {
   },
 
   async create(input: PriceListFormData): Promise<PriceList> {
+    // Fetch tenant_id required by RLS policy
+    const { data: { user } } = await supabase.auth.getUser();
+    let tenantId: string | null = null;
+    if (user) {
+      const { data: prof } = await supabase.from('profiles').select('tenant_id').eq('id', user.id).single();
+      tenantId = (prof as { tenant_id?: string | null } | null)?.tenant_id ?? null;
+    }
+
     const { data, error } = await supabase
       .from('price_list')
       .insert({
+        tenant_id:   tenantId,
         product_id:  input.product_id,
         supplier_id: input.supplier_id,
         price:       Number(input.price),

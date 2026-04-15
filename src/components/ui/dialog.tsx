@@ -44,9 +44,22 @@ const DialogContent = React.forwardRef<
 >(({ className, children, size = 'default', dismissible = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
   const isMobile = useIsMobile();
 
+  // On mobile: split first child (DialogHeader) from the rest so the
+  // header stays outside the scroll container and never covers content.
+  const childArray = React.Children.toArray(children);
+  const firstIsHeader =
+    isMobile &&
+    childArray.length > 0 &&
+    React.isValidElement(childArray[0]) &&
+    // Match by displayName so it works after minification
+    (childArray[0].type as { displayName?: string })?.displayName === 'DialogHeader';
+
+  const mobileHeader = firstIsHeader ? childArray[0] : null;
+  const mobileBody   = firstIsHeader ? childArray.slice(1) : childArray;
+
   return (
     <DialogPortal>
-      {/* ── Overlay — desktop only ─────────────────────────────────── */}
+      {/* Overlay — desktop only */}
       <motion.div
         className="hidden md:block fixed inset-0 z-50 bg-black/45"
         initial={{ opacity: 0 }}
@@ -55,7 +68,6 @@ const DialogContent = React.forwardRef<
         transition={{ duration: 0.18 }}
       />
 
-      {/* ── Content wrapper ────────────────────────────────────────── */}
       <DialogPrimitive.Content
         ref={ref}
         onInteractOutside={(e) => {
@@ -67,9 +79,7 @@ const DialogContent = React.forwardRef<
           onEscapeKeyDown?.(e);
         }}
         className={cn(
-          // Mobile: full-screen page
           'fixed inset-0 z-50 w-full h-full',
-          // Desktop: centered modal
           'md:inset-auto md:h-auto md:bottom-auto md:left-[50%] md:top-[5vh] md:translate-x-[-50%]',
           size === 'default' && 'md:max-w-[600px]',
           size === 'lg'      && 'md:max-w-[800px]',
@@ -78,28 +88,42 @@ const DialogContent = React.forwardRef<
         )}
         {...props}
       >
-        {/* ── Visual / animation wrapper ─────────────────────────── */}
         <motion.div
           className={cn(
-            // Mobile: full-screen scrollable page
-            'relative h-full overflow-y-auto bg-[#f7f9fc] p-5',
-            // Desktop: modal card
-            'md:rounded-2xl md:bg-white md:p-6 md:shadow-xl md:max-h-[90vh] md:h-auto',
+            // Mobile: flex-col so header is pinned and body scrolls independently
+            'flex flex-col h-full bg-[#f7f9fc]',
+            // Desktop: classic scrollable modal card
+            'md:block md:relative md:rounded-2xl md:bg-white md:p-6 md:shadow-xl md:max-h-[90vh] md:h-auto md:overflow-y-auto',
             className,
           )}
-          style={{ paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 32px)' : undefined }}
           initial={isMobile ? { x: '100%' } : { opacity: 0, y: 40, scale: 0.98 }}
           animate={isMobile ? { x: 0 } : { opacity: 1, y: 0, scale: 1 }}
           exit={isMobile ? { x: '100%' } : { opacity: 0, y: 20, scale: 0.97 }}
           transition={{ duration: isMobile ? 0.28 : 0.22, ease: [0.25, 0.1, 0.25, 1] }}
         >
-          {children}
+          {isMobile ? (
+            <>
+              {/* Mobile: pinned header (never scrolls) */}
+              {mobileHeader}
 
-          {/* X close — desktop only */}
-          <DialogPrimitive.Close className="hidden md:flex absolute right-4 top-4 rounded-sm opacity-50 hover:opacity-100 transition-opacity items-center justify-center">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
+              {/* Mobile: scrollable body */}
+              <div
+                className="flex-1 overflow-y-auto px-5 pb-8"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' }}
+              >
+                {mobileBody}
+              </div>
+            </>
+          ) : (
+            <>
+              {children}
+              {/* X close — desktop only */}
+              <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-50 hover:opacity-100 transition-opacity flex items-center justify-center">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </DialogPrimitive.Close>
+            </>
+          )}
         </motion.div>
       </DialogPrimitive.Content>
     </DialogPortal>
@@ -108,21 +132,21 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = 'DialogContent';
 
 /**
- * DialogHeader — on mobile renders a sticky white nav bar with a back-arrow
- * (DialogClose). On desktop keeps the existing compact sticky style.
+ * DialogHeader
+ * - Mobile: pinned top bar with back-arrow (← Geri). No sticky needed —
+ *   DialogContent places it outside the scroll area.
+ * - Desktop: sticky compact header (unchanged behaviour).
  */
 function DialogHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'sticky top-0 z-10',
-        // Mobile: full-width white bar, flex row with back arrow
-        'bg-white/95 [backdrop-filter:blur(20px)] -mx-5 px-3 -mt-5 pt-1.5 pb-2',
-        'flex items-center gap-2',
-        'border-b border-gray-100',
-        // Desktop: existing compact style
-        'md:bg-white md:[backdrop-filter:none] md:-mx-6 md:px-6 md:-mt-6 md:pt-6 md:pb-4 md:border-0 md:block',
-        'mb-3',
+        // Mobile: full-width white bar, flex row, back arrow on left
+        'shrink-0 flex items-center gap-2',
+        'bg-white/95 [backdrop-filter:blur(20px)] w-full px-3 py-2 border-b border-gray-100',
+        // Desktop: sticky compact (negative margins cancel p-6 of parent)
+        'md:sticky md:top-0 md:z-10 md:block md:bg-white md:[backdrop-filter:none]',
+        'md:-mx-6 md:px-6 md:-mt-6 md:pt-6 md:pb-4 md:border-0 md:mb-3',
         className,
       )}
       {...props}
@@ -135,23 +159,19 @@ function DialogHeader({ className, children, ...props }: React.HTMLAttributes<HT
         <ArrowLeft className="h-5 w-5 text-gray-900" />
       </DialogPrimitive.Close>
 
-      {/* Title area — takes remaining space on mobile, full width on desktop */}
+      {/* Title / action area */}
       <div className="flex-1 min-w-0 md:contents">
         {children}
       </div>
     </div>
   );
 }
+DialogHeader.displayName = 'DialogHeader';
 
 function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
-      className={cn(
-        'text-[15px] font-bold leading-tight',
-        // Mobile: tighter
-        'md:text-[17px]',
-        className,
-      )}
+      className={cn('text-[15px] font-bold leading-tight md:text-[17px]', className)}
       {...props}
     />
   );
@@ -165,9 +185,7 @@ function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return (
     <div
       className={cn(
-        // Mobile: full-width stacked buttons
         'flex flex-col gap-2 mt-5 pt-4',
-        // Desktop: inline right-aligned
         'md:flex-row md:flex-wrap md:items-center md:justify-end md:gap-2 md:mt-4 md:pt-3 md:border-t md:border-border',
         className,
       )}
