@@ -59,6 +59,7 @@ export const productSchema = z.object({
   species:        z.string().max(100).default(''),
   grade:          z.string().max(100).default(''),
   category_id:    z.string().nullable().optional(),
+  logo_url:       z.string().nullable().optional(),
 });
 export type ProductFormData = z.infer<typeof productSchema>;
 

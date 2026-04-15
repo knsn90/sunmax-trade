@@ -13,7 +13,7 @@ import { canWrite, isAdmin } from '@/lib/permissions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/ui/shared';
 import { AIFormFill } from '@/components/ui/AIFormFill';
-import { Search, Pencil, Trash2, Plus, Tag, Check } from 'lucide-react';
+import { Search, Pencil, Trash2, Plus, Tag, Check, Upload, Link, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const CATEGORY_COLORS = [
@@ -176,12 +176,34 @@ export function ProductsPage() {
   const EMPTY: ProductFormData = {
     name: '', hs_code: '', unit: 'ADMT',
     description: '', origin_country: '', species: '', grade: '',
-    category_id: null,
+    category_id: null, logo_url: null,
   };
 
   const form = useForm<ProductFormData>({ resolver: zodResolver(productSchema), defaultValues: EMPTY });
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = form;
   const selectedCatId = watch('category_id');
+  const logoUrl = watch('logo_url');
+  const [logoTab, setLogoTab] = useState<'upload' | 'url'>('upload');
+  const [logoUrlInput, setLogoUrlInput] = useState('');
+
+  function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.svg') && file.type !== 'image/svg+xml') {
+      alert('Sadece .svg dosyası yükleyebilirsiniz.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setValue('logo_url', reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function handleLogoUrl() {
+    const url = logoUrlInput.trim();
+    if (!url) return;
+    setValue('logo_url', url);
+    setLogoUrlInput('');
+  }
 
   const filtered = products.filter(p => {
     const matchSearch = !search.trim() || (
@@ -203,6 +225,7 @@ export function ProductsPage() {
       species: p.species ?? '',
       grade: p.grade ?? '',
       category_id: p.category_id ?? null,
+      logo_url: p.logo_url ?? null,
     });
     setModalOpen(true);
   }
@@ -441,6 +464,59 @@ export function ProductsPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Logo */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Logo / Görsel</p>
+                  {/* Preview */}
+                  {logoUrl && (
+                    <div className="flex items-center gap-3 mb-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <img src={logoUrl} alt="logo" className="h-10 w-auto object-contain shrink-0" />
+                      <span className="text-[11px] text-gray-500 flex-1 truncate">Logo eklendi</span>
+                      <button type="button" onClick={() => setValue('logo_url', null)}
+                        className="text-gray-400 hover:text-red-500 transition-colors">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                  {/* Tab seçici */}
+                  <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-3">
+                    {(['upload', 'url'] as const).map(tab => (
+                      <button key={tab} type="button" onClick={() => setLogoTab(tab)}
+                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                          logoTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                        }`}>
+                        {tab === 'upload' ? '📁 Bilgisayardan' : '🔗 Web URL'}
+                      </button>
+                    ))}
+                  </div>
+                  {logoTab === 'upload' ? (
+                    <label className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-gray-300 cursor-pointer transition-colors group">
+                      <Upload className="h-4 w-4 text-gray-400 group-hover:text-gray-600 shrink-0" />
+                      <span className="text-[12px] text-gray-400 group-hover:text-gray-600">SVG dosyası seç</span>
+                      <input type="file" accept=".svg,image/svg+xml" className="hidden" onChange={handleLogoFile} />
+                    </label>
+                  ) : (
+                    <div className="flex gap-2">
+                      <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 h-9">
+                        <Link className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                        <input
+                          type="url"
+                          value={logoUrlInput}
+                          onChange={e => setLogoUrlInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleLogoUrl())}
+                          placeholder="https://example.com/logo.svg"
+                          className="flex-1 text-[12px] bg-transparent outline-none text-gray-900 placeholder:text-gray-400"
+                        />
+                      </div>
+                      <button type="button" onClick={handleLogoUrl}
+                        className="px-3 h-9 rounded-xl text-white text-[12px] font-semibold shrink-0"
+                        style={{ background: '#2563eb' }}>
+                        Ekle
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Açıklama */}

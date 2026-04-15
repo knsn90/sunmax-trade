@@ -165,6 +165,7 @@ export interface Product extends Timestamps {
   category?: ProductCategory | null;
   is_active: boolean;
   created_by: string | null;
+  logo_url: string | null;
 }
 
 // ─── Price List ─────────────────────────────────────────────────────────────
