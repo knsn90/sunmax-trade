@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { PageTransition } from '@/components/ui/animations';
 import { Sidebar } from './Sidebar';
@@ -10,7 +10,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/hooks/useAuth';
 import { IMPERSONATION_KEY } from '@/pages/ViewAsPage';
-import { Eye, X } from 'lucide-react';
+import { Eye, X, ArrowLeft } from 'lucide-react';
 
 /** Points favicon + apple-touch-icon to the company logo URL */
 function useDynamicAppIcon(logoUrl: string | undefined | null) {
@@ -30,34 +30,51 @@ function useDynamicAppIcon(logoUrl: string | undefined | null) {
   }, [logoUrl]);
 }
 
+// Bottom nav'da olan ana sekmeler — bunlarda back butonu olmaz
+const BOTTOM_NAV_ROOTS = new Set(['/dashboard', '/pipeline', '/files', '/accounting', '/more']);
+
 const PAGE_TITLES: Record<string, string> = {
   '/pipeline':         'Pipeline',
   '/files':            'All Files',
   '/documents':        'Documents',
   '/accounting':       'Accounting',
-  '/reports':          'Reports',
+  '/reports':          'Raporlar',
   '/contacts':         'Contacts',
-  '/products':         'Products',
-  '/settings':         'Settings',
+  '/products':         'Ürünler',
+  '/price-list':       'Fiyat Listesi',
+  '/fin-reports':      'Finansal Raporlar',
+  '/settings':         'Ayarlar',
   '/activity':         'Activity Log',
 };
 
 function MobilePageHeader() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { action } = useHeaderAction();
   const segments = location.pathname.split('/').filter(Boolean);
   const basePath = '/' + segments[0];
   const title = PAGE_TITLES[basePath];
+  const showBack = !BOTTOM_NAV_ROOTS.has(basePath);
 
-  // Hide on detail pages (e.g. /files/:id)
+  // Hide on detail pages (e.g. /files/:id) — those have their own headers
   if (!title || segments.length > 1) return null;
 
   return (
-    <div className="md:hidden flex items-center justify-between px-5 py-4 bg-transparent">
-      <h1
-        className="text-[22px] font-extrabold text-gray-900 tracking-tight"
-        style={{ fontFamily: 'Manrope, sans-serif' }}
-      >{title}</h1>
+    <div className="md:hidden flex items-center justify-between px-4 py-3.5 bg-white border-b border-gray-100">
+      <div className="flex items-center gap-2">
+        {showBack && (
+          <button
+            onClick={() => navigate(-1)}
+            className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all"
+          >
+            <ArrowLeft className="h-4 w-4 text-gray-600" />
+          </button>
+        )}
+        <h1
+          className="text-[18px] font-extrabold text-gray-900 tracking-tight"
+          style={{ fontFamily: 'Manrope, sans-serif' }}
+        >{title}</h1>
+      </div>
       {action && <div>{action}</div>}
     </div>
   );
