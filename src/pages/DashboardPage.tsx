@@ -249,7 +249,6 @@ const CARD_GRADIENTS = [
 ];
 
 function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/database').PriceList[]; onNavigate: () => void }) {
-  const [activeDot, setActiveDot] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -266,8 +265,7 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
       card.style.opacity   = `${1 - progress * 0.5}`;
       card.style.filter    = progress > 0.15 ? `blur(${(progress * 2.5).toFixed(1)}px)` : '';
     });
-    const idx = Math.round(el.scrollLeft / el.offsetWidth);
-    setActiveDot(Math.max(0, Math.min(idx, prices.length - 1)));
+    // dot tracking removed
   }, [prices.length]);
 
   useEffect(() => {
