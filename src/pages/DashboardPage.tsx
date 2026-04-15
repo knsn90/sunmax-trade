@@ -345,25 +345,25 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
                 {entry.price_date ? new Date(entry.price_date).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
               </span>
             </div>
-            <div
-              className="text-[36px] font-black text-white leading-none mb-3 tracking-tight"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-            >
-              {CURRENCY_SYMBOL[entry.currency] ?? ''}{Number(entry.price).toLocaleString('tr-TR')}
-            </div>
-            <div className="h-px bg-white/15 mb-3" />
-            <div className="text-[13px] font-bold text-white leading-snug mb-1">{entry.product?.name ?? '—'}</div>
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] text-white/45 truncate">{entry.supplier?.name ?? '—'}</div>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div
+                className="text-[36px] font-black text-white leading-none tracking-tight"
+                style={{ fontFamily: 'Manrope, sans-serif' }}
+              >
+                {CURRENCY_SYMBOL[entry.currency] ?? ''}{Number(entry.price).toLocaleString('tr-TR')}
+              </div>
               {getProductLogo(entry.product?.name) && (
                 <img
                   src={getProductLogo(entry.product?.name)!}
                   alt={entry.product?.name ?? ''}
-                  className="h-8 shrink-0 object-contain"
-                  style={{ filter: 'brightness(0) invert(1)', opacity: 0.75 }}
+                  className="h-10 shrink-0 object-contain"
+                  style={{ filter: 'brightness(0) invert(1)', opacity: 0.8 }}
                 />
               )}
             </div>
+            <div className="h-px bg-white/15 mb-3" />
+            <div className="text-[13px] font-bold text-white leading-snug mb-1">{entry.product?.name ?? '—'}</div>
+            <div className="text-[10px] text-white/45 truncate">{entry.supplier?.name ?? '—'}</div>
           </div>
         ))}
         <div className="shrink-0 w-11" />
@@ -873,7 +873,7 @@ export function DashboardPage() {
           {/* Card 2 — Son Uyarılar */}
           <div
             className="relative z-10 rounded-[1.75rem] overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ boxShadow: '0 4px 20px rgba(25,28,30,0.07)', marginTop: -24 }}
+            style={{ boxShadow: '0 4px 20px rgba(25,28,30,0.07)', marginTop: 20 }}
             onClick={() => navigate('/pipeline')}
           >
             <div className="bg-white px-5 pt-4 pb-5">
