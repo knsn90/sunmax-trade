@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 60">
+  <text x="8" y="46" font-family="Arial, sans-serif" font-size="44" font-weight="300" fill="#9ca3af">cmpc</text>
+  <ellipse cx="140" cy="12" rx="8" ry="12" fill="#16a34a" transform="rotate(-30 140 12)"/>
+  <ellipse cx="150" cy="10" rx="8" ry="12" fill="#4ade80" transform="rotate(20 150 10)"/>
+  <ellipse cx="145" cy="18" rx="7" ry="10" fill="#15803d" transform="rotate(0 145 18)"/>
+</svg>

@@ -239,6 +239,19 @@ function SortableWidget({ id, isFull, children }: {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: '$', EUR: '€', TRY: '₺' };
 
+// Tedarikçi adına göre logo eşleştirme (küçük harf kısmi eşleşme)
+const SUPPLIER_LOGOS: { match: string; logo: string }[] = [
+  { match: 'upm',           logo: '/images/logos/upm.svg' },
+  { match: 'domtar',        logo: '/images/logos/domtar.svg' },
+  { match: 'georgia',       logo: '/images/logos/gp.svg' },
+  { match: 'cmpc',          logo: '/images/logos/cmpc.svg' },
+];
+function getSupplierLogo(supplierName: string | undefined): string | null {
+  if (!supplierName) return null;
+  const lower = supplierName.toLowerCase();
+  return SUPPLIER_LOGOS.find(s => lower.includes(s.match))?.logo ?? null;
+}
+
 const CARD_GRADIENTS = [
   'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
   'linear-gradient(135deg, #2e1065 0%, #6d28d9 100%)',
@@ -338,7 +351,17 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
             </div>
             <div className="h-px bg-white/15 mb-3" />
             <div className="text-[13px] font-bold text-white leading-snug mb-1">{entry.product?.name ?? '—'}</div>
-            <div className="text-[10px] text-white/45 truncate">{entry.supplier?.name ?? '—'}</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[10px] text-white/45 truncate">{entry.supplier?.name ?? '—'}</div>
+              {getSupplierLogo(entry.supplier?.name) && (
+                <img
+                  src={getSupplierLogo(entry.supplier?.name)!}
+                  alt={entry.supplier?.name ?? ''}
+                  className="h-5 shrink-0 object-contain"
+                  style={{ filter: 'brightness(0) invert(1)', opacity: 0.6 }}
+                />
+              )}
+            </div>
           </div>
         ))}
         <div className="shrink-0 w-11" />
