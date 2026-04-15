@@ -812,15 +812,16 @@ export function DashboardPage() {
           </div>
           {writable && (
             <button
-              onClick={() => setFabOpen(true)}
-              className="flex items-center gap-2 px-5 py-3 rounded-full text-white text-[13px] font-bold shadow-lg active:scale-95 transition-transform"
+              onClick={() => setFabOpen(v => !v)}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg transition-transform active:scale-90"
               style={{
                 background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)',
                 boxShadow: '0 8px 24px rgba(183,0,17,0.3)',
+                transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)',
+                transition: 'transform 0.25s ease',
               }}
             >
-              <Plus className="h-4 w-4" />
-              Yeni
+              <Plus className="h-5 w-5" />
             </button>
           )}
         </div>
@@ -1257,44 +1258,53 @@ export function DashboardPage() {
       {/* ── Mobile FAB Speed Dial ──────────────────────────────────────────── */}
       {writable && fabOpen && (
         <div className="md:hidden fixed inset-0 z-50" onClick={() => setFabOpen(false)}>
-          {/* backdrop */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          {/* items */}
-          <div className="absolute top-[5.5rem] right-5 flex flex-col items-end gap-3" onClick={e => e.stopPropagation()}>
-            {/* Yeni Dosya */}
-            <button
-              onClick={() => { setFabOpen(false); setNewFileOpen(true); }}
-              className="flex items-center gap-3 px-5 py-3 rounded-2xl text-white text-[14px] font-bold shadow-xl active:scale-95 transition-transform"
-              style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)', boxShadow: '0 8px 24px rgba(183,0,17,0.35)' }}
-            >
-              <FileText className="h-4 w-4" />
-              Yeni Dosya
-            </button>
-            {/* Yeni Fiyat */}
-            <button
-              onClick={() => { setFabOpen(false); navigate('/price-list'); }}
-              className="flex items-center gap-3 px-5 py-3 rounded-2xl text-white text-[14px] font-bold shadow-xl active:scale-95 transition-transform"
-              style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', boxShadow: '0 8px 24px rgba(37,99,235,0.35)' }}
-            >
-              <Tag className="h-4 w-4" />
-              Yeni Fiyat
-            </button>
-            {/* Yeni İşlem */}
-            <button
-              onClick={() => { setFabOpen(false); navigate('/accounting'); }}
-              className="flex items-center gap-3 px-5 py-3 rounded-2xl text-white text-[14px] font-bold shadow-xl active:scale-95 transition-transform"
-              style={{ background: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(5,150,105,0.35)' }}
-            >
-              <Wallet className="h-4 w-4" />
-              Yeni İşlem
-            </button>
-            {/* Close */}
-            <button
-              onClick={() => setFabOpen(false)}
-              className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-xl active:scale-95 transition-transform mt-1"
-            >
-              <Plus className="h-5 w-5 text-gray-700 rotate-45" />
-            </button>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          {/* anchor at button position: top-right */}
+          <div
+            className="absolute"
+            style={{ top: '4.8rem', right: '1.25rem' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Yeni Dosya — sol (180°) */}
+            <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(calc(-50% - 110px), -50%)' }}>
+              <button
+                onClick={() => { setFabOpen(false); setNewFileOpen(true); }}
+                className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+              >
+                <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)', boxShadow: '0 8px 20px rgba(183,0,17,0.4)' }}>
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-white text-[11px] font-bold">Dosya</span>
+              </button>
+            </div>
+            {/* Yeni Fiyat — sol-alt (225°) */}
+            <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(calc(-50% - 80px), calc(-50% + 80px))' }}>
+              <button
+                onClick={() => { setFabOpen(false); navigate('/price-list'); }}
+                className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+              >
+                <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', boxShadow: '0 8px 20px rgba(37,99,235,0.4)' }}>
+                  <Tag className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-white text-[11px] font-bold">Fiyat</span>
+              </button>
+            </div>
+            {/* Yeni İşlem — alt (270°) */}
+            <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, calc(-50% + 110px))' }}>
+              <button
+                onClick={() => { setFabOpen(false); navigate('/accounting'); }}
+                className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+              >
+                <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)', boxShadow: '0 8px 20px rgba(5,150,105,0.4)' }}>
+                  <Wallet className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-white text-[11px] font-bold">İşlem</span>
+              </button>
+            </div>
+            {/* Ana buton (kapatma) */}
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}>
+              <Plus className="h-5 w-5 rotate-45" />
+            </div>
           </div>
         </div>
       )}
