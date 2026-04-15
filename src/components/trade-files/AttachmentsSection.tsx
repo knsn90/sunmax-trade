@@ -29,8 +29,7 @@ export function AttachmentsSection({
   fileNo: string;
   dropboxFolderUrl?: string | null;
 }) {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: attachments = [], isLoading } = useTradeFileAttachments(tradeFileId);
   const create = useCreateTradeFileAttachment(tradeFileId);
   const remove = useDeleteTradeFileAttachment(tradeFileId);

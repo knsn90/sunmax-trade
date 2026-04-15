@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { deliverySchema, type DeliveryFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
 import { useConvertToDelivery } from '@/hooks/useTradeFiles';
-import { useTheme } from '@/contexts/ThemeContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Package, Layers } from 'lucide-react';
 
@@ -29,8 +28,6 @@ interface DeliveryModalProps {
 }
 
 export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: DeliveryModalProps) {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
   const convertToDelivery = useConvertToDelivery();
   const [step, setStep] = useState<'ask' | 'form'>('ask');
 
@@ -184,19 +181,19 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 pt-2 border-t border-gray-100">
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="hidden md:flex px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors items-center justify-center"
               >
                 İptal
               </button>
               <button
                 type="submit"
                 disabled={convertToDelivery.isPending}
-                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-                style={{ background: accent }}
+                className="w-full md:w-auto px-4 h-12 md:h-8 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
+                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
               >
                 {convertToDelivery.isPending ? 'Kaydediliyor…' : 'Teslimatı Kaydet'}
               </button>

@@ -19,6 +19,8 @@ import {
 import { DocumentsPage } from '@/pages/DocumentsPage';
 import { PriceListPage } from '@/pages/PriceListPage';
 import { LegacyImportPage } from '@/pages/LegacyImportPage';
+import { TenantManagementPage } from '@/pages/TenantManagementPage';
+import { ViewAsPage } from '@/pages/ViewAsPage';
 
 function TradeFileDetailRoute() {
   const { id } = useParams();
@@ -27,7 +29,19 @@ function TradeFileDetailRoute() {
 
 export const router = createBrowserRouter([
   {
+    path: '/view-as',
+    element: (
+      <AuthGuard>
+        <ViewAsPage />
+      </AuthGuard>
+    ),
+  },
+  {
     path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/login/:tenantSlug',
     element: <LoginPage />,
   },
   {
@@ -72,6 +86,14 @@ export const router = createBrowserRouter([
         element: (
           <AuthGuard requiredRoles={['admin']}>
             <LegacyImportPage />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: 'admin/tenants',
+        element: (
+          <AuthGuard requiredRoles={['admin']}>
+            <TenantManagementPage />
           </AuthGuard>
         ),
       },

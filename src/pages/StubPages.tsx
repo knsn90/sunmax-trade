@@ -340,6 +340,7 @@ export function ProductsPage() {
         {/* Product Modal — Mono tasarım */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="max-w-lg !p-0 overflow-hidden">
+            <DialogTitle className="sr-only">{editing ? 'Ürün Düzenle' : 'Yeni Ürün'}</DialogTitle>
             {/* Başlık */}
             <div className="px-6 pt-6 pb-4 border-b border-gray-100">
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">

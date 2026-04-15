@@ -37,8 +37,7 @@ function SalesReportTab() {
   const { t: tc } = useTranslation('common');
   const { data: files = [] } = useTradeFiles();
   const { data: customers = [] } = useCustomers();
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const [custFilter, setCustFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -273,8 +272,7 @@ function SalesReportTab() {
 
 export function PnlReportTab() {
   const { t } = useTranslation('reports');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: files = [] } = useTradeFiles();
   // Batch dosyaları bulmak için (tradeFileService.list parent_file_id=null filtreler)
   const { data: allFiles = [] } = useAllTradeFiles();
@@ -1007,8 +1005,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 
 export function AccountStatementTab() {
   const { t: tc } = useTranslation('common');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const { data: settings } = useSettings();
   const { data: customers = [], isLoading: loadingC, error: errC } = useCustomers();
@@ -1677,8 +1674,7 @@ const CHART_COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4
 function AnalyticsTab() {
   const { t, i18n } = useTranslation('reports');
   const { data: files = [] } = useTradeFiles();
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const [period, setPeriod] = useState<'6m' | '12m' | 'all'>('12m');
 
   const filteredFiles = useMemo(() => {
@@ -2113,8 +2109,7 @@ const FARSI_FONTS = [
 type FarsiFontId = typeof FARSI_FONTS[number]['id'];
 
 export function CustomerReportTab() {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: customers = [], isLoading: loadingC } = useCustomers();
   const { data: settings } = useSettings();
 
@@ -2924,8 +2919,7 @@ export function CustomerReportTab() {
 
 export function ReportsPage() {
   const { t } = useTranslation('reports');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const [activeTab, setActiveTab] = useState<RepTab>('sales');
 
   const TAB_LABELS: [RepTab, string][] = [

@@ -30,8 +30,7 @@ const EMPTY: KasaForm = {
 };
 
 export function KasaManager() {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: kasalar = [], isLoading } = useKasalar();
   const { data: allTxns = [] } = useTransactions();
   const createKasa = useCreateKasa();

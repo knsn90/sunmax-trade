@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
-import { DateInput } from '@/components/ui/form-elements';
+import { DateInput, NumericInput } from '@/components/ui/form-elements';
 import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight, Plus, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +60,7 @@ const TR_BANKS = [
 ];
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
+import { Calculator } from '@/components/ui/Calculator';
 import type { OcrResult } from '@/lib/openai';
 
 const EXPENSE_CATEGORIES = [
@@ -167,7 +168,7 @@ export function TransactionModal({
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 pointer-events-none">$</span>
           <input type="text" inputMode="decimal" value={usdStr} onChange={handleUsdChange}
             onFocus={() => { usdFocused.current = true; }}
-            onBlur={() => { usdFocused.current = false; setUsdStr(usdEquivalent > 0 ? usdEquivalent.toFixed(2) : ''); }}
+            onBlur={() => { usdFocused.current = false; setUsdStr(usdEquivalent > 0 ? usdEquivalent.toLocaleString('en-US', { maximumFractionDigits: 2 }) : ''); }}
             placeholder="0.00" className={`${inp} pl-6`}
           />
         </div>
@@ -352,13 +353,16 @@ export function TransactionModal({
   // When amount/rate/currency/kurYon change externally → update USD display
   useEffect(() => {
     if (usdFocused.current) return;
-    setUsdStr(isNonUSD && usdEquivalent > 0 ? usdEquivalent.toFixed(2) : '');
+    setUsdStr(isNonUSD && usdEquivalent > 0 ? usdEquivalent.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '');
   }, [amount, rate, currency, kurYon, isNonUSD, usdEquivalent]);
 
   function handleUsdChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
-    setUsdStr(val);
-    const usdVal = parseFloat(val);
+    const raw = e.target.value.replace(/[^0-9.,]/g, '');
+    const noComma = raw.replace(/,/g, '');
+    const parts = noComma.split('.');
+    const formatted = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (parts[1] !== undefined ? '.' + parts[1] : '');
+    setUsdStr(formatted);
+    const usdVal = parseFloat(noComma);
     if (usdVal > 0 && amount > 0) {
       // back-calculate rate from USD value
       const newRate = kurYon === 'direct'
@@ -505,6 +509,7 @@ export function TransactionModal({
                 } as Record<string, string>)[txnType] ?? t('transaction.modal.titleNew')
             }</DialogTitle>
             <div className="flex gap-1.5 shrink-0">
+              <Calculator variant="form" />
               <SmartFill mode="transaction" onResult={handleOcrResult} formName="Transaction" iconOnly />
               {!isEdit && <OcrButton mode="transaction" onResult={handleOcrResult} iconOnly />}
             </div>
@@ -590,9 +595,13 @@ export function TransactionModal({
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
-                  <input type="text" inputMode="decimal" {...register('amount')} className={inp} />
+                  <Controller name="amount" control={control}
+                    render={({ field }) => (
+                      <NumericInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} className={inp} placeholder="0" />
+                    )}
+                  />
                 </Fld>
-                {isNonUSD && <RateFields />}
+                {isNonUSD && RateFields()}
               </div>
               <Fld label="Ödeme Türü">
                 <div className="flex gap-2">
@@ -677,9 +686,13 @@ export function TransactionModal({
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
-                  <input type="text" inputMode="decimal" {...register('amount')} className={inp} />
+                  <Controller name="amount" control={control}
+                    render={({ field }) => (
+                      <NumericInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} className={inp} placeholder="0" />
+                    )}
+                  />
                 </Fld>
-                {isNonUSD && <RateFields />}
+                {isNonUSD && RateFields()}
               </div>
 
               {/* From → To */}
@@ -785,9 +798,13 @@ export function TransactionModal({
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
-                  <input type="text" inputMode="decimal" {...register('amount')} className={inp} />
+                  <Controller name="amount" control={control}
+                    render={({ field }) => (
+                      <NumericInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} className={inp} placeholder="0" />
+                    )}
+                  />
                 </Fld>
-                {isNonUSD && <RateFields />}
+                {isNonUSD && RateFields()}
               </div>
 
               {/* Ödeme Türü */}
@@ -976,11 +993,17 @@ export function TransactionModal({
                       </div>
                       <div className={`grid gap-3 ${isMasrafNonUSD ? 'grid-cols-3' : 'grid-cols-2'}`}>
                         <Fld label="Tutar">
-                          <input type="text" inputMode="decimal" {...register('masraf_tutar')} placeholder="0.00" className={inp} />
+                          <Controller name="masraf_tutar" control={control}
+                            render={({ field }) => (
+                              <NumericInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} className={inp} placeholder="0" />
+                            )}
+                          />
                         </Fld>
                         {isMasrafNonUSD && (
                           <Fld label={`Kur (1 USD = ? ${masrafCurrency})`}>
-                            <input type="text" inputMode="decimal" {...register('masraf_rate')} placeholder="örn. 32.50" className={inp} />
+                            <Controller name="masraf_rate" control={control} render={({ field }) => (
+                              <NumericInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} className={inp} placeholder="0.0000" />
+                            )} />
                           </Fld>
                         )}
                         <Fld label="USD Karşılığı">
@@ -996,14 +1019,14 @@ export function TransactionModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex flex-col md:flex-row md:justify-end gap-2 pt-1">
             <button type="button" onClick={() => onOpenChange(false)}
-              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+              className="hidden md:flex h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors items-center justify-center">
               {tc('btn.cancel')}
             </button>
             <button type="submit" disabled={createTxn.isPending || updateTxn.isPending || createTransfer.isPending}
-              className="h-9 px-5 rounded-xl text-[13px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all shadow-sm"
-              style={{ fontFamily: 'Manrope, sans-serif', background: 'linear-gradient(135deg, #b70011, #dc2626)' }}>
+              className="w-full md:w-auto h-12 md:h-9 px-5 rounded-2xl md:rounded-xl text-[14px] md:text-[13px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all shadow-sm"
+              style={{ fontFamily: 'Manrope, sans-serif', background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}>
               {isEdit ? t('transaction.modal.btnUpdate') : t('transaction.modal.btnSave')}
             </button>
           </div>

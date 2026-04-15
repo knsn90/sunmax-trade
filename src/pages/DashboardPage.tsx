@@ -106,6 +106,13 @@ function initials(name: string) {
   return name.split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase();
 }
 
+// ─── Transaction type labels ──────────────────────────────────────────────────
+const TXN_TYPE_LABELS: Record<string, string> = {
+  receipt: 'Tahsilat', payment: 'Ödeme', advance: 'Ön Ödeme',
+  sale_inv: 'Satış Faturası', purchase_inv: 'Satın Alma',
+  svc_inv: 'Hizmet Faturası', expense: 'Gider', ic_transfer: 'İç Transfer',
+};
+
 // ─── KPI card ─────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
   label: string; value: string; sub?: string;
@@ -120,12 +127,12 @@ function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
       {/* Mobile */}
       <div className="flex items-center gap-3 md:hidden">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: accent + '15' }}>
+          style={{ background: accent + '18' }}>
           <span style={{ color: accent }}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{label}</div>
-          <div className="text-[14px] font-extrabold text-gray-900 leading-tight tabular-nums">{value}</div>
+          <div className="text-[15px] font-extrabold text-gray-900 leading-tight tabular-nums" style={{ fontFamily: 'Manrope, sans-serif' }}>{value}</div>
           {sub && (
             <div className="flex items-center gap-1 mt-0.5">
               {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-green-500 shrink-0" />}
@@ -238,9 +245,7 @@ export function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useTransactionSummary();
   const { data: transactions = [] } = useTransactions();
   const { data: priceEntries = [] } = usePriceList();
-  const { theme } = useTheme();
-  const isDonezo = theme === 'donezo';
-  const accent = isDonezo ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const writable = canWrite(profile?.role);
   const [newFileOpen, setNewFileOpen] = useState(false);
 
@@ -423,6 +428,12 @@ export function DashboardPage() {
     if (h < 18) return t('greeting.afternoon');
     return t('greeting.evening');
   }, [t]);
+
+  const recentTxns = useMemo(() =>
+    [...transactions].sort((a, b) =>
+      new Date(b.transaction_date ?? '').getTime() - new Date(a.transaction_date ?? '').getTime()
+    ).slice(0, 6),
+  [transactions]);
 
   const isFirstLoad = (filesLoading && files.length === 0) || (summaryLoading && !summary);
   if (isFirstLoad) return <LoadingSpinner />;
@@ -670,98 +681,373 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8">
+    <div className="-mx-4 md:mx-0 min-h-screen pb-28 md:pb-8">
 
-      {/* Mobile greeting */}
-      <div className="md:hidden px-4 pt-4 pb-2 flex items-center justify-between">
-        <div>
-          <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{greeting}</div>
-          <div className="text-[17px] font-extrabold text-gray-900 leading-tight">{profile?.full_name?.split(' ')[0]}</div>
-        </div>
-        {writable && (
-          <button
-            onClick={() => setNewFileOpen(true)}
-            className="flex items-center gap-1.5 h-9 px-4 rounded-full text-white text-[12px] font-semibold shadow-sm active:opacity-80"
-            style={{ background: accent }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Yeni Dosya
-          </button>
-        )}
-      </div>
+      {/* ═══════════════════════════════════════════════════════════════════
+          MOBILE — Kinetic Precision Design
+      ════════════════════════════════════════════════════════════════════ */}
+      <div className="md:hidden min-h-screen" style={{ background: '#f7f9fc' }}>
 
-      <div className="px-3 md:px-6 space-y-3 md:space-y-4">
-
-        {/* Desktop greeting */}
-        <div className="hidden md:flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden px-6 py-4">
+        {/* ── Top Header: Selamlama + Yeni Dosya ──────────────────────────── */}
+        <div className="px-5 pt-6 pb-2 flex items-center justify-between">
           <div>
-            <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{greeting}</div>
-            <div className="text-[22px] font-extrabold text-gray-900 leading-tight">{profile?.full_name ?? 'Dashboard'}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: '#525a64' }}>
+              {greeting}
+            </div>
+            <div
+              className="text-[22px] font-extrabold text-gray-900 leading-tight tracking-tight"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >{profile?.full_name?.split(' ')[0] ?? 'Dashboard'}</div>
           </div>
-          <div className="flex items-center gap-4">
+          {writable && (
+            <button
+              onClick={() => setNewFileOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 rounded-full text-white text-[13px] font-bold shadow-lg active:scale-95 transition-transform"
+              style={{
+                background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)',
+                boxShadow: '0 8px 24px rgba(183,0,17,0.3)',
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Yeni Dosya
+            </button>
+          )}
+        </div>
+
+        {/* KPI Bento Cards */}
+        <div className="px-5 pt-4 space-y-4">
+
+          {/* Card 1 — Alacak */}
+          <div
+            className="bg-white rounded-[1.75rem] p-6 cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ borderLeft: '4px solid #dc2626' }}
+            onClick={() => navigate('/accounting', { state: { tab: 'sale' } })}
+          >
+            <p className="text-[13px] font-medium" style={{ color: '#5c403c' }}>{t('kpi.receivable')}</p>
+            <h3
+              className="text-[2.1rem] font-black text-gray-900 tracking-tighter mt-1 leading-none"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >{fUSD(summary?.totalReceivable ?? 0)}</h3>
+            <div className="mt-4 flex items-center gap-1.5 text-[12px] font-bold text-green-600">
+              <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+              {t('kpi.fromCustomers')}
+            </div>
+          </div>
+
+          {/* Card 2 — Aktif Dosyalar */}
+          <div
+            className="bg-white rounded-[1.75rem] p-6 cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ borderLeft: '4px solid #dc2626' }}
+            onClick={() => navigate('/pipeline')}
+          >
+            <p className="text-[13px] font-medium" style={{ color: '#5c403c' }}>{t('kpi.activeFiles')}</p>
+            <h3
+              className="text-[2.1rem] font-black text-gray-900 tracking-tighter mt-1 leading-none"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >{activeFiles}</h3>
+            <div className="mt-4 flex items-center gap-1.5 text-[12px] font-bold" style={{ color: '#b70011' }}>
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              {alerts.length > 0 ? `${alerts.length} uyarı var` : t('kpi.newThisMonth', { count: thisMonth })}
+            </div>
+          </div>
+
+          {/* Card 3 — Borç (Vibrancy gradient) */}
+          <div
+            className="rounded-[1.75rem] p-6 cursor-pointer active:scale-[0.98] transition-transform"
+            style={{
+              background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)',
+              boxShadow: '0 20px 50px rgba(183,0,17,0.18)',
+            }}
+            onClick={() => navigate('/accounting', { state: { tab: 'buy' } })}
+          >
+            <p className="text-[13px] font-medium text-white/80">{t('kpi.payable')}</p>
+            <h3
+              className="text-[2.1rem] font-black text-white tracking-tighter mt-1 leading-none"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >{fUSD(summary?.totalPayable ?? 0)}</h3>
+            <div className="mt-4 text-[11px] font-extrabold text-white/80 uppercase tracking-widest">
+              {t('kpi.toSuppliers')}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Transactions Section */}
+        <div className="px-5 pt-8 pb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2
+              className="text-[1.6rem] font-extrabold tracking-tight text-gray-900"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >Son İşlemler</h2>
             {writable && (
               <button
-                onClick={() => setNewFileOpen(true)}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity"
-                style={{ background: accent }}
+                onClick={() => navigate('/accounting')}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-white text-[13px] font-bold shadow-lg active:scale-95 transition-transform"
+                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)', boxShadow: '0 8px 20px rgba(183,0,17,0.25)' }}
               >
-                <Plus className="h-3.5 w-3.5" />
-                Yeni Dosya
+                <Plus className="h-4 w-4" />
+                Yeni Giriş
               </button>
             )}
-            <span className="text-[11px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
+          </div>
+
+          {recentTxns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+              <DollarSign className="h-10 w-10 mb-3 opacity-20" />
+              <p className="text-[14px] font-semibold text-gray-500">İşlem bulunamadı</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentTxns.map((tx) => {
+                const partyName = tx.customer?.name ?? tx.supplier?.name ?? tx.service_provider?.name ?? tx.party_name ?? '—';
+                const fileRef   = tx.trade_file?.file_no ?? tx.reference_no ?? '';
+                const typeLabel = TXN_TYPE_LABELS[tx.transaction_type] ?? tx.transaction_type;
+                const status    = tx.payment_status;
+                const statusCfg = status === 'paid'
+                  ? { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Ödendi'  }
+                  : status === 'partial'
+                    ? { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'Kısmi'   }
+                    : { bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'Bekliyor' };
+                const bg = avatarBg(partyName);
+                const ini = initials(partyName);
+                return (
+                  <div
+                    key={tx.id}
+                    className="bg-white rounded-[1.5rem] p-5"
+                    style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.04)' }}
+                  >
+                    {/* Party */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div
+                        className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0"
+                        style={{ background: bg }}
+                      >{ini}</div>
+                      <div className="min-w-0">
+                        <div
+                          className="text-[15px] font-bold text-gray-900 truncate"
+                          style={{ fontFamily: 'Manrope, sans-serif' }}
+                        >{partyName}</div>
+                        {fileRef && (
+                          <div className="text-[11px] font-mono" style={{ color: '#5c403c' }}>
+                            {fileRef}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Type / Status / Amount */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#525a64' }}>TİP</p>
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">
+                          {typeLabel}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#525a64' }}>DURUM</p>
+                        <span className={cn('text-[11px] font-bold px-2.5 py-1 rounded-full', statusCfg.bg, statusCfg.text)}>
+                          {statusCfg.label}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: '#525a64' }}>TUTAR</p>
+                      <p
+                        className="text-[16px] font-black text-gray-900"
+                        style={{ fontFamily: 'Manrope, sans-serif' }}
+                      >{fUSD(tx.amount_usd ?? tx.amount)}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-50">
+                      <button
+                        onClick={() => navigate('/accounting')}
+                        className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Pipeline Widget ──────────────────────────────────────────────── */}
+        <div className="px-5 pb-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[1.4rem] font-extrabold tracking-tight text-gray-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Pipeline
+            </h2>
+            <button onClick={() => navigate('/pipeline')} className="text-[12px] font-bold flex items-center gap-1" style={{ color: '#b70011' }}>
+              Tümü <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="bg-white rounded-[1.5rem] p-5 space-y-1" style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.05)' }}>
+            {(['request','sale','delivery','completed','cancelled'] as const).map((key) => {
+              const cfg = STATUS_CFG[key];
+              const count = byStatus[key];
+              const pct = files.length > 0 ? (count / files.length) * 100 : 0;
+              return (
+                <button key={key} onClick={() => navigate('/pipeline')}
+                  className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 active:bg-gray-50 rounded-xl transition-colors"
+                >
+                  <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot)} />
+                  <span className="text-[13px] text-gray-700 flex-1 text-left font-medium">{cfg.label}</span>
+                  <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={cn('h-full rounded-full transition-all', cfg.dot)} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className={cn('text-[13px] font-bold w-5 text-right shrink-0', cfg.text)}>{count}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── KPI Row — always fixed at top, not draggable ─────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <KpiCard label={t('kpi.activeFiles')} value={String(activeFiles)} sub={t('kpi.newThisMonth', { count: thisMonth })}
-            icon={<Package className="h-5 w-5" />} accent={accent}
-            onClick={() => navigate('/pipeline')} />
-          <KpiCard label={t('kpi.totalProfit')} value={fUSD(totalProfit)} sub={t('kpi.completed', { count: byStatus.completed })}
-            trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981"
-            onClick={() => navigate('/fin-reports')} />
-          <KpiCard label={t('kpi.receivable')} value={fUSD(summary?.totalReceivable ?? 0)} sub={t('kpi.fromCustomers')}
-            icon={<DollarSign className="h-5 w-5" />} accent="#2563eb"
-            onClick={() => navigate('/accounting', { state: { tab: 'sale' } })} />
-          <KpiCard label={t('kpi.payable')} value={fUSD(summary?.totalPayable ?? 0)} sub={t('kpi.toSuppliers')}
-            icon={<Wallet className="h-5 w-5" />} accent="#f59e0b"
-            onClick={() => navigate('/accounting', { state: { tab: 'buy' } })} />
-        </div>
-
-        {/* Drag-and-drop sortable widget grid */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={widgetOrder} strategy={verticalListSortingStrategy}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-              {widgetOrder.map(id => (
-                <SortableWidget key={id} id={id} isFull={widgetSizes[id] === 'full'}>
-                  {(dragHandleProps) => {
-                    const content = renderWidget(id, dragHandleProps);
-                    return content ?? <></>;
-                  }}
-                </SortableWidget>
+        {/* ── Alerts Widget ────────────────────────────────────────────────── */}
+        {alerts.length > 0 && (
+          <div className="px-5 py-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[1.4rem] font-extrabold tracking-tight text-gray-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                Uyarılar
+                <span className="ml-2 text-[13px] font-bold px-2 py-0.5 rounded-full text-white align-middle" style={{ background: '#dc2626' }}>{alerts.length}</span>
+              </h2>
+            </div>
+            <div className="space-y-3">
+              {alerts.slice(0, 4).map((a, i) => (
+                <button key={i} onClick={() => navigate(a.href)}
+                  className="w-full flex items-center gap-3 bg-white rounded-2xl p-4 text-left active:scale-[0.98] transition-transform"
+                  style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.05)' }}
+                >
+                  <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', a.type === 'danger' ? 'bg-red-50' : 'bg-amber-50')}>
+                    <AlertTriangle className={cn('h-4 w-4', a.type === 'danger' ? 'text-red-500' : 'text-amber-500')} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-gray-900 truncate">{a.label}</div>
+                    <div className="text-[11px] text-gray-400 truncate mt-0.5">{a.sub}</div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+                </button>
               ))}
             </div>
-          </SortableContext>
+          </div>
+        )}
 
-          {/* Drag overlay — ghost card while dragging */}
-          <DragOverlay>
-            {activeId ? (
-              <div className="bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-4 opacity-90 rotate-1">
-                <div className="flex items-center gap-2">
-                  <GripVertical className="h-4 w-4 text-gray-400" />
-                  <span className="text-[12px] font-bold text-gray-600 capitalize">{activeId.replace('_', ' ')}</span>
-                </div>
+        {/* ── Son Dosyalar Widget ───────────────────────────────────────────── */}
+        <div className="px-5 pb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[1.4rem] font-extrabold tracking-tight text-gray-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Son Dosyalar
+            </h2>
+            <button onClick={() => navigate('/files')} className="text-[12px] font-bold flex items-center gap-1" style={{ color: '#b70011' }}>
+              Tümü <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="bg-white rounded-[1.5rem] overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.05)' }}>
+            {recentFiles.slice(0, 5).map((f) => {
+              const name = f.customer?.name ?? '—';
+              const cfg = STATUS_CFG[f.status] ?? STATUS_CFG.request;
+              return (
+                <button key={f.id} onClick={() => navigate(`/files/${f.id}`)}
+                  className="w-full flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-0 active:bg-gray-50 transition-colors text-left"
+                >
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[12px] font-bold shrink-0"
+                    style={{ background: avatarBg(name) }}
+                  >{initials(name)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-gray-900 truncate">{name}</div>
+                    <div className="text-[11px] font-mono mt-0.5" style={{ color: '#5c403c' }}>{f.file_no}</div>
+                  </div>
+                  <span className={cn('text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0', cfg.text, cfg.bg)}>
+                    {cfg.label}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          DESKTOP — Existing layout (unchanged)
+      ════════════════════════════════════════════════════════════════════ */}
+      <div className="hidden md:block bg-gray-50 min-h-screen pb-8">
+        <div className="px-6 space-y-4">
+
+          {/* Desktop greeting */}
+          <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden px-6 py-4">
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{greeting}</div>
+              <div className="text-[22px] font-extrabold text-gray-900 leading-tight">{profile?.full_name ?? 'Dashboard'}</div>
+            </div>
+            <div className="flex items-center gap-4">
+              {writable && (
+                <button
+                  onClick={() => setNewFileOpen(true)}
+                  className="flex items-center gap-2 h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity"
+                  style={{ background: accent }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Yeni Dosya
+                </button>
+              )}
+              <span className="text-[11px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
+            </div>
+          </div>
+
+          {/* KPI Row */}
+          <div className="grid grid-cols-4 gap-4">
+            <KpiCard label={t('kpi.activeFiles')} value={String(activeFiles)} sub={t('kpi.newThisMonth', { count: thisMonth })}
+              icon={<Package className="h-5 w-5" />} accent={accent}
+              onClick={() => navigate('/pipeline')} />
+            <KpiCard label={t('kpi.totalProfit')} value={fUSD(totalProfit)} sub={t('kpi.completed', { count: byStatus.completed })}
+              trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981"
+              onClick={() => navigate('/fin-reports')} />
+            <KpiCard label={t('kpi.receivable')} value={fUSD(summary?.totalReceivable ?? 0)} sub={t('kpi.fromCustomers')}
+              icon={<DollarSign className="h-5 w-5" />} accent="#2563eb"
+              onClick={() => navigate('/accounting', { state: { tab: 'sale' } })} />
+            <KpiCard label={t('kpi.payable')} value={fUSD(summary?.totalPayable ?? 0)} sub={t('kpi.toSuppliers')}
+              icon={<Wallet className="h-5 w-5" />} accent="#f59e0b"
+              onClick={() => navigate('/accounting', { state: { tab: 'buy' } })} />
+          </div>
+
+          {/* Drag-and-drop sortable widget grid */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={widgetOrder} strategy={verticalListSortingStrategy}>
+              <div className="grid grid-cols-2 gap-4">
+                {widgetOrder.map(id => (
+                  <SortableWidget key={id} id={id} isFull={widgetSizes[id] === 'full'}>
+                    {(dragHandleProps) => {
+                      const content = renderWidget(id, dragHandleProps);
+                      return content ?? <></>;
+                    }}
+                  </SortableWidget>
+                ))}
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+            </SortableContext>
+            <DragOverlay>
+              {activeId ? (
+                <div className="bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-4 opacity-90 rotate-1">
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="h-4 w-4 text-gray-400" />
+                    <span className="text-[12px] font-bold text-gray-600 capitalize">{activeId.replace('_', ' ')}</span>
+                  </div>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
 
+        </div>
       </div>
 
       {/* Modals */}

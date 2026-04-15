@@ -405,8 +405,7 @@ export function DocumentsPage() {
   const { t } = useTranslation('documents');
   const [activeTab, setActiveTab] = useState<Tab>('invoices');
   const [search, setSearch] = useState('');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const TABS: { key: Tab; label: string; icon: typeof Receipt }[] = [
     { key: 'invoices',      label: t('tabs.invoices'),     icon: Receipt },

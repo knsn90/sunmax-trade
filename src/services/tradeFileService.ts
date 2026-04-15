@@ -104,9 +104,22 @@ export const tradeFileService = {
       initialStatus?: TradeFileStatus;
     },
   ): Promise<TradeFile> {
+    // RLS politikası tenant_id gerektiriyor
+    const { data: { user } } = await supabase.auth.getUser();
+    let tenantId: string | null = null;
+    if (user) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+      tenantId = (prof as { tenant_id?: string | null } | null)?.tenant_id ?? null;
+    }
+
     const { data, error } = await supabase
       .from('trade_files')
       .insert({
+        tenant_id: tenantId,
         file_no: input.file_no,
         file_date: input.file_date,
         customer_id: input.customer_id,

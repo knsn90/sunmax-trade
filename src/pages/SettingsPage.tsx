@@ -28,9 +28,17 @@ import {
 import { getApiKeyFromCache, saveApiKeyToDb, deleteApiKeyFromDb, type ApiService } from '@/services/companySettingsService';
 import { supabase } from '@/services/supabase';
 import { setLanguage, SUPPORTED_LANGUAGES } from '@/i18n';
-import { Globe } from 'lucide-react';
+import { Globe, Palette, ExternalLink } from 'lucide-react';
+import { useTenant } from '@/contexts/TenantContext';
+import { useNavigate as _useNavigate } from 'react-router-dom';
+import {
+  useUpdateTenant,
+  useUploadTenantLogo,
+  useUploadTenantLoginBg,
+  useUploadTenantFavicon,
+} from '@/hooks/useTenants';
 
-type SettingsTab = 'company' | 'users' | 'backup' | 'audit';
+type SettingsTab = 'company' | 'users' | 'backup' | 'audit' | 'appearance';
 
 // ─── Label helper ─────────────────────────────────────────────────────────────
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -63,6 +71,7 @@ export function SettingsPage() {
   const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const admin = isAdmin(profile?.role);
+  const { currentTenant } = useTenant();
   const { data: settings, isLoading } = useSettings();
   const { data: bankAccounts = [] } = useBankAccounts();
   const updateSettings = useUpdateSettings();
@@ -109,6 +118,19 @@ export function SettingsPage() {
   }
 
   if (isLoading) return <div className="flex justify-center py-20"><LoadingSpinner /></div>;
+
+  // Süper admin "tüm firmalar" modundaysa firma seçmesini iste
+  if (!currentTenant) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
+          <Building2 className="h-5 w-5 text-gray-400" />
+        </div>
+        <p className="text-sm font-medium text-gray-500">Ayarları görüntülemek için sol menüden bir firma seçin</p>
+      </div>
+    );
+  }
+
   if (!admin) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -122,10 +144,11 @@ export function SettingsPage() {
 
   const defaultBank = bankAccounts[0];
   const TABS: { key: SettingsTab; label: string; icon: React.ElementType }[] = [
-    { key: 'company', label: t('tabs.company'), icon: Building2 },
-    { key: 'users',   label: t('tabs.users'),   icon: Users },
-    { key: 'backup',  label: t('tabs.backup'),  icon: Database },
-    { key: 'audit',   label: 'Belge Denetimi',  icon: ScanSearch },
+    { key: 'company',    label: t('tabs.company'), icon: Building2 },
+    { key: 'users',      label: t('tabs.users'),   icon: Users },
+    { key: 'appearance', label: 'Görünüm',          icon: Palette },
+    { key: 'backup',     label: t('tabs.backup'),  icon: Database },
+    { key: 'audit',      label: 'Belge Denetimi',  icon: ScanSearch },
   ];
 
   const bankFields = [
@@ -348,6 +371,243 @@ export function SettingsPage() {
 
       {/* ── Audit Tab ────────────────────────────────────────────────────────── */}
       {activeTab === 'audit' && <DocumentAuditTab />}
+
+      {/* ── Appearance Tab ───────────────────────────────────────────────────── */}
+      {activeTab === 'appearance' && <AppearanceTab />}
+    </div>
+  );
+}
+
+// ─── Appearance Tab ───────────────────────────────────────────────────────────
+const COLOR_PRESETS_SETTINGS = [
+  '#dc2626', '#ea580c', '#d97706', '#16a34a', '#0891b2',
+  '#2563eb', '#7c3aed', '#db2777', '#374151', '#0f172a',
+];
+
+function AppearanceTab() {
+  const navigate = _useNavigate();
+  const { profile } = useAuth();
+  const { currentTenant, refetch } = useTenant();
+  const updateTenant  = useUpdateTenant();
+  const uploadLogo    = useUploadTenantLogo();
+  const uploadLoginBg = useUploadTenantLoginBg();
+  const uploadFavicon = useUploadTenantFavicon();
+
+  const logoRef    = useRef<HTMLInputElement>(null);
+  const bgRef      = useRef<HTMLInputElement>(null);
+  const faviconRef = useRef<HTMLInputElement>(null);
+
+  const [color, setColor] = useState(currentTenant?.primary_color ?? '#dc2626');
+  const [domain, setDomain] = useState(currentTenant?.custom_domain ?? '');
+  const [saving, setSaving] = useState(false);
+
+  // Sync if tenant changes
+  useEffect(() => {
+    if (currentTenant) {
+      setColor(currentTenant.primary_color ?? '#dc2626');
+      setDomain(currentTenant.custom_domain ?? '');
+    }
+  }, [currentTenant?.id]);
+
+  // Super admin without a selected tenant → redirect to full management page
+  if (profile?.is_super_admin && !currentTenant) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-8 flex flex-col items-center gap-4 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
+          <Building2 className="h-5 w-5 text-amber-500" />
+        </div>
+        <div>
+          <p className="text-[14px] font-bold text-gray-800">Firma Görünümünü Yönet</p>
+          <p className="text-[12px] text-gray-400 mt-1">Süper admin olarak tüm firmaların görünümünü Firma Yönetimi sayfasından düzenleyebilirsiniz.</p>
+        </div>
+        <button
+          onClick={() => navigate('/admin/tenants')}
+          className="flex items-center gap-2 h-9 px-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[13px] font-semibold hover:bg-amber-100 transition-colors"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Firma Yönetimine Git
+        </button>
+      </div>
+    );
+  }
+
+  if (!currentTenant) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-8 flex flex-col items-center gap-3 text-center">
+        <Palette className="h-8 w-8 text-gray-200" />
+        <p className="text-[13px] text-gray-400">Firma bilgisi yüklenemedi.</p>
+      </div>
+    );
+  }
+
+  async function saveColor() {
+    if (!currentTenant) return;
+    setSaving(true);
+    try {
+      await updateTenant.mutateAsync({ id: currentTenant.id, data: { primary_color: color, custom_domain: domain } });
+      // Renk değişikliği tüm componetlere yayılsın diye sayfayı yenile
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Kaydetme başarısız');
+      setSaving(false);
+    }
+  }
+
+  async function handleAssetUpload(file: File, type: 'logo' | 'login_bg' | 'favicon') {
+    if (!currentTenant) return;
+    try {
+      let url = '';
+      if (type === 'logo')     url = await uploadLogo.mutateAsync({ tenantId: currentTenant.id, file });
+      if (type === 'login_bg') url = await uploadLoginBg.mutateAsync({ tenantId: currentTenant.id, file });
+      if (type === 'favicon')  url = await uploadFavicon.mutateAsync({ tenantId: currentTenant.id, file });
+      await updateTenant.mutateAsync({
+        id: currentTenant.id,
+        data: {
+          logo_url:     type === 'logo'     ? url : currentTenant.logo_url,
+          login_bg_url: type === 'login_bg' ? url : currentTenant.login_bg_url,
+          favicon_url:  type === 'favicon'  ? url : currentTenant.favicon_url,
+        },
+      });
+      refetch();
+    } catch { /* hook shows toast */ }
+  }
+
+  const AssetUploadRow = ({
+    label, url, inputRef, type, accept,
+  }: {
+    label: string; url: string; inputRef: React.RefObject<HTMLInputElement>; type: 'logo' | 'login_bg' | 'favicon'; accept: string;
+  }) => (
+    <div className="flex items-center gap-3 py-3 border-b border-dashed border-gray-100 last:border-0">
+      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+        {url
+          ? <img src={url} alt={label} className="w-full h-full object-contain" />
+          : <ImageIcon className="h-4 w-4 text-gray-300" />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-semibold text-gray-700">{label}</p>
+        <p className="text-[10px] text-gray-400 truncate">{url ? url.split('/').pop() : 'Yüklenmedi'}</p>
+      </div>
+      <input ref={inputRef} type="file" accept={accept} className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleAssetUpload(f, type); e.target.value = ''; }}
+      />
+      <button
+        onClick={() => inputRef.current?.click()}
+        className="h-7 px-3 rounded-lg bg-gray-100 text-[11px] font-semibold text-gray-600 hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+      >
+        <Upload className="h-3 w-3" />
+        {url ? 'Değiştir' : 'Yükle'}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Tema Rengi */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <SectionHeader icon={Palette} title="Tema Rengi" description="Butonlar, vurgular ve aktif menü öğeleri için kullanılır." />
+        <div className="flex items-center gap-3 mb-3">
+          <input
+            type="color"
+            value={color}
+            onChange={e => setColor(e.target.value)}
+            className="w-10 h-10 rounded-xl cursor-pointer border-2 border-gray-200"
+          />
+          <input
+            value={color}
+            onChange={e => setColor(e.target.value)}
+            className="h-9 px-3 rounded-xl border border-gray-200 text-[13px] font-mono text-gray-700 w-32 focus:outline-none focus:border-gray-400"
+          />
+          {/* Preview */}
+          <div className="flex-1 h-9 rounded-xl flex items-center justify-center text-white text-[12px] font-semibold" style={{ background: color }}>
+            Önizleme
+          </div>
+        </div>
+        {/* Presets */}
+        <div className="flex gap-2 flex-wrap mb-4">
+          {COLOR_PRESETS_SETTINGS.map(c => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              title={c}
+              className="w-6 h-6 rounded-lg border-2 transition-transform hover:scale-110"
+              style={{ background: c, borderColor: color === c ? '#374151' : 'transparent' }}
+            />
+          ))}
+        </div>
+
+        {/* Custom domain */}
+        <div className="mb-4 bg-gray-50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Globe className="h-3.5 w-3.5 text-gray-500" />
+            <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">Özel Domain</label>
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <Input
+              value={domain}
+              onChange={e => setDomain(e.target.value)}
+              placeholder="app.firmaadi.com"
+              className="flex-1 bg-white"
+            />
+            {domain && (
+              <button
+                type="button"
+                onClick={() => window.open(`https://${domain}`, '_blank')}
+                className="h-9 px-3 rounded-xl bg-white border border-gray-200 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 shrink-0 transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Aç
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => window.open(`/login?tenant=${currentTenant.id}`, '_blank')}
+              className="h-9 px-3 rounded-xl bg-white border border-gray-200 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 shrink-0 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Login Önizle
+            </button>
+          </div>
+          {/* DNS talimatları */}
+          <div className="bg-white rounded-xl border border-gray-100 p-3 space-y-1.5">
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">DNS Ayarı (CNAME Kaydı)</p>
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-mono bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 text-gray-600 shrink-0">TYPE</span>
+              <span className="text-[10px] text-gray-500">CNAME</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-mono bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 text-gray-600 shrink-0">NAME</span>
+              <span className="text-[10px] font-mono text-gray-700">{domain ? domain.split('.')[0] : 'app'}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-mono bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 text-gray-600 shrink-0">VALUE</span>
+              <span className="text-[10px] font-mono text-gray-700">{window.location.hostname}</span>
+            </div>
+            <p className="text-[9px] text-gray-400 mt-2 pt-2 border-t border-gray-50">
+              Bu kaydı alan adı sağlayıcınızda oluşturduktan sonra domain'i buraya girin ve kaydedin. Yayılma 24-48 saat sürebilir.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={saveColor}
+          disabled={saving}
+          className="h-9 px-5 rounded-xl text-white text-[13px] font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center gap-2 shadow-sm"
+          style={{ background: color }}
+        >
+          {saving && <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+          Kaydet
+        </button>
+      </div>
+
+      {/* Görseller */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <SectionHeader icon={ImageIcon} title="Görseller" description="Logo, login arka planı ve favicon yönetimi." />
+        <AssetUploadRow label="Logo" url={currentTenant.logo_url ?? ''} inputRef={logoRef} type="logo" accept="image/*" />
+        <AssetUploadRow label="Login Arka Planı" url={currentTenant.login_bg_url ?? ''} inputRef={bgRef} type="login_bg" accept="image/*" />
+        <AssetUploadRow label="Favicon" url={currentTenant.favicon_url ?? ''} inputRef={faviconRef} type="favicon" accept="image/png,image/ico,image/svg+xml" />
+      </div>
     </div>
   );
 }

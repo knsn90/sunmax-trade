@@ -5,8 +5,7 @@ import { MessageSquare, Trash2, Send } from 'lucide-react';
 import { fDate } from '@/lib/formatters';
 
 export function NotesSection({ tradeFileId }: { tradeFileId: string }) {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: notes = [], isLoading } = useTradeFileNotes(tradeFileId);
   const create = useCreateTradeFileNote(tradeFileId);
   const remove = useDeleteTradeFileNote(tradeFileId);

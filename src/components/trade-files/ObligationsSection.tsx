@@ -35,8 +35,7 @@ function StatusBadge({ status }: { status: TradeObligation['status'] }) {
 function PaymentForm({ obligation, onClose }: { obligation: TradeObligation; onClose: () => void }) {
   const { t } = useTranslation('tradeFiles');
   const { t: tc } = useTranslation('common');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const record = useRecordObligationPayment();
 
   const [amount, setAmount] = useState(obligation.balance.toFixed(2));

@@ -4,13 +4,15 @@ import type { CompanySettingsFormData, BankAccountFormData } from '@/types/forms
 
 export const settingsService = {
   async getSettings(): Promise<CompanySettings> {
+    // RLS tenant filtrelemesine güven — .limit(1) kaldırıldı
+    // (limit(1) ile super admin tüm firmaların ilk satırını alıyordu)
     const { data, error } = await supabase
       .from('company_settings')
       .select('*')
-      .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
+    if (!data) throw new Error('Bu firma için ayar kaydı bulunamadı. Supabase\'de SQL çalıştırın.');
     return data as CompanySettings;
   },
 

@@ -329,4 +329,92 @@ function DateInput({ value = '', onChange, onBlur, placeholder = 'GG/AA/YYYY', c
   );
 }
 
-export { Label, Textarea, NativeSelect, Badge, badgeVariants, Separator, DateInput };
+// ─── NumericInput — binlik ayraçlı sayı girişi ────────────────────────────────
+
+interface NumericInputProps {
+  value?: number | string;
+  onChange?: (value: number) => void;
+  onBlur?: () => void;
+  className?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  min?: number;
+  max?: number;
+}
+
+/** 1234567.89 → "1,234,567.89" olarak gösterir, ham sayıyı form'a gönderir */
+function NumericInput({
+  value,
+  onChange,
+  onBlur,
+  className,
+  placeholder = '0',
+  disabled,
+}: NumericInputProps) {
+  const [display, setDisplay] = React.useState('');
+
+  // Sayıyı virgüllü stringe çevir
+  function toDisplay(raw: number | string | undefined): string {
+    if (raw === '' || raw === undefined || raw === null) return '';
+    const n = typeof raw === 'string' ? parseFloat(raw.replace(/,/g, '')) : raw;
+    if (isNaN(n) || n === 0) return '';
+    // Tam sayı kısmına binlik ayraç, ondalık kısmı olduğu gibi bırak
+    const str = String(n);
+    const [intPart, decPart] = str.split('.');
+    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
+  }
+
+  React.useEffect(() => {
+    // Sadece dışarıdan değişirse güncelle (kullanıcı yazarken müdahale etme)
+    const n = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value;
+    if (isNaN(n as number) || n === 0) { setDisplay(''); return; }
+    // Mevcut display ile aynıysa dokunma (yazarken formatı boz)
+    const current = parseFloat(display.replace(/,/g, ''));
+    if (current === n) return;
+    setDisplay(toDisplay(value));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value;
+    // Sadece rakam, nokta ve virgül kabul et
+    const cleaned = raw.replace(/[^0-9.,]/g, '');
+    // Virgülleri kaldır (kullanıcı yazarken)
+    const noComma = cleaned.replace(/,/g, '');
+    // Birden fazla nokta engelle
+    const parts = noComma.split('.');
+    const safe = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : noComma;
+
+    // Görüntü: tam sayı kısmına binlik ayraç ekle, ondalık kısmı olduğu gibi bırak
+    const [intStr, decStr] = safe.split('.');
+    const formattedInt = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const formatted = decStr !== undefined ? `${formattedInt}.${decStr}` : formattedInt;
+    setDisplay(formatted);
+
+    const num = parseFloat(safe);
+    onChange?.(isNaN(num) ? 0 : num);
+  }
+
+  function handleBlur() {
+    // Blur'da tam formatlı göster
+    const n = parseFloat(display.replace(/,/g, ''));
+    if (!isNaN(n) && n !== 0) setDisplay(toDisplay(n));
+    onBlur?.();
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
+    />
+  );
+}
+
+export { Label, Textarea, NativeSelect, Badge, badgeVariants, Separator, DateInput, NumericInput };

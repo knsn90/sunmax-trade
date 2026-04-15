@@ -10,6 +10,25 @@ interface Timestamps {
   updated_at: string;
 }
 
+// ─── Tenant (Firma) ─────────────────────────────────────────────────────────
+
+export interface Tenant extends Timestamps {
+  id: string;
+  name: string;
+  tax_id: string;
+  address: string;
+  phone: string;
+  email: string;
+  // Görsel özelleştirme
+  logo_url: string;
+  login_bg_url: string;
+  favicon_url: string;
+  primary_color: string;   // Hex renk kodu, örn: '#dc2626'
+  // Domain & aktiflik
+  custom_domain: string;
+  is_active: boolean;
+}
+
 // ─── Auth / Profiles ────────────────────────────────────────────────────────
 
 export interface Profile extends Timestamps {
@@ -22,6 +41,9 @@ export interface Profile extends Timestamps {
   deleted_at: string | null;
   avatar_url: string | null;
   dashboard_prefs: { order?: string[]; sizes?: Record<string, 'full' | 'half'> } | null;
+  // Multi-tenant
+  tenant_id: string | null;
+  is_super_admin: boolean;
 }
 
 // ─── Company Settings ───────────────────────────────────────────────────────

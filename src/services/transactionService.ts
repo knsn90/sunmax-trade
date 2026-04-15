@@ -264,9 +264,22 @@ export const transactionService = {
       partyType = typeToParty[input.transaction_type] as TransactionFormData['party_type'];
     }
 
+    // RLS politikası tenant_id gerektiriyor — mevcut kullanıcının tenant'ını al
+    const { data: { user } } = await supabase.auth.getUser();
+    let tenantId: string | null = null;
+    if (user) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+      tenantId = (prof as { tenant_id?: string | null } | null)?.tenant_id ?? null;
+    }
+
     const { data, error } = await supabase
       .from('transactions')
       .insert({
+        tenant_id: tenantId,
         transaction_date: input.transaction_date,
         transaction_type: input.transaction_type,
         trade_file_id: input.trade_file_id || null,

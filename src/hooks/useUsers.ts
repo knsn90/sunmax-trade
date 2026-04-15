@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/userService';
 import type { UserRole } from '@/types/enums';
+import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 
 export function useUsers() {
@@ -12,12 +13,19 @@ export function useUsers() {
 
 export function useCreateUser() {
   const qc = useQueryClient();
+  const { currentTenant } = useTenant();
   return useMutation({
     mutationFn: (params: { email: string; password: string; fullName: string; role: UserRole }) =>
-      userService.createUser(params.email, params.password, params.fullName, params.role),
+      userService.createUser(
+        params.email,
+        params.password,
+        params.fullName,
+        params.role,
+        currentTenant?.id, // Aktif firmanın ID'si otomatik atanır
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User created');
+      toast.success('Kullanıcı oluşturuldu');
     },
     onError: (err: Error) => toast.error(err.message),
   });

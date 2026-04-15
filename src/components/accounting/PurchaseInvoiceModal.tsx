@@ -10,9 +10,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { DateInput } from '@/components/ui/form-elements';
+import { DateInput, NumericInput } from '@/components/ui/form-elements';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { OcrButton } from '@/components/ui/OcrButton';
+import { Calculator } from '@/components/ui/Calculator';
 import type { OcrResult } from '@/lib/openai';
 import {
   HelpCircle, Banknote, Building2, CreditCard,
@@ -230,6 +231,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
           <div className="flex items-center gap-2 pr-8">
             <DialogTitle className="flex-1">{isEdit ? 'Satın Alma Faturasını Düzenle' : 'Satın Alma Faturası'}</DialogTitle>
             <div className="flex gap-1.5 shrink-0">
+              <Calculator variant="form" />
               <SmartFill mode="invoice" onResult={handleOcrResult} formName="PurchaseInvoice" iconOnly />
               <OcrButton mode="invoice" onResult={handleOcrResult} iconOnly />
             </div>
@@ -355,7 +357,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                         USD→{currency}
                       </button>
                     </div>
-                    <input type="text" inputMode="decimal" className={cn(inp, 'flex-1')} value={dovizKuru || ''} onChange={e => setDovizKuru(Number(e.target.value))} placeholder="0.0000" />
+                    <NumericInput className={cn(inp, 'flex-1')} value={dovizKuru} onChange={setDovizKuru} placeholder="0.0000" />
                   </div>
                 </Field>
               )}
@@ -379,8 +381,8 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                 <div key={i} className="grid gap-2 items-center"
                   style={{ gridTemplateColumns: '2fr 110px 110px 80px 70px 32px' }}>
                   <input className={inp} value={line.aciklama} onChange={e => updateLine(i, 'aciklama', e.target.value)} placeholder="Ürün / malzeme…" />
-                  <input type="text" inputMode="decimal" className={inp} value={line.netAgirlik || ''} onChange={e => updateLine(i, 'netAgirlik', Number(e.target.value))} placeholder="0.000" />
-                  <input type="text" inputMode="decimal" className={inp} value={line.birimFiyat || ''} onChange={e => updateLine(i, 'birimFiyat', Number(e.target.value))} placeholder="0.000" />
+                  <NumericInput className={inp} value={line.netAgirlik} onChange={(v) => updateLine(i, 'netAgirlik', v)} placeholder="0.000" />
+                  <NumericInput className={inp} value={line.birimFiyat} onChange={(v) => updateLine(i, 'birimFiyat', v)} placeholder="0.000" />
                   <select className={sel} value={line.kdvOrani} onChange={e => updateLine(i, 'kdvOrani', Number(e.target.value))}>
                     {KDV_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -430,10 +432,10 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                 <input className={inp} value={mensei} onChange={e => setMensei(e.target.value)} placeholder="FINLAND" />
               </Field>
               <Field label="Brüt Ağırlık (KG)">
-                <input type="text" inputMode="decimal" className={inp} value={brutAgirlik || ''} onChange={e => setBrutAgirlik(Number(e.target.value))} placeholder="0.000" />
+                <NumericInput className={inp} value={brutAgirlik} onChange={setBrutAgirlik} placeholder="0.000" />
               </Field>
               <Field label="Kap Adeti">
-                <input type="text" inputMode="decimal" className={inp} value={kapAdeti || ''} onChange={e => setKapAdeti(Number(e.target.value))} placeholder="0" />
+                <NumericInput className={inp} value={kapAdeti} onChange={setKapAdeti} />
               </Field>
             </div>
           </div>
@@ -468,7 +470,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                     <input className={inp} value={masrafTuru} onChange={e => setMasrafTuru(e.target.value)} placeholder="Örn. Banka komisyonu" />
                   </Field>
                   <Field label="Tutar">
-                    <input type="text" inputMode="decimal" className={inp} value={masrafTutar || ''} onChange={e => setMasrafTutar(Number(e.target.value))} />
+                    <NumericInput className={inp} value={masrafTutar} onChange={setMasrafTutar} />
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -496,7 +498,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                             USD→{masrafCurrency}
                           </button>
                         </div>
-                        <input type="text" inputMode="decimal" className={cn(inp, 'flex-1')} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} placeholder="0.0000" />
+                        <NumericInput className={cn(inp, 'flex-1')} value={masrafRate} onChange={setMasrafRate} placeholder="0.0000" />
                       </div>
                     </Field>
                   )}

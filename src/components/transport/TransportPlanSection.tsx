@@ -53,8 +53,7 @@ interface Props {
 
 export function TransportPlanSection({ file, writable }: Props) {
   const { profile } = useAuth();
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const { data: plan, isLoading } = useTransportPlan(file.id);
   const upsertPlan  = useUpsertPlan(file.id);
@@ -176,7 +175,7 @@ export function TransportPlanSection({ file, writable }: Props) {
   // ── Render ──────────────────────────────────────────────────────────────────
   if (isLoading) return (
     <div className="flex justify-center py-8">
-      <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
+      <div className="w-5 h-5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: 'var(--color-accent, #dc2626)' }} />
     </div>
   );
 

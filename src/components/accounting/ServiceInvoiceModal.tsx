@@ -11,10 +11,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { OcrButton } from '@/components/ui/OcrButton';
+import { Calculator } from '@/components/ui/Calculator';
 import type { OcrResult } from '@/lib/openai';
 import { PartyCombobox, type SelectedParty } from '@/components/accounting/PartyCombobox';
 import { cn } from '@/lib/utils';
-import { DateInput } from '@/components/ui/form-elements';
+import { DateInput, NumericInput } from '@/components/ui/form-elements';
 import {
   HelpCircle, Banknote, Building2, CreditCard,
   ChevronDown, ChevronUp, Plus, Trash2, X,
@@ -210,6 +211,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
           <div className="flex items-center gap-2 pr-8">
             <DialogTitle className="flex-1">{isEdit ? 'Hizmet Faturasını Düzenle' : 'Hizmet Faturası'}</DialogTitle>
             <div className="flex gap-1.5 shrink-0">
+              <Calculator variant="form" />
               <SmartFill mode="transaction" onResult={(_r: OcrResult) => {}} formName="ServiceInvoice" iconOnly />
               <OcrButton mode="transaction" onResult={(_r: OcrResult) => {}} iconOnly />
             </div>
@@ -327,7 +329,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                         USD→{currency}
                       </button>
                     </div>
-                    <input type="text" inputMode="decimal" className={cn(inp, 'flex-1')} value={dovizKuru || ''} onChange={e => setDovizKuru(Number(e.target.value))} placeholder="0.0000" />
+                    <NumericInput className={cn(inp, 'flex-1')} value={dovizKuru} onChange={setDovizKuru} placeholder="0.0000" />
                   </div>
                 </Field>
               )}
@@ -352,11 +354,11 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                 <div key={i} className="grid gap-2 items-center"
                   style={{ gridTemplateColumns: '2fr 70px 80px 100px 80px 70px 32px' }}>
                   <input className={inp} value={line.aciklama} onChange={e => updateLine(i, 'aciklama', e.target.value)} placeholder="Hizmet açıklaması…" />
-                  <input type="text" inputMode="decimal" className={inp} value={line.miktar || ''} onChange={e => updateLine(i, 'miktar', Number(e.target.value))} placeholder="0" />
+                  <NumericInput className={inp} value={line.miktar} onChange={(v) => updateLine(i, 'miktar', v)} />
                   <select className={sel} value={line.birim} onChange={e => updateLine(i, 'birim', e.target.value)}>
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
-                  <input type="text" inputMode="decimal" className={inp} value={line.birimFiyat || ''} onChange={e => updateLine(i, 'birimFiyat', Number(e.target.value))} placeholder="0.000" />
+                  <NumericInput className={inp} value={line.birimFiyat} onChange={(v) => updateLine(i, 'birimFiyat', v)} placeholder="0.000" />
                   <select className={sel} value={line.kdvOrani} onChange={e => updateLine(i, 'kdvOrani', Number(e.target.value))}>
                     {KDV_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -430,7 +432,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                     <input className={inp} value={masrafTuru} onChange={e => setMasrafTuru(e.target.value)} placeholder="Örn. Banka komisyonu" />
                   </Field>
                   <Field label="Tutar">
-                    <input type="text" inputMode="decimal" className={inp} value={masrafTutar || ''} onChange={e => setMasrafTutar(Number(e.target.value))} />
+                    <NumericInput className={inp} value={masrafTutar} onChange={setMasrafTutar} />
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -458,7 +460,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                             USD→{masrafCurrency}
                           </button>
                         </div>
-                        <input type="text" inputMode="decimal" className={cn(inp, 'flex-1')} value={masrafRate || ''} onChange={e => setMasrafRate(Number(e.target.value))} placeholder="0.0000" />
+                        <NumericInput className={cn(inp, 'flex-1')} value={masrafRate} onChange={setMasrafRate} placeholder="0.0000" />
                       </div>
                     </Field>
                   )}

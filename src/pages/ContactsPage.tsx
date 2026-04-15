@@ -693,8 +693,7 @@ export function ContactsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('customers');
   const [search, setSearch] = useState('');
   const openNewRef = useRef<(() => void) | null>(null);
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
 

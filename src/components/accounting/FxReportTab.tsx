@@ -32,8 +32,7 @@ const RATE_PLACEHOLDERS: Record<string, string> = {
 };
 
 export function FxReportTab() {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const { data: allTxns = [] } = useTransactions();
 

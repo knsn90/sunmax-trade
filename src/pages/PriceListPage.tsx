@@ -519,9 +519,7 @@ export function PriceListPage() {
   const { t: tc } = useTranslation('common');
 
   const { profile } = useAuth();
-  const { theme } = useTheme();
-  const isDonezo = theme === 'donezo';
-  const accent = isDonezo ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const canWrite = profile?.role === 'admin' || profile?.role === 'manager';
 

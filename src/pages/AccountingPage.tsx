@@ -85,21 +85,25 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint, sele
           className="w-4 h-4 rounded accent-red-600 shrink-0 cursor-pointer"
         />
       )}
-      {/* Type dot */}
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: typeColor + '18' }}>
+      {/* Type icon */}
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: typeColor + '18' }}>
         <DollarSign className="h-4 w-4" style={{ color: typeColor }} />
       </div>
       {/* Main info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-[12px] font-bold text-gray-900 truncate">{partyName}</span>
+          <span className="text-[13px] font-bold text-gray-900 truncate" style={{ fontFamily: 'Manrope, sans-serif' }}>{partyName}</span>
         </div>
         <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-          <span className="font-mono">{t.trade_file?.file_no ?? '—'}</span>
-          <span>·</span>
           <Badge variant={t.transaction_type as TransactionType} className="text-[9px] px-1.5 py-0">
             {tc('txType.' + t.transaction_type)}
           </Badge>
+          {t.trade_file?.file_no && (
+            <>
+              <span>·</span>
+              <span className="font-mono">{t.trade_file.file_no}</span>
+            </>
+          )}
         </div>
         {t.description && (
           <div className="text-[10px] text-gray-400 truncate mt-0.5">{t.description}</div>
@@ -107,7 +111,7 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint, sele
       </div>
       {/* Amount + status */}
       <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className="text-[13px] font-bold text-gray-900">{fUSD(t.amount_usd ?? t.amount)}</span>
+        <span className="text-[13px] font-bold text-gray-900 tabular-nums" style={{ fontFamily: 'Manrope, sans-serif' }}>{fUSD(t.amount_usd ?? t.amount)}</span>
         {t.currency !== 'USD' && (
           <span className="text-[10px] text-gray-400 tabular-nums">{fCurrency(t.amount, t.currency)}</span>
         )}
@@ -147,8 +151,7 @@ export function AccountingPage() {
   const admin = isAdmin(profile?.role);
   const canApprove = useCanApprove();
   const bulkSetStatus = useBulkSetDocStatus('transactions');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const TABS: { key: AccTab; label: string }[] = [
     { key: 'all',     label: t('tabs.all') },
@@ -527,6 +530,8 @@ export function AccountingPage() {
                     placeholder={t('filters.search')}
                     value={search}
                     onChange={e => setSearch(e.target.value)}
+                    autoComplete="off"
+                    name="accounting-search"
                   />
                 </div>
                 {writable && (

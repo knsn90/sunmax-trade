@@ -328,9 +328,7 @@ export function TradeFileDetailPage() {
   const { data: fileTxns = [] } = useTransactions(
     allFileIds ? { tradeFileIds: allFileIds } : { tradeFileId: id }
   );
-  const { theme } = useTheme();
-  const isDonezo = theme === 'donezo';
-  const accent = isDonezo ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const [saleOpen, setSaleOpen] = useState(false);
   const [editSaleOpen, setEditSaleOpen] = useState(false);
@@ -939,6 +937,7 @@ export function TradeFileDetailPage() {
       {/* ── Completion Blocker Modal ─────────────────────────────────────── */}
       <Dialog open={completionBlockerOpen} onOpenChange={setCompletionBlockerOpen}>
         <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
+          <DialogTitle className="sr-only">Belge Kontrolü</DialogTitle>
           {/* Header */}
           <div className="px-6 pt-6 pb-4 border-b border-gray-100">
             <div className="flex items-center gap-2 mb-1">
@@ -2074,6 +2073,7 @@ export function TradeFileDetailPage() {
       {/* ── Alt Parti Belge Listesi Modal ───────────────────────────────────── */}
       <Dialog open={batchDocsOpen} onOpenChange={setBatchDocsOpen}>
         <DialogContent size="lg">
+          <DialogTitle className="sr-only">Alt Parti Belgeleri</DialogTitle>
           <div className="sticky top-0 bg-white z-10 pb-3 border-b border-gray-50">
             <p className="text-[14px] font-bold text-gray-900">
               {batchDocsType === 'invoice' ? 'Commercial Invoice' : 'Ambalaj Listesi'} — Alt Partiler

@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/hooks/useAuth';
+import { TenantProvider } from '@/contexts/TenantContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { router } from './router';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
@@ -90,23 +91,28 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <RouterProvider router={router} />
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: '#1a2332',
-                color: '#fff',
-                fontSize: '12px',
-                borderRadius: '8px',
-              },
-            }}
-          />
-          <UpdatePrompt />
-        </AuthProvider>
-      </ThemeProvider>
+      {/* AuthProvider en dışta — TenantContext useAuth'a bağımlı */}
+      <AuthProvider>
+        {/* TenantProvider: profil yüklendikten sonra tenant bilgisini çeker */}
+        <TenantProvider>
+          {/* ThemeProvider: tenant primary_color'ını accent olarak kullanır */}
+          <ThemeProvider>
+            <RouterProvider router={router} />
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: '#1a2332',
+                  color: '#fff',
+                  fontSize: '12px',
+                  borderRadius: '8px',
+                },
+              }}
+            />
+            <UpdatePrompt />
+          </ThemeProvider>
+        </TenantProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -16,10 +16,10 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 // ── Mono stil sabitleri ──────────────────────────────────────────────────────
-const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
-const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+const inp = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-2 focus:ring-red-500/20 w-full';
+const sel = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
 const Lbl = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">{children}</div>
 );
 const Fld = ({ label, children, className, error }: { label: string; children: React.ReactNode; className?: string; error?: string }) => (
   <div className={className}>
@@ -37,8 +37,7 @@ interface Props {
 }
 
 export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit }: Props) {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const navigate = useNavigate();
   const deleteFile = useDeleteTradeFile();
 
@@ -173,7 +172,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <DialogHeader>
           <div className="flex items-center gap-2 pr-8">
-            <DialogTitle className="text-[15px] flex-1">
+            <DialogTitle className="text-[15px] flex-1 font-extrabold tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
               {editMode ? 'Dosya Bilgilerini Düzenle' : 'Yeni Dosya'}
             </DialogTitle>
             {fileNoValue && (
@@ -332,8 +331,8 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
           <Fld label="Notlar">
             <textarea
               {...register('notes')}
-              rows={4}
-              className="bg-gray-100 rounded-lg px-3 py-2 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full resize-none"
+              rows={3}
+              className="bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-2 focus:ring-red-500/20 w-full resize-none"
             />
           </Fld>
 
@@ -352,19 +351,19 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row md:items-center gap-2">
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="hidden md:flex px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors items-center justify-center"
               >
                 İptal
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-                style={{ background: accent }}
+                className="w-full md:w-auto px-5 h-12 md:h-9 rounded-2xl md:rounded-xl text-[14px] md:text-[13px] font-bold text-white shadow-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                style={{ fontFamily: 'Manrope, sans-serif', background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
               >
                 {isPending
                   ? (editMode ? 'Kaydediliyor…' : 'Oluşturuluyor…')

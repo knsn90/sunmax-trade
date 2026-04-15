@@ -57,8 +57,7 @@ function isMoneyIn(txnType: string, partyType: string): boolean {
 }
 
 export function BankAccountManager() {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
   const { data: accounts = [], isLoading } = useBankAccounts();
   const { data: allTxns = [] } = useTransactions();
   const upsert = useUpsertBankAccount();

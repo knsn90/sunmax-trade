@@ -10,9 +10,10 @@ import { today } from '@/lib/formatters';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { OcrButton } from '@/components/ui/OcrButton';
+import { Calculator } from '@/components/ui/Calculator';
 import type { OcrResult } from '@/lib/openai';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, Textarea, DateInput } from '@/components/ui/form-elements';
+import { NativeSelect, Textarea, DateInput, NumericInput } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { ArrowRight, ArrowLeftRight, Banknote, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -109,6 +110,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
               İç Transfer
             </DialogTitle>
             <div className="flex gap-1.5 shrink-0">
+              <Calculator variant="form" />
               <SmartFill mode="transaction" onResult={(_r: OcrResult) => {}} formName="Transfer" iconOnly />
               <OcrButton mode="transaction" onResult={(_r: OcrResult) => {}} iconOnly />
             </div>
@@ -213,7 +215,9 @@ export function TransferModal({ open, onOpenChange }: Props) {
               </NativeSelect>
             </FormGroup>
             <FormGroup label="Tutar *" error={errors.amount?.message}>
-              <Input type="number" step="0.01" {...register('amount')} className={mo} />
+              <Controller name="amount" control={control} render={({ field }) => (
+                <NumericInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} className={mo} />
+              )} />
             </FormGroup>
             {isNonUSD && (
               <FormGroup label="USD Karşılığı">
@@ -234,7 +238,9 @@ export function TransferModal({ open, onOpenChange }: Props) {
 
           {isNonUSD && (
             <FormGroup label="Kur (yerel/USD)">
-              <Input type="number" step="0.0001" {...register('exchange_rate')} className={mo} />
+              <Controller name="exchange_rate" control={control} render={({ field }) => (
+                <NumericInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} className={mo} />
+              )} />
             </FormGroup>
           )}
 
@@ -262,19 +268,19 @@ export function TransferModal({ open, onOpenChange }: Props) {
             <Textarea rows={2} {...register('notes')} className={mo} />
           </FormGroup>
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex flex-col md:flex-row md:justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="hidden md:flex h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors items-center justify-center"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={createTransfer.isPending}
-              className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-              style={{ background: accent }}
+              className="w-full md:w-auto h-12 md:h-8 px-4 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all"
+              style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
             >
               {createTransfer.isPending ? 'Kaydediliyor…' : 'Transferi Kaydet'}
             </button>

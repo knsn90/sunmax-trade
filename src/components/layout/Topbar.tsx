@@ -2,14 +2,16 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LogOut, RefreshCw } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, ChevronDown, Check, LayoutGrid, ShieldCheck } from 'lucide-react';
 import { fDate } from '@/lib/formatters';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { useExchangeRates } from '@/hooks/useExchangeRate';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { cn } from '@/lib/utils';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useSettings } from '@/hooks/useSettings';
+import { Calculator } from '@/components/ui/Calculator';
+import { useState, useRef, useEffect } from 'react';
 
 const PATH_TITLE_KEYS: Record<string, string> = {
   '/dashboard': 'topbar.pageTitles.dashboard',
@@ -65,12 +67,110 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
   );
 }
 
+/** Süper admin firma geçiş dropdown'u */
+function TenantSwitcher() {
+  const { currentTenant, allTenants, switchTenant, resetToSuperAdmin } = useTenant();
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  if (!profile?.is_super_admin) return null;
+
+  const label = currentTenant?.name ?? 'Tüm Firmalar';
+
+  return (
+    <div ref={ref} className="relative hidden md:block">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 h-8 px-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors"
+      >
+        <ShieldCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+        <span className="text-[11px] font-semibold max-w-[140px] truncate">{label}</span>
+        <ChevronDown className={cn('h-3 w-3 text-amber-400 transition-transform shrink-0', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full mt-1.5 left-0 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 min-w-[220px] max-w-[280px]">
+          {/* Header */}
+          <div className="px-3 py-2.5 border-b border-gray-50 bg-gray-50/70">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Firma Geçişi</p>
+          </div>
+
+          {/* Tüm firmalar seçeneği */}
+          <button
+            onClick={() => { resetToSuperAdmin(); setOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+          >
+            <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+              <LayoutGrid className="h-3.5 w-3.5 text-gray-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-semibold text-gray-800 truncate">Tüm Firmalar</p>
+              <p className="text-[10px] text-gray-400">Süper admin görünümü</p>
+            </div>
+            {!currentTenant && <Check className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+          </button>
+
+          {/* Firma listesi */}
+          {allTenants.length > 0 && (
+            <div className="border-t border-gray-50">
+              {allTenants.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { switchTenant(t.id); setOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                >
+                  {t.logo_url ? (
+                    <img src={t.logo_url} alt={t.name} className="w-7 h-7 rounded-lg object-contain bg-gray-50 border border-gray-100" />
+                  ) : (
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white text-[10px] font-black"
+                      style={{ background: t.primary_color || '#dc2626' }}
+                    >
+                      {t.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold text-gray-800 truncate">{t.name}</p>
+                    {t.email && <p className="text-[10px] text-gray-400 truncate">{t.email}</p>}
+                  </div>
+                  {currentTenant?.id === t.id && <Check className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Firma yönetimi linki */}
+          <div className="border-t border-gray-100 px-3 py-2">
+            <button
+              onClick={() => { navigate('/admin/tenants'); setOpen(false); }}
+              className="w-full flex items-center gap-2 text-[11px] font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              Firma Yönetimi
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation('nav');
   const { profile, signOut } = useAuth();
-  const { theme } = useTheme();
+  const { theme, accent } = useTheme();
   const isDonezo = theme === 'donezo';
   const { data: settings } = useSettings();
   const logoUrl = settings?.logo_url;
@@ -96,7 +196,7 @@ export function Topbar() {
             <img src={logoUrl} alt="logo" className="h-7 max-w-[120px] object-contain" />
           ) : (
             <>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#dc2626' }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: accent }}>
                 <span className="font-black text-xs text-white">S</span>
               </div>
               <span className="font-black text-sm tracking-tight text-gray-900">{t('brand.name')}</span>
@@ -104,6 +204,7 @@ export function Topbar() {
           )}
         </div>
 
+        <TenantSwitcher />
         <ExchangeRateBar isDonezo={isDonezo} />
         <div className="flex-1 hidden md:block" />
 
@@ -112,7 +213,7 @@ export function Topbar() {
             {fDate(new Date().toISOString().slice(0, 10))}
           </span>
 
-          <LanguageSwitcher />
+          <Calculator />
           <NotificationBell />
 
           {profile && (
@@ -175,7 +276,7 @@ export function Topbar() {
             </button>
           )}
         </div>
-        <LanguageSwitcher />
+        <Calculator />
         <NotificationBell />
         <Button variant="ghost" size="sm" onClick={handleSignOut} title={t('topbar.logout')} className="text-white/70 hover:text-white hover:bg-white/10">
           <LogOut className="h-3.5 w-3.5" />

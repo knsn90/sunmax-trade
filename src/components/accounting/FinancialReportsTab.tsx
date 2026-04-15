@@ -129,8 +129,7 @@ type AccountOption =
 
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 export function FinancialReportsTab() {
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const { data: kasalar = [] } = useKasalar();
   const { data: bankAccounts = [] } = useBankAccounts();
@@ -560,7 +559,7 @@ export function FinancialReportsTab() {
               </div>
             ) : (
               <div className="flex items-center gap-3 py-6 text-gray-400">
-                <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: 'var(--color-accent, #dc2626)' }} />
                 <span className="text-[13px]">Finansal veriler analiz ediliyor…</span>
               </div>
             )}

@@ -160,7 +160,7 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
         {initials(custName)}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-[13px] text-gray-900 truncate">{custName}</div>
+        <div className="font-semibold text-[13px] text-gray-900 truncate" style={{ fontFamily: 'Manrope, sans-serif' }}>{custName}</div>
         <div className="text-[11px] text-gray-400 mt-0.5 truncate">
           {file.file_no} · {file.product?.name ?? '—'}
         </div>
@@ -175,17 +175,17 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
           {file.selling_price && (
             <span className="text-[10px] text-gray-400">· {fCurrency(file.selling_price)}/MT</span>
           )}
-          {file.creator?.full_name && (
-            <span className="text-[10px] text-gray-400">· {file.creator.full_name}</span>
-          )}
         </div>
       </div>
-      <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-        <span className="text-[11px] text-gray-400">{fDate(file.file_date)}</span>
-        <div className="flex items-center gap-1">
-          <FileActivityPopover file={file} />
-          <MobileRowMenu onEdit={onEdit} onDelete={onDelete} writable={writable} />
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col items-end gap-1" onClick={e => e.stopPropagation()}>
+          <span className="text-[11px] text-gray-400">{fDate(file.file_date)}</span>
+          <div className="flex items-center gap-1">
+            <FileActivityPopover file={file} />
+            <MobileRowMenu onEdit={onEdit} onDelete={onDelete} writable={writable} />
+          </div>
         </div>
+        <ChevronRight className="h-3.5 w-3.5 text-gray-300 shrink-0" />
       </div>
     </div>
   );
@@ -268,9 +268,7 @@ export function TradeFilesPage() {
   const { data: files = [], isLoading } = useTradeFiles();
   const deleteFile = useDeleteTradeFile();
   const writable = canWrite(profile?.role);
-  const { theme } = useTheme();
-  const isDonezo = theme === 'donezo';
-  const accent = isDonezo ? '#dc2626' : '#2563eb';
+  const { accent } = useTheme();
 
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [editFile, setEditFile] = useState<TradeFile | null>(null);
@@ -334,7 +332,23 @@ export function TradeFilesPage() {
       {/* ══════════════════════════════════════════════════════════════
           MOBILE
       ══════════════════════════════════════════════════════════════ */}
-      <div className="md:hidden flex flex-col min-h-screen -mx-4 bg-gray-50">
+      <div className="md:hidden flex flex-col min-h-screen -mx-4" style={{ background: '#f7f9fc' }}>
+
+        {/* Hero */}
+        {!searchOpen && (
+          <div className="px-5 pt-2 pb-3">
+            <div className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-2" style={{ background: 'rgba(183,0,17,0.08)', color: '#b70011' }}>
+              Ticaret Dosyaları
+            </div>
+            <h2
+              className="text-[26px] font-extrabold text-gray-900 leading-tight tracking-tight"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >
+              {filter === 'all' ? 'Tüm Dosyalar' : tc(`status.${filter}`)}<br />
+              <span style={{ color: '#b70011' }}>— {files.length} dosya</span>
+            </h2>
+          </div>
+        )}
 
         <div className="px-4 pb-3">
           {searchOpen ? (

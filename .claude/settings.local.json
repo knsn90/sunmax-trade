@@ -141,7 +141,11 @@
       "Bash(grep \"parent_file_id\\\\|batch_no\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
       "Bash(grep -n \"fn_profit_loss\\\\|fn_trial_balance\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
       "Bash(grep \"sale_currency\\\\|purchase_currency\\\\|purchase_advance\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
-      "Bash(grep -l \"sale_currency\\\\|purchase_currency\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)"
+      "Bash(grep -l \"sale_currency\\\\|purchase_currency\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
+      "Bash(grep -h \"^CREATE TABLE\\\\|^create table\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
+      "Read(//tmp/**)",
+      "Bash(grep -n \"company_name\\\\|company_settings\\\\|CREATE TABLE company\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
+      "Bash(vercel build:*)"
     ]
   }
 }

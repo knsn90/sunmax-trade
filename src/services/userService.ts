@@ -25,35 +25,17 @@ export const userService = {
     password: string,
     fullName: string,
     role: UserRole,
+    tenantId?: string,
   ): Promise<void> {
-    // Save current admin session before signUp replaces it
-    const { data: { session: adminSession } } = await supabase.auth.getSession();
-
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw new Error(error.message);
-    const userId = data.user?.id;
-    if (!userId) throw new Error('User creation failed');
-
-    // Restore admin session immediately (signUp creates a new session for the new user)
-    if (adminSession) {
-      await supabase.auth.setSession({
-        access_token: adminSession.access_token,
-        refresh_token: adminSession.refresh_token,
-      });
-    }
-
-    // Update profile with name and role via RPC (bypasses RLS)
-    const { error: roleError } = await supabase.rpc('admin_update_user_role', {
-      target_id: userId,
-      new_role: role,
+    // SECURITY DEFINER RPC — admin session'ına hiç dokunmaz, session lock yok
+    const { error } = await supabase.rpc('admin_create_user', {
+      p_email:     email,
+      p_password:  password,
+      p_full_name: fullName,
+      p_role:      role,
+      p_tenant_id: tenantId ?? null,
     });
-    if (roleError) throw new Error(roleError.message);
-
-    const { error: nameError } = await supabase
-      .from('profiles')
-      .update({ full_name: fullName })
-      .eq('id', userId);
-    if (nameError) throw new Error(nameError.message);
+    if (error) throw new Error(error.message);
   },
 
   async updateRole(id: string, role: UserRole): Promise<void> {

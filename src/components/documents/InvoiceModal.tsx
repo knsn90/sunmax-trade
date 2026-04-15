@@ -16,7 +16,6 @@ import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { useTheme } from '@/contexts/ThemeContext';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { cn } from '@/lib/utils';
@@ -75,8 +74,6 @@ export function InvoiceModal({
 }: InvoiceModalProps) {
   const { t } = useTranslation('documents');
   const { t: tc } = useTranslation('common');
-  const { theme } = useTheme();
-  const accent = theme === 'donezo' ? '#dc2626' : '#2563eb';
 
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -468,20 +465,20 @@ export function InvoiceModal({
                 {t('invoice.modal.btnImportExcel')}
               </button>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row gap-2">
               {isEdit && (
                 <button type="button" onClick={handlePrint}
-                  className="h-8 px-3 rounded-lg text-[11px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+                  className="hidden md:flex h-8 px-3 rounded-lg text-[11px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors items-center justify-center">
                   {t('invoice.modal.btnPrint')}
                 </button>
               )}
               <button type="button" onClick={() => onOpenChange(false)}
-                className="h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+                className="hidden md:flex h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors items-center justify-center">
                 {tc('btn.cancel')}
               </button>
               <button type="submit" disabled={isSaving}
-                className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-                style={{ background: accent }}>
+                className="w-full md:w-auto h-12 md:h-8 px-4 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all"
+                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}>
                 {isSaving ? tc('btn.saving') : isEdit ? t('invoice.modal.btnUpdate') : t('invoice.modal.btnSave')}
               </button>
             </div>
