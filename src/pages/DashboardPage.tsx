@@ -359,8 +359,8 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
                 <img
                   src={getProductLogo(entry.product?.name)!}
                   alt={entry.product?.name ?? ''}
-                  className="h-5 shrink-0 object-contain"
-                  style={{ filter: 'brightness(0) invert(1)', opacity: 0.6 }}
+                  className="h-8 shrink-0 object-contain"
+                  style={{ filter: 'brightness(0) invert(1)', opacity: 0.75 }}
                 />
               )}
             </div>
@@ -876,7 +876,6 @@ export function DashboardPage() {
             style={{ boxShadow: '0 4px 20px rgba(25,28,30,0.07)', marginTop: -24 }}
             onClick={() => navigate('/pipeline')}
           >
-            <div className="h-1" style={{ background: alerts.length > 0 ? 'linear-gradient(90deg, #dc2626, #ef4444)' : 'linear-gradient(90deg, #16a34a, #22c55e)' }} />
             <div className="bg-white px-5 pt-4 pb-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
