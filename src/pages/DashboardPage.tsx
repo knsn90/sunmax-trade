@@ -317,6 +317,8 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
           paddingBottom: 60,
           marginTop: -4,
           marginBottom: -50,
+          msOverflowStyle: 'none',
+          scrollbarWidth: 'none',
         } as React.CSSProperties}
       >
         <div className="shrink-0 w-11" />
@@ -850,7 +852,7 @@ export function DashboardPage() {
         </div>
 
         {/* KPI Bento Cards */}
-        <div className="px-5 pt-4">
+        <div className="px-5 pt-4" style={{ overflow: 'visible' }}>
 
           {/* Card 1 — Son Fiyatlar (Snap Carousel) */}
           <div className="mb-0">
