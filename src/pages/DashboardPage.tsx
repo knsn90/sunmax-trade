@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -235,6 +235,107 @@ function SortableWidget({ id, isFull, children }: {
   );
 }
 
+// ─── Price Carousel ───────────────────────────────────────────────────────────
+
+const CURRENCY_SYMBOL: Record<string, string> = { USD: '$', EUR: '€', TRY: '₺' };
+
+const CARD_GRADIENTS = [
+  'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+  'linear-gradient(135deg, #2e1065 0%, #6d28d9 100%)',
+  'linear-gradient(135deg, #052e16 0%, #065f46 100%)',
+  'linear-gradient(135deg, #4c0519 0%, #be123c 100%)',
+  'linear-gradient(135deg, #172554 0%, #1d4ed8 100%)',
+  'linear-gradient(135deg, #042f2e 0%, #0f766e 100%)',
+];
+
+function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/database').PriceList[]; onNavigate: () => void }) {
+  const [activeDot, setActiveDot] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const updateCards = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const viewCenter = el.scrollLeft + el.offsetWidth / 2;
+    cardRefs.current.forEach((card) => {
+      if (!card) return;
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const dist = Math.abs(viewCenter - cardCenter);
+      const progress = Math.min(dist / (card.offsetWidth * 0.65), 1);
+      card.style.transform = `scale(${1 - progress * 0.1})`;
+      card.style.opacity   = `${1 - progress * 0.5}`;
+      card.style.filter    = progress > 0.15 ? `blur(${(progress * 2.5).toFixed(1)}px)` : '';
+    });
+    const idx = Math.round(el.scrollLeft / el.offsetWidth);
+    setActiveDot(Math.max(0, Math.min(idx, prices.length - 1)));
+  }, [prices.length]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateCards, { passive: true });
+    setTimeout(updateCards, 60);
+    return () => el.removeEventListener('scroll', updateCards);
+  }, [updateCards]);
+
+  if (prices.length === 0) return <p className="text-[13px] text-gray-400 px-1">Fiyat girişi yok</p>;
+
+  // spacer = (viewport - cardWidth) / 2 → card is calc(100vw - 88px), spacer = 44px
+  return (
+    <>
+      <div
+        ref={scrollRef}
+        className="flex overflow-x-auto scrollbar-none -mx-5"
+        style={{
+          scrollSnapType: 'x mandatory',
+          paddingTop: 12,
+          paddingBottom: 60,
+          marginTop: -4,
+          marginBottom: -50,
+        } as React.CSSProperties}
+      >
+        <div className="shrink-0 w-11" />
+        {prices.map((entry, i) => (
+          <div
+            key={entry.id}
+            ref={el => { cardRefs.current[i] = el; }}
+            className="shrink-0 rounded-[1.75rem] p-5 cursor-pointer"
+            style={{
+              width: 'calc(100vw - 88px)',
+              marginRight: i < prices.length - 1 ? 12 : 0,
+              scrollSnapAlign: 'center',
+              background: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
+              boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
+              transition: 'transform 0.25s ease, opacity 0.25s ease, filter 0.25s ease',
+              willChange: 'transform, opacity, filter',
+            } as React.CSSProperties}
+            onClick={onNavigate}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/20 text-white">
+                {entry.currency}
+              </span>
+              <span className="text-[10px] font-semibold text-white/50">
+                {entry.price_date ? new Date(entry.price_date).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+              </span>
+            </div>
+            <div
+              className="text-[36px] font-black text-white leading-none mb-3 tracking-tight"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >
+              {CURRENCY_SYMBOL[entry.currency] ?? ''}{Number(entry.price).toLocaleString('tr-TR')}
+            </div>
+            <div className="h-px bg-white/15 mb-3" />
+            <div className="text-[13px] font-bold text-white leading-snug mb-1">{entry.product?.name ?? '—'}</div>
+            <div className="text-[10px] text-white/45 truncate">{entry.supplier?.name ?? '—'}</div>
+          </div>
+        ))}
+        <div className="shrink-0 w-11" />
+      </div>
+    </>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function DashboardPage() {
   const { t, i18n }  = useTranslation('dashboard');
@@ -415,12 +516,10 @@ export function DashboardPage() {
     [delayData]
   );
 
-  const latestPrices = useMemo(() => {
-    const map = new Map<string, typeof priceEntries[0]>();
-    [...priceEntries].sort((a, b) => a.price_date.localeCompare(b.price_date))
-      .forEach(e => map.set(e.product_id, e));
-    return Array.from(map.values()).sort((a, b) => (a.product?.name ?? '').localeCompare(b.product?.name ?? ''));
-  }, [priceEntries]);
+  // En güncel fiyatlar (price_date DESC)
+  const latestPrices = useMemo(() =>
+    [...priceEntries].sort((a, b) => b.price_date.localeCompare(a.price_date)),
+  [priceEntries]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -432,7 +531,7 @@ export function DashboardPage() {
   const recentTxns = useMemo(() =>
     [...transactions].sort((a, b) =>
       new Date(b.transaction_date ?? '').getTime() - new Date(a.transaction_date ?? '').getTime()
-    ).slice(0, 6),
+    ).slice(0, 3),
   [transactions]);
 
   const isFirstLoad = (filesLoading && files.length === 0) || (summaryLoading && !summary);
@@ -715,91 +814,223 @@ export function DashboardPage() {
         </div>
 
         {/* KPI Bento Cards */}
-        <div className="px-5 pt-4 space-y-4">
+        <div className="px-5 pt-4">
 
-          {/* Card 1 — Alacak */}
-          <div
-            className="bg-white rounded-[1.75rem] p-6 cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ borderLeft: '4px solid #dc2626' }}
-            onClick={() => navigate('/accounting', { state: { tab: 'sale' } })}
-          >
-            <p className="text-[13px] font-medium" style={{ color: '#5c403c' }}>{t('kpi.receivable')}</p>
-            <h3
-              className="text-[2.1rem] font-black text-gray-900 tracking-tighter mt-1 leading-none"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-            >{fUSD(summary?.totalReceivable ?? 0)}</h3>
-            <div className="mt-4 flex items-center gap-1.5 text-[12px] font-bold text-green-600">
-              <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-              {t('kpi.fromCustomers')}
+          {/* Card 1 — Son Fiyatlar (Snap Carousel) */}
+          <div className="mb-0">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(183,0,17,0.08)' }}>
+                  <Tag className="h-3 w-3" style={{ color: '#b70011' }} />
+                </div>
+                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#525a64' }}>Son Fiyatlar</p>
+              </div>
+              <button onClick={() => navigate('/price-list')} className="text-[11px] font-bold flex items-center gap-0.5" style={{ color: '#b70011' }}>
+                Tümü <ChevronRight className="h-3 w-3" />
+              </button>
             </div>
+            <PriceCarousel prices={latestPrices.slice(0, 6)} onNavigate={() => navigate('/price-list')} />
           </div>
 
-          {/* Card 2 — Aktif Dosyalar */}
+          {/* Card 2 — Son Uyarılar */}
           <div
-            className="bg-white rounded-[1.75rem] p-6 cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ borderLeft: '4px solid #dc2626' }}
+            className="relative z-10 rounded-[1.75rem] overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ boxShadow: '0 4px 20px rgba(25,28,30,0.07)', marginTop: -24 }}
             onClick={() => navigate('/pipeline')}
           >
-            <p className="text-[13px] font-medium" style={{ color: '#5c403c' }}>{t('kpi.activeFiles')}</p>
-            <h3
-              className="text-[2.1rem] font-black text-gray-900 tracking-tighter mt-1 leading-none"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-            >{activeFiles}</h3>
-            <div className="mt-4 flex items-center gap-1.5 text-[12px] font-bold" style={{ color: '#b70011' }}>
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              {alerts.length > 0 ? `${alerts.length} uyarı var` : t('kpi.newThisMonth', { count: thisMonth })}
+            <div className="h-1" style={{ background: alerts.length > 0 ? 'linear-gradient(90deg, #dc2626, #ef4444)' : 'linear-gradient(90deg, #16a34a, #22c55e)' }} />
+            <div className="bg-white px-5 pt-4 pb-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center', alerts.length > 0 ? 'bg-red-50' : 'bg-green-50')}>
+                    <AlertTriangle className={cn('h-3.5 w-3.5', alerts.length > 0 ? 'text-red-500' : 'text-green-600')} />
+                  </div>
+                  <p className="text-[12px] font-bold uppercase tracking-widest" style={{ color: '#525a64' }}>
+                    Uyarılar
+                  </p>
+                  {alerts.length > 0 && (
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-extrabold text-white" style={{ background: '#dc2626' }}>{alerts.length}</span>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-200" />
+              </div>
+              {alerts.length === 0 ? (
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[14px] font-semibold text-green-600">Aktif uyarı yok</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {alerts.slice(0, 2).map((a, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0', a.type === 'danger' ? 'bg-red-50' : 'bg-amber-50')}>
+                        <AlertTriangle className={cn('h-4 w-4', a.type === 'danger' ? 'text-red-500' : 'text-amber-500')} />
+                      </div>
+                      <div className="min-w-0 pt-0.5">
+                        <div className="text-[13px] font-semibold text-gray-900 leading-snug truncate">{a.label}</div>
+                        <div className="text-[11px] text-gray-400 truncate mt-0.5">{a.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Card 3 — Borç (Vibrancy gradient) */}
+          {/* Card 3 — Dosya Özeti (gradient) */}
           <div
-            className="rounded-[1.75rem] p-6 cursor-pointer active:scale-[0.98] transition-transform"
+            className="mt-5 rounded-[1.75rem] p-5 cursor-pointer active:scale-[0.98] transition-transform"
             style={{
               background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)',
-              boxShadow: '0 20px 50px rgba(183,0,17,0.18)',
+              boxShadow: '0 16px 40px rgba(183,0,17,0.22)',
             }}
-            onClick={() => navigate('/accounting', { state: { tab: 'buy' } })}
+            onClick={() => navigate('/pipeline')}
           >
-            <p className="text-[13px] font-medium text-white/80">{t('kpi.payable')}</p>
-            <h3
-              className="text-[2.1rem] font-black text-white tracking-tighter mt-1 leading-none"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-            >{fUSD(summary?.totalPayable ?? 0)}</h3>
-            <div className="mt-4 text-[11px] font-extrabold text-white/80 uppercase tracking-widest">
-              {t('kpi.toSuppliers')}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center">
+                  <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-[12px] font-bold uppercase tracking-widest text-white/80">Dosya Durumu</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/40" />
             </div>
+            {(() => {
+              const STATUS_DONUT = [
+                { key: 'request'   as const, label: 'Talep',      color: '#fde047' },
+                { key: 'sale'      as const, label: 'Satış',      color: '#38bdf8' },
+                { key: 'delivery'  as const, label: 'Teslimat',   color: '#fb923c' },
+                { key: 'completed' as const, label: 'Tamamlandı', color: '#4ade80' },
+              ];
+              const pieData = STATUS_DONUT.map(s => ({ ...s, value: byStatus[s.key] }));
+              const total = pieData.reduce((sum, d) => sum + d.value, 0);
+              const hasAny = total > 0;
+              return (
+                <div className="flex items-center gap-4">
+                  {/* Donut */}
+                  <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
+                    <PieChart width={120} height={120}>
+                      <Pie
+                        data={hasAny ? pieData : [{ value: 1, color: 'rgba(255,255,255,0.15)' }]}
+                        cx={55}
+                        cy={55}
+                        innerRadius={36}
+                        outerRadius={52}
+                        paddingAngle={hasAny ? 3 : 0}
+                        dataKey="value"
+                        stroke="none"
+                        startAngle={90}
+                        endAngle={-270}
+                      >
+                        {(hasAny ? pieData : [{ color: 'rgba(255,255,255,0.15)' }]).map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                    {/* Center label */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-[22px] font-black text-white leading-none" style={{ fontFamily: 'Manrope, sans-serif' }}>{total}</span>
+                      <span className="text-[8px] font-bold text-white/50 uppercase tracking-wider mt-0.5">Dosya</span>
+                    </div>
+                  </div>
+                  {/* Legend */}
+                  <div className="flex-1 space-y-2.5">
+                    {STATUS_DONUT.map(({ key, label, color }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                          <span className="text-[11px] font-semibold text-white/70">{label}</span>
+                        </div>
+                        <span className="text-[13px] font-black text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>{byStatus[key]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
+        {/* ── Son Fiyat Listesi Widget ─────────────────────────────────────── */}
+        {latestPrices.length > 0 && (
+          <div className="px-5 pt-8 pb-2">
+            <div className="flex items-center justify-between mb-3">
+              <h2
+                className="text-[1.4rem] font-extrabold tracking-tight text-gray-900"
+                style={{ fontFamily: 'Manrope, sans-serif' }}
+              >Son Fiyat Listesi</h2>
+              <div className="flex items-center gap-2">
+                {writable && (
+                  <button
+                    onClick={() => navigate('/price-list')}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-white text-[11px] font-bold active:scale-95 transition-transform"
+                    style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Yeni
+                  </button>
+                )}
+                <button onClick={() => navigate('/price-list')} className="text-[12px] font-bold flex items-center gap-1" style={{ color: '#b70011' }}>
+                  Tümü <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="bg-white rounded-[1.5rem] overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.05)' }}>
+              {latestPrices.slice(0, 5).map((entry, i) => (
+                <div
+                  key={entry.id}
+                  className={cn('flex items-center gap-3 px-4 py-3', i < Math.min(latestPrices.length, 5) - 1 && 'border-b border-gray-50')}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-gray-900 truncate">{entry.product?.name ?? '—'}</div>
+                    <div className="text-[11px] text-gray-400 truncate">{entry.supplier?.name ?? '—'}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-[14px] font-black text-gray-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      {entry.currency} {Number(entry.price).toLocaleString('tr-TR')}
+                    </div>
+                    <div className="text-[10px] text-gray-400">{entry.price_date ? new Date(entry.price_date).toLocaleDateString('tr-TR') : ''}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Recent Transactions Section */}
         <div className="px-5 pt-8 pb-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-3">
             <h2
-              className="text-[1.6rem] font-extrabold tracking-tight text-gray-900"
+              className="text-[1.4rem] font-extrabold tracking-tight text-gray-900"
               style={{ fontFamily: 'Manrope, sans-serif' }}
             >Son İşlemler</h2>
-            {writable && (
-              <button
-                onClick={() => navigate('/accounting')}
-                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-white text-[13px] font-bold shadow-lg active:scale-95 transition-transform"
-                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)', boxShadow: '0 8px 20px rgba(183,0,17,0.25)' }}
-              >
-                <Plus className="h-4 w-4" />
-                Yeni Giriş
+            <div className="flex items-center gap-2">
+              {writable && (
+                <button
+                  onClick={() => navigate('/accounting')}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-white text-[11px] font-bold active:scale-95 transition-transform"
+                  style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Yeni
+                </button>
+              )}
+              <button onClick={() => navigate('/accounting')} className="text-[12px] font-bold flex items-center gap-1" style={{ color: '#b70011' }}>
+                Tümü <ChevronRight className="h-3.5 w-3.5" />
               </button>
-            )}
+            </div>
           </div>
 
           {recentTxns.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <DollarSign className="h-10 w-10 mb-3 opacity-20" />
-              <p className="text-[14px] font-semibold text-gray-500">İşlem bulunamadı</p>
+            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+              <DollarSign className="h-8 w-8 mb-2 opacity-20" />
+              <p className="text-[13px] font-semibold text-gray-500">İşlem bulunamadı</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {recentTxns.map((tx) => {
+            <div className="bg-white rounded-[1.5rem] overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.05)' }}>
+              {recentTxns.map((tx, i) => {
                 const partyName = tx.customer?.name ?? tx.supplier?.name ?? tx.service_provider?.name ?? tx.party_name ?? '—';
-                const fileRef   = tx.trade_file?.file_no ?? tx.reference_no ?? '';
                 const typeLabel = TXN_TYPE_LABELS[tx.transaction_type] ?? tx.transaction_type;
                 const status    = tx.payment_status;
                 const statusCfg = status === 'paid'
@@ -812,61 +1043,19 @@ export function DashboardPage() {
                 return (
                   <div
                     key={tx.id}
-                    className="bg-white rounded-[1.5rem] p-5"
-                    style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.04)' }}
+                    className={cn('flex items-center gap-3 px-4 py-3', i < recentTxns.length - 1 && 'border-b border-gray-50')}
                   >
-                    {/* Party */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div
-                        className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0"
-                        style={{ background: bg }}
-                      >{ini}</div>
-                      <div className="min-w-0">
-                        <div
-                          className="text-[15px] font-bold text-gray-900 truncate"
-                          style={{ fontFamily: 'Manrope, sans-serif' }}
-                        >{partyName}</div>
-                        {fileRef && (
-                          <div className="text-[11px] font-mono" style={{ color: '#5c403c' }}>
-                            {fileRef}
-                          </div>
-                        )}
-                      </div>
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
+                      style={{ background: bg }}
+                    >{ini}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold text-gray-900 truncate">{partyName}</div>
+                      <span className="text-[10px] font-semibold text-gray-500">{typeLabel}</span>
                     </div>
-
-                    {/* Type / Status / Amount */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#525a64' }}>TİP</p>
-                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">
-                          {typeLabel}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#525a64' }}>DURUM</p>
-                        <span className={cn('text-[11px] font-bold px-2.5 py-1 rounded-full', statusCfg.bg, statusCfg.text)}>
-                          {statusCfg.label}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: '#525a64' }}>TUTAR</p>
-                      <p
-                        className="text-[16px] font-black text-gray-900"
-                        style={{ fontFamily: 'Manrope, sans-serif' }}
-                      >{fUSD(tx.amount_usd ?? tx.amount)}</p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-50">
-                      <button
-                        onClick={() => navigate('/accounting')}
-                        className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
+                    <div className="text-right shrink-0">
+                      <div className="text-[13px] font-black text-gray-900" style={{ fontFamily: 'Manrope, sans-serif' }}>{fUSD(tx.amount_usd ?? tx.amount)}</div>
+                      <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full', statusCfg.bg, statusCfg.text)}>{statusCfg.label}</span>
                     </div>
                   </div>
                 );

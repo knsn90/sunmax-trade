@@ -31,7 +31,6 @@ function useDynamicAppIcon(logoUrl: string | undefined | null) {
 }
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard':        'Dashboard',
   '/pipeline':         'Pipeline',
   '/files':            'All Files',
   '/documents':        'Documents',
