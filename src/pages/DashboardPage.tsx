@@ -314,9 +314,9 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
         style={{
           scrollSnapType: 'x mandatory',
           paddingTop: 12,
-          paddingBottom: 60,
+          paddingBottom: 32,
           marginTop: -4,
-          marginBottom: -50,
+          marginBottom: -20,
           msOverflowStyle: 'none',
           scrollbarWidth: 'none',
         } as React.CSSProperties}
