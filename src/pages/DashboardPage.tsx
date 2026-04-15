@@ -1302,9 +1302,13 @@ export function DashboardPage() {
               </button>
             </div>
             {/* Ana buton (kapatma) */}
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}>
+            <button
+              onClick={() => setFabOpen(false)}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform"
+              style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+            >
               <Plus className="h-5 w-5 rotate-45" />
-            </div>
+            </button>
           </div>
         </div>
       )}
