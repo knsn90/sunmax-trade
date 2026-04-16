@@ -217,7 +217,10 @@ export function InvoiceModal({
 
   const effectiveType = invoice?.invoice_type ?? invoiceType;
 
+  const [saving, setSaving] = useState(false);
+
   async function onSubmit(data: InvoiceFormData) {
+    setSaving(true);
     try {
       if (isEdit && invoice) {
         await updateInvoice.mutateAsync({ id: invoice.id, data, existingInvoice: invoice });
@@ -243,10 +246,12 @@ export function InvoiceModal({
       onOpenChange(false);
     } catch {
       // Error shown via toast
+    } finally {
+      setSaving(false);
     }
   }
 
-  const isSaving = createInvoice.isPending || updateInvoice.isPending;
+  const isSaving = saving;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

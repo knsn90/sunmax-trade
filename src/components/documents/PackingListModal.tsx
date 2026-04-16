@@ -44,6 +44,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   const createPL = useCreatePackingList();
   const updatePL = useUpdatePackingList();
   const isEdit = !!packingList;
+  const [saving, setSaving] = useState(false);
 
   // ── Consignee (Alıcı Firma) ───────────────────────────────────────────
   const [consigneeId, setConsigneeId] = useState<string>('');
@@ -159,6 +160,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   }
 
   async function onSubmit(data: PackingListFormData) {
+    setSaving(true);
     try {
       data.items = rows;
       const cId = consigneeId || undefined;
@@ -170,7 +172,9 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
       }
       onOpenChange(false);
     } catch {
-      // Error already shown via toast — prevent UI freeze
+      // Error shown via onError toast
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -344,8 +348,8 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
                 🖨 Print / PDF
               </Button>
             )}
-            <Button type="submit" disabled={createPL.isPending || updatePL.isPending}>
-              {isEdit ? 'Update Packing List' : 'Save Packing List'}
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving…' : isEdit ? 'Update Packing List' : 'Save Packing List'}
             </Button>
           </DialogFooter>
         </form>

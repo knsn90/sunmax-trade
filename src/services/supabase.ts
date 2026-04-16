@@ -10,10 +10,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+/**
+ * Custom fetch with 15-second timeout.
+ * Prevents Supabase queries/mutations from hanging indefinitely
+ * when the network stalls or the connection pool is exhausted.
+ */
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+  // Merge caller's signal with our timeout signal (if they provided one)
+  const signal = init?.signal
+    ? (AbortSignal as unknown as { any: (s: AbortSignal[]) => AbortSignal }).any([init.signal, controller.signal])
+    : controller.signal;
+
+  return fetch(input, { ...init, signal }).finally(() => clearTimeout(timeoutId));
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+  },
+  global: {
+    fetch: fetchWithTimeout,
   },
 });

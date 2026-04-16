@@ -180,6 +180,7 @@ export function TransactionModal({
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
   const createTransfer = useCreateTransfer();
+  const [saving, setSaving] = useState(false);
   const { data: kasalar = [] } = useKasalar();
   const { data: bankAccounts = [] } = useBankAccounts();
 
@@ -418,10 +419,11 @@ export function TransactionModal({
   }, [txnType]);
 
   async function onSubmit(data: TransactionFormData) {
-    // ── İç Transfer branch ──────────────────────────────────────────────
-    if (data.transaction_type === 'ic_transfer') {
-      if (!itFromId || !itToId) return;
-      try {
+    setSaving(true);
+    try {
+      // ── İç Transfer branch ──────────────────────────────────────────────
+      if (data.transaction_type === 'ic_transfer') {
+        if (!itFromId || !itToId) return;
         await createTransfer.mutateAsync({
           transfer_date: data.transaction_date,
           description: data.description,
@@ -437,29 +439,24 @@ export function TransactionModal({
           notes: data.notes,
         });
         onOpenChange(false);
-      } catch {
-        // Error already shown via toast
+        return;
       }
-      return;
-    }
 
-    // ── Normal transaction branch ────────────────────────────────────────
-    // Yazılan tutar tamamen ödenmiş sayılır
-    data.paid_amount = data.amount;
-    data.payment_status = 'paid';
+      // ── Normal transaction branch ────────────────────────────────────────
+      data.paid_amount = data.amount;
+      data.payment_status = 'paid';
 
-    const typeToParty: Record<string, TransactionFormData['party_type']> = {
-      svc_inv: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'service_provider',
-      purchase_inv: 'supplier',
-      receipt: 'customer',
-      sale_inv: 'customer',
-      advance: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'customer',
-      payment: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'other',
-      expense: 'other',
-    };
-    data.party_type = typeToParty[data.transaction_type];
+      const typeToParty: Record<string, TransactionFormData['party_type']> = {
+        svc_inv: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'service_provider',
+        purchase_inv: 'supplier',
+        receipt: 'customer',
+        sale_inv: 'customer',
+        advance: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'customer',
+        payment: (selectedParty?.entityType as TransactionFormData['party_type']) ?? 'other',
+        expense: 'other',
+      };
+      data.party_type = typeToParty[data.transaction_type];
 
-    try {
       if (isEdit && transaction) {
         await updateTxn.mutateAsync({ id: transaction.id, data });
       } else {
@@ -467,7 +464,9 @@ export function TransactionModal({
       }
       onOpenChange(false);
     } catch {
-      // Error already shown via toast — prevent UI freeze
+      // Error shown via onError toast
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -1024,10 +1023,10 @@ export function TransactionModal({
               className="hidden md:flex h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors items-center justify-center">
               {tc('btn.cancel')}
             </button>
-            <button type="submit" disabled={createTxn.isPending || updateTxn.isPending || createTransfer.isPending}
+            <button type="submit" disabled={saving}
               className="w-full md:w-auto h-12 md:h-9 px-5 rounded-2xl md:rounded-xl text-[14px] md:text-[13px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all shadow-sm"
               style={{ fontFamily: 'Manrope, sans-serif', background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}>
-              {isEdit ? t('transaction.modal.btnUpdate') : t('transaction.modal.btnSave')}
+              {saving ? '…' : isEdit ? t('transaction.modal.btnUpdate') : t('transaction.modal.btnSave')}
             </button>
           </div>
         </form>

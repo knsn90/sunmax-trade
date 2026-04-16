@@ -387,6 +387,13 @@ export function DashboardPage() {
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
 
+  // Spinner'ı en fazla 6 saniye göster — Supabase askıda kalırsa sonsuz loading olmaz
+  const [loadTimeout, setLoadTimeout] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setLoadTimeout(true), 6000);
+    return () => clearTimeout(t);
+  }, []);
+
   const userId = profile?.id ?? 'default';
   const dbPrefs = profile?.dashboard_prefs;
 
@@ -571,7 +578,8 @@ export function DashboardPage() {
     ).slice(0, 3),
   [transactions]);
 
-  const isFirstLoad = (filesLoading && files.length === 0) || (summaryLoading && !summary);
+  // Timeout geçtiyse veya veri geldiyse spinner gösterme
+  const isFirstLoad = !loadTimeout && ((filesLoading && files.length === 0) || (summaryLoading && !summary));
   if (isFirstLoad) return <LoadingSpinner />;
 
   // ── Widget renderer ───────────────────────────────────────────────────────
