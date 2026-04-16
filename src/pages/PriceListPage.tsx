@@ -612,59 +612,53 @@ export function PriceListPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 md:px-6 py-3 bg-white border-b border-gray-100 flex-shrink-0 overflow-x-auto scrollbar-none">
-        {/* Search */}
-        <div className="relative w-36 md:w-48 shrink-0">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t('search')}
-            className="w-full h-8 pl-8 pr-3 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200"
-          />
-        </div>
-
-        {/* Product filter */}
-        <select
-          value={filterProductId}
-          onChange={e => setFilterProductId(e.target.value)}
-          className="h-8 px-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white text-gray-600 shrink-0 max-w-[130px]"
-        >
-          <option value="">{t('allProducts')}</option>
-          {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-
-        {/* Supplier filter */}
-        <select
-          value={filterSupplierId}
-          onChange={e => setFilterSupplierId(e.target.value)}
-          className="h-8 px-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white text-gray-600 shrink-0 max-w-[130px]"
-        >
-          <option value="">{t('allSuppliers')}</option>
-          {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-
-        <div className="flex-1 min-w-0" />
-
-        {/* Price History button */}
-        <button
-          onClick={() => openHistory()}
-          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors shrink-0"
-        >
-          <History className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{t('btnPriceHistory')}</span>
-        </button>
-
-        {/* New button */}
-        {canWrite && (
+      <div className="px-4 md:px-6 py-3 bg-white border-b border-gray-100 flex-shrink-0 space-y-2">
+        {/* Row 1: Search + actions */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t('search')}
+              className="w-full h-9 pl-8 pr-3 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200"
+            />
+          </div>
           <button
-            onClick={openNew}
-            className="flex items-center justify-center w-8 h-8 rounded-xl text-white transition-colors shrink-0"
-            style={{ background: accent }}
+            onClick={() => openHistory()}
+            className="flex items-center justify-center w-9 h-9 text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shrink-0"
           >
-            <Plus className="h-4 w-4" />
+            <History className="h-4 w-4" />
           </button>
-        )}
+          {canWrite && (
+            <button
+              onClick={openNew}
+              className="flex items-center justify-center w-9 h-9 rounded-xl text-white transition-colors shrink-0"
+              style={{ background: accent }}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        {/* Row 2: Filters */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none">
+          <select
+            value={filterProductId}
+            onChange={e => setFilterProductId(e.target.value)}
+            className="h-8 px-2.5 text-[11px] border border-gray-200 rounded-xl focus:outline-none bg-white text-gray-600 shrink-0 max-w-[160px]"
+          >
+            <option value="">{t('allProducts')}</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select
+            value={filterSupplierId}
+            onChange={e => setFilterSupplierId(e.target.value)}
+            className="h-8 px-2.5 text-[11px] border border-gray-200 rounded-xl focus:outline-none bg-white text-gray-600 shrink-0 max-w-[160px]"
+          >
+            <option value="">{t('allSuppliers')}</option>
+            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Content */}

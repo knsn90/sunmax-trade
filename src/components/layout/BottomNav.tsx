@@ -152,8 +152,8 @@ export function BottomNav() {
                       style={{ color: isActive ? accent : 'rgba(255,255,255,0.85)' }}
                     />
                     <span
-                      className="text-[9px] font-bold uppercase tracking-wide leading-none whitespace-nowrap"
-                      style={{ color: isActive ? accent : 'rgba(255,255,255,0.70)' }}
+                      className="text-[9px] font-extrabold tracking-tight leading-none whitespace-nowrap"
+                      style={{ color: isActive ? accent : 'rgba(255,255,255,0.70)', fontFamily: 'Manrope, sans-serif' }}
                     >{tab.label}</span>
                   </div>
                 )}
@@ -177,8 +177,8 @@ export function BottomNav() {
                 style={{ color: (isMoreActive || drawerOpen) ? accent : 'rgba(255,255,255,0.85)' }}
               />
               <span
-                className="text-[9px] font-bold uppercase tracking-wide leading-none"
-                style={{ color: (isMoreActive || drawerOpen) ? accent : 'rgba(255,255,255,0.70)' }}
+                className="text-[9px] font-extrabold tracking-tight leading-none"
+                style={{ color: (isMoreActive || drawerOpen) ? accent : 'rgba(255,255,255,0.70)', fontFamily: 'Manrope, sans-serif' }}
               >Daha</span>
             </div>
           </button>

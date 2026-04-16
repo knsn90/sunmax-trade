@@ -1214,15 +1214,18 @@ export function DashboardPage() {
             <div className="flex items-center gap-4">
               {writable && (
                 <button
-                  onClick={() => setNewFileOpen(true)}
-                  className="flex items-center gap-2 h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity"
-                  style={{ background: accent }}
+                  onClick={() => setFabOpen(v => !v)}
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 active:scale-95 transition-transform"
+                  style={{
+                    background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)',
+                    boxShadow: '0 8px 24px rgba(183,0,17,0.28)',
+                    transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.25s ease',
+                  }}
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Yeni Dosya
+                  <Plus className="h-5 w-5" />
                 </button>
               )}
-              <span className="text-[11px] text-gray-400">{fDate(new Date().toISOString().slice(0, 10))}</span>
             </div>
           </div>
 
@@ -1279,59 +1282,51 @@ export function DashboardPage() {
       {/* Modals */}
       <NewFileModal open={newFileOpen} onOpenChange={setNewFileOpen} />
 
-      {/* ── Mobile FAB Speed Dial ──────────────────────────────────────────── */}
+      {/* ── FAB Speed Dial (Mobile + Desktop) ────────────────────────────── */}
       {writable && fabOpen && (
-        <div className="md:hidden fixed inset-0 z-50" onClick={() => setFabOpen(false)}>
+        <div className="fixed inset-0 z-50" onClick={() => setFabOpen(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          {/* anchor at button position: top-right */}
+          {/* Anchor: top-right — mobilde de masaüstünde de buton buraya yakın */}
           <div
             className="absolute"
             style={{ top: '4.8rem', right: '1.25rem', width: 48, height: 48 }}
           >
-            {/* Yeni Dosya — sol (180°) */}
+            {/* Dosya — sol */}
             <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(calc(-50% - 110px), -50%)' }}>
               <button
                 onClick={() => { setFabOpen(false); setNewFileOpen(true); }}
-                className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+                className="flex flex-col items-center gap-1 hover:scale-110 active:scale-90 transition-transform"
               >
                 <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)', boxShadow: '0 8px 20px rgba(183,0,17,0.4)' }}>
                   <FileText className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-white text-[11px] font-bold">Dosya</span>
+                <span className="text-white text-[11px] font-bold drop-shadow">Dosya</span>
               </button>
             </div>
-            {/* Yeni Fiyat — sol-alt (225°) */}
+            {/* Fiyat — sol-alt */}
             <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(calc(-50% - 80px), calc(-50% + 80px))' }}>
               <button
                 onClick={() => { setFabOpen(false); navigate('/price-list'); }}
-                className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+                className="flex flex-col items-center gap-1 hover:scale-110 active:scale-90 transition-transform"
               >
                 <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', boxShadow: '0 8px 20px rgba(37,99,235,0.4)' }}>
                   <Tag className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-white text-[11px] font-bold">Fiyat</span>
+                <span className="text-white text-[11px] font-bold drop-shadow">Fiyat</span>
               </button>
             </div>
-            {/* Yeni İşlem — alt (270°) */}
+            {/* İşlem — alt */}
             <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, calc(-50% + 110px))' }}>
               <button
                 onClick={() => { setFabOpen(false); navigate('/accounting'); }}
-                className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+                className="flex flex-col items-center gap-1 hover:scale-110 active:scale-90 transition-transform"
               >
                 <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)', boxShadow: '0 8px 20px rgba(5,150,105,0.4)' }}>
                   <Wallet className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-white text-[11px] font-bold">İşlem</span>
+                <span className="text-white text-[11px] font-bold drop-shadow">İşlem</span>
               </button>
             </div>
-            {/* Ana buton (kapatma) */}
-            <button
-              onClick={() => setFabOpen(false)}
-              className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform"
-              style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
-            >
-              <Plus className="h-5 w-5 rotate-45" />
-            </button>
           </div>
         </div>
       )}
