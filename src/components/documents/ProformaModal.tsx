@@ -21,6 +21,7 @@ import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { WeekPicker } from '@/components/ui/WeekPicker';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
+import { MonoNumberInput } from '@/components/ui/MonoNumberInput';
 
 // ── Mono stil sabitleri ────────────────────────────────────────────────────────
 const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
@@ -375,33 +376,70 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
               <input className={inp} {...register('insurance')} />
             </Fld>
             <Fld label="Net Weight (KG)">
-              <input className={inp} type="number" step="0.001" {...register('net_weight_kg')} />
+              <MonoNumberInput
+                value={form.watch('net_weight_kg')}
+                onChange={v => setValue('net_weight_kg', v as number)}
+                className={inp}
+                decimals={3}
+              />
             </Fld>
             <Fld label="Gross Weight (KG)">
-              <input className={inp} type="number" step="0.001" {...register('gross_weight_kg')} />
+              <MonoNumberInput
+                value={form.watch('gross_weight_kg')}
+                onChange={v => setValue('gross_weight_kg', v as number)}
+                className={inp}
+                decimals={3}
+              />
             </Fld>
           </div>
 
           {/* ── Satır 9: Miktar + Fiyat + Navlun ── */}
           <div className="grid grid-cols-3 gap-3 mb-3">
             <Fld label="Quantity (ADMT) *" error={errors.quantity_admt?.message}>
-              <input className={inp} type="number" step="0.001" {...register('quantity_admt')} />
+              <MonoNumberInput
+                value={form.watch('quantity_admt')}
+                onChange={v => setValue('quantity_admt', v ?? 0)}
+                className={inp}
+                decimals={3}
+              />
             </Fld>
             <Fld label="Unit Price *" error={errors.unit_price?.message}>
-              <input className={inp} type="number" step="0.001" {...register('unit_price')} />
+              <MonoNumberInput
+                value={form.watch('unit_price')}
+                onChange={v => setValue('unit_price', v ?? 0)}
+                className={inp}
+                decimals={3}
+              />
             </Fld>
             <Fld label="Freight (0=N/A)">
-              <input className={inp} type="number" step="0.001" {...register('freight')} />
+              <MonoNumberInput
+                value={form.watch('freight')}
+                onChange={v => setValue('freight', v ?? 0)}
+                className={inp}
+                decimals={3}
+              />
             </Fld>
           </div>
 
           {/* ── Satır 10: İskonto + Diğer ── */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             <Fld label="Discount">
-              <input className={inp} type="number" step="0.001" {...register('discount')} placeholder="N/A" />
+              <MonoNumberInput
+                value={form.watch('discount')}
+                onChange={v => setValue('discount', v)}
+                className={inp}
+                decimals={3}
+                placeholder="N/A"
+              />
             </Fld>
             <Fld label="Other Charges">
-              <input className={inp} type="number" step="0.001" {...register('other_charges')} placeholder="N/A" />
+              <MonoNumberInput
+                value={form.watch('other_charges')}
+                onChange={v => setValue('other_charges', v)}
+                className={inp}
+                decimals={3}
+                placeholder="N/A"
+              />
             </Fld>
           </div>
 

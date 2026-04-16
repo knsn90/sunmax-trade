@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
+import { MonoNumberInput } from '@/components/ui/MonoNumberInput';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
@@ -271,29 +272,27 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
                       />
                     </td>
                     <td className="px-1 py-1">
-                      <Input
-                        type="number"
-                        value={row.reels || ''}
-                        onChange={(e) => updateRow(i, 'reels', parseInt(e.target.value) || 0)}
-                        className="text-center"
+                      <MonoNumberInput
+                        value={row.reels || undefined}
+                        onChange={v => updateRow(i, 'reels', v ?? 0)}
+                        decimals={0}
+                        className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
                       />
                     </td>
                     <td className="px-1 py-1">
-                      <Input
-                        type="number"
-                        step="0.001"
-                        value={row.admt || ''}
-                        onChange={(e) => updateRow(i, 'admt', parseFloat(e.target.value) || 0)}
-                        className="text-center"
+                      <MonoNumberInput
+                        value={row.admt || undefined}
+                        onChange={v => updateRow(i, 'admt', v ?? 0)}
+                        decimals={3}
+                        className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
                       />
                     </td>
                     <td className="px-1 py-1">
-                      <Input
-                        type="number"
-                        step="0.001"
-                        value={row.gross_weight_kg || ''}
-                        onChange={(e) => updateRow(i, 'gross_weight_kg', parseFloat(e.target.value) || 0)}
-                        className="text-center"
+                      <MonoNumberInput
+                        value={row.gross_weight_kg || undefined}
+                        onChange={v => updateRow(i, 'gross_weight_kg', v ?? 0)}
+                        decimals={3}
+                        className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
                       />
                     </td>
                     <td className="px-1 py-1">
