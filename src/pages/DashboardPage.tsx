@@ -378,49 +378,13 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
   );
 }
 
-// ─── Desktop Price Carousel ───────────────────────────────────────────────────
-// Mobil PriceCarousel ile aynı blur/scale/opacity animasyonu kullanır
+// ─── Desktop Price List ────────────────────────────────────────────────────────
+// Desktop'ta carousel değil dikey liste — standart ERP/finansal dashboard paterni
+const ACCENT_COLORS = [
+  '#1e3a8a', '#6d28d9', '#065f46', '#be123c', '#1d4ed8', '#0f766e',
+];
+
 function DesktopPriceCarousel({ prices, onNavigate }: { prices: import('@/types/database').PriceList[]; onNavigate: () => void }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const rafRef   = useRef<number | null>(null);
-
-  const updateCards = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const viewCenter = el.scrollLeft + el.offsetWidth / 2;
-    cardRefs.current.forEach((card) => {
-      if (!card) return;
-      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-      const dist     = Math.abs(viewCenter - cardCenter);
-      const progress = Math.min(dist / (card.offsetWidth * 0.75), 1);
-      const scale    = 1 - progress * 0.08;
-      const opacity  = 1 - progress * 0.45;
-      card.style.transform = `scale(${scale.toFixed(4)})`;
-      card.style.opacity   = opacity.toFixed(4);
-      card.style.filter    = progress > 0.3 ? `blur(${(progress * 2).toFixed(1)}px)` : '';
-    });
-  }, [prices.length]);
-
-  const onScroll = useCallback(() => {
-    if (rafRef.current !== null) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      updateCards();
-    });
-  }, [updateCards]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', onScroll, { passive: true });
-    setTimeout(updateCards, 80);
-    return () => {
-      el.removeEventListener('scroll', onScroll);
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [onScroll, updateCards]);
-
   if (prices.length === 0) return (
     <div className="flex flex-col items-center justify-center h-full gap-2">
       <Tag className="h-8 w-8 text-gray-200" />
@@ -428,93 +392,69 @@ function DesktopPriceCarousel({ prices, onNavigate }: { prices: import('@/types/
     </div>
   );
 
-  const CARD_W = 210;
-  const SPACER = 20;
-
   return (
-    <div
-      ref={scrollRef}
-      className="flex h-full overflow-x-auto overflow-y-hidden scrollbar-none"
-      style={{
-        scrollSnapType: 'x mandatory',
-        paddingTop: 14,
-        paddingBottom: 14,
-        msOverflowStyle: 'none',
-        scrollbarWidth: 'none',
-      } as React.CSSProperties}
-    >
-      <div className="shrink-0" style={{ width: SPACER }} />
+    <div className="overflow-y-auto h-full divide-y divide-gray-50">
       {prices.map((entry, i) => {
         const logo    = getProductLogo(entry.product?.name, (entry.product as { logo_url?: string | null })?.logo_url);
         const expired = entry.valid_until ? new Date(entry.valid_until) < new Date() : false;
+        const accent  = ACCENT_COLORS[i % ACCENT_COLORS.length];
+        const isRaster = logo ? (logo.startsWith('data:') && !logo.startsWith('data:image/svg')) : false;
+
         return (
-          <div
+          <button
             key={entry.id}
-            ref={el => { cardRefs.current[i] = el; }}
             onClick={onNavigate}
-            className="shrink-0 rounded-[1.5rem] p-5 cursor-pointer flex flex-col"
-            style={{
-              width: CARD_W,
-              marginRight: i < prices.length - 1 ? 12 : 0,
-              scrollSnapAlign: 'center',
-              background: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
-              boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
-              willChange: 'transform, opacity, filter',
-            } as React.CSSProperties}
+            className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50/80 transition-colors text-left group"
           >
-            {/* Currency pill + date */}
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/20 text-white">
-                {entry.currency}
-              </span>
-              <span className="text-[10px] font-semibold text-white/50">
-                {entry.price_date ? fDate(entry.price_date) : ''}
-              </span>
+            {/* Gradient accent strip */}
+            <div className="w-1 h-9 rounded-full shrink-0" style={{ background: accent }} />
+
+            {/* Logo veya placeholder */}
+            <div className="w-9 h-9 flex items-center justify-center shrink-0 rounded-xl bg-gray-50 group-hover:bg-white transition-colors overflow-hidden">
+              {logo ? (
+                <img
+                  src={logo}
+                  alt=""
+                  className="w-full h-full object-contain p-1.5"
+                  style={isRaster ? {} : { filter: `opacity(0.7)` }}
+                />
+              ) : (
+                <div className="w-3 h-3 rounded-full" style={{ background: accent }} />
+              )}
             </div>
 
-            {/* Logo — kendi satırında, sabit yükseklik */}
-            <div className="h-10 flex items-center mb-2">
-              {logo && (() => {
-                const isRaster = logo.startsWith('data:') && !logo.startsWith('data:image/svg');
-                return isRaster ? (
-                  <div className="bg-white/20 rounded-xl p-1.5 inline-flex">
-                    <img src={logo} alt="" className="h-7 w-auto object-contain max-w-[120px]" />
-                  </div>
-                ) : (
-                  <img src={logo} alt="" className="h-9 w-auto object-contain max-w-[130px]"
-                    style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
-                );
-              })()}
-            </div>
-
-            {/* Price */}
-            <div
-              className="text-[30px] font-black text-white leading-none tracking-tight mb-3"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-            >
-              {CURRENCY_SYMBOL[entry.currency] ?? ''}{Number(entry.price).toLocaleString('tr-TR')}
-            </div>
-
-            <div className="h-px bg-white/15 mb-3" />
-
-            {/* Product + supplier */}
+            {/* Ürün + tedarikçi */}
             <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-bold text-white leading-snug line-clamp-2">{entry.product?.name ?? '—'}</div>
-              <div className="text-[10px] text-white/50 truncate mt-0.5">{entry.supplier?.name ?? '—'}</div>
+              <div className="text-[12px] font-semibold text-gray-800 truncate leading-tight">
+                {entry.product?.name ?? '—'}
+              </div>
+              <div className="text-[10px] text-gray-400 truncate mt-0.5">
+                {entry.supplier?.name ?? '—'}
+              </div>
             </div>
 
-            {/* Valid until badge */}
-            {entry.valid_until && (
-              <div className="mt-2.5">
-                <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg ${expired ? 'bg-red-500/30 text-red-200' : 'bg-white/15 text-white/70'}`}>
-                  {expired ? 'Süresi doldu' : `Geçerli: ${fDate(entry.valid_until)}`}
-                </span>
+            {/* Fiyat + para birimi + tarih */}
+            <div className="text-right shrink-0">
+              <div className="text-[14px] font-black text-gray-900 leading-tight">
+                {CURRENCY_SYMBOL[entry.currency] ?? ''}{Number(entry.price).toLocaleString('tr-TR')}
               </div>
+              <div className="flex items-center gap-1.5 justify-end mt-0.5">
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md text-white" style={{ background: accent }}>
+                  {entry.currency}
+                </span>
+                <span className="text-[10px] text-gray-400">{entry.price_date ? fDate(entry.price_date) : ''}</span>
+              </div>
+            </div>
+
+            {/* Süresi doldu uyarısı */}
+            {expired && (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-red-50 text-red-500 shrink-0">
+                Süresi doldu
+              </span>
             )}
-          </div>
+          </button>
         );
       })}
-      <div className="shrink-0" style={{ width: SPACER }} />
     </div>
   );
 }
