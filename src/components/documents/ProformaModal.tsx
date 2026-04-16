@@ -21,6 +21,7 @@ import { FormRow, FormGroup } from '@/components/ui/shared';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { WeekPicker } from '@/components/ui/WeekPicker';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import type { OcrResult } from '@/lib/openai';
 
 interface ProformaModalProps {
@@ -252,10 +253,10 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
 
           <FormRow cols={3}>
             <FormGroup label="PI Date *" error={errors.proforma_date?.message}>
-              <Input type="date" {...register('proforma_date')} />
+              <MonoDatePicker value={form.watch('proforma_date') ?? ''} onChange={v => setValue('proforma_date', v)} />
             </FormGroup>
             <FormGroup label="Validity Date">
-              <Input type="date" {...register('validity_date')} />
+              <MonoDatePicker value={form.watch('validity_date') ?? ''} onChange={v => setValue('validity_date', v)} />
             </FormGroup>
             <FormGroup label="Buyer Commercial ID">
               <Input {...register('buyer_commercial_id')} />

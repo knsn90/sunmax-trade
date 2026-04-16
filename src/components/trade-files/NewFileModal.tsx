@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useTheme } from '@/contexts/ThemeContext';
 import { Plus, Trash2 } from 'lucide-react';
 import { SmartFill } from '@/components/ui/SmartFill';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -301,10 +302,10 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
           {/* Tarih · ETA · Miktar */}
           <div className="grid grid-cols-3 gap-3">
             <Fld label="Tarih" error={errors.file_date?.message}>
-              <input type="date" {...register('file_date')} className={inp} />
+              <MonoDatePicker value={watch('file_date') ?? ''} onChange={v => setValue('file_date', v)} />
             </Fld>
             <Fld label="ETA" error={errors.eta?.message}>
-              <input type="date" {...register('eta')} className={inp} />
+              <MonoDatePicker value={watch('eta') ?? ''} onChange={v => setValue('eta', v)} />
             </Fld>
             <Fld label="Miktar (MT)" error={errors.tonnage_mt?.message}>
               <input type="number" step="0.001" {...register('tonnage_mt')} className={inp} />

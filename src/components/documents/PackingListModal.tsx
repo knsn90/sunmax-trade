@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import type { OcrResult } from '@/lib/openai';
@@ -217,7 +218,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
 
           <FormRow cols={3}>
             <FormGroup label="Date *" error={errors.pl_date?.message}>
-              <Input type="date" {...register('pl_date')} />
+              <MonoDatePicker value={form.watch('pl_date') ?? ''} onChange={v => setValue('pl_date', v)} />
             </FormGroup>
             <FormGroup label="Transport Mode">
               <NativeSelect {...register('transport_mode')}>

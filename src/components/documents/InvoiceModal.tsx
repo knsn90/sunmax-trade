@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { cn } from '@/lib/utils';
 import { HelpCircle, Banknote, Building2, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
 import type { OcrResult } from '@/lib/openai';
@@ -328,7 +329,7 @@ export function InvoiceModal({
             {/* ── Fatura Bilgileri ── */}
             <div className="grid grid-cols-3 gap-3">
               <Field label={`${tc('form.date')} *`}>
-                <input type="date" className={inp} {...register('invoice_date')} />
+                <MonoDatePicker value={form.watch('invoice_date') ?? ''} onChange={v => setValue('invoice_date', v)} />
                 {errors.invoice_date && <p className="text-[11px] text-red-500 mt-0.5">{errors.invoice_date.message}</p>}
               </Field>
               <Field label={tc('form.currency')}>
