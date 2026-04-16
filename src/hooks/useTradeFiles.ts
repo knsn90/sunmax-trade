@@ -5,6 +5,7 @@ import type { TradeFileStatus } from '@/types/enums';
 import type { NewTradeFileFormData, SaleConversionFormData, DeliveryFormData } from '@/types/forms';
 import type { PnlData } from '@/types/database';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 export const tradeFileKeys = {
   all: ['trade-files'] as const,
@@ -56,9 +57,10 @@ export function useTradeFile(id: string | undefined) {
 
 export function useCreateTradeFile() {
   const qc = useQueryClient();
+  const { profile } = useAuth();
   return useMutation({
     mutationFn: (data: NewTradeFileFormData & { file_no: string; parent_file_id?: string | null; batch_no?: number | null; initialStatus?: import('@/types/enums').TradeFileStatus }) =>
-      tradeFileService.create(data),
+      tradeFileService.create({ ...data, tenantId: profile?.tenant_id ?? null }),
     onSuccess: (file) => {
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success(`File ${file.file_no} created`);

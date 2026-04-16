@@ -759,7 +759,7 @@ export function PriceListPage() {
           <div className="md:hidden space-y-3 px-1">
             {filtered.map((entry, i) => {
               const expired = isExpired(entry);
-              const logo = getProductLogo(entry.product?.name);
+              const logo = (entry.product as { logo_url?: string | null })?.logo_url || getProductLogo(entry.product?.name);
               return (
                 <div
                   key={entry.id}
@@ -785,8 +785,18 @@ export function PriceListPage() {
                       {CURRENCY_SYMBOLS[entry.currency] ?? ''}{entry.price.toLocaleString('tr-TR')}
                     </div>
                     {logo && (
-                      <img src={logo} alt="" className="h-9 object-contain shrink-0"
-                        style={{ filter: 'brightness(0) invert(1)', opacity: 0.75 }} />
+                      (() => {
+                        // Yüklenen PNG/JPG → doğal renk, kütüphane SVG → beyaz filtre
+                        const isRaster = logo.startsWith('data:') && !logo.startsWith('data:image/svg');
+                        return isRaster ? (
+                          <div className="bg-white/20 rounded-xl p-1.5 shrink-0">
+                            <img src={logo} alt="" className="h-7 object-contain" />
+                          </div>
+                        ) : (
+                          <img src={logo} alt="" className="h-9 object-contain shrink-0"
+                            style={{ filter: 'brightness(0) invert(1)', opacity: 0.75 }} />
+                        );
+                      })()
                     )}
                   </div>
                   <div className="h-px bg-white/15 mb-3" />

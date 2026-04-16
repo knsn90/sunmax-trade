@@ -102,19 +102,11 @@ export const tradeFileService = {
       parent_file_id?: string | null;
       batch_no?: number | null;
       initialStatus?: TradeFileStatus;
+      tenantId?: string | null;
     },
   ): Promise<TradeFile> {
-    // RLS politikası tenant_id gerektiriyor
-    const { data: { user } } = await supabase.auth.getUser();
-    let tenantId: string | null = null;
-    if (user) {
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-      tenantId = (prof as { tenant_id?: string | null } | null)?.tenant_id ?? null;
-    }
+    // tenant_id is passed from the hook (useAuth profile) — no extra network calls needed
+    const tenantId = input.tenantId ?? null;
 
     const { data, error } = await supabase
       .from('trade_files')

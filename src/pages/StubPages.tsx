@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +19,13 @@ import { useTheme } from '@/contexts/ThemeContext';
 const CATEGORY_COLORS = [
   '#6b7280', '#3b82f6', '#0ea5e9', '#8b5cf6',
   '#10b981', '#f59e0b', '#ef4444', '#ec4899',
+];
+
+const LOGO_LIBRARY = [
+  { name: 'UPM',    path: '/images/logos/upm.svg' },
+  { name: 'Domtar', path: '/images/logos/domtar.svg' },
+  { name: 'GP',     path: '/images/logos/gp.svg' },
+  { name: 'CMPC',   path: '/images/logos/cmpc.svg' },
 ];
 
 // ─── Category Badge ────────────────────────────────────────────────────────────
@@ -183,19 +190,42 @@ export function ProductsPage() {
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = form;
   const selectedCatId = watch('category_id');
   const logoUrl = watch('logo_url');
-  const [logoTab, setLogoTab] = useState<'upload' | 'url'>('upload');
+  const [logoTab, setLogoTab] = useState<'upload' | 'url' | 'library'>('library');
   const [logoUrlInput, setLogoUrlInput] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+  // Güvenlik: modal açıldığında saving'i sıfırla
+  useEffect(() => { if (modalOpen) setSaving(false); }, [modalOpen]);
+
+  // Raster görüntüleri kaydetmeden önce sıkıştır (base64 boyutunu küçülte)
+  async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.name.endsWith('.svg') && file.type !== 'image/svg+xml') {
-      alert('Sadece .svg dosyası yükleyebilirsiniz.');
+    // SVG'yi olduğu gibi oku
+    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+      const reader = new FileReader();
+      reader.onload = () => setValue('logo_url', reader.result as string);
+      reader.readAsDataURL(file);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setValue('logo_url', reader.result as string);
-    reader.readAsDataURL(file);
+    // Raster: canvas ile yeniden boyutlandır (max 400px) ve sıkıştır
+    const compressed = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, 400 / img.width);
+          const canvas = document.createElement('canvas');
+          canvas.width  = Math.round(img.width  * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png', 0.8));
+        };
+        img.src = ev.target!.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+    setValue('logo_url', compressed);
   }
 
   function handleLogoUrl() {
@@ -230,9 +260,16 @@ export function ProductsPage() {
     setModalOpen(true);
   }
   async function onSubmit(data: ProductFormData) {
-    if (editing) await updateP.mutateAsync({ id: editing.id, data });
-    else await createP.mutateAsync(data);
-    setModalOpen(false);
+    setSaving(true);
+    try {
+      if (editing) await updateP.mutateAsync({ id: editing.id, data });
+      else await createP.mutateAsync(data);
+      setModalOpen(false);
+    } catch {
+      // hata zaten hook tarafından toast ile gösteriliyor
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (isLoading) return <LoadingSpinner />;
@@ -482,22 +519,52 @@ export function ProductsPage() {
                   )}
                   {/* Tab seçici */}
                   <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-3">
-                    {(['upload', 'url'] as const).map(tab => (
+                    {(['library', 'upload', 'url'] as const).map(tab => (
                       <button key={tab} type="button" onClick={() => setLogoTab(tab)}
                         className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                           logoTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
                         }`}>
-                        {tab === 'upload' ? '📁 Bilgisayardan' : '🔗 Web URL'}
+                        {tab === 'library' ? '🖼 Kütüphane' : tab === 'upload' ? '📁 Dosya' : '🔗 URL'}
                       </button>
                     ))}
                   </div>
-                  {logoTab === 'upload' ? (
+                  {logoTab === 'library' && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {LOGO_LIBRARY.map(item => {
+                        const isSelected = logoUrl === item.path;
+                        return (
+                          <button
+                            key={item.path}
+                            type="button"
+                            onClick={() => setValue('logo_url', isSelected ? null : item.path)}
+                            className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                              isSelected
+                                ? 'border-gray-900 bg-gray-900'
+                                : 'border-gray-100 bg-gray-50 hover:border-gray-300 hover:bg-white'
+                            }`}
+                          >
+                            <img
+                              src={item.path}
+                              alt={item.name}
+                              className="h-7 w-auto object-contain"
+                              style={isSelected ? { filter: 'brightness(0) invert(1)' } : { filter: 'brightness(0) opacity(0.6)' }}
+                            />
+                            <span className={`text-[10px] font-bold ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                              {item.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {logoTab === 'upload' && (
                     <label className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-gray-300 cursor-pointer transition-colors group">
                       <Upload className="h-4 w-4 text-gray-400 group-hover:text-gray-600 shrink-0" />
-                      <span className="text-[12px] text-gray-400 group-hover:text-gray-600">SVG dosyası seç</span>
-                      <input type="file" accept=".svg,image/svg+xml" className="hidden" onChange={handleLogoFile} />
+                      <span className="text-[12px] text-gray-400 group-hover:text-gray-600">SVG, PNG, JPG seç</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleLogoFile} />
                     </label>
-                  ) : (
+                  )}
+                  {logoTab === 'url' && (
                     <div className="flex gap-2">
                       <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 h-9">
                         <Link className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -512,7 +579,7 @@ export function ProductsPage() {
                       </div>
                       <button type="button" onClick={handleLogoUrl}
                         className="px-3 h-9 rounded-xl text-white text-[12px] font-semibold shrink-0"
-                        style={{ background: '#2563eb' }}>
+                        style={{ background: accent }}>
                         Ekle
                       </button>
                     </div>
@@ -537,10 +604,10 @@ export function ProductsPage() {
                   className="text-[12px] font-semibold text-gray-400 hover:text-gray-600 transition-colors px-3 py-2 rounded-xl hover:bg-gray-100">
                   {tc('btn.cancel')}
                 </button>
-                <button type="submit" disabled={createP.isPending || updateP.isPending}
+                <button type="submit" disabled={saving}
                   className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
                   style={{ background: accent }}>
-                  {createP.isPending || updateP.isPending ? '...' : tc('btn.save')}
+                  {saving ? '...' : tc('btn.save')}
                 </button>
               </div>
             </form>

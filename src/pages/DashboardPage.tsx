@@ -246,7 +246,8 @@ const PRODUCT_LOGOS: { match: string; logo: string }[] = [
   { match: 'georgia',       logo: '/images/logos/gp.svg' },
   { match: 'cmpc',          logo: '/images/logos/cmpc.svg' },
 ];
-function getProductLogo(productName: string | undefined): string | null {
+function getProductLogo(productName: string | undefined, logoUrl?: string | null): string | null {
+  if (logoUrl) return logoUrl;
   if (!productName) return null;
   const lower = productName.toLowerCase();
   return PRODUCT_LOGOS.find(s => lower.includes(s.match))?.logo ?? null;
@@ -352,14 +353,19 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
               >
                 {CURRENCY_SYMBOL[entry.currency] ?? ''}{Number(entry.price).toLocaleString('tr-TR')}
               </div>
-              {getProductLogo(entry.product?.name) && (
-                <img
-                  src={getProductLogo(entry.product?.name)!}
-                  alt={entry.product?.name ?? ''}
-                  className="h-10 shrink-0 object-contain"
-                  style={{ filter: 'brightness(0) invert(1)', opacity: 0.8 }}
-                />
-              )}
+              {(() => {
+                const src = getProductLogo(entry.product?.name, (entry.product as { logo_url?: string | null })?.logo_url);
+                if (!src) return null;
+                const isRaster = src.startsWith('data:') && !src.startsWith('data:image/svg');
+                return isRaster ? (
+                  <div className="bg-white/20 rounded-xl p-1.5 shrink-0">
+                    <img src={src} alt={entry.product?.name ?? ''} className="h-8 object-contain" />
+                  </div>
+                ) : (
+                  <img src={src} alt={entry.product?.name ?? ''} className="h-10 shrink-0 object-contain"
+                    style={{ filter: 'brightness(0) invert(1)', opacity: 0.8 }} />
+                );
+              })()}
             </div>
             <div className="h-px bg-white/15 mb-3" />
             <div className="text-[13px] font-bold text-white leading-snug mb-1">{entry.product?.name ?? '—'}</div>
@@ -369,6 +375,147 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
         <div className="shrink-0 w-11" />
       </div>
     </>
+  );
+}
+
+// ─── Desktop Price Carousel ───────────────────────────────────────────────────
+// Mobil PriceCarousel ile aynı blur/scale/opacity animasyonu kullanır
+function DesktopPriceCarousel({ prices, onNavigate }: { prices: import('@/types/database').PriceList[]; onNavigate: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const rafRef   = useRef<number | null>(null);
+
+  const updateCards = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const viewCenter = el.scrollLeft + el.offsetWidth / 2;
+    cardRefs.current.forEach((card) => {
+      if (!card) return;
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const dist     = Math.abs(viewCenter - cardCenter);
+      const progress = Math.min(dist / (card.offsetWidth * 0.75), 1);
+      const scale    = 1 - progress * 0.08;
+      const opacity  = 1 - progress * 0.45;
+      card.style.transform = `scale(${scale.toFixed(4)})`;
+      card.style.opacity   = opacity.toFixed(4);
+      card.style.filter    = progress > 0.3 ? `blur(${(progress * 2).toFixed(1)}px)` : '';
+    });
+  }, [prices.length]);
+
+  const onScroll = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      updateCards();
+    });
+  }, [updateCards]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', onScroll, { passive: true });
+    setTimeout(updateCards, 80);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [onScroll, updateCards]);
+
+  if (prices.length === 0) return (
+    <div className="flex flex-col items-center justify-center h-full gap-2">
+      <Tag className="h-8 w-8 text-gray-200" />
+      <span className="text-[12px] text-gray-400">Fiyat girişi yok</span>
+    </div>
+  );
+
+  const CARD_W = 210;
+  const SPACER = 20;
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex h-full overflow-x-auto overflow-y-hidden scrollbar-none"
+      style={{
+        scrollSnapType: 'x mandatory',
+        paddingTop: 14,
+        paddingBottom: 14,
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none',
+      } as React.CSSProperties}
+    >
+      <div className="shrink-0" style={{ width: SPACER }} />
+      {prices.map((entry, i) => {
+        const logo    = getProductLogo(entry.product?.name, (entry.product as { logo_url?: string | null })?.logo_url);
+        const expired = entry.valid_until ? new Date(entry.valid_until) < new Date() : false;
+        return (
+          <div
+            key={entry.id}
+            ref={el => { cardRefs.current[i] = el; }}
+            onClick={onNavigate}
+            className="shrink-0 rounded-[1.5rem] p-5 cursor-pointer flex flex-col"
+            style={{
+              width: CARD_W,
+              marginRight: i < prices.length - 1 ? 12 : 0,
+              scrollSnapAlign: 'center',
+              background: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
+              boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
+              willChange: 'transform, opacity, filter',
+            } as React.CSSProperties}
+          >
+            {/* Currency pill + date */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/20 text-white">
+                {entry.currency}
+              </span>
+              <span className="text-[10px] font-semibold text-white/50">
+                {entry.price_date ? fDate(entry.price_date) : ''}
+              </span>
+            </div>
+
+            {/* Logo — kendi satırında, sabit yükseklik */}
+            <div className="h-10 flex items-center mb-2">
+              {logo && (() => {
+                const isRaster = logo.startsWith('data:') && !logo.startsWith('data:image/svg');
+                return isRaster ? (
+                  <div className="bg-white/20 rounded-xl p-1.5 inline-flex">
+                    <img src={logo} alt="" className="h-7 w-auto object-contain max-w-[120px]" />
+                  </div>
+                ) : (
+                  <img src={logo} alt="" className="h-9 w-auto object-contain max-w-[130px]"
+                    style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+                );
+              })()}
+            </div>
+
+            {/* Price */}
+            <div
+              className="text-[30px] font-black text-white leading-none tracking-tight mb-3"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+            >
+              {CURRENCY_SYMBOL[entry.currency] ?? ''}{Number(entry.price).toLocaleString('tr-TR')}
+            </div>
+
+            <div className="h-px bg-white/15 mb-3" />
+
+            {/* Product + supplier */}
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-bold text-white leading-snug line-clamp-2">{entry.product?.name ?? '—'}</div>
+              <div className="text-[10px] text-white/50 truncate mt-0.5">{entry.supplier?.name ?? '—'}</div>
+            </div>
+
+            {/* Valid until badge */}
+            {entry.valid_until && (
+              <div className="mt-2.5">
+                <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg ${expired ? 'bg-red-500/30 text-red-200' : 'bg-white/15 text-white/70'}`}>
+                  {expired ? 'Süresi doldu' : `Geçerli: ${fDate(entry.valid_until)}`}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <div className="shrink-0" style={{ width: SPACER }} />
+    </div>
   );
 }
 
@@ -729,51 +876,10 @@ export function DashboardPage() {
       case 'latest_prices':
         return (
           <Card title={t('widgets.latestPrices')} action={() => navigate('/price-list')} actionLabel={t('actions.priceList')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
-            {latestPrices.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-2">
-                <Tag className="h-8 w-8 text-gray-200" />
-                <span className="text-[12px] text-gray-400">{t('empty.noPrices')}</span>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {latestPrices.map(entry => {
-                  const isExpired = entry.valid_until ? new Date(entry.valid_until) < new Date() : false;
-                  const sym = ({ USD: '$', EUR: '€', TRY: '₺' } as Record<string,string>)[entry.currency] ?? '';
-                  const priceNum = Number(entry.price);
-                  const formatted = priceNum >= 1000
-                    ? priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    : priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-                  return (
-                    <button key={entry.id} onClick={() => navigate('/price-list')}
-                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: accent + '15' }}>
-                        <Tag className="h-3.5 w-3.5" style={{ color: accent }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-semibold text-gray-900 truncate">{entry.product?.name ?? '—'}</div>
-                        <div className="text-[11px] text-gray-400 truncate mt-0.5">{entry.supplier?.name ?? '—'}</div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-[13px] font-bold text-gray-900">{sym}{formatted} <span className="text-[10px] font-normal text-gray-400">{entry.currency}</span></div>
-                        <div className="mt-0.5">
-                          {entry.valid_until ? (
-                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${isExpired ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
-                              {isExpired ? t('prices.expired') : t('prices.until', { date: new Date(entry.valid_until + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' }) })}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-gray-300">
-                              {new Date(entry.price_date + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <DesktopPriceCarousel
+              prices={latestPrices.slice(0, 10)}
+              onNavigate={() => navigate('/price-list')}
+            />
           </Card>
         );
 

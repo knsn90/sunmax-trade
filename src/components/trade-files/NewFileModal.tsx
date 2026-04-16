@@ -154,17 +154,29 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
     if (fields.notes !== undefined)        setValue('notes',        String(fields.notes ?? ''));
   }
 
+  const [saving, setSaving] = useState(false);
+
+  // Her açılışta saving durumunu sıfırla (beklenmedik duruma karşı güvenlik)
+  useEffect(() => {
+    if (open) setSaving(false);
+  }, [open]);
+
   async function onSubmit(data: NewTradeFileFormData) {
-    if (editMode && fileToEdit) {
-      await updateFileInfo.mutateAsync({ id: fileToEdit.id, data });
-      onOpenChange(false);
-    } else {
-      await createFile.mutateAsync({ ...data, file_no: data.file_no });
-      reset(); setShowNewCust(false); setShowNewProd(false); onOpenChange(false);
+    setSaving(true);
+    try {
+      if (editMode && fileToEdit) {
+        await updateFileInfo.mutateAsync({ id: fileToEdit.id, data });
+        onOpenChange(false);
+      } else {
+        await createFile.mutateAsync({ ...data, file_no: data.file_no });
+        reset(); setShowNewCust(false); setShowNewProd(false); onOpenChange(false);
+      }
+    } catch {
+      // Error shown via toast
+    } finally {
+      setSaving(false);
     }
   }
-
-  const isPending = createFile.isPending || updateFileInfo.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -362,11 +374,11 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               </button>
               <button
                 type="submit"
-                disabled={isPending}
+                disabled={saving}
                 className="w-full md:w-auto px-5 h-12 md:h-9 rounded-2xl md:rounded-xl text-[14px] md:text-[13px] font-bold text-white shadow-sm active:scale-[0.98] transition-all disabled:opacity-50"
                 style={{ fontFamily: 'Manrope, sans-serif', background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
               >
-                {isPending
+                {saving
                   ? (editMode ? 'Kaydediliyor…' : 'Oluşturuluyor…')
                   : (editMode ? 'Kaydet' : 'Dosya Oluştur')}
               </button>

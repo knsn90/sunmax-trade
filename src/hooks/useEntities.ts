@@ -128,7 +128,9 @@ export function useUpdateProduct() {
     mutationFn: ({ id, data }: { id: string; data: ProductFormData }) =>
       productService.update(id, data),
     onSuccess: () => {
+      // price-list da invalidate et — ürün logosu güncellenince kartlara yansısın
       qc.invalidateQueries({ queryKey: ['products'] });
+      qc.invalidateQueries({ queryKey: ['price-list'] });
       toast.success('Product updated');
     },
     onError: (err: Error) => toast.error(err.message),
