@@ -69,8 +69,9 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   const hasSubCustomers = subCustomers.length > 0;
 
   const hsCode = proforma?.hs_code || file?.product?.hs_code || '';
+  const defaultQty = file?.delivered_admt ?? file?.tonnage_mt ?? 0;
   const defaultNotes = [
-    '1- Total Quantity:',
+    `1- Total Quantity: ${defaultQty > 0 ? defaultQty + ' ADMT' : ''}`,
     `2- HS Code:${hsCode ? ' ' + hsCode : ''}`,
     '3- The weights mentioned are approximate and will be confirmed at the time of loading. The approximate weights may vary by ±10%',
     '4- The following documents will be provided: Invoice/Packing/Origin/Certificate of Analysis',
