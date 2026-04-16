@@ -47,18 +47,23 @@ function buildLabel(weeks: number[], year: number): string {
   return `${label} (${fD(start)} to ${fD(end)})`;
 }
 
-/** Parse existing string back to week numbers (handles "22,23", "22-24", "Week 22", etc.) */
+/** Parse existing string back to week numbers (handles "22,23", "22-24", "Week 22", etc.)
+ *  Only parses the part BEFORE the first "(" to avoid picking up day numbers from the
+ *  date-range label like "(Jan 5 to Aug 2)".
+ */
 function parseWeeks(value: string): number[] {
   if (!value) return [];
-  // Extract all digit groups
-  const nums = (value.match(/\d+/g) ?? []).map(Number).filter(n => n >= 1 && n <= 53);
-  // "22-24" or "Weeks 22-24" → range
-  if (/\d+-\d+/.test(value) && nums.length === 2 && nums[0] < nums[1]) {
+  // Strip the date-range parenthesis part: "Weeks 22,23 (Jan 5 to Aug 2)" → "Weeks 22,23 "
+  const weeksPart = value.split('(')[0];
+  const nums = (weeksPart.match(/\d+/g) ?? []).map(Number).filter(n => n >= 1 && n <= 53);
+  // "22-24" range expansion
+  if (/\d+-\d+/.test(weeksPart) && nums.length === 2 && nums[0] < nums[1]) {
     const out: number[] = [];
     for (let w = nums[0]; w <= nums[1]; w++) out.push(w);
     return out;
   }
-  return nums;
+  // Deduplicate just in case
+  return [...new Set(nums)];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
