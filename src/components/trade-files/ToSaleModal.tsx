@@ -7,7 +7,6 @@ import { useSuppliers } from '@/hooks/useEntities';
 import { useConvertToSale, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useSettings } from '@/hooks/useSettings';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { journalService } from '@/services/journalService';
 import { cn } from '@/lib/utils';
 
 // ── Mono stil sabitleri ───────────────────────────────────────────────────────
@@ -48,7 +47,6 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   const { data: settings } = useSettings();
   const convertToSale = useConvertToSale();
   const updateSaleDetails = useUpdateSaleDetails();
-  const [posting, setPosting] = useState(false);
   const [advAmtStr,   setAdvAmtStr]   = useState('');
   const [purchAmtStr, setPurchAmtStr] = useState('');
   const advFocused   = useRef(false);
@@ -170,36 +168,6 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   async function onSubmit(data: SaleConversionFormData) {
     if (!file) return;
     await mutation.mutateAsync({ id: file.id, data });
-
-    const rate    = Number(data.advance_rate ?? 0);
-    const selling = Number(data.selling_price ?? 0);
-    const ton     = Number(file.tonnage_mt ?? 0);
-    if (data.payment_terms === 'Downpayment' && rate > 0 && selling > 0 && ton > 0) {
-      const advanceAmt = Math.round(selling * ton * rate / 100 * 100) / 100;
-      setPosting(true);
-      try {
-        await journalService.postAdvanceReceivable({
-          tradeFileId: file.id, fileNo: file.file_no, customerId: file.customer_id,
-          customerName: (file.customer as any)?.name ?? '', amount: advanceAmt,
-          currency: data.sale_currency, advanceRate: rate,
-        });
-      } finally { setPosting(false); }
-    }
-
-    const purchaseRate  = Number(data.purchase_advance_rate ?? 0);
-    const purchPrice    = Number(data.purchase_price ?? 0);
-    if (purchaseRate > 0 && purchPrice > 0 && ton > 0 && data.supplier_id) {
-      const supplierAdvAmt = Math.round(purchPrice * ton * purchaseRate / 100 * 100) / 100;
-      setPosting(true);
-      try {
-        await journalService.postAdvancePayable({
-          tradeFileId: file.id, fileNo: file.file_no, supplierId: data.supplier_id,
-          supplierName: (file.supplier as any)?.name ?? '', amount: supplierAdvAmt,
-          currency: data.purchase_currency, advanceRate: purchaseRate,
-        });
-      } finally { setPosting(false); }
-    }
-
     onOpenChange(false);
   }
 
@@ -388,15 +356,13 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
             </button>
             <button
               type="submit"
-              disabled={mutation.isPending || posting}
+              disabled={mutation.isPending}
               className="w-full md:w-auto px-4 h-12 md:h-8 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
               style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
             >
-              {posting
-                ? 'Muhasebeye İşleniyor…'
-                : mutation.isPending
-                  ? (editMode ? 'Kaydediliyor…' : 'Çevriliyor…')
-                  : (editMode ? 'Kaydet' : 'Satışa Çevir')}
+              {mutation.isPending
+                ? (editMode ? 'Kaydediliyor…' : 'Çevriliyor…')
+                : (editMode ? 'Kaydet' : 'Satışa Çevir')}
             </button>
           </div>
         </form>

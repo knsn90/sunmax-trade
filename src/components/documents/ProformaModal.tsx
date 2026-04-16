@@ -135,7 +135,12 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         port_of_discharge: file.port_of_discharge ?? '',
         final_delivery: file.port_of_discharge ?? '',
         incoterms: file.incoterms ?? settings?.default_incoterms ?? 'CPT',
-        payment_terms: file.payment_terms ?? settings?.payment_terms ?? '',
+        payment_terms: (() => {
+          const pt = file.payment_terms ?? settings?.payment_terms ?? '';
+          const rate = file.advance_rate ?? 0;
+          if (pt === 'Downpayment' && rate > 0) return `${rate}% Downpayment`;
+          return pt;
+        })(),
         transport_mode: file.transport_mode ?? 'truck',
         shipment_method: '',
         currency: file.currency ?? settings?.default_currency ?? 'USD',
