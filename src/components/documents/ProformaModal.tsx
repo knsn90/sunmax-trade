@@ -20,6 +20,7 @@ import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
+import { WeekPicker } from '@/components/ui/WeekPicker';
 import type { OcrResult } from '@/lib/openai';
 
 interface ProformaModalProps {
@@ -319,7 +320,10 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
 
           <FormRow>
             <FormGroup label="Time of Delivery">
-              <Input {...register('delivery_time')} placeholder="e.g. Weeks 26-27" />
+              <WeekPicker
+                value={form.watch('delivery_time') ?? ''}
+                onChange={v => setValue('delivery_time', v)}
+              />
             </FormGroup>
             <FormGroup label="Vessel Details Confirmation Time">
               <Input {...register('vessel_details_confirmation')} placeholder="e.g. 7 days before loading" />
