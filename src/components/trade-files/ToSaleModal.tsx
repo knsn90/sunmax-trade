@@ -7,6 +7,7 @@ import { useSuppliers } from '@/hooks/useEntities';
 import { useConvertToSale, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useSettings } from '@/hooks/useSettings';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { cn } from '@/lib/utils';
 
 // ── Mono stil sabitleri ───────────────────────────────────────────────────────
@@ -268,7 +269,10 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
           {/* ETA · Gemi · Kayıt No */}
           <div className="grid grid-cols-3 gap-3">
             <Fld label="ETA">
-              <input type="date" {...register('eta')} className={inp} />
+              <MonoDatePicker
+                value={form.watch('eta') ?? ''}
+                onChange={v => setValue('eta', v)}
+              />
             </Fld>
             <Fld label="Gemi Adı">
               <input placeholder="örn. MV ATLAS" {...register('vessel_name')} className={inp} />
