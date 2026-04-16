@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import { useTheme } from '@/contexts/ThemeContext';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { proformaSchema, type ProformaFormData } from '@/types/forms';
 import type { TradeFile, Proforma } from '@/types/database';
+import type { OcrResult } from '@/lib/openai';
 import { useCreateProforma, useUpdateProforma } from '@/hooks/useProformas';
 import { useCustomers } from '@/hooks/useEntities';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
@@ -15,14 +17,30 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect, Textarea } from '@/components/ui/form-elements';
-import { FormRow, FormGroup } from '@/components/ui/shared';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { WeekPicker } from '@/components/ui/WeekPicker';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
-import type { OcrResult } from '@/lib/openai';
+
+// ── Mono stil sabitleri ────────────────────────────────────────────────────────
+const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
+const ta  = 'bg-gray-100 rounded-lg px-3 py-2 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full resize-none';
+const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
+
+const Lbl = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">{children}</div>
+);
+const Fld = ({
+  label, children, className, error,
+}: { label: string; children: React.ReactNode; className?: string; error?: string }) => (
+  <div className={className}>
+    <Lbl>{label}</Lbl>
+    {children}
+    {error && <div className="text-[10px] text-red-500 mt-0.5">{error}</div>}
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface ProformaModalProps {
   open: boolean;
@@ -32,6 +50,7 @@ interface ProformaModalProps {
 }
 
 export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaModalProps) {
+  const { accent } = useTheme();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
   const { data: allCustomers = [] } = useCustomers();
@@ -39,14 +58,13 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   const updatePI = useUpdateProforma();
   const isEdit = !!proforma;
   const importRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
 
   // ── Consignee (Alıcı Firma) ───────────────────────────────────────────
   const [consigneeId, setConsigneeId] = useState<string>('');
-  // Sub-customers of the trade file's customer
   const mainCustomerId = file?.customer_id ?? '';
   const subCustomers = allCustomers.filter(c => c.parent_customer_id === mainCustomerId);
   const mainCustomer = allCustomers.find(c => c.id === mainCustomerId);
-  // Show the dropdown only if there are sub-companies defined
   const hasSubCustomers = subCustomers.length > 0;
 
   const hsCode = proforma?.hs_code || file?.product?.hs_code || '';
@@ -140,15 +158,15 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
     }
   }, [open, file, proforma, settings, reset, defaultNotes]);
 
-  const qty = useWatch({ control, name: 'quantity_admt' }) ?? 0;
-  const price = useWatch({ control, name: 'unit_price' }) ?? 0;
-  const freight = useWatch({ control, name: 'freight' }) ?? 0;
-  const discount = useWatch({ control, name: 'discount' }) ?? 0;
+  const qty         = useWatch({ control, name: 'quantity_admt' }) ?? 0;
+  const price       = useWatch({ control, name: 'unit_price' }) ?? 0;
+  const freight     = useWatch({ control, name: 'freight' }) ?? 0;
+  const discount    = useWatch({ control, name: 'discount' }) ?? 0;
   const otherCharges = useWatch({ control, name: 'other_charges' }) ?? 0;
-  const currency = useWatch({ control, name: 'currency' }) ?? 'USD';
+  const currency    = useWatch({ control, name: 'currency' }) ?? 'USD';
 
   const subtotal = qty * price;
-  const total = subtotal + freight - discount + otherCharges;
+  const total    = subtotal + freight - discount + otherCharges;
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -194,6 +212,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   }
 
   async function onSubmit(data: ProformaFormData) {
+    setSaving(true);
     try {
       const cId = consigneeId || undefined;
       if (isEdit && proforma) {
@@ -205,7 +224,9 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
       }
       onOpenChange(false);
     } catch {
-      // Error already shown via toast — prevent UI freeze
+      // Error shown via onError toast — button always re-enables via finally
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -234,166 +255,184 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
           {/* ── Alıcı Firma (Consignee) — sadece alt firma varsa göster ── */}
           {hasSubCustomers && (
             <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">
-                Alıcı Firma (Consignee)
-              </label>
-              <NativeSelect
+              <Lbl>Alıcı Firma (Consignee)</Lbl>
+              <select
                 value={consigneeId}
                 onChange={e => setConsigneeId(e.target.value)}
-                className="text-[12px]"
+                className={sel}
               >
                 <option value="">{mainCustomer?.name ?? '—'} (Ana Firma)</option>
                 {subCustomers.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </NativeSelect>
+              </select>
               <p className="text-[10px] text-blue-500 mt-1">Muhasebe değişmez — sadece evrak üzerindeki alıcı adı değişir.</p>
             </div>
           )}
 
-          <FormRow cols={3}>
-            <FormGroup label="PI Date *" error={errors.proforma_date?.message}>
+          {/* ── Satır 1: Tarihler + Alıcı ID ── */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Fld label="PI Date *" error={errors.proforma_date?.message}>
               <MonoDatePicker value={form.watch('proforma_date') ?? ''} onChange={v => setValue('proforma_date', v)} />
-            </FormGroup>
-            <FormGroup label="Validity Date">
+            </Fld>
+            <Fld label="Validity Date">
               <MonoDatePicker value={form.watch('validity_date') ?? ''} onChange={v => setValue('validity_date', v)} />
-            </FormGroup>
-            <FormGroup label="Buyer Commercial ID">
-              <Input {...register('buyer_commercial_id')} />
-            </FormGroup>
-          </FormRow>
+            </Fld>
+            <Fld label="Buyer Commercial ID">
+              <input className={inp} {...register('buyer_commercial_id')} />
+            </Fld>
+          </div>
 
-          <FormRow>
-            <FormGroup label="Country of Origin">
-              <Input {...register('country_of_origin')} />
-            </FormGroup>
-            <FormGroup label="Currency">
-              <NativeSelect {...register('currency')}>
+          {/* ── Satır 2: Menşei + Döviz ── */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Fld label="Country of Origin">
+              <input className={inp} {...register('country_of_origin')} />
+            </Fld>
+            <Fld label="Currency">
+              <select className={sel} {...register('currency')}>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
-              </NativeSelect>
-            </FormGroup>
-          </FormRow>
+              </select>
+            </Fld>
+          </div>
 
-          <FormRow>
-            <FormGroup label="Port of Loading">
-              <Input {...register('port_of_loading')} />
-            </FormGroup>
-            <FormGroup label="Port of Discharge">
-              <Input {...register('port_of_discharge')} />
-            </FormGroup>
-          </FormRow>
+          {/* ── Satır 3: Yükleme / Boşaltma Limanı ── */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Fld label="Port of Loading">
+              <input className={inp} {...register('port_of_loading')} />
+            </Fld>
+            <Fld label="Port of Discharge">
+              <input className={inp} {...register('port_of_discharge')} />
+            </Fld>
+          </div>
 
-          <FormRow>
-            <FormGroup label="Final Delivery Place">
-              <Input {...register('final_delivery')} />
-            </FormGroup>
-            <FormGroup label="Incoterms">
-              <Input {...register('incoterms')} placeholder="CPT MERSIN" />
-            </FormGroup>
-          </FormRow>
+          {/* ── Satır 4: Teslimat + Incoterms ── */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Fld label="Final Delivery Place">
+              <input className={inp} {...register('final_delivery')} />
+            </Fld>
+            <Fld label="Incoterms">
+              <input className={inp} {...register('incoterms')} placeholder="CPT MERSIN" />
+            </Fld>
+          </div>
 
-          <FormRow cols={3}>
-            <FormGroup label="Payment Terms">
-              <Input {...register('payment_terms')} />
-            </FormGroup>
-            <FormGroup label="Transport Mode and Means">
-              <NativeSelect {...register('transport_mode')}>
+          {/* ── Satır 5: Ödeme + Taşıma + Ödeme Yeri ── */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Fld label="Payment Terms">
+              <input className={inp} {...register('payment_terms')} />
+            </Fld>
+            <Fld label="Transport Mode">
+              <select className={sel} {...register('transport_mode')}>
                 <option value="truck">By Truck</option>
                 <option value="railway">By Railway</option>
                 <option value="sea">By Sea</option>
-              </NativeSelect>
-            </FormGroup>
-            <FormGroup label="Place of Payment">
-              <Input {...register('place_of_payment')} />
-            </FormGroup>
-          </FormRow>
+              </select>
+            </Fld>
+            <Fld label="Place of Payment">
+              <input className={inp} {...register('place_of_payment')} />
+            </Fld>
+          </div>
 
-          <FormRow cols={3}>
-            <FormGroup label="Shipment Method">
-              <NativeSelect {...register('shipment_method')}>
+          {/* ── Satır 6: Sevkiyat Yöntemi + Teslimat Haftası + Gemi Konfirme ── */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Fld label="Shipment Method">
+              <select className={sel} {...register('shipment_method')}>
                 <option value="">— Select —</option>
                 <option value="bulk">Bulk</option>
                 <option value="container">Container</option>
-              </NativeSelect>
-            </FormGroup>
-          </FormRow>
-
-          <FormRow>
-            <FormGroup label="Time of Delivery">
+              </select>
+            </Fld>
+            <Fld label="Time of Delivery">
               <WeekPicker
                 value={form.watch('delivery_time') ?? ''}
                 onChange={v => setValue('delivery_time', v)}
               />
-            </FormGroup>
-            <FormGroup label="Vessel Details Confirmation Time">
-              <Input {...register('vessel_details_confirmation')} placeholder="e.g. 7 days before loading" />
-            </FormGroup>
-          </FormRow>
-
-          <FormRow cols={3}>
-            <FormGroup label="Description">
-              <Input {...register('description')} />
-            </FormGroup>
-            <FormGroup label="HS Code">
-              <Input {...register('hs_code')} />
-            </FormGroup>
-            <FormGroup label="Partial Shipment">
-              <NativeSelect {...register('partial_shipment')}>
-                <option value="allowed">Allowed</option>
-                <option value="not">Not Allowed</option>
-              </NativeSelect>
-            </FormGroup>
-          </FormRow>
-
-          <FormRow cols={3}>
-            <FormGroup label="Insurance">
-              <Input {...register('insurance')} />
-            </FormGroup>
-            <FormGroup label="Net Weight (KG)">
-              <Input type="number" step="0.001" {...register('net_weight_kg')} />
-            </FormGroup>
-            <FormGroup label="Gross Weight (KG)">
-              <Input type="number" step="0.001" {...register('gross_weight_kg')} />
-            </FormGroup>
-          </FormRow>
-
-          <FormRow cols={3}>
-            <FormGroup label="Quantity (ADMT) *" error={errors.quantity_admt?.message}>
-              <Input type="number" step="0.001" {...register('quantity_admt')} />
-            </FormGroup>
-            <FormGroup label="Unit Price *" error={errors.unit_price?.message}>
-              <Input type="number" step="0.001" {...register('unit_price')} />
-            </FormGroup>
-            <FormGroup label="Freight (0=N/A)">
-              <Input type="number" step="0.001" {...register('freight')} />
-            </FormGroup>
-          </FormRow>
-
-          <FormRow>
-            <FormGroup label="Discount">
-              <Input type="number" step="0.001" {...register('discount')} placeholder="N/A" />
-            </FormGroup>
-            <FormGroup label="Other Charges">
-              <Input type="number" step="0.001" {...register('other_charges')} placeholder="N/A" />
-            </FormGroup>
-          </FormRow>
-
-          <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 flex flex-wrap gap-3 sm:gap-5 text-xs">
-            <span>Subtotal: <strong className="text-brand-600">{fCurrency(subtotal, currency as 'USD')}</strong></span>
-            <span>Freight: <strong>{fCurrency(freight, currency as 'USD')}</strong></span>
-            <span>TOTAL: <strong className="text-brand-600">{fCurrency(total, currency as 'USD')}</strong></span>
+            </Fld>
+            <Fld label="Vessel Details Confirmation">
+              <input className={inp} {...register('vessel_details_confirmation')} placeholder="e.g. 7 days before loading" />
+            </Fld>
           </div>
 
-          <FormGroup label="Signatory" className="mb-2.5">
-            <Input {...register('signatory')} />
-          </FormGroup>
+          {/* ── Satır 7: Ürün + HS Kodu + Kısmi Sevkiyat ── */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Fld label="Description">
+              <input className={inp} {...register('description')} />
+            </Fld>
+            <Fld label="HS Code">
+              <input className={inp} {...register('hs_code')} />
+            </Fld>
+            <Fld label="Partial Shipment">
+              <select className={sel} {...register('partial_shipment')}>
+                <option value="allowed">Allowed</option>
+                <option value="not">Not Allowed</option>
+              </select>
+            </Fld>
+          </div>
 
-          <FormGroup label="Notes" className="mb-2.5">
-            <Textarea rows={6} {...register('notes')} />
-          </FormGroup>
+          {/* ── Satır 8: Sigorta + Net/Brüt Ağırlık ── */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Fld label="Insurance">
+              <input className={inp} {...register('insurance')} />
+            </Fld>
+            <Fld label="Net Weight (KG)">
+              <input className={inp} type="number" step="0.001" {...register('net_weight_kg')} />
+            </Fld>
+            <Fld label="Gross Weight (KG)">
+              <input className={inp} type="number" step="0.001" {...register('gross_weight_kg')} />
+            </Fld>
+          </div>
+
+          {/* ── Satır 9: Miktar + Fiyat + Navlun ── */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Fld label="Quantity (ADMT) *" error={errors.quantity_admt?.message}>
+              <input className={inp} type="number" step="0.001" {...register('quantity_admt')} />
+            </Fld>
+            <Fld label="Unit Price *" error={errors.unit_price?.message}>
+              <input className={inp} type="number" step="0.001" {...register('unit_price')} />
+            </Fld>
+            <Fld label="Freight (0=N/A)">
+              <input className={inp} type="number" step="0.001" {...register('freight')} />
+            </Fld>
+          </div>
+
+          {/* ── Satır 10: İskonto + Diğer ── */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Fld label="Discount">
+              <input className={inp} type="number" step="0.001" {...register('discount')} placeholder="N/A" />
+            </Fld>
+            <Fld label="Other Charges">
+              <input className={inp} type="number" step="0.001" {...register('other_charges')} placeholder="N/A" />
+            </Fld>
+          </div>
+
+          {/* ── Toplam Banner ── */}
+          <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3 flex flex-wrap gap-5">
+            <span className="text-[11px] text-gray-500">
+              Subtotal:{' '}
+              <strong className="text-gray-900 text-[12px]">{fCurrency(subtotal, currency as 'USD')}</strong>
+            </span>
+            <span className="text-[11px] text-gray-500">
+              Freight:{' '}
+              <strong className="text-gray-900 text-[12px]">{fCurrency(freight, currency as 'USD')}</strong>
+            </span>
+            <span className="text-[11px] text-gray-500">
+              TOTAL:{' '}
+              <strong className="text-red-600 text-[13px] font-extrabold">{fCurrency(total, currency as 'USD')}</strong>
+            </span>
+          </div>
+
+          {/* ── İmzalayan ── */}
+          <Fld label="Signatory" className="mb-3">
+            <input className={inp} {...register('signatory')} />
+          </Fld>
+
+          {/* ── Notlar ── */}
+          <Fld label="Notes" className="mb-3">
+            <textarea className={ta} rows={6} {...register('notes')} />
+          </Fld>
 
           <DialogFooter>
+            {/* Hidden file input for Excel import */}
             <input
               ref={importRef}
               type="file"
@@ -415,9 +454,14 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
                 🖨 Print / PDF
               </Button>
             )}
-            <Button type="submit" disabled={createPI.isPending || updatePI.isPending}>
-              {isEdit ? 'Update Proforma' : 'Save Proforma'}
-            </Button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="h-9 px-5 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+              style={{ background: accent }}
+            >
+              {saving ? 'Saving…' : isEdit ? 'Update Proforma' : 'Save Proforma'}
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>
