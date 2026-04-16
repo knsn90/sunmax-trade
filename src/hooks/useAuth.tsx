@@ -51,33 +51,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    let initialDone = false;
 
-    // 1) getSession() reads localStorage synchronously — fast, no network needed.
-    //    This resolves the loading spinner immediately on refresh.
+    // 1) getSession() reads from localStorage — near-instant, no network.
+    //    Sets the initial auth state and clears the loading spinner.
     supabase.auth.getSession().then(async ({ data: { session: s } }) => {
       if (!mounted) return;
-      initialDone = true;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) await fetchProfile(s.user.id);
-      setIsLoading(false);
+      if (mounted) setIsLoading(false);
     }).catch(() => {
       if (mounted) setIsLoading(false);
     });
 
-    // 2) onAuthStateChange handles sign-in / sign-out / token refresh events.
-    //    Skip if initial load already handled to avoid duplicate profile fetch.
+    // 2) onAuthStateChange handles all subsequent auth events.
+    //    INITIAL_SESSION is skipped because getSession() above already handles it.
+    //    All other events (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED)
+    //    are processed immediately — no initialDone flag needed.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
+      async (event, s) => {
         if (!mounted) return;
-        if (!initialDone) return; // still loading from getSession()
+
+        // Skip INITIAL_SESSION — getSession() above already handles the initial state.
+        // Processing it here would cause a duplicate profile fetch on every page load.
+        if (event === 'INITIAL_SESSION') return;
+
         setSession(s);
         setUser(s?.user ?? null);
+
         if (s?.user) {
           await fetchProfile(s.user.id);
         } else {
+          // SIGNED_OUT or session expired → clear user data
           setProfile(null);
+          if (mounted) setIsLoading(false);
         }
       },
     );

@@ -9,7 +9,8 @@ export const productCategoryService = {
       .order('sort_order')
       .order('name');
     if (error) throw new Error(error.message);
-    return (data ?? []) as ProductCategory[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as ProductCategory[];
   },
 
   async create(input: { name: string; color: string }): Promise<ProductCategory> {

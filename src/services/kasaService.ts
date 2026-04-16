@@ -9,7 +9,8 @@ export const kasaService = {
       .eq('is_active', true)
       .order('name');
     if (error) throw new Error(error.message);
-    return (data ?? []) as Kasa[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Kasa[];
   },
   async create(input: Partial<Kasa>): Promise<Kasa> {
     const { data, error } = await supabase

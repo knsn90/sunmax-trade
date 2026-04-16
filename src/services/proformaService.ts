@@ -16,7 +16,8 @@ export const proformaService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as Proforma[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Proforma[];
   },
 
   async listByTradeFile(tradeFileId: string): Promise<Proforma[]> {
@@ -27,7 +28,8 @@ export const proformaService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as Proforma[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Proforma[];
   },
 
   async getById(id: string): Promise<Proforma> {

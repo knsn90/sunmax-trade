@@ -17,7 +17,8 @@ export const userService = {
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as Profile[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Profile[];
   },
 
   async createUser(

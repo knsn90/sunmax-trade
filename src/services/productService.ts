@@ -20,7 +20,8 @@ export const productService = {
       if (plainErr) throw new Error(plainErr.message);
       return (plain ?? []) as Product[];
     }
-    return (data ?? []) as Product[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Product[];
   },
 
   async getById(id: string): Promise<Product> {

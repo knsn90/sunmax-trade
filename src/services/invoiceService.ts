@@ -17,7 +17,8 @@ export const invoiceService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as Invoice[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Invoice[];
   },
 
   async listByTradeFile(tradeFileId: string): Promise<Invoice[]> {
@@ -28,7 +29,8 @@ export const invoiceService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as Invoice[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Invoice[];
   },
 
   async getById(id: string): Promise<Invoice> {
@@ -187,7 +189,8 @@ export const invoiceService = {
       .eq('invoice_type', 'sale')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as Invoice[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Invoice[];
   },
 
   async update(id: string, input: InvoiceFormData): Promise<Invoice> {

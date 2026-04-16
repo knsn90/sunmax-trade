@@ -17,7 +17,8 @@ export const serviceProviderService = {
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []) as ServiceProvider[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as ServiceProvider[];
   },
 
   async getById(id: string): Promise<ServiceProvider> {

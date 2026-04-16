@@ -10,7 +10,8 @@ export const priceListService = {
       .order('price_date', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as PriceList[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as PriceList[];
   },
 
   async listByProduct(productId: string): Promise<PriceList[]> {
@@ -21,7 +22,8 @@ export const priceListService = {
       .order('price_date', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as PriceList[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as PriceList[];
   },
 
   async create(input: PriceListFormData): Promise<PriceList> {

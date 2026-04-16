@@ -11,20 +11,47 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Custom fetch with 15-second timeout.
- * Prevents Supabase queries/mutations from hanging indefinitely
- * when the network stalls or the connection pool is exhausted.
+ * Custom fetch with timeout — SADECE data (PostgREST) isteklerine uygulanır.
+ *
+ * Neden auth hariç tutuldu:
+ *   Supabase'in token refresh mekanizması /auth/v1/ endpoint'ini kullanır.
+ *   Bu isteğe timeout uygularsak Supabase'in iç retry/refresh mantığı bozulur
+ *   → session expire olunca tüm sonraki istekler silent fail eder.
+ *
+ * AbortSignal.any() neden kullanılmıyor:
+ *   Bazı Supabase iç operasyonları zaten aborted olan bir signal ile
+ *   init.signal gönderir. AbortSignal.any() bu durumda hemen aborted bir
+ *   signal döndürür → fetch başlamadan iptal olur → promise hiç settle etmez
+ *   → button/loading sonsuza asılı kalır.
+ *   Bunun yerine caller signal'ini dinleyip kendi controller'ımızı abort ediyoruz.
  */
 function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const url = input instanceof Request ? input.url : String(input);
+
+  // Auth istekleri: hiç dokunma, Supabase kendi yönetsin
+  if (url.includes('/auth/v1/')) {
+    return fetch(input, init);
+  }
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20_000);
+  const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
-  // Merge caller's signal with our timeout signal (if they provided one)
-  const signal = init?.signal
-    ? (AbortSignal as unknown as { any: (s: AbortSignal[]) => AbortSignal }).any([init.signal, controller.signal])
-    : controller.signal;
+  // Caller'ın signal'ini dinle ama AbortSignal.any() kullanma
+  if (init?.signal) {
+    // Eğer zaten aborted ise hemen abort et
+    if (init.signal.aborted) {
+      clearTimeout(timeoutId);
+      controller.abort();
+    } else {
+      init.signal.addEventListener('abort', () => {
+        clearTimeout(timeoutId);
+        controller.abort();
+      }, { once: true });
+    }
+  }
 
-  return fetch(input, { ...init, signal }).finally(() => clearTimeout(timeoutId));
+  return fetch(input, { ...init, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId));
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

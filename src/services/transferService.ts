@@ -23,7 +23,8 @@ export const transferService = {
       .select('*')
       .order('transfer_date', { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as AccountTransfer[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as AccountTransfer[];
   },
 
   async create(input: TransferInput): Promise<AccountTransfer> {

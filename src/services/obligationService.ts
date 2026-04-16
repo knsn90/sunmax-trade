@@ -59,7 +59,8 @@ export const obligationService = {
       .eq('trade_file_id', tradeFileId)
       .order('created_at');
     if (error) throw new Error(error.message);
-    return (data ?? []) as TradeObligation[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as TradeObligation[];
   },
 
   /**

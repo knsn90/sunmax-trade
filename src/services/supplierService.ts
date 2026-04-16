@@ -11,7 +11,8 @@ export const supplierService = {
       .order('name');
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as Supplier[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Supplier[];
   },
 
   async getById(id: string): Promise<Supplier> {

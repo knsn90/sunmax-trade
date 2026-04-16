@@ -9,7 +9,8 @@ export const tradeFileNotesService = {
       .eq('trade_file_id', tradeFileId)
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as TradeFileNote[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as TradeFileNote[];
   },
 
   async create(tradeFileId: string, content: string): Promise<TradeFileNote> {

@@ -54,7 +54,8 @@ export const tradeFileService = {
     }
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []) as unknown as TradeFile[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as unknown as TradeFile[];
   },
 
   async list(filters?: {
@@ -82,7 +83,8 @@ export const tradeFileService = {
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []) as TradeFile[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as TradeFile[];
   },
 
   async getById(id: string): Promise<TradeFile> {

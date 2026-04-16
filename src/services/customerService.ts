@@ -11,7 +11,8 @@ export const customerService = {
       .order('name');
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as Customer[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Customer[];
   },
 
   async getById(id: string): Promise<Customer> {

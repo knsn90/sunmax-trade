@@ -76,7 +76,8 @@ export const transactionService = {
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []) as Transaction[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Transaction[];
   },
 
   /** Paginated list — returns one page + total count */
@@ -144,7 +145,8 @@ export const transactionService = {
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []) as Transaction[];
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+    return data as Transaction[];
   },
 
   async listByEntityEnhanced(
