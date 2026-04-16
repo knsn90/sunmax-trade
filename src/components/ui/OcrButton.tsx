@@ -11,7 +11,7 @@ interface OcrButtonProps {
   iconOnly?: boolean;
 }
 
-export function OcrButton({ onResult, mode, label = 'Belgeden Oku', iconOnly = false }: OcrButtonProps) {
+export function OcrButton({ onResult, mode, label = 'Belgeden Oku', iconOnly = true }: OcrButtonProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +45,7 @@ export function OcrButton({ onResult, mode, label = 'Belgeden Oku', iconOnly = f
           title={loading ? 'Okunuyor…' : label}
           disabled={loading}
           onClick={() => fileRef.current?.click()}
-          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors disabled:opacity-40"
+          className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors disabled:opacity-40"
         >
           <ScanLine className="h-3.5 w-3.5" />
         </button>

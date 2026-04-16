@@ -76,7 +76,7 @@ function getSpeechRecognition(): SpeechRecognitionCtor | null {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function SmartFill({ mode, onResult, getCurrentValues, context = {}, formName, iconOnly = false }: SmartFillProps) {
+export function SmartFill({ mode, onResult, getCurrentValues, context = {}, formName, iconOnly = true }: SmartFillProps) {
   const [open, setOpen] = useState(false);
   const [inputMode, setInputMode] = useState<'voice' | 'text'>(() =>
     getSpeechRecognition() ? 'voice' : 'text',
@@ -233,7 +233,7 @@ export function SmartFill({ mode, onResult, getCurrentValues, context = {}, form
           type="button"
           title="Akıllı Doldur"
           onClick={() => setOpen(true)}
-          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
+          className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
         >
           <Wand2 className="h-3.5 w-3.5" />
         </button>
