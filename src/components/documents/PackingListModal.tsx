@@ -165,8 +165,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
       if (isEdit && packingList) {
         await updatePL.mutateAsync({ id: packingList.id, data, consigneeId: cId });
       } else if (file) {
-        const prefix = settings?.file_prefix ?? 'ESN';
-        const plNo = formatPLNo(prefix, Date.now() % 10000);
+        const plNo = formatPLNo(file.file_no);
         await createPL.mutateAsync({ tradeFileId: file.id, customerId: file.customer_id, plNo, data, consigneeId: cId });
       }
       onOpenChange(false);

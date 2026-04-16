@@ -111,35 +111,28 @@ export function generateTradeFileNo(
 }
 
 /**
- * Generate an invoice number from a database sequence value.
- * Format: ESN-INV-2503-001
+ * Generate an invoice number based on the trade file number.
+ * Format: SUN [fileNo] INV
+ * Example: SUN PB-10 26-06 IP INV
  */
-export function formatInvoiceNo(prefix: string, seqVal: number): string {
-  const now = new Date();
-  const yr = String(now.getFullYear()).slice(2);
-  const mo = String(now.getMonth() + 1).padStart(2, '0');
-  return `${prefix}-INV-${yr}${mo}-${String(seqVal).padStart(3, '0')}`;
+export function formatInvoiceNo(fileNo: string): string {
+  return `SUN ${fileNo} INV`;
 }
 
 /**
- * Generate a packing list number from a database sequence value.
- * Format: ESN-PL-2503-001
+ * Generate a packing list number based on the trade file number.
+ * Format: SUN [fileNo] PL
+ * Example: SUN PB-10 26-06 IP PL
  */
-export function formatPLNo(prefix: string, seqVal: number): string {
-  const now = new Date();
-  const yr = String(now.getFullYear()).slice(2);
-  const mo = String(now.getMonth() + 1).padStart(2, '0');
-  return `${prefix}-PL-${yr}${mo}-${String(seqVal).padStart(3, '0')}`;
+export function formatPLNo(fileNo: string): string {
+  return `SUN ${fileNo} PL`;
 }
 
 /**
- * Generate a proforma invoice number from a database sequence value.
- * Format: ESN-PI-250317-01
+ * Generate a proforma invoice number based on the trade file number.
+ * Format: SUN [fileNo] PI
+ * Example: SUN PB-10 26-06 IP PI
  */
-export function formatProformaNo(prefix: string, seqVal: number): string {
-  const now = new Date();
-  const yr = String(now.getFullYear()).slice(2);
-  const mo = String(now.getMonth() + 1).padStart(2, '0');
-  const dy = String(now.getDate()).padStart(2, '0');
-  return `${prefix}-PI-${yr}${mo}${dy}-${String(seqVal).padStart(2, '0')}`;
+export function formatProformaNo(fileNo: string): string {
+  return `SUN ${fileNo} PI`;
 }

@@ -225,7 +225,7 @@ export function InvoiceModal({
         const isSale = effectiveType === 'sale';
         const invNo = isSale
           ? `SINV-${new Date().getFullYear()}-${String(Date.now() % 100000).padStart(5, '0')}`
-          : formatInvoiceNo(settings?.file_prefix ?? 'ESN', Date.now() % 10000);
+          : formatInvoiceNo(effectiveFile.file_no);
         await createInvoice.mutateAsync({
           tradeFileId: effectiveFile.id,
           customerId: effectiveFile.customer_id,

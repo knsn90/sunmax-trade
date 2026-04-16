@@ -224,8 +224,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
       if (isEdit && proforma) {
         await updatePI.mutateAsync({ id: proforma.id, data, consigneeId: cId });
       } else if (file) {
-        const prefix = settings?.file_prefix ?? 'ESN';
-        const piNo = formatProformaNo(prefix, Date.now() % 10000);
+        const piNo = formatProformaNo(file.file_no);
         await createPI.mutateAsync({ tradeFileId: file.id, proformaNo: piNo, data, consigneeId: cId });
       }
       onOpenChange(false);
