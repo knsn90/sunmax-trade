@@ -92,29 +92,33 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
       {/* Mobile cards */}
       <div className="md:hidden mx-0 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
         {filtered.length === 0 ? <EmptyDocs message={t('empty.noInvoices')} /> : filtered.map(inv => (
-          <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
+          <div key={inv.id} className="flex items-start gap-3 px-4 py-3 active:bg-gray-50 transition-colors">
             <DocIcon tab="invoices" />
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-bold text-gray-900">{inv.invoice_no}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">
-                <span className="font-mono">{(inv.trade_file as any)?.file_no ?? '—'}</span>
-                {' · '}{(inv.customer as any)?.name ?? '—'}
+              {/* Satır 1: Fatura no + tutar */}
+              <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                <span className="text-[13px] font-bold text-gray-900 truncate">{inv.invoice_no}</span>
+                <span className="text-[13px] font-bold shrink-0" style={{ color: accent }}>{fCurrency(inv.total)}</span>
               </div>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <span className="text-[13px] font-bold" style={{ color: accent }}>{fCurrency(inv.total)}</span>
-              <span className="text-[10px] text-gray-400">{fDate(inv.invoice_date)}</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-                <Printer className="h-3.5 w-3.5" />
-              </button>
-              {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>}
-              {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>}
+              {/* Satır 2: Meta + tarih + butonlar */}
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-gray-400 truncate min-w-0">
+                  <span className="font-mono text-gray-500">{(inv.trade_file as any)?.file_no ?? '—'}</span>
+                  {' · '}{(inv.customer as any)?.name ?? '—'}
+                </span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <span className="text-[10px] text-gray-400 mr-1">{fDate(inv.invoice_date)}</span>
+                  <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                    <Printer className="h-3 w-3" />
+                  </button>
+                  {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-1 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+                    <Pencil className="h-3 w-3" />
+                  </button>}
+                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <Trash2 className="h-3 w-3" />
+                  </button>}
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -208,29 +212,30 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
       {/* Mobile */}
       <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
         {filtered.length === 0 ? <EmptyDocs message={t('empty.noProformas')} /> : filtered.map(pi => (
-          <div key={pi.id} className="flex items-center gap-3 px-4 py-3">
+          <div key={pi.id} className="flex items-start gap-3 px-4 py-3 active:bg-gray-50 transition-colors">
             <DocIcon tab="proformas" />
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-bold text-gray-900">{pi.proforma_no}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">
-                <span className="font-mono">{(pi.trade_file as any)?.file_no ?? '—'}</span>
-                {' · '}{fDate(pi.proforma_date)}
+              <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                <span className="text-[13px] font-bold text-gray-900 truncate">{pi.proforma_no}</span>
+                <span className="text-[13px] font-bold shrink-0" style={{ color: accent }}>{fCurrency(pi.total)}</span>
               </div>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <span className="text-[13px] font-bold" style={{ color: accent }}>{fCurrency(pi.total)}</span>
-              <span className="text-[10px] text-gray-400">{fN(pi.quantity_admt, 3)} MT</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-                <Printer className="h-3.5 w-3.5" />
-              </button>
-              {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>}
-              {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>}
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-gray-400 truncate min-w-0">
+                  <span className="font-mono text-gray-500">{(pi.trade_file as any)?.file_no ?? '—'}</span>
+                  {' · '}{fDate(pi.proforma_date)} · {fN(pi.quantity_admt, 3)} MT
+                </span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                    <Printer className="h-3 w-3" />
+                  </button>
+                  {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-1 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+                    <Pencil className="h-3 w-3" />
+                  </button>}
+                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <Trash2 className="h-3 w-3" />
+                  </button>}
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -322,29 +327,31 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
       {/* Mobile */}
       <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
         {filtered.length === 0 ? <EmptyDocs message={t('empty.noPackingLists')} /> : filtered.map(pl => (
-          <div key={pl.id} className="flex items-center gap-3 px-4 py-3">
+          <div key={pl.id} className="flex items-start gap-3 px-4 py-3 active:bg-gray-50 transition-colors">
             <DocIcon tab="packing-lists" />
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-bold text-gray-900">{pl.packing_list_no}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">
-                <span className="font-mono">{(pl.trade_file as any)?.file_no ?? '—'}</span>
-                {' · '}{(pl.customer as any)?.name ?? '—'}
+              <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                <span className="text-[13px] font-bold text-gray-900 truncate">{pl.packing_list_no}</span>
+                <span className="text-[12px] font-semibold text-gray-700 shrink-0">{fN(pl.total_admt, 3)} MT</span>
               </div>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <span className="text-[12px] font-semibold text-gray-700">{fN(pl.total_admt, 3)} MT</span>
-              <span className="text-[10px] text-gray-400">{pl.packing_list_items?.length ?? 0} {t('table.vehicles').toLowerCase()}</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-                <Printer className="h-3.5 w-3.5" />
-              </button>
-              {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>}
-              {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>}
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-gray-400 truncate min-w-0">
+                  <span className="font-mono text-gray-500">{(pl.trade_file as any)?.file_no ?? '—'}</span>
+                  {' · '}{(pl.customer as any)?.name ?? '—'}
+                </span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <span className="text-[10px] text-gray-400 mr-1">{pl.packing_list_items?.length ?? 0} {t('table.vehicles').toLowerCase()}</span>
+                  <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                    <Printer className="h-3 w-3" />
+                  </button>
+                  {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-1 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+                    <Pencil className="h-3 w-3" />
+                  </button>}
+                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <Trash2 className="h-3 w-3" />
+                  </button>}
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -419,9 +426,10 @@ export function DocumentsPage() {
 
   return (
     <div>
-      {/* Header row: tabs + search */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none shrink-0">
+      {/* Mobil: tab satırı ayrı, search altında — Desktop: tek satır */}
+      <div className="mb-4 space-y-2 md:space-y-0 md:flex md:items-center md:gap-2">
+        {/* Tab pilleri — mobilde tam genişlik */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -429,21 +437,23 @@ export function DocumentsPage() {
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
-                className={`shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+                className={`flex-1 md:flex-none shrink-0 flex items-center justify-center gap-1.5 px-3 h-9 md:h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
                   isActive ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
-        <div className="flex-1" />
-        <div className="relative w-44 shrink-0">
+
+        {/* Search — mobilde tam genişlik, desktopda sabit */}
+        <div className="hidden md:block flex-1" />
+        <div className="relative w-full md:w-44 shrink-0">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
           <input
-            className="w-full h-8 pl-8 pr-3 rounded-xl border border-gray-200 bg-white text-[12px] outline-none placeholder:text-gray-400 focus:border-blue-300"
+            className="w-full h-9 md:h-8 pl-8 pr-3 rounded-xl border border-gray-200 bg-white text-[12px] outline-none placeholder:text-gray-400 focus:border-blue-300"
             placeholder={t(`search.${searchKey}` as `search.${string}`)}
             value={search}
             onChange={e => setSearch(e.target.value)}

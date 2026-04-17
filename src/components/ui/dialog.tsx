@@ -98,6 +98,8 @@ const DialogContent = React.forwardRef<
             'md:rounded-2xl md:bg-white md:shadow-xl md:max-h-[90vh] md:h-auto',
             className,
           )}
+          // Mobile: push content below status bar (safe-area-inset-top)
+          style={isMobile ? { paddingTop: 'env(safe-area-inset-top)' } : undefined}
           initial={isMobile ? { x: '100%' } : { opacity: 0, y: 40, scale: 0.98 }}
           animate={isMobile ? { x: 0 } : { opacity: 1, y: 0, scale: 1 }}
           exit={isMobile ? { x: '100%' } : { opacity: 0, y: 20, scale: 0.97 }}
