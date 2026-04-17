@@ -195,15 +195,15 @@ const BASE_CSS = `
   }
 
   /* DRAFT watermark */
-  .draft-watermark { position: relative; }
+  .draft-watermark { position: relative; overflow: hidden; }
   .draft-watermark::before {
     content: 'DRAFT';
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 140px;
+    font-size: 130px;
     font-weight: 900;
-    color: rgba(0,0,0,0.06);
+    color: rgba(0,0,0,0.10);
     letter-spacing: 20px;
     pointer-events: none;
     z-index: 9999;
@@ -243,7 +243,7 @@ const BASE_CSS = `
       border-radius: 0 !important;
     }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .draft-watermark::before { position: fixed; top: 50%; left: 50%; }
+    .draft-watermark::before { position: absolute; top: 50%; left: 50%; }
   }
 `;
 
