@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate } from '@/lib/formatters';
 import { NewFileModal } from '@/components/trade-files/NewFileModal';
-import { LoadingSpinner } from '@/components/ui/shared';
+// LoadingSpinner kaldırıldı — inline spinner kullanılıyor
 import { cn } from '@/lib/utils';
 import { fCurrency } from '@/lib/formatters';
 import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
@@ -325,7 +325,7 @@ export function TradeFilesPage() {
     deleteFile.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>
@@ -400,7 +400,11 @@ export function TradeFilesPage() {
         </div>
 
         <div className="flex-1 mx-3 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
-          {paged.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
+            </div>
+          ) : paged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <MoreVertical className="h-8 w-8 mb-2 opacity-30" />
               <p className="text-sm">{t('empty.noRecords')}</p>
@@ -499,7 +503,9 @@ export function TradeFilesPage() {
               </tr>
             </thead>
             <tbody>
-              {paged.length === 0 ? (
+              {isLoading ? (
+                <tr><td colSpan={6} className="py-16 text-center"><div className="inline-block w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" /></td></tr>
+              ) : paged.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-16 text-center text-[13px] text-gray-400">
                     {t('empty.noRecords')}

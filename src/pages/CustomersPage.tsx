@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/form-elements';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Card, PageHeader, LoadingSpinner, EmptyState, FormRow, FormGroup } from '@/components/ui/shared';
+import { Card, PageHeader, EmptyState, FormRow, FormGroup } from '@/components/ui/shared';
 
 export function CustomersPage() {
   const { t } = useTranslation('contacts');
@@ -22,7 +22,7 @@ export function CustomersPage() {
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const admin = isAdmin(profile?.role);
-  const { data: customers = [], isLoading } = useCustomers();
+  const { data: customers = [] } = useCustomers();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
@@ -76,7 +76,7 @@ export function CustomersPage() {
     }
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>

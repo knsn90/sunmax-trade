@@ -11,7 +11,7 @@ import { useProformas, useDeleteProforma } from '@/hooks/useProformas';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
-import { LoadingSpinner } from '@/components/ui/shared';
+
 import { Search, Printer, Pencil, Trash2, Receipt, FileText, Package } from 'lucide-react';
 import type { Invoice, PackingList, Proforma, TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -63,7 +63,7 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
   const { data: bankAccounts } = useBankAccounts();
   const adminRole = isAdmin(profile?.role);
   const writable = canWrite(profile?.role);
-  const { data: invoices = [], isLoading } = useInvoices();
+  const { data: invoices = [] } = useInvoices();
   const deleteInv = useDeleteInvoice();
   const [editInv, setEditInv] = useState<Invoice | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -85,7 +85,7 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
     printInvoice(inv, settings, bank);
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>
@@ -180,7 +180,7 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
   const { data: bankAccounts } = useBankAccounts();
   const adminRole = isAdmin(profile?.role);
   const writable = canWrite(profile?.role);
-  const { data: proformas = [], isLoading } = useProformas();
+  const { data: proformas = [] } = useProformas();
   const deletePI = useDeleteProforma();
   const [editPI, setEditPI] = useState<Proforma | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -201,7 +201,7 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
     printProforma(pi, settings, bank, pi.trade_file as TradeFile ?? null);
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>
@@ -294,7 +294,7 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
   const { data: settings } = useSettings();
   const adminRole = isAdmin(profile?.role);
   const writable = canWrite(profile?.role);
-  const { data: pls = [], isLoading } = usePackingLists();
+  const { data: pls = [] } = usePackingLists();
   const deletePL = useDeletePackingList();
   const [editPL, setEditPL] = useState<PackingList | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -315,7 +315,7 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
     printPackingList(pl, settings);
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>

@@ -12,7 +12,7 @@ import { DeliveryModal } from '@/components/trade-files/DeliveryModal';
 import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
-import { LoadingSpinner } from '@/components/ui/shared';
+// LoadingSpinner kaldırıldı — inline spinner kullanılıyor
 import { cn } from '@/lib/utils';
 import { fN, fDate } from '@/lib/formatters';
 import {
@@ -326,7 +326,7 @@ export function PipelinePage() {
   const currentPage  = Math.min(page, totalPages);
   const paged        = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>
@@ -419,7 +419,11 @@ export function PipelinePage() {
 
         {/* ── Cards ────────────────────────────────────────────────── */}
         <div className="flex-1 px-4 space-y-2.5">
-          {paged.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
+            </div>
+          ) : paged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400">
               <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-3"
                 style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>

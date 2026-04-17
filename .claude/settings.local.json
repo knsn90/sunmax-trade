@@ -145,7 +145,20 @@
       "Bash(grep -h \"^CREATE TABLE\\\\|^create table\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
       "Read(//tmp/**)",
       "Bash(grep -n \"company_name\\\\|company_settings\\\\|CREATE TABLE company\" /Users/saber/Downloads/sunmax-trade/supabase/migrations/*.sql)",
-      "Bash(vercel build:*)"
+      "Bash(vercel build:*)",
+      "Bash(gh deployment:*)",
+      "Bash(git remote:*)",
+      "Bash(ls /Users/saber/Downloads/*.svg /Users/saber/Downloads/*.png)",
+      "Bash(ls .env*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(sed -i '' 's/const { data: customers = \\\\[\\\\], isLoading } = useCustomers\\(\\);/const { data: customers = [] } = useCustomers\\(\\);/g' src/pages/CustomersPage.tsx src/pages/ContactsPage.tsx)",
+      "Bash(sed -i '' 's/const { data: suppliers = \\\\[\\\\], isLoading } = useSuppliers\\(\\);/const { data: suppliers = [] } = useSuppliers\\(\\);/g' src/pages/ContactsPage.tsx)",
+      "Bash(sed -i '' 's/const { data: providers = \\\\[\\\\], isLoading } = useServiceProviders\\(typeFilter\\);/const { data: providers = [] } = useServiceProviders\\(typeFilter\\);/g' src/pages/ContactsPage.tsx)",
+      "Bash(sed -i '' 's/const { data: invoices = \\\\[\\\\], isLoading } = useInvoices\\(\\);/const { data: invoices = [] } = useInvoices\\(\\);/g' src/pages/DocumentsPage.tsx)",
+      "Bash(sed -i '' 's/const { data: proformas = \\\\[\\\\], isLoading } = useProformas\\(\\);/const { data: proformas = [] } = useProformas\\(\\);/g' src/pages/DocumentsPage.tsx)",
+      "Bash(sed -i '' 's/const { data: pls = \\\\[\\\\], isLoading } = usePackingLists\\(\\);/const { data: pls = [] } = usePackingLists\\(\\);/g' src/pages/DocumentsPage.tsx)",
+      "Bash(sed -i '' \"s/import { LoadingSpinner } from '@\\\\/components\\\\/ui\\\\/shared';//g\" src/pages/ContactsPage.tsx src/pages/CustomersPage.tsx src/pages/DocumentsPage.tsx)",
+      "Bash(sed -i '' \"s/, LoadingSpinner }/ }/g; s/{ LoadingSpinner, /{ /g; s/{ LoadingSpinner }//g\" src/pages/ContactsPage.tsx src/pages/CustomersPage.tsx src/pages/DocumentsPage.tsx)"
     ]
   }
 }

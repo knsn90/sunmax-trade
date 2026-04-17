@@ -59,16 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 8000);
 
     // 1) getSession() reads from localStorage — near-instant, no network.
-    //    Sets the initial auth state and clears the loading spinner.
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+    //    Clears loading spinner immediately; profile fetch runs in background.
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) await fetchProfile(s.user.id);
-      if (mounted) {
-        setIsLoading(false);
-        clearTimeout(safetyTimer);
-      }
+      // Clear spinner immediately — don't block on fetchProfile network call
+      setIsLoading(false);
+      clearTimeout(safetyTimer);
+      if (s?.user) fetchProfile(s.user.id); // background, updates profile state when ready
     }).catch(() => {
       if (mounted) {
         setIsLoading(false);
@@ -92,9 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(s?.user ?? null);
 
         if (s?.user) {
-          await fetchProfile(s.user.id);
-          // isLoading'i her auth event'te kapat — SIGNED_IN, TOKEN_REFRESHED vb.
+          // Clear spinner immediately, fetch profile in background
           if (mounted) setIsLoading(false);
+          fetchProfile(s.user.id);
         } else {
           // SIGNED_OUT or session expired → clear user data
           setProfile(null);

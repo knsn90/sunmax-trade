@@ -11,7 +11,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite, isAdmin } from '@/lib/permissions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { LoadingSpinner } from '@/components/ui/shared';
+// LoadingSpinner kaldırıldı — inline spinner kullanılıyor
 import { AIFormFill } from '@/components/ui/AIFormFill';
 import { Search, Pencil, Trash2, Plus, Tag, Check, Upload, Link, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -272,7 +272,7 @@ export function ProductsPage() {
     }
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // Tam sayfa spinner KULLANMA — tablo kendi içinde yükleme gösteriyor
 
   return (
     <div className="-mx-4 md:mx-0">
@@ -326,7 +326,9 @@ export function ProductsPage() {
 
         {/* Mobile cards */}
         <div className="md:hidden space-y-2">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="py-14 flex justify-center"><div className="w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" /></div>
+          ) : filtered.length === 0 ? (
             <div className="py-14 text-center text-sm text-gray-400">{search ? t('noResults') : t('noProducts')}</div>
           ) : filtered.map(p => (
             <div key={p.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
@@ -370,7 +372,9 @@ export function ProductsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <tr><td colSpan={8} className="py-14 text-center"><div className="inline-block w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" /></td></tr>
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="py-14 text-center text-sm text-gray-400">{search ? t('noResults') : t('noProducts')}</td></tr>
               ) : filtered.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">

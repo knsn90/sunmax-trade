@@ -358,12 +358,12 @@ function PriceCarousel({ prices, onNavigate }: { prices: import('@/types/databas
                 if (!src) return null;
                 const isRaster = src.startsWith('data:') && !src.startsWith('data:image/svg');
                 return isRaster ? (
-                  <div className="bg-white/20 rounded-xl p-1.5 shrink-0">
-                    <img src={src} alt={entry.product?.name ?? ''} className="h-8 object-contain" />
+                  <div className="bg-white/20 rounded-xl p-1.5 shrink-0 max-w-[42%] overflow-hidden">
+                    <img src={src} alt={entry.product?.name ?? ''} className="h-8 w-full object-contain" />
                   </div>
                 ) : (
-                  <img src={src} alt={entry.product?.name ?? ''} className="h-10 shrink-0 object-contain"
-                    style={{ filter: 'brightness(0) invert(1)', opacity: 0.8 }} />
+                  <img src={src} alt={entry.product?.name ?? ''} className="h-10 object-contain"
+                    style={{ maxWidth: '42%', filter: 'brightness(0) invert(1)', opacity: 0.8 }} />
                 );
               })()}
             </div>

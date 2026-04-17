@@ -21,7 +21,7 @@ import { SERVICE_PROVIDER_TYPE_LABELS } from '@/types/enums';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { LoadingSpinner, FormRow, FormGroup } from '@/components/ui/shared';
+import { FormRow, FormGroup } from '@/components/ui/shared';
 import { AIFormFill } from '@/components/ui/AIFormFill';
 import { Search, Pencil, Trash2, Plus } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -53,7 +53,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const adminRole = isAdmin(profile?.role);
-  const { data: customers = [], isLoading } = useCustomers();
+  const { data: customers = [] } = useCustomers();
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
   const remove = useDeleteCustomer();
@@ -118,7 +118,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
     setModalOpen(false);
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>
@@ -295,7 +295,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
   const adminRole = isAdmin(profile?.role);
-  const { data: suppliers = [], isLoading } = useSuppliers();
+  const { data: suppliers = [] } = useSuppliers();
   const create = useCreateSupplier();
   const update = useUpdateSupplier();
   const remove = useDeleteSupplier();
@@ -346,7 +346,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
     setModalOpen(false);
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>
@@ -486,7 +486,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
   const writable = canWrite(profile?.role);
   const adminRole = isAdmin(profile?.role);
   const [typeFilter, setTypeFilter] = useState<ServiceProviderType | undefined>(undefined);
-  const { data: providers = [], isLoading } = useServiceProviders(typeFilter);
+  const { data: providers = [] } = useServiceProviders(typeFilter);
   const create = useCreateServiceProvider();
   const update = useUpdateServiceProvider();
   const remove = useDeleteServiceProvider();
@@ -530,7 +530,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
     setModalOpen(false);
   }
 
-  if (isLoading) return <LoadingSpinner />;
+  // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
 
   return (
     <>
