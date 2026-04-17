@@ -385,6 +385,14 @@ export interface PackingList extends Timestamps {
   created_by: string | null;
   /** Evrak bazında alıcı firma — NULL ise trade_file.customer kullanılır */
   consignee_customer_id: string | null;
+  /** Fatura adresi — editable metin bloğu */
+  bill_to: string | null;
+  /** Teslimat adresi — editable metin bloğu */
+  ship_to: string | null;
+  /** Sayım sütunu etiketi: Reels | Bales | Packages | Cartons */
+  unit_label: string;
+  /** Miktar birimi: ADMT | MT */
+  qty_unit: string;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;

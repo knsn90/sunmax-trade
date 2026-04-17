@@ -165,6 +165,10 @@ export const packingListSchema = z.object({
   insurance_no: z.string().default(''),
   description: z.string().default(''),
   comments: z.string().default(''),
+  bill_to: z.string().default(''),
+  ship_to: z.string().default(''),
+  unit_label: z.enum(['Reels', 'Bales', 'Packages', 'Cartons']).default('Reels'),
+  qty_unit: z.enum(['ADMT', 'MT']).default('ADMT'),
   items: z.array(packingListItemSchema).min(1, 'Add at least one row'),
 });
 export type PackingListFormData = z.infer<typeof packingListSchema>;
