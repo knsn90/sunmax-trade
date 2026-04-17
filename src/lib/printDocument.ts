@@ -211,12 +211,37 @@ const BASE_CSS = `
     user-select: none;
   }
 
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm;
+  }
   @media print {
-    body { background: #fff; display: block; height: auto; overflow: visible; }
-    .sidebar { display: none; }
-    .doc-area { padding: 0; overflow: visible; }
-    .doc-scale-wrapper { transform: none !important; }
-    .page { box-shadow: none; width: 100%; padding: 10mm; margin: 0; border-radius: 0; }
+    html, body {
+      width: 210mm;
+      height: auto;
+      background: #fff;
+      display: block;
+      overflow: visible;
+    }
+    .sidebar { display: none !important; }
+    .doc-area {
+      display: block !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      width: 100% !important;
+    }
+    .doc-scale-wrapper {
+      transform: none !important;
+      width: 100% !important;
+    }
+    .page {
+      box-shadow: none !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+    }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .draft-watermark::before { position: fixed; top: 50%; left: 50%; }
   }
