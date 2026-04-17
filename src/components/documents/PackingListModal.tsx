@@ -205,7 +205,8 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   function handlePrint() {
     if (!packingList) { toast.error('Save the packing list first to print it.'); return; }
     if (!settings) return;
-    printPackingList(packingList, settings, true);
+    const isDraft = (packingList.doc_status ?? 'draft') !== 'approved';
+    printPackingList(packingList, settings, isDraft);
   }
 
   async function onSubmit(data: PackingListFormData) {

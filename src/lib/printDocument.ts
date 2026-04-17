@@ -688,7 +688,7 @@ function _buildPackingListBody(pl: PackingList, settings: CompanySettings, isDra
 
     <!-- ══ FOOTER ══ -->
     <div style="margin-top:20px;text-align:center">
-      ${settings.logo_url ? `<img src="${settings.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : ''}
+      ${!isDraft ? sealBlock() : (settings.logo_url ? `<img src="${settings.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : '')}
       ${settings.company_name ? `<div style="font-size:9px;font-weight:700;margin-bottom:2px">${esc(settings.company_name)}</div>` : ''}
       <div style="font-size:9px;color:#333;margin-bottom:2px">
         ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}

@@ -1371,7 +1371,7 @@ export function TradeFileDetailPage() {
                   </button>
                 )}
                 {settings && (
-                  <button onClick={() => printPackingList(pl, settings, true)}
+                  <button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')}
                     className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
                     <Printer className="h-3 w-3" /> {tc('btn.print')}
                   </button>
@@ -1911,7 +1911,7 @@ export function TradeFileDetailPage() {
                     <DocRow key={pl.id} no={pl.packing_list_no} date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })} status={pl.doc_status ?? 'draft'}>
                       <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
                       {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
-                      {settings && (<button onClick={() => printPackingList(pl, settings, true)} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
+                      {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
                       {settings && (<button disabled={dropboxUploadingId === pl.id} onClick={() => handleUploadToDropbox(pl.id, `${pl.packing_list_no}`, generatePackingListHtml(pl, settings, (pl.doc_status ?? 'draft') !== 'approved'))} className="h-7 px-3 rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 flex items-center gap-1 disabled:opacity-50"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg> Dropbox</button>)}
                       {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deletePL.mutate(pl.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                     </DocRow>

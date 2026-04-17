@@ -158,7 +158,10 @@
       "Bash(sed -i '' 's/const { data: proformas = \\\\[\\\\], isLoading } = useProformas\\(\\);/const { data: proformas = [] } = useProformas\\(\\);/g' src/pages/DocumentsPage.tsx)",
       "Bash(sed -i '' 's/const { data: pls = \\\\[\\\\], isLoading } = usePackingLists\\(\\);/const { data: pls = [] } = usePackingLists\\(\\);/g' src/pages/DocumentsPage.tsx)",
       "Bash(sed -i '' \"s/import { LoadingSpinner } from '@\\\\/components\\\\/ui\\\\/shared';//g\" src/pages/ContactsPage.tsx src/pages/CustomersPage.tsx src/pages/DocumentsPage.tsx)",
-      "Bash(sed -i '' \"s/, LoadingSpinner }/ }/g; s/{ LoadingSpinner, /{ /g; s/{ LoadingSpinner }//g\" src/pages/ContactsPage.tsx src/pages/CustomersPage.tsx src/pages/DocumentsPage.tsx)"
+      "Bash(sed -i '' \"s/, LoadingSpinner }/ }/g; s/{ LoadingSpinner, /{ /g; s/{ LoadingSpinner }//g\" src/pages/ContactsPage.tsx src/pages/CustomersPage.tsx src/pages/DocumentsPage.tsx)",
+      "Bash(pdftotext \"/Users/saber/Library/CloudStorage/Dropbox/Family Room/01-SELÜLOZ/01-Müşteriler/Zarrin-Paper & Board Trading/P07-2026-02 IP/01-packing-Ls SUN-260226-14.pdf\" -)",
+      "Bash(pdftoppm -r 150 -png \"/Users/saber/Library/CloudStorage/Dropbox/Family Room/01-SELÜLOZ/01-Müşteriler/Zarrin-Paper & Board Trading/P07-2026-02 IP/01-packing-Ls SUN-260226-14.pdf\" /tmp/pl_sample)",
+      "Read(//private/tmp/**)"
     ]
   }
 }
