@@ -217,11 +217,6 @@ export const transactionService = {
       nameData = (nd ?? []) as typeof mainData;
     }
 
-    // Debug: log what was found (remove after investigation)
-    console.log('[listByEntityEnhanced]', { entityType, entityId, entityName, fileIds, mainCount: (mainData ?? []).length, nameCount: nameData.length });
-    console.log('[listByEntityEnhanced] mainData types:', (mainData ?? []).map((t: { transaction_type: string; customer_id?: string | null }) => `${t.transaction_type}(cid:${t.customer_id ?? 'null'})`));
-    console.log('[listByEntityEnhanced] nameData types:', nameData.map((t: { transaction_type: string; party_name?: string | null }) => `${t.transaction_type}(name:${t.party_name})`));
-
     // Merge and dedup by id
     const combined = [...(mainData ?? []), ...nameData];
     const seen = new Set<string>();

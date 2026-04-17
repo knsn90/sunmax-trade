@@ -198,6 +198,10 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       mensei: mensei || undefined, kur_yon: isNonUsd ? kurYon : undefined,
     };
     const description = lines.length === 1 ? (lines[0].aciklama || 'Satın Alma Faturası') : lines.map(l => l.aciklama).filter(Boolean).join(', ') || 'Satın Alma Faturası';
+    // paid_amount cannot exceed the new total (e.g. if user lowers the invoice amount)
+    const clampedPaid = Math.min(transaction?.paid_amount ?? 0, toplamYerel);
+    const derivedStatus: 'open' | 'partial' | 'paid' =
+      clampedPaid <= 0 ? 'open' : clampedPaid >= toplamYerel ? 'paid' : 'partial';
     const payload = {
       transaction_date: faturaTarihi, transaction_type: 'purchase_inv' as const,
       trade_file_id: fileId || undefined, party_type: 'supplier' as const,
@@ -205,8 +209,8 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       party_name: selectedSupplier?.name ?? '', description, reference_no: faturaNo,
       currency: currency as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
       amount: toplamYerel, exchange_rate: isNonUsd ? dovizKuru : 1,
-      paid_amount: transaction?.paid_amount ?? 0,
-      payment_status: (transaction?.payment_status ?? 'open') as 'open' | 'partial' | 'paid',
+      paid_amount: clampedPaid,
+      payment_status: derivedStatus,
       payment_method: paymentMethod, bank_name: '', bank_account_no: '', swift_bic: '',
       card_type: '' as const, cash_receiver: '', masraf_turu: masrafTuru, masraf_tutar: masrafTutar,
       masraf_currency: masrafCurrency as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP', masraf_rate: masrafRate,

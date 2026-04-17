@@ -268,7 +268,10 @@ export function LoginPage() {
       }
       sessionStorage.setItem('authenticated', 'true');
 
-      window.location.href = '/dashboard';
+      // Hard reload KULLANMA — React Router navigate kullan.
+      // window.location.href tüm auth state'i sıfırlayıp isLoading=true'ya
+      // döndürür ve race condition'a yol açar.
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('login.error.generic'));
     }

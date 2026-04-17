@@ -169,7 +169,6 @@ export function useChangeStatus() {
       toast.success(`Durum değiştirildi: ${file.status}`);
     },
     onError: (err: Error) => {
-      console.error('[changeStatus]', err);
       toast.error(err.message || 'Durum güncellenemedi');
     },
   });

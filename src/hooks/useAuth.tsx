@@ -52,6 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Güvenlik timeout'u — getSession() bir sebepten hiç resolve olmasa bile
+    // 8 saniye sonra spinner'ı zorla kapat. Bu sadece fallback.
+    const safetyTimer = setTimeout(() => {
+      if (mounted) setIsLoading(false);
+    }, 8000);
+
     // 1) getSession() reads from localStorage — near-instant, no network.
     //    Sets the initial auth state and clears the loading spinner.
     supabase.auth.getSession().then(async ({ data: { session: s } }) => {
@@ -59,9 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) await fetchProfile(s.user.id);
-      if (mounted) setIsLoading(false);
+      if (mounted) {
+        setIsLoading(false);
+        clearTimeout(safetyTimer);
+      }
     }).catch(() => {
-      if (mounted) setIsLoading(false);
+      if (mounted) {
+        setIsLoading(false);
+        clearTimeout(safetyTimer);
+      }
     });
 
     // 2) onAuthStateChange handles all subsequent auth events.
@@ -81,6 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (s?.user) {
           await fetchProfile(s.user.id);
+          // isLoading'i her auth event'te kapat — SIGNED_IN, TOKEN_REFRESHED vb.
+          if (mounted) setIsLoading(false);
         } else {
           // SIGNED_OUT or session expired → clear user data
           setProfile(null);
@@ -91,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, [fetchProfile]);

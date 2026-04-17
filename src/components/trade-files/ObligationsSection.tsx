@@ -224,7 +224,7 @@ function PostSupplierAdvanceButton({ file }: { file: TradeFile }) {
   const [done, setDone]       = useState(false);
   const [err, setErr]         = useState('');
 
-  const purchaseRate = (file as any).purchase_advance_rate ?? 0;
+  const purchaseRate = file.purchase_advance_rate ?? 0;
   const purchTotal   = (file.purchase_price ?? 0) * (file.tonnage_mt ?? 0);
   const purchAmt     = Math.round(purchTotal * purchaseRate / 100 * 100) / 100;
   const canPost      = purchaseRate > 0 && purchAmt > 0 && !!file.supplier_id;
