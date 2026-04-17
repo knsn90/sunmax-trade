@@ -564,129 +564,117 @@ function _buildPackingListBody(pl: PackingList, settings: CompanySettings, isDra
     ? rawShipTo.split('\n').map(esc).join('<br>')
     : `<strong>${fallbackName}</strong>${fallbackAddr ? `<br>${fallbackAddr}` : ''}${fallbackPhone ? `<br>TELL: ${fallbackPhone}` : ''}`;
 
-  const BD  = 'border:1px solid #000';
-  const BDT = 'border-top:1px solid #000';
-  const BDB = 'border-bottom:1px solid #000';
+  const HL = 'border:none;border-top:1px solid #aaa;margin:0';
 
   const rowsHTML = items.map((r, i) => `
-    <tr>
-      <td style="padding:3px 5px;text-align:center;${BDB};border-left:1px solid #000;font-size:9px">${i + 1}</td>
-      <td style="padding:3px 5px;${BDB};font-size:9px">${esc(r.vehicle_plate || '')}</td>
-      <td style="padding:3px 5px;${BDB};font-size:9px">${description}</td>
-      <td style="padding:3px 5px;text-align:center;${BDB};font-size:9px">${r.reels || ''}</td>
-      <td style="padding:3px 5px;text-align:right;${BDB};font-size:9px">${r.admt ? fN3(r.admt) : ''}</td>
-      <td style="padding:3px 5px;text-align:right;${BDB};border-right:1px solid #000;font-size:9px">${r.gross_weight_kg ? fN(r.gross_weight_kg, 0) : ''}</td>
+    <tr style="border-bottom:1px solid #ddd">
+      <td style="padding:5px 6px;text-align:center;font-size:10px">${i + 1}</td>
+      <td style="padding:5px 6px;font-size:10px">${esc(r.vehicle_plate || '')}</td>
+      <td style="padding:5px 6px;font-size:10px">${description}</td>
+      <td style="padding:5px 6px;text-align:center;font-size:10px">${r.reels || ''}</td>
+      <td style="padding:5px 6px;text-align:right;font-size:10px">${r.admt ? fN3(r.admt) : ''}</td>
+      <td style="padding:5px 6px;text-align:right;font-size:10px">${r.gross_weight_kg ? fN(r.gross_weight_kg, 0) : ''}</td>
     </tr>`).join('');
 
   const body = `
-  <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;color:#000;line-height:1.3">
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#000;line-height:1.4">
 
     <!-- ══ HEADER ══ -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:6px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
       <tr>
-        <td style="width:50%;vertical-align:middle;padding-right:8px">
-          ${logoHTML(settings, 44, 140)}
-          <div style="font-size:9px;font-weight:700;margin-top:3px">${esc(settings.company_name || '')}</div>
-          <div style="font-size:8px;color:#333;line-height:1.5">
-            ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}<br>
-            ${settings.email ? 'E-mail: ' + esc(settings.email) : ''}${settings.phone ? '   Tel: ' + esc(settings.phone) : ''}
+        <td style="width:55%;vertical-align:top">
+          ${logoHTML(settings, 50, 160)}
+          <div style="font-size:11px;font-weight:700;margin-top:5px">${esc(settings.company_name || '')}</div>
+          <div style="font-size:9px;color:#333;margin-top:2px;line-height:1.6">
+            Address: ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}<br>
+            ${settings.email ? 'E-mail: ' + esc(settings.email) : ''}
+            ${settings.phone ? '<br>Website: ' + esc(settings.phone) : ''}
           </div>
         </td>
-        <td style="width:50%;text-align:right;vertical-align:top">
-          <div style="font-size:22px;font-weight:900;letter-spacing:2px;color:#000;line-height:1">PACKING LIST</div>
-          <div style="font-size:9px;margin-top:4px"><strong>No:</strong> ${esc(pl.packing_list_no)}</div>
-          <div style="font-size:9px;margin-top:2px"><strong>DATE:</strong> ${fDate(pl.pl_date)}</div>
+        <td style="text-align:right;vertical-align:top">
+          <div style="font-size:28px;font-weight:700;color:#bbb;letter-spacing:2px;line-height:1">PACKING LIST</div>
+          <div style="font-size:10px;margin-top:10px"><strong>DATE:</strong>&nbsp;&nbsp;${fDate(pl.pl_date)}</div>
         </td>
       </tr>
     </table>
 
-    <div style="${BDT};margin-bottom:0"></div>
-
     <!-- ══ BILL TO / SHIP TO ══ -->
-    <table style="width:100%;border-collapse:collapse;${BDB};margin-bottom:0">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:0">
       <tr>
-        <td style="width:50%;padding:4px 6px;vertical-align:top;border-right:1px solid #000">
-          <div style="font-size:8px;font-weight:700;text-decoration:underline;margin-bottom:2px">BILL TO:</div>
-          <div style="font-size:9px;line-height:1.5">${billToHTML}</div>
+        <td style="width:15%">&nbsp;</td>
+        <td style="width:35%;vertical-align:top;padding-bottom:10px">
+          <div style="font-size:10px;font-weight:700;border-bottom:1px solid #000;padding-bottom:1px;margin-bottom:4px;display:inline-block;padding-right:60px">BILL TO:</div><br>
+          <div style="font-size:10px;line-height:1.6">${billToHTML}</div>
         </td>
-        <td style="width:50%;padding:4px 6px;vertical-align:top">
-          <div style="font-size:8px;font-weight:700;text-decoration:underline;margin-bottom:2px">SHIP TO:</div>
-          <div style="font-size:9px;line-height:1.5">${shipToHTML}</div>
+        <td style="width:50%;vertical-align:top;padding-bottom:10px">
+          <div style="font-size:10px;font-weight:700;border-bottom:1px solid #000;padding-bottom:1px;margin-bottom:4px;display:inline-block;padding-right:60px">SHIP TO:</div><br>
+          <div style="font-size:10px;line-height:1.6">${shipToHTML}</div>
         </td>
       </tr>
     </table>
 
     <!-- ══ META ROW ══ -->
-    <table style="width:100%;border-collapse:collapse;${BDB};font-size:8px">
+    <table style="width:100%;border-collapse:collapse;border-top:1px solid #888;border-bottom:1px solid #888;font-size:10px;margin-bottom:10px">
       <tr>
-        <td style="padding:2px 6px;font-weight:700;width:22%;border-right:1px solid #000">INVOICE NO.</td>
-        <td style="padding:2px 6px;font-weight:700;width:22%;border-right:1px solid #000">CB NO.</td>
-        <td style="padding:2px 6px;font-weight:700;width:28%;border-right:1px solid #000">INSURANCE NO.</td>
-        <td style="padding:2px 6px;font-weight:700">TRANSPORT MODE</td>
+        <td style="padding:4px 8px;font-weight:700;width:20%">CONTACT</td>
+        <td style="padding:4px 8px;font-weight:700;width:25%">INVOICE NO.</td>
+        <td style="padding:4px 8px;font-weight:700;width:25%">CB NO.</td>
+        <td style="padding:4px 8px;font-weight:700">INSURANCE NO.</td>
       </tr>
       <tr>
-        <td style="padding:2px 6px 4px;border-right:1px solid #000;font-size:9px">${esc(pl.invoice_no || '—')}</td>
-        <td style="padding:2px 6px 4px;border-right:1px solid #000;font-size:9px">${esc(pl.cb_no || '—')}</td>
-        <td style="padding:2px 6px 4px;border-right:1px solid #000;font-size:9px">${esc(pl.insurance_no || '—')}</td>
-        <td style="padding:2px 6px 4px;font-size:9px">${isTruck ? 'By Truck' : isRailway ? 'By Railway' : 'By Sea'}</td>
+        <td style="padding:2px 8px 5px"></td>
+        <td style="padding:2px 8px 5px;font-weight:700">${esc(pl.invoice_no || '')}</td>
+        <td style="padding:2px 8px 5px">${esc(pl.cb_no || '')}</td>
+        <td style="padding:2px 8px 5px">${esc(pl.insurance_no || '')}</td>
       </tr>
     </table>
 
     <!-- ══ ITEM TABLE ══ -->
-    <table style="width:100%;border-collapse:collapse;border:1px solid #000;font-size:9px;margin-top:0">
+    <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:0">
       <thead>
-        <tr style="background:#e8e8e8">
-          <th style="padding:4px 5px;text-align:center;${BD};width:5%;font-size:8px;font-weight:700">ITEM</th>
-          <th style="padding:4px 5px;text-align:left;${BD};width:28%;font-size:8px;font-weight:700">${colLabel}</th>
-          <th style="padding:4px 5px;text-align:left;${BD};font-size:8px;font-weight:700">DESCRIPTION</th>
-          <th style="padding:4px 5px;text-align:center;${BD};width:11%;font-size:8px;font-weight:700">QTY<br>(${unitLabel})</th>
-          <th style="padding:4px 5px;text-align:right;${BD};width:12%;font-size:8px;font-weight:700">${qtyUnit}</th>
-          <th style="padding:4px 5px;text-align:right;${BD};width:13%;font-size:8px;font-weight:700">GROSS<br>(KG)</th>
+        <tr style="border-bottom:1px solid #000">
+          <th style="padding:6px 6px;text-align:left;width:5%;font-weight:700">ITEM</th>
+          <th style="padding:6px 6px;text-align:left;width:28%;font-weight:700">${colLabel}</th>
+          <th style="padding:6px 6px;text-align:left;font-weight:700">DESCRIPTION</th>
+          <th style="padding:6px 6px;text-align:center;width:11%;font-weight:700">Quantity<br>${unitLabel}</th>
+          <th style="padding:6px 6px;text-align:right;width:11%;font-weight:700">${qtyUnit}</th>
+          <th style="padding:6px 6px;text-align:right;width:13%;font-weight:700">Gross Weight<br>KG</th>
         </tr>
       </thead>
       <tbody>${rowsHTML}</tbody>
       <tfoot>
-        <tr style="background:#f0f0f0;font-weight:700">
-          <td colspan="3" style="padding:4px 5px;text-align:right;${BD};font-size:9px">TOTAL</td>
-          <td style="padding:4px 5px;text-align:center;${BD};font-size:9px">${totReels}</td>
-          <td style="padding:4px 5px;text-align:right;${BD};font-size:9px">${fN3(totAdmt)}</td>
-          <td style="padding:4px 5px;text-align:right;${BD};font-size:9px">${fN(totGross, 0)}</td>
+        <tr style="border-top:1px solid #888">
+          <td colspan="3" style="padding:5px 6px">&nbsp;</td>
+          <td style="padding:5px 6px;text-align:center;font-weight:700">${totReels}</td>
+          <td style="padding:5px 6px;text-align:right;font-weight:700">${fN3(totAdmt)}</td>
+          <td style="padding:5px 6px;text-align:right;font-weight:700">${fN(totGross, 0)}</td>
         </tr>
       </tfoot>
     </table>
 
     <!-- ══ COMMENTS ══ -->
-    <div style="margin-top:8px;font-size:9px">
+    <div style="margin-top:10px">
       <div style="font-weight:700;margin-bottom:3px">COMMENTS:</div>
       <div style="font-weight:700">TOTAL GROSS WEIGHT : ${fN(totGross, 0)} KG</div>
       <div style="font-weight:700">TOTAL NET WEIGHT : ${fN3(totAdmt)} ${qtyUnit}</div>
       <div style="font-weight:700">TOTAL PACKING : ${totReels} ${unitLabel}</div>
-      ${pl.comments ? pl.comments.split('\n').filter(Boolean).map(l => `<div>${esc(l)}</div>`).join('') : ''}
+      ${pl.comments ? pl.comments.split('\n').filter(Boolean).map(l => `<div style="font-weight:700">${esc(l)}</div>`).join('') : ''}
     </div>
 
-    <div style="${BDT};margin:10px 0 8px"></div>
-
     <!-- ══ FOOTER ══ -->
-    <table style="width:100%;border-collapse:collapse">
-      <tr>
-        <td style="width:33%;vertical-align:bottom;font-size:8px;color:#333">
-          ${settings.logo_url ? `<img src="${settings.logo_url}" style="max-height:32px;max-width:100px;object-fit:contain;display:block;margin-bottom:3px">` : ''}
-          <div>${esc(settings.company_name || '')}</div>
-          ${settings.email ? `<div style="color:#1155cc">${esc(settings.email)}</div>` : ''}
-        </td>
-        <td style="width:34%;text-align:center;vertical-align:bottom;font-size:8px;font-style:italic;color:#333">
-          If you have any questions or concerns, please contact us.<br>
-          <strong style="font-style:normal">Thank You For Your Business!</strong>
-        </td>
-        <td style="width:33%;text-align:right;vertical-align:top">
-          <div style="display:inline-block;border-top:1px solid #000;padding-top:4px;min-width:120px;text-align:center;font-size:8px">
-            Authorized Signature
-          </div>
-        </td>
-      </tr>
-    </table>
+    <div style="margin-top:20px;text-align:center">
+      ${settings.logo_url ? `<img src="${settings.logo_url}" style="max-height:55px;max-width:150px;object-fit:contain;display:block;margin:0 auto 4px">` : ''}
+      ${settings.company_name ? `<div style="font-size:9px;font-weight:700;margin-bottom:2px">${esc(settings.company_name)}</div>` : ''}
+      <div style="font-size:9px;color:#333;margin-bottom:2px">
+        ${esc(settings.address_line1 || '')}${settings.address_line2 ? ', ' + esc(settings.address_line2) : ''}
+      </div>
+      <div style="font-size:9px;color:#333;margin-bottom:4px">If you have any questions or concerns, please contact</div>
+      ${settings.email ? `<div style="font-size:9px;color:#1155cc;margin-bottom:4px">${esc(settings.email)}</div>` : ''}
+      <div style="font-size:10px;font-style:italic;font-weight:700">Thank You For Your Business!</div>
+    </div>
 
   </div>`;
+  void HL;
 
   return buildFullHtml(body, `Packing List ${pl.packing_list_no}`, isDraft, {
     customerName: pl.customer?.name ?? '',
