@@ -148,9 +148,9 @@ export async function htmlBodyToPdfBase64(rawHtml: string, _isDraft = false): Pr
     .set({
       margin: 0,
       filename: 'document.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg', quality: 0.82 },
       html2canvas: {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
         logging: false,
