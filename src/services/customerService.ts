@@ -76,4 +76,12 @@ export const customerService = {
 
     if (error) throw new Error(error.message);
   },
+
+  async patchLogo(id: string, logoUrl: string | null): Promise<void> {
+    const { error } = await supabase
+      .from('customers')
+      .update({ logo_url: logoUrl })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
 };

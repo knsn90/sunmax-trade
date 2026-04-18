@@ -23,8 +23,14 @@ import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { AIFormFill } from '@/components/ui/AIFormFill';
-import { Search, Pencil, Trash2, Plus } from 'lucide-react';
+import { Search, Pencil, Trash2, Plus, Globe, Upload, X, Building2, RefreshCw } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { fetchCompanyLogo, batchFetchLogos } from '@/lib/logoFetch';
+import { customerService } from '@/services/customerService';
+import { supplierService } from '@/services/supplierService';
+import { serviceProviderService } from '@/services/serviceProviderService';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 type Tab = 'customers' | 'suppliers' | 'service-providers';
 
@@ -34,14 +40,85 @@ const TAB_COLORS: Record<Tab, string> = {
   'service-providers': '#10b981',
 };
 
-function ContactAvatar({ name, color }: { name: string; color: string }) {
+function ContactAvatar({ name, color, logoUrl }: { name: string; color: string; logoUrl?: string | null }) {
+  const [imgErr, setImgErr] = useState(false);
   const initials = name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
+  if (logoUrl && !imgErr) {
+    return (
+      <div className="w-9 h-9 rounded-xl border border-gray-100 bg-white overflow-hidden shrink-0 flex items-center justify-center">
+        <img src={logoUrl} alt={name} className="w-full h-full object-contain p-0.5" onError={() => setImgErr(true)} />
+      </div>
+    );
+  }
   return (
-    <div
-      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
-      style={{ background: color + '18', color }}
-    >
+    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm" style={{ background: color + '18', color }}>
       {initials || '?'}
+    </div>
+  );
+}
+
+// ─── Logo Field ────────────────────────────────────────────────────────────────
+function LogoField({
+  value, onChange, companyName, website,
+}: {
+  value: string | null | undefined;
+  onChange: (url: string) => void;
+  companyName: string;
+  website?: string | null;
+}) {
+  const [fetching, setFetching] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleAutoFetch() {
+    const name = companyName.trim();
+    if (!name) { toast.error('Önce firma adını girin'); return; }
+    setFetching(true);
+    try {
+      const url = await fetchCompanyLogo(name, website);
+      if (url) { onChange(url); toast.success('Logo bulundu!'); }
+      else toast.error('Logo bulunamadı — manuel yükleyebilirsiniz');
+    } finally { setFetching(false); }
+  }
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = ev => onChange(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="flex items-center gap-3 mb-3 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+      <div className="w-12 h-12 rounded-xl border border-gray-200 bg-white overflow-hidden shrink-0 flex items-center justify-center">
+        {value
+          ? <img src={value} alt="Logo" className="w-full h-full object-contain p-1" onError={() => onChange('')} />
+          : <Building2 className="h-5 w-5 text-gray-300" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex gap-1.5 mb-1">
+          <button type="button" onClick={handleAutoFetch} disabled={fetching}
+            className="flex-1 h-7 rounded-lg text-[11px] font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-1">
+            {fetching
+              ? <span className="inline-block w-3 h-3 border border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+              : <Globe className="h-3 w-3" />}
+            {fetching ? 'Aranıyor…' : 'İnternetten Bul'}
+          </button>
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="flex-1 h-7 rounded-lg text-[11px] font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors flex items-center justify-center gap-1">
+            <Upload className="h-3 w-3" /> Yükle
+          </button>
+          {value && (
+            <button type="button" onClick={() => onChange('')}
+              className="w-7 h-7 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <p className="text-[10px] text-gray-400">Clearbit API — firma adı/websitesine göre otomatik aranır</p>
+      </div>
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
     </div>
   );
 }
@@ -65,7 +142,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
     name: '', code: '', country: '', city: '', address: '',
     contact_email: '', contact_phone: '',
     tax_id: '', website: '', payment_terms: '', notes: '',
-    parent_customer_id: '',
+    parent_customer_id: '', logo_url: '',
   };
 
   const form = useForm<CustomerFormData>({
@@ -75,11 +152,13 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue: setVal } = form;
 
   const parentCustomerId = watch('parent_customer_id');
+  const logoUrl = watch('logo_url') ?? '';
+  const watchedName = watch('name');
+  const watchedWebsite = watch('website');
   // Ana firmalar: parent_customer_id olmayan müşteriler
   const parentCustomers = customers.filter(c => !c.parent_customer_id);
 
   // Auto-generate code from name when creating (if code still empty)
-  const watchedName = watch('name');
   const watchedCode = watch('code');
   useEffect(() => {
     if (editing) return;
@@ -87,6 +166,16 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
     if (!watchedName?.trim()) return;
     setVal('code', generateCustomerCode(watchedName));
   }, [watchedName, watchedCode, editing, setVal]);
+
+  // Auto-fetch logo when modal opens and no logo exists
+  useEffect(() => {
+    if (!modalOpen) return;
+    const name = form.getValues('name');
+    const logo = form.getValues('logo_url');
+    const web  = form.getValues('website');
+    if (!name?.trim() || logo) return;
+    fetchCompanyLogo(name, web).then(url => { if (url) setVal('logo_url', url); }).catch(() => {});
+  }, [modalOpen]); // eslint-disable-line
 
   const filtered = useMemo(() => {
     if (!search.trim()) return customers;
@@ -109,6 +198,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
       tax_id: c.tax_id ?? '', website: c.website ?? '',
       payment_terms: c.payment_terms ?? '', notes: c.notes,
       parent_customer_id: c.parent_customer_id ?? '',
+      logo_url: c.logo_url ?? '',
     });
     setModalOpen(true);
   }
@@ -128,7 +218,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
           <div className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noCustomers')}</div>
         ) : filtered.map(c => (
           <div key={c.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
-            <ContactAvatar name={c.name} color={color} />
+            <ContactAvatar name={c.name} color={color} logoUrl={c.logo_url} />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-sm font-bold text-gray-900 truncate">{c.name}</span>
@@ -180,7 +270,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
                 <td className="px-4 py-3 text-xs font-bold text-gray-400">{c.code}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <ContactAvatar name={c.name} color={color} />
+                    <ContactAvatar name={c.name} color={color} logoUrl={c.logo_url} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         {c.parent_customer_id && (
@@ -221,6 +311,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editing ? t('modal.editCustomer') : t('modal.newCustomer')}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
+            <LogoField value={logoUrl} onChange={url => setVal('logo_url', url)} companyName={watchedName ?? ''} website={watchedWebsite} />
             <AIFormFill
               formType="new_customer"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<CustomerFormData>) })}
@@ -307,14 +398,17 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
     name: '', country: '', city: '', address: '',
     contact_name: '', phone: '', email: '',
     tax_id: '', website: '', payment_terms: '',
-    swift_code: '', iban: '', notes: '',
+    swift_code: '', iban: '', notes: '', logo_url: '',
   };
 
   const form = useForm<SupplierFormData>({
     resolver: zodResolver(supplierSchema),
     defaultValues: EMPTY,
   });
-  const { register, handleSubmit, formState: { errors }, reset } = form;
+  const { register, handleSubmit, formState: { errors }, reset, watch: watchS, setValue: setValS } = form;
+  const sLogoUrl = watchS('logo_url') ?? '';
+  const sName    = watchS('name');
+  const sWebsite = watchS('website');
 
   const filtered = useMemo(() => {
     if (!search.trim()) return suppliers;
@@ -329,6 +423,15 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
 
   function openNew() { setEditing(null); reset(EMPTY); setModalOpen(true); }
   useEffect(() => { openNewRef.current = openNew; });
+
+  // Auto-fetch logo on modal open when no logo exists
+  useEffect(() => {
+    if (!modalOpen) return;
+    const n = form.getValues('name'), l = form.getValues('logo_url'), w = form.getValues('website');
+    if (!n?.trim() || l) return;
+    fetchCompanyLogo(n, w).then(url => { if (url) setValS('logo_url', url); }).catch(() => {});
+  }, [modalOpen]); // eslint-disable-line
+
   function openEdit(s: Supplier) {
     setEditing(s);
     reset({
@@ -337,6 +440,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
       tax_id: s.tax_id ?? '', website: s.website ?? '',
       payment_terms: s.payment_terms ?? '',
       swift_code: s.swift_code ?? '', iban: s.iban ?? '', notes: s.notes,
+      logo_url: s.logo_url ?? '',
     });
     setModalOpen(true);
   }
@@ -356,7 +460,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
           <div className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noSuppliers')}</div>
         ) : filtered.map(s => (
           <div key={s.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
-            <ContactAvatar name={s.name} color={color} />
+            <ContactAvatar name={s.name} color={color} logoUrl={s.logo_url} />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-sm font-bold text-gray-900 truncate">{s.name}</span>
@@ -408,7 +512,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
                 <td className="px-4 py-3 text-xs font-bold text-gray-400">{s.code}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <ContactAvatar name={s.name} color={color} />
+                    <ContactAvatar name={s.name} color={color} logoUrl={s.logo_url} />
                     <span className="text-sm font-semibold text-gray-900 truncate">{s.name}</span>
                   </div>
                 </td>
@@ -439,6 +543,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editing ? t('modal.editSupplier') : t('modal.newSupplier')}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
+            <LogoField value={sLogoUrl} onChange={url => setValS('logo_url', url)} companyName={sName ?? ''} website={sWebsite} />
             <AIFormFill
               formType="new_supplier"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<SupplierFormData>) })}
@@ -498,9 +603,11 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
 
   const form = useForm<ServiceProviderFormData>({
     resolver: zodResolver(serviceProviderSchema),
-    defaultValues: { name: '', service_type: 'other', country: '', city: '', address: '', contact_name: '', phone: '', email: '', notes: '' },
+    defaultValues: { name: '', service_type: 'other', country: '', city: '', address: '', contact_name: '', phone: '', email: '', notes: '', logo_url: '' },
   });
-  const { register, handleSubmit, formState: { errors }, reset } = form;
+  const { register, handleSubmit, formState: { errors }, reset, watch: watchSP, setValue: setValSP } = form;
+  const spLogoUrl = watchSP('logo_url') ?? '';
+  const spName    = watchSP('name');
 
   const filtered = useMemo(() => {
     if (!search.trim()) return providers;
@@ -515,13 +622,22 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
 
   function openNew() {
     setEditing(null);
-    reset({ name: '', service_type: 'other', country: '', city: '', address: '', contact_name: '', phone: '', email: '', notes: '' });
+    reset({ name: '', service_type: 'other', country: '', city: '', address: '', contact_name: '', phone: '', email: '', notes: '', logo_url: '' });
     setModalOpen(true);
   }
   useEffect(() => { openNewRef.current = openNew; });
+
+  // Auto-fetch logo on modal open when no logo exists
+  useEffect(() => {
+    if (!modalOpen) return;
+    const n = form.getValues('name'), l = form.getValues('logo_url');
+    if (!n?.trim() || l) return;
+    fetchCompanyLogo(n).then(url => { if (url) setValSP('logo_url', url); }).catch(() => {});
+  }, [modalOpen]); // eslint-disable-line
+
   function openEdit(sp: ServiceProvider) {
     setEditing(sp);
-    reset({ name: sp.name, service_type: sp.service_type, country: sp.country, city: sp.city, address: sp.address ?? '', contact_name: sp.contact_name, phone: sp.phone, email: sp.email, notes: sp.notes });
+    reset({ name: sp.name, service_type: sp.service_type, country: sp.country, city: sp.city, address: sp.address ?? '', contact_name: sp.contact_name, phone: sp.phone, email: sp.email, notes: sp.notes, logo_url: sp.logo_url ?? '' });
     setModalOpen(true);
   }
   async function onSubmit(data: ServiceProviderFormData) {
@@ -563,7 +679,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
           <div className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noServiceProviders')}</div>
         ) : filtered.map(sp => (
           <div key={sp.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
-            <ContactAvatar name={sp.name} color={color} />
+            <ContactAvatar name={sp.name} color={color} logoUrl={sp.logo_url} />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-sm font-bold text-gray-900 truncate">{sp.name}</span>
@@ -615,7 +731,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
               <tr key={sp.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <ContactAvatar name={sp.name} color={color} />
+                    <ContactAvatar name={sp.name} color={color} logoUrl={sp.logo_url} />
                     <span className="text-sm font-semibold text-gray-900 truncate">{sp.name}</span>
                   </div>
                 </td>
@@ -651,6 +767,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? t('modal.editServiceProvider') : t('modal.newServiceProvider')}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
+            <LogoField value={spLogoUrl} onChange={url => setValSP('logo_url', url)} companyName={spName ?? ''} />
             <AIFormFill
               formType="new_service_provider"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ServiceProviderFormData>) })}
@@ -692,10 +809,37 @@ export function ContactsPage() {
   const { t: tc } = useTranslation('common');
   const [activeTab, setActiveTab] = useState<Tab>('customers');
   const [search, setSearch] = useState('');
+  const [batchRunning, setBatchRunning] = useState(false);
   const openNewRef = useRef<(() => void) | null>(null);
   const { accent } = useTheme();
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
+  const qc = useQueryClient();
+
+  const { data: allCustomers = [] }  = useCustomers();
+  const { data: allSuppliers = [] }  = useSuppliers();
+  const { data: allProviders = [] }  = useServiceProviders();
+
+  async function handleBatchFetch() {
+    setBatchRunning(true);
+    toast.info('Logolar aranıyor, lütfen bekleyin…');
+    try {
+      const c = await batchFetchLogos(allCustomers,        (id, url) => customerService.patchLogo(id, url));
+      const s = await batchFetchLogos(allSuppliers,        (id, url) => supplierService.patchLogo(id, url));
+      const p = await batchFetchLogos(allProviders as (typeof allProviders[0] & { website?: string | null })[],
+                                       (id, url) => serviceProviderService.patchLogo(id, url));
+      const total = c + s + p;
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      qc.invalidateQueries({ queryKey: ['suppliers'] });
+      qc.invalidateQueries({ queryKey: ['service_providers'] });
+      if (total > 0) toast.success(`${total} logo başarıyla çekildi!`);
+      else toast.info('Yeni logo bulunamadı');
+    } catch {
+      toast.error('Toplu logo çekme sırasında hata oluştu');
+    } finally {
+      setBatchRunning(false);
+    }
+  }
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'customers',         label: t('tabs.customers') },
@@ -735,6 +879,14 @@ export function ContactsPage() {
             className="w-full pl-8 pr-2 h-8 rounded-xl border border-gray-200 bg-white text-[12px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-300 transition"
           />
         </div>
+        <button
+          onClick={handleBatchFetch}
+          disabled={batchRunning}
+          title="Logo olmayan tüm firmalar için internetten logo çek"
+          className="w-8 h-8 rounded-xl flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-colors disabled:opacity-50 shrink-0"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${batchRunning ? 'animate-spin' : ''}`} />
+        </button>
         {writable && (
           <button
             onClick={() => openNewRef.current?.()}

@@ -15,6 +15,7 @@ export const customerSchema = z.object({
   payment_terms:      z.string().max(200).default(''),
   notes:              z.string().max(2000).default(''),
   parent_customer_id: z.string().uuid().optional().or(z.literal('')),
+  logo_url:           z.string().nullable().optional(),
 });
 export type CustomerFormData = z.infer<typeof customerSchema>;
 
@@ -32,6 +33,7 @@ export const supplierSchema = z.object({
   swift_code:     z.string().max(50).default(''),
   iban:           z.string().max(100).default(''),
   notes:          z.string().max(2000).default(''),
+  logo_url:       z.string().nullable().optional(),
 });
 export type SupplierFormData = z.infer<typeof supplierSchema>;
 
@@ -46,7 +48,8 @@ export const serviceProviderSchema = z.object({
   contact_name: z.string().max(200).default(''),
   phone: z.string().max(50).default(''),
   email: z.string().email('Invalid email').or(z.literal('')).default(''),
-  notes: z.string().max(2000).default(''),
+  notes:     z.string().max(2000).default(''),
+  logo_url:  z.string().nullable().optional(),
 });
 export type ServiceProviderFormData = z.infer<typeof serviceProviderSchema>;
 

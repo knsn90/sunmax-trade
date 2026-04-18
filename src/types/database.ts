@@ -102,6 +102,7 @@ export interface Customer extends Timestamps {
   created_by: string | null;
   /** Alt firma ilişkisi — dolu ise bu müşteri bir alt firmadır */
   parent_customer_id: string | null;
+  logo_url: string | null;
   /** Joined — sadece trade file sorgularında dolu gelir */
   parent?: Pick<Customer, 'id' | 'name' | 'code' | 'country' | 'address' | 'contact_phone'>;
 }
@@ -124,6 +125,7 @@ export interface Supplier extends Timestamps {
   notes: string;
   is_active: boolean;
   created_by: string | null;
+  logo_url: string | null;
 }
 
 export interface ServiceProvider extends Timestamps {
@@ -140,6 +142,7 @@ export interface ServiceProvider extends Timestamps {
   notes: string;
   is_active: boolean;
   created_by: string | null;
+  logo_url: string | null;
 }
 
 export interface ProductCategory {

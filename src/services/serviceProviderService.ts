@@ -69,4 +69,12 @@ export const serviceProviderService = {
 
     if (error) throw new Error(error.message);
   },
+
+  async patchLogo(id: string, logoUrl: string | null): Promise<void> {
+    const { error } = await supabase
+      .from('service_providers')
+      .update({ logo_url: logoUrl })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
 };
