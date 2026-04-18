@@ -112,11 +112,15 @@ export function generateTradeFileNo(
 
 /**
  * Generate an invoice number based on the trade file number.
- * Format: SUN [fileNo] INV
- * Example: SUN PB-10 26-06 IP INV
+ * Format: SUN [customerCode-seq yy-mon] INV  (product abbrev stripped for brevity)
+ * Example: "ASJ-01 26-04 UPM EUCA" → "SUN ASJ-01 26-04 INV"
  */
 export function formatInvoiceNo(fileNo: string): string {
-  return `SUN ${fileNo} INV`;
+  // fileNo format: "CODE-NN YY-MM PROD ABBREV"
+  // Keep only the first two whitespace-separated tokens (code+seq and yy-mon)
+  const tokens = fileNo.trim().split(/\s+/);
+  const short = tokens.slice(0, 2).join(' ');
+  return `SUN ${short} INV`;
 }
 
 /**

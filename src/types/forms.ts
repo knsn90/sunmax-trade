@@ -147,6 +147,9 @@ export const invoiceSchema = z.object({
   gross_weight_kg: z.coerce.number().optional(),
   packing_info: z.string().default(''),
   payment_terms: z.string().default(''),
+  bill_to: z.string().default(''),
+  ship_to: z.string().default(''),
+  qty_unit: z.enum(['ADMT', 'MT']).default('ADMT'),
 });
 export type InvoiceFormData = z.infer<typeof invoiceSchema>;
 

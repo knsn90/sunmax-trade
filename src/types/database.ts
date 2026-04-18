@@ -357,6 +357,9 @@ export interface Invoice extends Timestamps {
   created_by: string | null;
   /** Evrak bazında alıcı firma — NULL ise trade_file.customer kullanılır */
   consignee_customer_id: string | null;
+  bill_to: string | null;
+  ship_to: string | null;
+  qty_unit: string;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { invoiceSchema, type InvoiceFormData } from '@/types/forms';
 import type { TradeFile, Invoice } from '@/types/database';
@@ -22,6 +22,12 @@ import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { cn } from '@/lib/utils';
 import { HelpCircle, Banknote, Building2, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
 import type { OcrResult } from '@/lib/openai';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function buildAddress(c: { name?: string; address?: string; city?: string; country?: string } | null | undefined): string {
+  if (!c) return '';
+  return [c.name, c.address, [c.city, c.country].filter(Boolean).join(', ')].filter(Boolean).join('\n');
+}
 
 // ── Mono design primitives ──────────────────────────────────────────────────
 const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
@@ -118,6 +124,7 @@ export function InvoiceModal({
       quantity_admt: 0, unit_price: 0, freight: 0,
       gross_weight_kg: undefined, packing_info: '',
       payment_terms: settings?.payment_terms ?? '',
+      bill_to: '', ship_to: '', qty_unit: 'ADMT' as const,
     },
   });
   const { register, handleSubmit, formState: { errors }, reset, control, setValue } = form;
@@ -130,6 +137,7 @@ export function InvoiceModal({
       return;
     }
     if (invoice) {
+      const invAny = invoice as unknown as Record<string, unknown>;
       reset({
         invoice_date: invoice.invoice_date, currency: invoice.currency,
         incoterms: invoice.incoterms ?? 'CPT', proforma_no: invoice.proforma_no ?? '',
@@ -137,8 +145,13 @@ export function InvoiceModal({
         quantity_admt: invoice.quantity_admt, unit_price: invoice.unit_price,
         freight: invoice.freight, gross_weight_kg: invoice.gross_weight_kg ?? undefined,
         packing_info: invoice.packing_info ?? '', payment_terms: invoice.payment_terms ?? '',
+        bill_to: (invAny['bill_to'] as string) ?? '',
+        ship_to: (invAny['ship_to'] as string) ?? '',
+        qty_unit: ((invAny['qty_unit'] as string) || 'ADMT') as 'ADMT' | 'MT',
       });
     } else if (file) {
+      const customer = customers.find(c => c.id === file.customer_id);
+      const addr = buildAddress(customer ?? file.customer);
       reset({
         invoice_date: today(),
         currency: file.currency ?? settings?.default_currency ?? 'USD',
@@ -148,12 +161,15 @@ export function InvoiceModal({
         unit_price: file.selling_price ?? 0, freight: file.freight_cost ?? 0,
         gross_weight_kg: file.gross_weight_kg ?? undefined, packing_info: '',
         payment_terms: file.payment_terms ?? settings?.payment_terms ?? '',
+        bill_to: addr, ship_to: addr, qty_unit: 'ADMT' as const,
       });
     }
   }, [open, file, invoice, settings, reset]);
 
   useEffect(() => {
     if (!open || !pickedFile || invoice) return;
+    const customer = customers.find(c => c.id === pickedFile.customer_id);
+    const addr = buildAddress(customer ?? pickedFile.customer);
     reset({
       invoice_date: today(),
       currency: pickedFile.currency ?? settings?.default_currency ?? 'USD',
@@ -163,6 +179,7 @@ export function InvoiceModal({
       unit_price: pickedFile.selling_price ?? 0, freight: pickedFile.freight_cost ?? 0,
       gross_weight_kg: pickedFile.gross_weight_kg ?? undefined, packing_info: '',
       payment_terms: pickedFile.payment_terms ?? settings?.payment_terms ?? '',
+      bill_to: addr, ship_to: addr, qty_unit: 'ADMT' as const,
     });
   }, [pickedFile, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -172,6 +189,7 @@ export function InvoiceModal({
   const price    = useWatch({ control, name: 'unit_price' }) ?? 0;
   const freight  = useWatch({ control, name: 'freight' }) ?? 0;
   const currency = useWatch({ control, name: 'currency' }) ?? 'USD';
+  const qtyUnit  = useWatch({ control, name: 'qty_unit' }) ?? 'ADMT';
   const subtotal = qty * price;
   const total    = subtotal + freight;
 
@@ -212,7 +230,8 @@ export function InvoiceModal({
     if (!invoice) { toast.error(t('invoice.modal.errorSaveFirst')); return; }
     if (!settings) return;
     const defaultBank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
-    printInvoice(invoice, settings, defaultBank);
+    const isDraft = (invoice.doc_status ?? 'draft') !== 'approved';
+    printInvoice(invoice, settings, defaultBank, isDraft);
   }
 
   const effectiveType = invoice?.invoice_type ?? invoiceType;
@@ -400,6 +419,55 @@ export function InvoiceModal({
               </Field>
               <Field label={t('invoice.modal.packingInfo')}>
                 <input className={inp} {...register('packing_info')} placeholder={t('invoice.modal.packingPlaceholder')} />
+              </Field>
+            </div>
+
+            <Divider />
+
+            {/* ── Miktar Birimi ── */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Miktar Birimi:</span>
+              <Controller
+                control={control}
+                name="qty_unit"
+                render={({ field }) => (
+                  <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+                    {(['ADMT', 'MT'] as const).map(u => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => field.onChange(u)}
+                        className={cn(
+                          'px-3 h-6 rounded-md text-[11px] font-semibold transition-all',
+                          field.value === u ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                        )}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              />
+              <span className="text-[10px] text-gray-400 ml-1">{qtyUnit === 'ADMT' ? 'Air Dried Metric Ton' : 'Metric Ton'}</span>
+            </div>
+
+            {/* ── Bill To / Ship To ── */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Bill To">
+                <textarea
+                  rows={3}
+                  className="bg-gray-100 rounded-lg px-3 py-2 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full resize-none"
+                  placeholder="Alıcı bilgileri..."
+                  {...register('bill_to')}
+                />
+              </Field>
+              <Field label="Ship To">
+                <textarea
+                  rows={3}
+                  className="bg-gray-100 rounded-lg px-3 py-2 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full resize-none"
+                  placeholder="Teslimat adresi..."
+                  {...register('ship_to')}
+                />
               </Field>
             </div>
 

@@ -77,6 +77,9 @@ export const invoiceService = {
         packing_info: input.packing_info || null,
         payment_terms: input.payment_terms || null,
         invoice_type: invoiceType,
+        bill_to: input.bill_to || null,
+        ship_to: input.ship_to || null,
+        qty_unit: input.qty_unit ?? 'ADMT',
       })
       .select(INVOICE_SELECT)
       .single();
@@ -119,6 +122,9 @@ export const invoiceService = {
           total,
           payment_terms: input.payment_terms || null,
           gross_weight_kg: input.gross_weight_kg ?? null,
+          bill_to: input.bill_to || null,
+          ship_to: input.ship_to || null,
+          qty_unit: input.qty_unit ?? 'ADMT',
         })
         .eq('id', existing.id)
         .select(INVOICE_SELECT)
@@ -214,6 +220,9 @@ export const invoiceService = {
         gross_weight_kg: input.gross_weight_kg ?? null,
         packing_info: input.packing_info || null,
         payment_terms: input.payment_terms || null,
+        bill_to: input.bill_to || null,
+        ship_to: input.ship_to || null,
+        qty_unit: input.qty_unit ?? 'ADMT',
       })
       .eq('id', id)
       .select(INVOICE_SELECT)

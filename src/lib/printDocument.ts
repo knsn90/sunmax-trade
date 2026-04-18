@@ -416,10 +416,18 @@ function footerHTML(s: CompanySettings, showSeal = false): string {
 
 function _buildInvoiceBody(inv: Invoice, settings: CompanySettings, bank: BankAccount | null, isDraft = false): string {
   void bank; // bank details shown in comments if needed
+  const invAny = inv as unknown as Record<string, unknown>;
   const curr = inv.currency || 'USD';
+  const qtyUnit = (invAny['qty_unit'] as string) || 'ADMT';
+
+  // Bill To / Ship To: prefer stored values, fall back to customer data
   const custName = esc(inv.customer?.name || '');
   const custAddr  = esc((inv.customer as unknown as Record<string,unknown>)?.['address'] as string || '');
-  const custPhone = esc((inv.customer as unknown as Record<string,unknown>)?.['phone'] as string || '');
+  const rawBillTo = (invAny['bill_to'] as string) || [inv.customer?.name, (inv.customer as unknown as Record<string,unknown>)?.['address']].filter(Boolean).join('\n');
+  const rawShipTo = (invAny['ship_to'] as string) || rawBillTo;
+  const billToHtml = esc(rawBillTo).replace(/\n/g, '<br>');
+  const shipToHtml = esc(rawShipTo).replace(/\n/g, '<br>');
+  void custName; void custAddr;
 
   const body = `
     <!-- ── Header ── -->
@@ -447,15 +455,11 @@ function _buildInvoiceBody(inv: Invoice, settings: CompanySettings, bank: BankAc
       <tr>
         <td style="width:50%;padding-left:14%;vertical-align:top">
           <div style="font-size:10px;text-decoration:underline;margin-bottom:3px">BILL TO:</div>
-          <div style="font-weight:700">${custName}</div>
-          ${custAddr ? `<div style="font-size:10px">${custAddr}</div>` : ''}
-          ${custPhone ? `<div style="font-size:10px">TELL: ${custPhone}</div>` : ''}
+          <div style="font-size:11px;line-height:1.5">${billToHtml}</div>
         </td>
         <td style="width:50%;vertical-align:top">
           <div style="font-size:10px;text-decoration:underline;margin-bottom:3px">SHIP TO:</div>
-          <div style="font-weight:700">${custName}</div>
-          ${custAddr ? `<div style="font-size:10px">${custAddr}</div>` : ''}
-          ${custPhone ? `<div style="font-size:10px">TELL: ${custPhone}</div>` : ''}
+          <div style="font-size:11px;line-height:1.5">${shipToHtml}</div>
         </td>
       </tr>
     </table>
@@ -482,7 +486,7 @@ function _buildInvoiceBody(inv: Invoice, settings: CompanySettings, bank: BankAc
         <tr style="border-bottom:1px solid #333">
           <th style="padding:7px 6px;text-align:left;width:6%;font-weight:700">ITEM</th>
           <th style="padding:7px 6px;text-align:left;font-weight:700">DESCRIPTION</th>
-          <th style="padding:7px 6px;text-align:right;width:14%;font-weight:700">Quantity<br>KG</th>
+          <th style="padding:7px 6px;text-align:right;width:14%;font-weight:700">Quantity<br>${qtyUnit}</th>
           <th style="padding:7px 6px;text-align:right;width:12%;font-weight:700">Unit Price<br>${curr}</th>
           <th style="padding:7px 6px;text-align:center;width:10%;font-weight:700">Currency</th>
           <th style="padding:7px 6px;text-align:right;width:15%;font-weight:700">Total Amount<br>${curr}</th>
@@ -520,7 +524,7 @@ function _buildInvoiceBody(inv: Invoice, settings: CompanySettings, bank: BankAc
     <div>
       <div style="font-weight:700;margin-bottom:5px">COMMENTS:</div>
       ${inv.gross_weight_kg ? `<div style="font-weight:700;font-size:11px">TOTAL GROSS WEIGHT : ${Math.round(inv.gross_weight_kg)} KG</div>` : ''}
-      <div style="font-weight:700;font-size:11px">TOTAL NET WEIGHT : ${fN3(inv.quantity_admt)} ADMT</div>
+      <div style="font-weight:700;font-size:11px">TOTAL NET WEIGHT : ${fN3(inv.quantity_admt)} ${qtyUnit}</div>
       ${inv.packing_info ? `<div style="font-weight:700;font-size:11px">TOTAL PACKING : ${esc(inv.packing_info)}</div>` : ''}
       ${inv.payment_terms ? `<div style="font-weight:700;font-size:11px">PAYMENT TERMS : ${esc(inv.payment_terms)}</div>` : ''}
     </div>
