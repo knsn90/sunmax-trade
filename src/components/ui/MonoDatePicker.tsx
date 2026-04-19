@@ -1,11 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ─── Türkçe sabitleri ─────────────────────────────────────────────────────────
 
 const TR_MONTHS = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
   'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık',
+];
+const TR_MONTHS_SHORT = [
+  'Oca','Şub','Mar','Nis','May','Haz',
+  'Tem','Ağu','Eyl','Eki','Kas','Ara',
 ];
 const TR_DAYS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
@@ -69,6 +74,8 @@ export interface MonoDatePickerProps {
   dropUp?: boolean;
 }
 
+type PickerMode = 'day' | 'month' | 'year';
+
 export function MonoDatePicker({
   value,
   onChange,
@@ -88,9 +95,14 @@ export function MonoDatePicker({
   };
 
   const [open,    setOpen]    = useState(false);
+  const [mode,    setMode]    = useState<PickerMode>('day');
   const [vy,      setVy]      = useState(() => initView().vy);
   const [vm,      setVm]      = useState(() => initView().vm);
   const [pending, setPending] = useState(value);
+
+  // year range for year picker: centred on current view year
+  const yearRangeStart = Math.floor(vy / 12) * 12;
+  const years = Array.from({ length: 12 }, (_, i) => yearRangeStart + i);
 
   // Sync pending when value prop changes externally
   useEffect(() => { setPending(value); }, [value]);
@@ -101,6 +113,7 @@ export function MonoDatePicker({
     const { vy: y, vm: m } = initView();
     setVy(y); setVm(m);
     setPending(value);
+    setMode('day');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -149,55 +162,151 @@ export function MonoDatePicker({
           className={`absolute z-50 ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'} left-0 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden`}
           style={{ width: 280 }}
         >
-          {/* Month / Year nav */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50">
-            <button type="button" onClick={prevMonth}
-              className="p-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700">
+          {/* ── Header nav ── */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+            <button
+              type="button"
+              onClick={() => {
+                if (mode === 'day') prevMonth();
+                else if (mode === 'month') setVy(y => y - 1);
+                else setVy(y => y - 12);
+              }}
+              className="p-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+            >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-[14px] font-bold text-gray-900">
-              {TR_MONTHS[vm - 1]} {vy}
-            </span>
-            <button type="button" onClick={nextMonth}
-              className="p-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700">
+
+            <div className="flex items-center gap-1">
+              {/* Month button — opens month picker */}
+              {mode === 'day' && (
+                <button
+                  type="button"
+                  onClick={() => setMode('month')}
+                  className="text-[14px] font-bold text-gray-900 px-2 py-0.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  {TR_MONTHS[vm - 1]}
+                </button>
+              )}
+              {/* Year button — opens year picker */}
+              {(mode === 'day' || mode === 'month') && (
+                <button
+                  type="button"
+                  onClick={() => setMode('year')}
+                  className="text-[14px] font-bold text-gray-900 px-2 py-0.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  {vy}
+                </button>
+              )}
+              {mode === 'year' && (
+                <span className="text-[14px] font-bold text-gray-900 px-2">
+                  {yearRangeStart} – {yearRangeStart + 11}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (mode === 'day') nextMonth();
+                else if (mode === 'month') setVy(y => y + 1);
+                else setVy(y => y + 12);
+              }}
+              className="p-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+            >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Day headers */}
-          <div className="grid grid-cols-7 px-4 pt-3 pb-1">
-            {TR_DAYS.map(d => (
-              <div key={d} className="text-center text-[10px] font-bold text-gray-400">{d}</div>
-            ))}
-          </div>
+          {/* ── Month picker ── */}
+          {mode === 'month' && (
+            <div className="grid grid-cols-3 gap-1.5 p-4">
+              {TR_MONTHS_SHORT.map((name, i) => {
+                const isSelected = (i + 1) === vm;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => { setVm(i + 1); setMode('day'); }}
+                    className={cn(
+                      'h-10 rounded-xl text-[12px] font-semibold transition-colors',
+                      isSelected
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100',
+                    )}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Day cells — 6 rows × 7 */}
-          <div className="grid grid-cols-7 px-3 pb-2 gap-y-0.5">
-            {cells.map((cell, i) => {
-              const str       = toStr(cell.year, cell.month, cell.day);
-              const isToday   = str === today;
-              const isSelected = str === pending;
+          {/* ── Year picker ── */}
+          {mode === 'year' && (
+            <div className="grid grid-cols-3 gap-1.5 p-4">
+              {years.map(y => {
+                const isSelected = y === vy;
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => { setVy(y); setMode('month'); }}
+                    className={cn(
+                      'h-10 rounded-xl text-[12px] font-semibold transition-colors',
+                      isSelected
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100',
+                    )}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => { setPending(str); if (!cell.cur) { setVy(cell.year); setVm(cell.month); } }}
-                  className={`h-9 w-full rounded-full text-[13px] font-medium transition-colors flex items-center justify-center
-                    ${isSelected
-                      ? 'bg-red-600 text-white font-bold'
-                      : isToday
-                      ? 'text-red-600 font-bold hover:bg-red-50'
-                      : !cell.cur
-                      ? 'text-gray-300 hover:bg-gray-50'
-                      : 'text-gray-800 hover:bg-gray-100'
-                    }`}
-                >
-                  {cell.day}
-                </button>
-              );
-            })}
-          </div>
+          {/* ── Day picker ── */}
+          {mode === 'day' && (
+            <>
+              {/* Day headers */}
+              <div className="grid grid-cols-7 px-4 pt-3 pb-1">
+                {TR_DAYS.map(d => (
+                  <div key={d} className="text-center text-[10px] font-bold text-gray-400">{d}</div>
+                ))}
+              </div>
+
+              {/* Day cells — 6 rows × 7 */}
+              <div className="grid grid-cols-7 px-3 pb-2 gap-y-0.5">
+                {cells.map((cell, i) => {
+                  const str        = toStr(cell.year, cell.month, cell.day);
+                  const isToday    = str === today;
+                  const isSelected = str === pending;
+
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setPending(str);
+                        if (!cell.cur) { setVy(cell.year); setVm(cell.month); }
+                      }}
+                      className={`h-9 w-full rounded-full text-[13px] font-medium transition-colors flex items-center justify-center
+                        ${isSelected
+                          ? 'bg-red-600 text-white font-bold'
+                          : isToday
+                          ? 'text-red-600 font-bold hover:bg-red-50'
+                          : !cell.cur
+                          ? 'text-gray-300 hover:bg-gray-50'
+                          : 'text-gray-800 hover:bg-gray-100'
+                        }`}
+                    >
+                      {cell.day}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">

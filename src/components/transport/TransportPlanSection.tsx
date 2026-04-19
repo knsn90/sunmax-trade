@@ -12,6 +12,7 @@ import { buildNotificationText, type NotifGroup } from '@/lib/buildNotificationT
 import type { TradeFile } from '@/types/database';
 import type { TransportPlate, TransportNotification } from '@/services/transportService';
 import { Input } from '@/components/ui/input';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -249,12 +250,14 @@ export function TransportPlanSection({ file, writable }: Props) {
           <div className="flex items-center justify-between py-2.5 border-b border-dashed border-gray-100">
             <span className="text-[12px] text-gray-500">Yükleme Tarihi</span>
             {writable ? (
-              <input
-                type="date"
-                value={loadingDate}
-                onChange={e => setLoadingDate(e.target.value)}
-                className="text-[13px] font-bold text-gray-900 border-0 outline-none bg-transparent text-right"
-              />
+              <div className="w-48">
+                <MonoDatePicker
+                  value={loadingDate}
+                  onChange={setLoadingDate}
+                  placeholder="Tarih seç"
+                  dropUp
+                />
+              </div>
             ) : (
               <span className="text-[13px] font-bold text-gray-900">{fmtDate(loadingDate || null)}</span>
             )}
