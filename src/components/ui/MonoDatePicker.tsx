@@ -1,38 +1,34 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Calendar } from 'lucide-react';
 
-// ─── Türkçe sabitleri ─────────────────────────────────────────────────────────
+// ─── Sabitler ────────────────────────────────────────────────────────────────
 
 const TR_MONTHS = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
   'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık',
 ];
-const TR_MONTHS_SHORT = [
-  'Oca','Şub','Mar','Nis','May','Haz',
-  'Tem','Ağu','Eyl','Eki','Kas','Ara',
-];
 const TR_DAYS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+
+const POPUP_W = 280;
+const POPUP_H = 370; // estimated max height
+const MARGIN  = 8;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toStr(y: number, m: number, d: number) {
   return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
-
 function todayStr() {
   const t = new Date();
   return toStr(t.getFullYear(), t.getMonth() + 1, t.getDate());
 }
-
 function formatDisplay(value: string) {
   if (!value) return '';
   const [y, m, d] = value.split('-').map(Number);
   if (!y || !m || !d) return '';
   return `${d} ${TR_MONTHS[m - 1]} ${y}`;
 }
-
 function firstDayOfMonth(year: number, month: number) {
   const raw = new Date(year, month - 1, 1).getDay();
   return raw === 0 ? 6 : raw - 1;
@@ -62,41 +58,37 @@ function buildCells(vy: number, vm: number): Cell[] {
   return cells;
 }
 
-// ─── Portal dropdown ─────────────────────────────────────────────────────────
+// ─── Pozisyon hesabı — viewport'a sığdır ─────────────────────────────────────
 
-interface DropdownPos { top: number; left: number; openUp: boolean }
+interface PopupStyle { top: number; left: number }
 
-function useDropdownPos(triggerRef: React.RefObject<HTMLButtonElement | null>, open: boolean) {
-  const [pos, setPos] = useState<DropdownPos>({ top: 0, left: 0, openUp: false });
-  const POPUP_H = 380; // estimated max height
+function calcPos(btn: HTMLButtonElement): PopupStyle {
+  const r  = btn.getBoundingClientRect();
+  const sw = window.innerWidth;
+  const sh = window.innerHeight;
+  const sy = window.scrollY;
+  const sx = window.scrollX;
 
-  const recalc = useCallback(() => {
-    if (!triggerRef.current) return;
-    const r = triggerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - r.bottom;
-    const openUp = spaceBelow < POPUP_H && r.top > POPUP_H;
-    setPos({
-      top:    openUp ? r.top + window.scrollY - POPUP_H - 4 : r.bottom + window.scrollY + 4,
-      left:   r.left + window.scrollX,
-      openUp,
-    });
-  }, [triggerRef]);
+  // Dikey: önce aşağı dene, sığmazsa yukarı
+  let top: number;
+  const spaceBelow = sh - r.bottom;
+  const spaceAbove = r.top;
+  if (spaceBelow >= POPUP_H || spaceBelow >= spaceAbove) {
+    top = r.bottom + sy + MARGIN;
+  } else {
+    top = r.top + sy - POPUP_H - MARGIN;
+  }
+  // Viewport sınırına clamp
+  top = Math.max(sy + MARGIN, Math.min(top, sy + sh - POPUP_H - MARGIN));
 
-  useEffect(() => {
-    if (open) recalc();
-  }, [open, recalc]);
+  // Yatay: trigger sol kenarından başla, sağa taşarsa sola kaydır
+  let left = r.left + sx;
+  if (left + POPUP_W > sx + sw - MARGIN) {
+    left = sx + sw - POPUP_W - MARGIN;
+  }
+  left = Math.max(sx + MARGIN, left);
 
-  useEffect(() => {
-    if (!open) return;
-    window.addEventListener('scroll', recalc, true);
-    window.addEventListener('resize', recalc);
-    return () => {
-      window.removeEventListener('scroll', recalc, true);
-      window.removeEventListener('resize', recalc);
-    };
-  }, [open, recalc]);
-
-  return pos;
+  return { top, left };
 }
 
 // ─── MonoDatePicker ───────────────────────────────────────────────────────────
@@ -105,20 +97,18 @@ export interface MonoDatePickerProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** @deprecated no longer needed — auto-detected */
+  /** @deprecated artık gerekmiyor — otomatik hesaplanıyor */
   dropUp?: boolean;
 }
-
-type PickerMode = 'day' | 'month' | 'year';
 
 export function MonoDatePicker({
   value,
   onChange,
   placeholder = 'Tarih seç',
 }: MonoDatePickerProps) {
-  const today   = todayStr();
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const btnRef  = useRef<HTMLButtonElement>(null);
+  const today  = todayStr();
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
 
   const initView = () => {
     if (value) {
@@ -130,48 +120,53 @@ export function MonoDatePicker({
   };
 
   const [open,    setOpen]    = useState(false);
-  const [mode,    setMode]    = useState<PickerMode>('day');
   const [vy,      setVy]      = useState(() => initView().vy);
   const [vm,      setVm]      = useState(() => initView().vm);
   const [pending, setPending] = useState(value);
+  const [style,   setStyle]   = useState<PopupStyle>({ top: 0, left: 0 });
 
-  const yearRangeStart = Math.floor(vy / 12) * 12;
-  const years = Array.from({ length: 12 }, (_, i) => yearRangeStart + i);
+  // Yıl aralığı: -10 … +10
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
 
-  const pos = useDropdownPos(btnRef, open);
+  // Pozisyonu yeniden hesapla
+  const recalc = useCallback(() => {
+    if (btnRef.current) setStyle(calcPos(btnRef.current));
+  }, []);
 
   useEffect(() => { setPending(value); }, [value]);
 
   useEffect(() => {
     if (!open) return;
-    const { vy: y, vm: m } = initView();
-    setVy(y); setVm(m);
+    const iv = initView();
+    setVy(iv.vy); setVm(iv.vm);
     setPending(value);
-    setMode('day');
+    recalc();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener('scroll', recalc, true);
+    window.addEventListener('resize', recalc);
+    return () => {
+      window.removeEventListener('scroll', recalc, true);
+      window.removeEventListener('resize', recalc);
+    };
+  }, [open, recalc]);
+
+  // Dışarı tıklayınca kapat
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
+      const t = e.target as Node;
       if (
-        wrapRef.current && !wrapRef.current.contains(target) &&
-        btnRef.current  && !btnRef.current.contains(target)
+        btnRef.current && !btnRef.current.contains(t) &&
+        popRef.current  && !popRef.current.contains(t)
       ) setOpen(false);
     };
     if (open) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
-
-  function prevMonth() {
-    if (vm === 1) { setVy(y => y - 1); setVm(12); }
-    else setVm(m => m - 1);
-  }
-  function nextMonth() {
-    if (vm === 12) { setVy(y => y + 1); setVm(1); }
-    else setVm(m => m + 1);
-  }
 
   function confirm() { onChange(pending); setOpen(false); }
   function cancel()  { setPending(value); setOpen(false); }
@@ -179,147 +174,78 @@ export function MonoDatePicker({
   const cells   = buildCells(vy, vm);
   const display = formatDisplay(value);
 
+  // ── Seçim kutusu stili ─────────────────────────────────────────────────────
+  const selCls = 'bg-gray-100 rounded-lg px-2 h-7 text-[13px] font-bold text-gray-900 border-0 outline-none cursor-pointer appearance-none text-center hover:bg-gray-200 transition-colors';
+
   const popup = open ? createPortal(
     <div
-      ref={wrapRef}
-      style={{
-        position: 'absolute',
-        top:      pos.top,
-        left:     pos.left,
-        width:    280,
-        zIndex:   9999,
-      }}
+      ref={popRef}
+      style={{ position: 'absolute', top: style.top, left: style.left, width: POPUP_W, zIndex: 9999 }}
       className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
     >
-      {/* ── Header nav ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-        <button
-          type="button"
-          onClick={() => {
-            if (mode === 'day') prevMonth();
-            else if (mode === 'month') setVy(y => y - 1);
-            else setVy(y => y - 12);
-          }}
-          className="p-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+      {/* ── Header: ay + yıl dropdown ── */}
+      <div className="flex items-center justify-center gap-2 px-4 py-3 border-b border-gray-50">
+        {/* Ay seçici */}
+        <select
+          value={vm}
+          onChange={e => setVm(Number(e.target.value))}
+          className={selCls}
+          style={{ width: 110 }}
         >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+          {TR_MONTHS.map((name, i) => (
+            <option key={i} value={i + 1}>{name}</option>
+          ))}
+        </select>
 
-        <div className="flex items-center gap-1">
-          {mode === 'day' && (
-            <button
-              type="button"
-              onClick={() => setMode('month')}
-              className="text-[14px] font-bold text-gray-900 px-2 py-0.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              {TR_MONTHS[vm - 1]}
-            </button>
-          )}
-          {(mode === 'day' || mode === 'month') && (
-            <button
-              type="button"
-              onClick={() => setMode('year')}
-              className="text-[14px] font-bold text-gray-900 px-2 py-0.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              {vy}
-            </button>
-          )}
-          {mode === 'year' && (
-            <span className="text-[14px] font-bold text-gray-900 px-2">
-              {yearRangeStart} – {yearRangeStart + 11}
-            </span>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (mode === 'day') nextMonth();
-            else if (mode === 'month') setVy(y => y + 1);
-            else setVy(y => y + 12);
-          }}
-          className="p-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+        {/* Yıl seçici */}
+        <select
+          value={vy}
+          onChange={e => setVy(Number(e.target.value))}
+          className={selCls}
+          style={{ width: 80 }}
         >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+          {years.map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
       </div>
 
-      {/* ── Month picker ── */}
-      {mode === 'month' && (
-        <div className="grid grid-cols-3 gap-1.5 p-4">
-          {TR_MONTHS_SHORT.map((name, i) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => { setVm(i + 1); setMode('day'); }}
-              className={cn(
-                'h-10 rounded-xl text-[12px] font-semibold transition-colors',
-                (i + 1) === vm ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100',
-              )}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── Gün başlıkları ── */}
+      <div className="grid grid-cols-7 px-4 pt-3 pb-1">
+        {TR_DAYS.map(d => (
+          <div key={d} className="text-center text-[10px] font-bold text-gray-400">{d}</div>
+        ))}
+      </div>
 
-      {/* ── Year picker ── */}
-      {mode === 'year' && (
-        <div className="grid grid-cols-3 gap-1.5 p-4">
-          {years.map(y => (
+      {/* ── Gün hücreleri ── */}
+      <div className="grid grid-cols-7 px-3 pb-2 gap-y-0.5">
+        {cells.map((cell, i) => {
+          const str        = toStr(cell.year, cell.month, cell.day);
+          const isToday    = str === today;
+          const isSelected = str === pending;
+          return (
             <button
-              key={y}
+              key={i}
               type="button"
-              onClick={() => { setVy(y); setMode('month'); }}
-              className={cn(
-                'h-10 rounded-xl text-[12px] font-semibold transition-colors',
-                y === vy ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100',
-              )}
+              onClick={() => {
+                setPending(str);
+                if (!cell.cur) { setVy(cell.year); setVm(cell.month); }
+              }}
+              className={`h-9 w-full rounded-full text-[13px] font-medium transition-colors flex items-center justify-center
+                ${isSelected
+                  ? 'bg-red-600 text-white font-bold'
+                  : isToday
+                  ? 'text-red-600 font-bold hover:bg-red-50'
+                  : !cell.cur
+                  ? 'text-gray-300 hover:bg-gray-50'
+                  : 'text-gray-800 hover:bg-gray-100'
+                }`}
             >
-              {y}
+              {cell.day}
             </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Day picker ── */}
-      {mode === 'day' && (
-        <>
-          <div className="grid grid-cols-7 px-4 pt-3 pb-1">
-            {TR_DAYS.map(d => (
-              <div key={d} className="text-center text-[10px] font-bold text-gray-400">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 px-3 pb-2 gap-y-0.5">
-            {cells.map((cell, i) => {
-              const str        = toStr(cell.year, cell.month, cell.day);
-              const isToday    = str === today;
-              const isSelected = str === pending;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    setPending(str);
-                    if (!cell.cur) { setVy(cell.year); setVm(cell.month); }
-                  }}
-                  className={`h-9 w-full rounded-full text-[13px] font-medium transition-colors flex items-center justify-center
-                    ${isSelected
-                      ? 'bg-red-600 text-white font-bold'
-                      : isToday
-                      ? 'text-red-600 font-bold hover:bg-red-50'
-                      : !cell.cur
-                      ? 'text-gray-300 hover:bg-gray-50'
-                      : 'text-gray-800 hover:bg-gray-100'
-                    }`}
-                >
-                  {cell.day}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+          );
+        })}
+      </div>
 
       {/* ── Footer ── */}
       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
