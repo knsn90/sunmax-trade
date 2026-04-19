@@ -17,6 +17,7 @@ import { FileActivityPopover } from '@/components/trade-files/FileActivityPopove
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { EntityAvatar } from '@/components/ui/shared';
 
 // ─── Status meta ───────────────────────────────────────────────────────────────
 const STATUS_META: Record<string, { dot: string; text: string }> = {
@@ -28,18 +29,6 @@ const STATUS_META: Record<string, { dot: string; text: string }> = {
 };
 
 type FilterKey = 'all' | 'request' | 'sale' | 'delivery' | 'completed' | 'cancelled';
-
-const AVATAR_COLORS = [
-  '#dc2626','#2563eb','#7c3aed','#059669','#d97706','#db2777','#0891b2',
-];
-function avatarColor(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-}
-function initials(name: string) {
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-}
 
 const PAGE_SIZE = 12;
 
@@ -153,12 +142,7 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
       className="flex items-center gap-3 px-4 py-3.5 bg-white active:bg-gray-50 cursor-pointer"
       onClick={onClick}
     >
-      <div
-        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white text-[13px] font-bold shadow-sm"
-        style={{ background: avatarColor(custName) }}
-      >
-        {initials(custName)}
-      </div>
+      <EntityAvatar name={custName} logoUrl={file.customer?.logo_url} size="md" />
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-[13px] text-gray-900 truncate" style={{ fontFamily: 'Manrope, sans-serif' }}>{custName}</div>
         <div className="text-[11px] text-gray-400 mt-0.5 truncate">
@@ -206,12 +190,7 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
     >
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
-            style={{ background: avatarColor(custName) }}
-          >
-            {initials(custName)}
-          </div>
+          <EntityAvatar name={custName} logoUrl={file.customer?.logo_url} size="sm" />
           <div className="min-w-0">
             <div className="text-[13px] font-semibold text-gray-900 truncate">{custName}</div>
             <div className="text-[10px] font-mono text-gray-400 truncate">{file.file_no}</div>
@@ -313,7 +292,12 @@ export function TradeFilesPage() {
         f.product?.name?.toLowerCase().includes(q)
       );
     }
-    return list;
+    // Tarihe göre azalan sıra (en yeni üstte)
+    return [...list].sort((a, b) => {
+      const da = a.file_date ?? '';
+      const db = b.file_date ?? '';
+      return db.localeCompare(da);
+    });
   }, [files, filter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
