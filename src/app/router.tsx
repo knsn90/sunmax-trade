@@ -18,7 +18,6 @@ import {
 } from '@/pages/StubPages';
 import { DocumentsPage } from '@/pages/DocumentsPage';
 import { PriceListPage } from '@/pages/PriceListPage';
-import { LegacyImportPage } from '@/pages/LegacyImportPage';
 import { TenantManagementPage } from '@/pages/TenantManagementPage';
 import { ViewAsPage } from '@/pages/ViewAsPage';
 
@@ -78,14 +77,6 @@ export const router = createBrowserRouter([
         element: (
           <AuthGuard requiredRoles={['admin']}>
             <SettingsPage />
-          </AuthGuard>
-        ),
-      },
-      {
-        path: 'legacy-import',
-        element: (
-          <AuthGuard requiredRoles={['admin']}>
-            <LegacyImportPage />
           </AuthGuard>
         ),
       },
