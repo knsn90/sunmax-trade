@@ -81,7 +81,7 @@ const DialogContent = React.forwardRef<
           // Mobile: full-screen
           'fixed inset-0 z-50 w-full h-full',
           // Desktop: centered modal
-          'md:inset-auto md:h-auto md:bottom-auto md:left-[50%] md:top-[5vh] md:translate-x-[-50%]',
+          'md:inset-auto md:h-auto md:bottom-auto md:left-[50%] md:top-[50%] md:translate-x-[-50%] md:translate-y-[-50%]',
           size === 'default' && 'md:max-w-[600px]',
           size === 'lg'      && 'md:max-w-[800px]',
           size === 'xl'      && 'md:max-w-[920px]',
