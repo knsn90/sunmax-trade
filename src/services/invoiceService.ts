@@ -258,6 +258,16 @@ export const invoiceService = {
     if (error) throw new Error(error.message);
   },
 
+  /** Update only the invoice number */
+  async updateNo(id: string, newNo: string): Promise<void> {
+    const { error } = await supabase
+      .from('invoices')
+      .update({ invoice_no: newNo })
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+  },
+
   async getNextNumber(): Promise<number> {
     const { data, error } = await supabase
       .rpc('nextval_invoice');

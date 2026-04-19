@@ -151,4 +151,26 @@ export const proformaService = {
 
     if (error) throw new Error(error.message);
   },
+
+  /** Generate a unique proforma number — checks globally by LIKE pattern */
+  async generateUniqueProformaNo(_tradeFileId: string, baseNo: string): Promise<string> {
+    const { count } = await supabase
+      .from('proformas')
+      .select('id', { count: 'exact', head: true })
+      .like('proforma_no', `${baseNo}%`);
+
+    const existing = count ?? 0;
+    if (existing === 0) return baseNo;
+    return `${baseNo}-${String(existing + 1).padStart(2, '0')}`;
+  },
+
+  /** Update only the proforma number */
+  async updateNo(id: string, newNo: string): Promise<void> {
+    const { error } = await supabase
+      .from('proformas')
+      .update({ proforma_no: newNo })
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+  },
 };

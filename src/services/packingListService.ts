@@ -170,4 +170,26 @@ export const packingListService = {
 
     if (error) throw new Error(error.message);
   },
+
+  /** Generate a unique PL number — checks globally by LIKE pattern to avoid collisions on batch files */
+  async generateUniquePLNo(_tradeFileId: string, baseNo: string): Promise<string> {
+    const { count } = await supabase
+      .from('packing_lists')
+      .select('id', { count: 'exact', head: true })
+      .like('packing_list_no', `${baseNo}%`);
+
+    const existing = count ?? 0;
+    if (existing === 0) return baseNo;
+    return `${baseNo}-${String(existing + 1).padStart(2, '0')}`;
+  },
+
+  /** Update only the packing list number */
+  async updateNo(id: string, newNo: string): Promise<void> {
+    const { error } = await supabase
+      .from('packing_lists')
+      .update({ packing_list_no: newNo })
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+  },
 };

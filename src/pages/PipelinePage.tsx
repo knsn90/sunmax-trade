@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
+import { EntityAvatar } from '@/components/ui/shared';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 type FilterKey = 'all' | 'request' | 'sale' | 'delivery';
@@ -34,18 +35,6 @@ const STATUS_META: Record<string, {
   delivery: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-400', bar: '#8b5cf6', border: '#a78bfa', pill: 'bg-violet-50 text-violet-700' },
   completed:{ bg: 'bg-green-50',  text: 'text-green-700',  dot: 'bg-green-400',  bar: '#22c55e', border: '#86efac', pill: 'bg-green-50 text-green-700' },
 };
-
-const AVATAR_COLORS = [
-  '#dc2626','#2563eb','#7c3aed','#059669','#d97706','#db2777','#0891b2',
-];
-function avatarColor(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-}
-function initials(name: string) {
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-}
 
 const PAGE_SIZE = 15;
 
@@ -137,12 +126,7 @@ function PipelineCard({ file, onClick }: { file: TradeFile; onClick: () => void 
 
           {/* Top row: avatar + name + chevron */}
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-[13px] font-bold shrink-0"
-              style={{ background: avatarColor(custName) }}
-            >
-              {initials(custName)}
-            </div>
+            <EntityAvatar name={custName} logoUrl={file.customer?.logo_url} size="md" shape="square" />
 
             <div className="flex-1 min-w-0">
               <div
@@ -540,12 +524,7 @@ export function PipelinePage() {
                           onClick={() => navigate(`/files/${f.id}`)}
                         >
                           <div className="flex items-start gap-2.5">
-                            <div
-                              className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[11px] font-bold shrink-0 mt-0.5"
-                              style={{ background: avatarColor(custName) }}
-                            >
-                              {initials(custName)}
-                            </div>
+                            <EntityAvatar name={custName} logoUrl={f.customer?.logo_url} size="sm" shape="square" className="mt-0.5" />
                             <div className="flex-1 min-w-0">
                               <div className="text-[13px] font-bold text-gray-900 truncate" style={{ fontFamily: 'Manrope, sans-serif' }}>{custName}</div>
                               <div className="text-[10px] font-mono text-gray-400">{f.file_no}</div>

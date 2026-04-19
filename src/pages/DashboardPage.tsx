@@ -19,7 +19,7 @@ import { useTransactions, useTransactionSummary } from '@/hooks/useTransactions'
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fUSD, fDate } from '@/lib/formatters';
-import { LoadingSpinner } from '@/components/ui/shared';
+import { LoadingSpinner, EntityAvatar } from '@/components/ui/shared';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { usePriceList } from '@/hooks/useEntities';
@@ -96,15 +96,6 @@ const STATUS_CFG: Record<string, { dot: string; text: string; bg: string; label:
   completed: { dot: 'bg-green-400',  text: 'text-green-700',  bg: 'bg-green-50',  label: 'Completed' },
   cancelled: { dot: 'bg-gray-300',   text: 'text-gray-500',   bg: 'bg-gray-50',   label: 'Cancelled' },
 };
-
-const AVATAR_COLORS = ['#dc2626','#2563eb','#7c3aed','#059669','#d97706'];
-function avatarBg(name: string) {
-  let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-}
-function initials(name: string) {
-  return name.split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase();
-}
 
 // ─── Transaction type labels ──────────────────────────────────────────────────
 const TXN_TYPE_LABELS: Record<string, string> = {
@@ -747,10 +738,7 @@ export function DashboardPage() {
                     <button key={f.id} onClick={() => navigate(`/files/${f.id}`)}
                       className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
                     >
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0"
-                        style={{ background: avatarBg(name) }}>
-                        {initials(name)}
-                      </div>
+                      <EntityAvatar name={name} logoUrl={f.customer?.logo_url} size="sm" shape="square" />
                       <div className="flex-1 min-w-0">
                         <div className="text-[13px] font-semibold text-gray-900 truncate">{name}</div>
                         <div className="text-[11px] font-mono text-gray-400 mt-0.5">{f.file_no}</div>
@@ -1129,17 +1117,13 @@ export function DashboardPage() {
                   : status === 'partial'
                     ? { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'Kısmi'   }
                     : { bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'Bekliyor' };
-                const bg = avatarBg(partyName);
-                const ini = initials(partyName);
+                const partyLogoUrl = tx.customer?.logo_url ?? tx.supplier?.logo_url ?? tx.service_provider?.logo_url ?? null;
                 return (
                   <div
                     key={tx.id}
                     className={cn('flex items-center gap-3 px-4 py-3', i < recentTxns.length - 1 && 'border-b border-gray-50')}
                   >
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
-                      style={{ background: bg }}
-                    >{ini}</div>
+                    <EntityAvatar name={partyName} logoUrl={partyLogoUrl} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-semibold text-gray-900 truncate">{partyName}</div>
                       <span className="text-[10px] font-semibold text-gray-500">{typeLabel}</span>
@@ -1233,10 +1217,7 @@ export function DashboardPage() {
                 <button key={f.id} onClick={() => navigate(`/files/${f.id}`)}
                   className="w-full flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-0 active:bg-gray-50 transition-colors text-left"
                 >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[12px] font-bold shrink-0"
-                    style={{ background: avatarBg(name) }}
-                  >{initials(name)}</div>
+                  <EntityAvatar name={name} logoUrl={f.customer?.logo_url} size="md" />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-semibold text-gray-900 truncate">{name}</div>
                     <div className="text-[11px] font-mono mt-0.5" style={{ color: '#5c403c' }}>{f.file_no}</div>

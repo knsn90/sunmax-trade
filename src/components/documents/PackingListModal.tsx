@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { packingListSchema, type PackingListFormData } from '@/types/forms';
 import type { TradeFile, PackingList, Customer } from '@/types/database';
 import { useCreatePackingList, useUpdatePackingList } from '@/hooks/useDocuments';
+import { packingListService } from '@/services/packingListService';
 import { useCustomers } from '@/hooks/useEntities';
 import { useSettings } from '@/hooks/useSettings';
 import { today, fN } from '@/lib/formatters';
@@ -217,7 +218,8 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
       if (isEdit && packingList) {
         await updatePL.mutateAsync({ id: packingList.id, data, consigneeId: cId });
       } else if (file) {
-        const plNo = formatPLNo(file.file_no);
+        const baseNo = formatPLNo(file.file_no);
+        const plNo = await packingListService.generateUniquePLNo(file.id, baseNo);
         await createPL.mutateAsync({ tradeFileId: file.id, customerId: file.customer_id, plNo, data, consigneeId: cId });
       }
       onOpenChange(false);

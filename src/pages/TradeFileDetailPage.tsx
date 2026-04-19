@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFile, useUpdateSaleDetails, tradeFileKeys } from '@/hooks/useTradeFiles';
 import { tradeFileService } from '@/services/tradeFileService';
+import { invoiceService } from '@/services/invoiceService';
+import { packingListService } from '@/services/packingListService';
+import { proformaService } from '@/services/proformaService';
 import { dropboxService } from '@/services/dropboxService';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -115,23 +118,59 @@ function KV({ label, value, bold }: { label: string; value: React.ReactNode; bol
 
 // ── Document row ──────────────────────────────────────────────────────────────
 function DocRow({
-  no, date, amount, status, children,
+  no, date, amount, status, children, onRenameNo,
 }: {
   no: string; date?: string; amount?: string; status: string;
   children?: React.ReactNode;
+  onRenameNo?: (newNo: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(no);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!onRenameNo || !draft.trim() || draft.trim() === no) { setEditing(false); return; }
+    setSaving(true);
+    try { await onRenameNo(draft.trim()); setEditing(false); }
+    finally { setSaving(false); }
+  }
+
   return (
-    <div className="border-b border-gray-50 last:border-0">
+    <div className="border-b border-gray-50 last:border-0 group">
       <div
         className="flex items-center gap-3 py-3 cursor-pointer active:bg-gray-50"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { if (!editing) setOpen(o => !o); }}
       >
         <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
           <FileText className="h-3.5 w-3.5 text-gray-500" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-[12px] text-gray-900 truncate">{no}</div>
+          {editing ? (
+            <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+              <input
+                autoFocus
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') { setDraft(no); setEditing(false); } }}
+                className="flex-1 text-[12px] font-semibold bg-gray-100 rounded-lg px-2 py-0.5 outline-none border border-gray-300 focus:border-gray-400"
+              />
+              <button onClick={handleSave} disabled={saving} className="text-[10px] text-green-600 font-bold px-1.5 py-0.5 rounded hover:bg-green-50">✓</button>
+              <button onClick={() => { setDraft(no); setEditing(false); }} className="text-[10px] text-gray-400 px-1.5 py-0.5 rounded hover:bg-gray-100">✕</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-[12px] text-gray-900 truncate">{no}</span>
+              {onRenameNo && (
+                <button
+                  onClick={e => { e.stopPropagation(); setDraft(no); setEditing(true); setOpen(true); }}
+                  className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-600 transition-opacity"
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </button>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-0.5">
             <DocStatusBadge status={status as any} />
             {date && <span className="text-[10px] text-gray-400">{date}</span>}
@@ -378,6 +417,29 @@ export function TradeFileDetailPage() {
     } catch {
       toast.error('Güncelleme başarısız');
     }
+  }
+
+  // ── Belge numarası yeniden adlandırma ──────────────────────────────────────
+  function makeInvoiceRename(id: string) {
+    return async (newNo: string) => {
+      await invoiceService.updateNo(id, newNo);
+      queryClient.invalidateQueries({ queryKey: ['tradeFile', file?.id] });
+      toast.success('Fatura numarası güncellendi');
+    };
+  }
+  function makePLRename(id: string) {
+    return async (newNo: string) => {
+      await packingListService.updateNo(id, newNo);
+      queryClient.invalidateQueries({ queryKey: ['tradeFile', file?.id] });
+      toast.success('Çeki listesi numarası güncellendi');
+    };
+  }
+  function makeProformaRename(id: string) {
+    return async (newNo: string) => {
+      await proformaService.updateNo(id, newNo);
+      queryClient.invalidateQueries({ queryKey: ['tradeFile', file?.id] });
+      toast.success('Proforma numarası güncellendi');
+    };
   }
 
   const handleOpenDropbox = useCallback(async () => {
@@ -1267,6 +1329,7 @@ export function TradeFileDetailPage() {
                 date={fDate(pi.proforma_date)}
                 amount={fCurrency(pi.total)}
                 status={pi.doc_status ?? 'draft'}
+                onRenameNo={writable ? makeProformaRename(pi.id) : undefined}
               >
                 <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
                 {writable && (pi.doc_status ?? 'draft') !== 'approved' && (
@@ -1299,6 +1362,7 @@ export function TradeFileDetailPage() {
                 date={fDate(inv.invoice_date)}
                 amount={fCurrency(inv.total)}
                 status={inv.doc_status ?? 'draft'}
+                onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}
               >
                 <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
@@ -1325,6 +1389,7 @@ export function TradeFileDetailPage() {
                 date={fDate(inv.invoice_date)}
                 amount={fCurrency(inv.total)}
                 status={inv.doc_status ?? 'draft'}
+                onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}
               >
                 <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                 {writable && (inv.doc_status ?? 'draft') !== 'approved' && (
@@ -1356,6 +1421,7 @@ export function TradeFileDetailPage() {
                 no={pl.packing_list_no}
                 date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })}
                 status={pl.doc_status ?? 'draft'}
+                onRenameNo={writable ? makePLRename(pl.id) : undefined}
               >
                 <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
                 {writable && (pl.doc_status ?? 'draft') !== 'approved' && (
@@ -1884,7 +1950,7 @@ export function TradeFileDetailPage() {
                 </div>
                 {!collapsed.documents && <div className="px-4 py-2">
                   {!isPartial && !isBatch && file.proformas?.map((pi) => (
-                    <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'}>
+                    <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'} onRenameNo={writable ? makeProformaRename(pi.id) : undefined}>
                       <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
                       {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
@@ -1893,7 +1959,7 @@ export function TradeFileDetailPage() {
                     </DocRow>
                   ))}
                   {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
-                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
+                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'} onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}>
                       <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
@@ -1901,7 +1967,7 @@ export function TradeFileDetailPage() {
                     </DocRow>
                   ))}
                   {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
-                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'}>
+                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'} onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}>
                       <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
@@ -1910,7 +1976,7 @@ export function TradeFileDetailPage() {
                     </DocRow>
                   ))}
                   {file.packing_lists?.map((pl) => (
-                    <DocRow key={pl.id} no={pl.packing_list_no} date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })} status={pl.doc_status ?? 'draft'}>
+                    <DocRow key={pl.id} no={pl.packing_list_no} date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })} status={pl.doc_status ?? 'draft'} onRenameNo={writable ? makePLRename(pl.id) : undefined}>
                       <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
                       {writable && (pl.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPL(pl); setPackingOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printPackingList(pl, settings, (pl.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}

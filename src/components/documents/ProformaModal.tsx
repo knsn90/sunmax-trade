@@ -6,6 +6,7 @@ import { proformaSchema, type ProformaFormData } from '@/types/forms';
 import type { TradeFile, Proforma } from '@/types/database';
 import type { OcrResult } from '@/lib/openai';
 import { useCreateProforma, useUpdateProforma } from '@/hooks/useProformas';
+import { proformaService } from '@/services/proformaService';
 import { useCustomers } from '@/hooks/useEntities';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { today, fCurrency } from '@/lib/formatters';
@@ -225,7 +226,8 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
       if (isEdit && proforma) {
         await updatePI.mutateAsync({ id: proforma.id, data, consigneeId: cId });
       } else if (file) {
-        const piNo = formatProformaNo(file.file_no);
+        const baseNo = formatProformaNo(file.file_no);
+        const piNo = await proformaService.generateUniqueProformaNo(file.id, baseNo);
         await createPI.mutateAsync({ tradeFileId: file.id, proformaNo: piNo, data, consigneeId: cId });
       }
       onOpenChange(false);
