@@ -29,26 +29,6 @@ import { fDate } from '@/lib/formatters';
 const CURRENCIES = ['USD', 'EUR', 'TRY'] as const;
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', TRY: '₺' };
 
-const CARD_GRADIENTS = [
-  'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
-  'linear-gradient(135deg, #2e1065 0%, #6d28d9 100%)',
-  'linear-gradient(135deg, #052e16 0%, #065f46 100%)',
-  'linear-gradient(135deg, #4c0519 0%, #be123c 100%)',
-  'linear-gradient(135deg, #172554 0%, #1d4ed8 100%)',
-  'linear-gradient(135deg, #042f2e 0%, #0f766e 100%)',
-];
-
-const PRODUCT_LOGOS: { match: string; logo: string }[] = [
-  { match: 'upm',     logo: '/images/logos/upm.svg' },
-  { match: 'domtar',  logo: '/images/logos/domtar.svg' },
-  { match: 'georgia', logo: '/images/logos/gp.svg' },
-  { match: 'cmpc',    logo: '/images/logos/cmpc.svg' },
-];
-function getProductLogo(name?: string | null) {
-  if (!name) return null;
-  const lower = name.toLowerCase();
-  return PRODUCT_LOGOS.find(s => lower.includes(s.match))?.logo ?? null;
-}
 
 // ─── Price Entry Modal ────────────────────────────────────────────────────────
 
