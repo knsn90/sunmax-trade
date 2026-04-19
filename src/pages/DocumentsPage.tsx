@@ -12,7 +12,7 @@ import { InvoiceModal } from '@/components/documents/InvoiceModal';
 import { PackingListModal } from '@/components/documents/PackingListModal';
 import { ProformaModal } from '@/components/documents/ProformaModal';
 
-import { Search, Printer, Pencil, Trash2, Receipt, FileText, Package } from 'lucide-react';
+import { Search, Printer, Pencil, Trash2, Receipt, FileText, Package, Files } from 'lucide-react';
 import type { Invoice, PackingList, Proforma, TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -426,6 +426,17 @@ export function DocumentsPage() {
 
   return (
     <div>
+      {/* Page Header — desktop only */}
+      <div className="hidden md:flex items-center gap-2.5 mb-4">
+        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+          <Files style={{ width: 18, height: 18 }} className="text-gray-600" />
+        </div>
+        <div>
+          <h1 className="text-[15px] font-bold text-gray-900">Belgeler</h1>
+          <p className="text-[11px] text-gray-400">Faturalar, proformalar ve ambalaj listeleri</p>
+        </div>
+      </div>
+
       {/* Mobil: tab satırı ayrı, search altında — Desktop: tek satır */}
       <div className="mb-4 space-y-2 md:space-y-0 md:flex md:items-center md:gap-2">
         {/* Tab pilleri — mobilde tam genişlik */}

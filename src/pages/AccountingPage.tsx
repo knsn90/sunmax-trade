@@ -465,6 +465,17 @@ export function AccountingPage() {
     <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8">
       <div className="px-3 md:px-0 space-y-4">
 
+        {/* Page Header — desktop only */}
+        <div className="hidden md:flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+            <BookCheck style={{ width: 18, height: 18 }} className="text-gray-600" />
+          </div>
+          <div>
+            <h1 className="text-[15px] font-bold text-gray-900">Muhasebe</h1>
+            <p className="text-[11px] text-gray-400">İşlem ve fatura yönetimi</p>
+          </div>
+        </div>
+
         {/* ── KPI Row ──────────────────────────────────────────────────── */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-3 md:pt-0">

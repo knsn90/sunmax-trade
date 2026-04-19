@@ -683,6 +683,17 @@ export function PriceListPage() {
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:flex flex-col h-full">
 
+        {/* Page Header */}
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+            <Tag style={{ width: 18, height: 18 }} className="text-gray-600" />
+          </div>
+          <div>
+            <h1 className="text-[15px] font-bold text-gray-900">Fiyat Listesi</h1>
+            <p className="text-[11px] text-gray-400">Ürün ve tedarikçi fiyat geçmişi</p>
+          </div>
+        </div>
+
         {/* Toolbar */}
         <div className="flex items-center gap-3 mb-5">
           <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">

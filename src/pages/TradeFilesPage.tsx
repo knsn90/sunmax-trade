@@ -10,7 +10,7 @@ import { NewFileModal } from '@/components/trade-files/NewFileModal';
 // LoadingSpinner kaldırıldı — inline spinner kullanılıyor
 import { cn } from '@/lib/utils';
 import { fCurrency } from '@/lib/formatters';
-import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2, FolderOpen } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FileActivityPopover } from '@/components/trade-files/FileActivityPopover';
@@ -433,6 +433,18 @@ export function TradeFilesPage() {
           DESKTOP
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:block">
+
+        {/* Page Header */}
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+            <FolderOpen style={{ width: 18, height: 18 }} className="text-gray-600" />
+          </div>
+          <div>
+            <h1 className="text-[15px] font-bold text-gray-900">Ticaret Dosyaları</h1>
+            <p className="text-[11px] text-gray-400">Tüm ithalat ve ihracat dosyaları</p>
+          </div>
+        </div>
+
         <div className="flex items-center gap-3 mb-4">
           <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />

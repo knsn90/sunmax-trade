@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, FileText, ChevronDown, X, Printer, SlidersHorizontal } from 'lucide-react';
+import { Search, FileText, ChevronDown, X, Printer, SlidersHorizontal, ClipboardList } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -2930,6 +2930,17 @@ export function ReportsPage() {
 
   return (
     <>
+      {/* Page Header */}
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+          <ClipboardList style={{ width: 18, height: 18 }} className="text-gray-600" />
+        </div>
+        <div>
+          <h1 className="text-[15px] font-bold text-gray-900">Raporlar</h1>
+          <p className="text-[11px] text-gray-400">Satış, analitik ve teslimat raporları</p>
+        </div>
+      </div>
+
       {/* Tab bar */}
       <div className="flex border-b border-gray-100 mb-6 overflow-x-auto scrollbar-none">
         {TAB_LABELS.map(([key, label]) => (

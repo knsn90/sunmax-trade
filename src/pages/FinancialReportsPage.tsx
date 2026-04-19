@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PnlReportTab, AccountStatementTab, CustomerReportTab } from '@/pages/ReportsPage';
 import { FinancialReportsTab } from '@/components/accounting/FinancialReportsTab';
@@ -19,6 +20,17 @@ export function FinancialReportsPage() {
 
   return (
     <div className="space-y-5">
+
+      {/* Page Header */}
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+          <BarChart2 style={{ width: 18, height: 18 }} className="text-gray-600" />
+        </div>
+        <div>
+          <h1 className="text-[15px] font-bold text-gray-900">Finansal Raporlar</h1>
+          <p className="text-[11px] text-gray-400">Kar/zarar, hesap ekstresi ve kur farkı analizleri</p>
+        </div>
+      </div>
 
       {/* Tab bar — kapsül stili */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">

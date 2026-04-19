@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { fN, fDate } from '@/lib/formatters';
 import {
   Search, Plus, TrendingUp, Truck, FileText, BarChart2,
-  AlertTriangle, ChevronRight, X,
+  AlertTriangle, ChevronRight, X, Workflow,
 } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -446,6 +446,17 @@ export function PipelinePage() {
           DESKTOP  (≥ md) — Kanban
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:block">
+
+        {/* Page Header */}
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+            <Workflow style={{ width: 18, height: 18 }} className="text-gray-600" />
+          </div>
+          <div>
+            <h1 className="text-[15px] font-bold text-gray-900">Pipeline</h1>
+            <p className="text-[11px] text-gray-400">Aktif ticaret dosyalarının kanban görünümü</p>
+          </div>
+        </div>
 
         {/* Toolbar */}
         <div className="flex items-center gap-3 mb-5">

@@ -24,7 +24,7 @@ import { NativeSelect, Textarea } from '@/components/ui/form-elements';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { AIFormFill } from '@/components/ui/AIFormFill';
-import { Search, Pencil, Trash2, Plus, Globe, Upload, X, Building2, RefreshCw } from 'lucide-react';
+import { Search, Pencil, Trash2, Plus, Globe, Upload, X, Building2, RefreshCw, Users } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { fetchCompanyLogo, batchFetchLogos } from '@/lib/logoFetch';
 import { LogoPickerModal } from '@/components/ui/LogoPickerModal';
@@ -977,6 +977,17 @@ export function ContactsPage() {
 
   return (
     <div className="-mx-4 md:mx-0">
+      {/* Page Header — desktop only */}
+      <div className="hidden md:flex items-center gap-2.5 mb-4">
+        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+          <Users style={{ width: 18, height: 18 }} className="text-gray-600" />
+        </div>
+        <div>
+          <h1 className="text-[15px] font-bold text-gray-900">Kişiler</h1>
+          <p className="text-[11px] text-gray-400">Müşteriler, tedarikçiler ve hizmet sağlayıcılar</p>
+        </div>
+      </div>
+
       {/* Header row: tabs + search + new */}
       <div className="px-4 md:px-0 mb-4 flex items-center gap-2">
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none shrink-0">
