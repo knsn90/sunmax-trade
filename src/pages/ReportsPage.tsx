@@ -127,84 +127,91 @@ function SalesReportTab() {
   }
 
   return (
-    <div>
+    <div className="space-y-4">
       {/* Filter panel */}
-      <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.customer')}</label>
-            <NativeSelect value={custFilter} onChange={(e) => setCustFilter(e.target.value)}>
-              <option value="">{t('sales.all_customers')}</option>
-              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </NativeSelect>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.status')}</label>
-            <NativeSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">{tc('all')}</option>
-              <option value="request">{tc('status.request')}</option>
-              <option value="sale">{tc('status.sale')}</option>
-              <option value="delivery">{tc('status.delivery')}</option>
-            </NativeSelect>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.date_from')}</label>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">{t('sales.date_to')}</label>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Card header */}
+        <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60 flex items-center gap-2">
+          <SlidersHorizontal className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Filtreler</span>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setRan(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold text-white transition-colors hover:opacity-90"
-            style={{ background: accent }}
-          >
-            {t('sales.show_report')}
-          </button>
-          <button
-            onClick={() => { setCustFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setRan(false); }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            {t('sales.reset')}
-          </button>
-          {ran && results.length > 0 && (
+        <div className="px-5 py-4 space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.customer')}</label>
+              <NativeSelect value={custFilter} onChange={(e) => setCustFilter(e.target.value)}>
+                <option value="">{t('sales.all_customers')}</option>
+                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </NativeSelect>
+            </div>
+            <div>
+              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.status')}</label>
+              <NativeSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">{tc('all')}</option>
+                <option value="request">{tc('status.request')}</option>
+                <option value="sale">{tc('status.sale')}</option>
+                <option value="delivery">{tc('status.delivery')}</option>
+              </NativeSelect>
+            </div>
+            <div>
+              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.date_from')}</label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.date_to')}</label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-50">
             <button
-              onClick={() => printSalesReport(results)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              onClick={() => setRan(true)}
+              className="h-8 px-4 rounded-xl text-[12px] font-semibold text-white transition-colors hover:opacity-90"
+              style={{ background: accent }}
             >
-              {t('sales.print_pdf')}
+              {t('sales.show_report')}
             </button>
-          )}
-          {ran && results.length > 0 && (
             <button
-              onClick={() => exportSalesExcel(results)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              onClick={() => { setCustFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setRan(false); }}
+              className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              {t('sales.excel')}
+              {t('sales.reset')}
             </button>
-          )}
+            {ran && results.length > 0 && (
+              <>
+                <div className="flex-1" />
+                <button
+                  onClick={() => printSalesReport(results)}
+                  className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  {t('sales.print_pdf')}
+                </button>
+                <button
+                  onClick={() => exportSalesExcel(results)}
+                  className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  {t('sales.excel')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {ran && results.length > 0 && (
         <>
           {/* Summary cards */}
-          <div className="flex gap-3 flex-wrap mb-4">
-            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-xs text-gray-400 mb-0.5">{t('sales.total_files')}</div>
-              <div className="text-lg font-bold text-gray-900">{results.length}</div>
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-xs text-gray-400 mb-0.5">{t('sales.total_admt')}</div>
-              <div className="text-lg font-bold text-gray-900">{fN(totalAdmt, 3)}</div>
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-              <div className="text-xs text-gray-400 mb-0.5">{t('sales.estimated_revenue')}</div>
-              <div className="text-lg font-bold text-gray-900">{fUSD(totalRevenue)}</div>
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: t('sales.total_files'),        value: String(results.length) },
+              { label: t('sales.total_admt'),         value: fN(totalAdmt, 3) },
+              { label: t('sales.estimated_revenue'),  value: fUSD(totalRevenue) },
+            ].map(card => (
+              <div key={card.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
+                <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{card.label}</div>
+                <div className="text-[17px] font-extrabold text-gray-900 tabular-nums">{card.value}</div>
+              </div>
+            ))}
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -258,12 +265,14 @@ function SalesReportTab() {
         </>
       )}
 
-      {ran && results.length === 0 && (
-        <div className="text-center py-12 text-gray-400 text-sm">{t('sales.no_records')}</div>
-      )}
-      {!ran && (
-        <div className="text-center py-12 text-gray-400 text-sm">{t('sales.prompt')}</div>
-      )}
+      {(ran && results.length === 0) || !ran ? (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
+          <Search className="h-8 w-8 mb-2 opacity-20" />
+          <p className="text-sm font-medium text-gray-500">
+            {ran ? t('sales.no_records') : t('sales.prompt')}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2017,25 +2026,29 @@ function EtaReportTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm font-bold text-gray-800">{t('eta.title')}</div>
-          <div className="text-xs text-gray-400 mt-0.5">{t('eta.subtitle', { count: etaFiles.length })}</div>
+      {/* Header row */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-5 py-3.5 flex items-center justify-between">
+          <div>
+            <div className="text-[13px] font-bold text-gray-900">{t('eta.title')}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{t('eta.subtitle', { count: etaFiles.length })}</div>
+          </div>
+          <button
+            onClick={exportCsv}
+            className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            {t('eta.export_csv')}
+          </button>
         </div>
-        <button
-          onClick={exportCsv}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-        >
-          {t('eta.export_csv')}
-        </button>
       </div>
 
       {etaFiles.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl shadow-sm">
-          {t('eta.no_files')}
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
+          <FileText className="h-8 w-8 mb-2 opacity-20" />
+          <p className="text-sm font-medium text-gray-500">{t('eta.no_files')}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-100">
