@@ -451,36 +451,8 @@ export function TradeFilesPage() {
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-3">
-          <div className="flex border-b border-gray-100">
-            {STATUS_FILTERS.map(s => {
-              const count = s.key === 'all' ? files.length : files.filter(f => f.status === s.key).length;
-              const active = filter === s.key;
-              return (
-                <button
-                  key={s.key}
-                  onClick={() => { setFilter(s.key); setPage(1); }}
-                  className={cn(
-                    'flex-1 py-3 text-[12px] font-semibold transition-all border-b-2 -mb-px whitespace-nowrap flex flex-col items-center gap-0.5',
-                    active
-                      ? 'border-red-500 text-red-600 bg-red-50/30'
-                      : 'border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50',
-                  )}
-                  style={active ? { borderBottomColor: accent, color: accent } : {}}
-                >
-                  <span>{s.label}</span>
-                  {count > 0 && (
-                    <span className={`text-[10px] font-bold ${active ? 'opacity-70' : 'text-gray-300'}`}>{count}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Search + new */}
-        <div className="flex items-center gap-3 mb-4">
+        {/* Toolbar: search + new */}
+        <div className="flex items-center gap-3 mb-3">
           <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
             <input
@@ -490,9 +462,7 @@ export function TradeFilesPage() {
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
-
           <div className="flex-1" />
-
           {writable && (
             <button
               onClick={() => setNewFileOpen(true)}
@@ -502,6 +472,31 @@ export function TradeFilesPage() {
               {t('buttons.newFile')}
             </button>
           )}
+        </div>
+
+        {/* Filter pills (segment) */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mb-4 overflow-x-auto scrollbar-none">
+          {STATUS_FILTERS.map(s => {
+            const count = s.key === 'all' ? files.length : files.filter(f => f.status === s.key).length;
+            const active = filter === s.key;
+            return (
+              <button
+                key={s.key}
+                onClick={() => { setFilter(s.key); setPage(1); }}
+                className={cn(
+                  'shrink-0 px-3.5 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
+                  active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                )}
+              >
+                {s.label}
+                {count > 0 && (
+                  <span className={cn('ml-1', active ? 'text-gray-400' : 'text-gray-400 opacity-60')}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
