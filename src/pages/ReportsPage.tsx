@@ -44,6 +44,20 @@ function SalesReportTab() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [ran, setRan] = useState(false);
+  const [statusTab, setStatusTab] = useState('all');
+
+  const STATUS_TABS = [
+    { key: 'all',       label: 'Tümü' },
+    { key: 'request',   label: 'Talep' },
+    { key: 'sale',      label: 'Satış' },
+    { key: 'delivery',  label: 'Teslimatta' },
+    { key: 'completed', label: 'Tamamlandı' },
+  ];
+
+  const ROW_BG: Record<string, string> = {
+    completed: 'bg-emerald-50/70 hover:bg-emerald-50',
+    delivery:  'bg-amber-50/60 hover:bg-amber-50',
+  };
 
   const results = useMemo(() => {
     if (!ran) return [];
@@ -61,6 +75,8 @@ function SalesReportTab() {
     const admt = f.delivered_admt ?? f.tonnage_mt ?? 0;
     return s + admt * (f.selling_price ?? 0);
   }, 0);
+
+  const visibleRows = statusTab === 'all' ? results : results.filter(f => f.status === statusTab);
 
   function printSalesReport(rows: TradeFile[]) {
     const tbody = rows.map((f) => `
@@ -215,6 +231,29 @@ function SalesReportTab() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {/* Status tab bar */}
+            <div className="flex border-b border-gray-100">
+              {STATUS_TABS.map(tab => {
+                const count = tab.key === 'all' ? results.length : results.filter(f => f.status === tab.key).length;
+                const active = statusTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setStatusTab(tab.key)}
+                    className={cn(
+                      'flex-1 py-2.5 text-[11px] font-semibold transition-all border-b-2 -mb-px whitespace-nowrap flex flex-col items-center gap-0.5',
+                      active ? 'border-b-2' : 'border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50',
+                    )}
+                    style={active ? { borderBottomColor: accent, color: accent } : {}}
+                  >
+                    <span>{tab.label}</span>
+                    {count > 0 && (
+                      <span className={`text-[10px] font-bold ${active ? 'opacity-60' : 'text-gray-300'}`}>{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
@@ -240,8 +279,8 @@ function SalesReportTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((f) => (
-                    <tr key={f.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                  {visibleRows.map((f) => (
+                    <tr key={f.id} className={cn('border-b border-gray-50 transition-colors', ROW_BG[f.status] ?? 'hover:bg-gray-50/60')}>
                       <td className="px-4 py-3 text-[12px] font-bold">{f.file_no}</td>
                       <td className="px-4 py-3 text-[12px]">{f.customer?.name ?? '—'}</td>
                       <td className="px-4 py-3 text-[12px]">{f.product?.name ?? '—'}</td>
@@ -258,6 +297,11 @@ function SalesReportTab() {
                       <td className="px-4 py-3 text-[12px]">{f.insurance_tr ?? '—'}</td>
                     </tr>
                   ))}
+                  {visibleRows.length === 0 && (
+                    <tr>
+                      <td colSpan={14} className="px-4 py-12 text-center text-[12px] text-gray-400">Bu durumda kayıt yok</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
