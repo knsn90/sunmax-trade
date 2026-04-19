@@ -12,6 +12,8 @@ export interface AIFormFillProps {
   context?: Record<string, unknown>;
   onFill: (fields: Record<string, unknown>) => void;
   placeholder?: string;
+  /** Metni AI'a göndermeden önce zenginleştirmek için opsiyonel async fonksiyon */
+  enrichText?: (text: string) => Promise<string>;
 }
 
 interface PreviewItem {
@@ -100,7 +102,7 @@ declare global {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFormFillProps) {
+export function AIFormFill({ formType, context = {}, onFill, placeholder, enrichText }: AIFormFillProps) {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -153,8 +155,11 @@ export function AIFormFill({ formType, context = {}, onFill, placeholder }: AIFo
     setRawFields(null);
 
     try {
+      // Eğer enrichText varsa (örn. şirket araması), önce internetten bilgi topla
+      const finalText = enrichText ? await enrichText(text.trim()) : text.trim();
+
       const { data, error } = await supabase.functions.invoke('ai-form-fill', {
-        body: { text, formType, context },
+        body: { text: finalText, formType, context },
       });
 
       // Supabase wraps non-2xx as an error but also puts the body in data

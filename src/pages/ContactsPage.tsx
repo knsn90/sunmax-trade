@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, type MutableRefObject } from 'react';
 import { generateCustomerCode } from '@/lib/generators';
+import { supabase } from '@/services/supabase';
 import { useTranslation } from 'react-i18next';
 import {
   useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer,
@@ -26,6 +27,8 @@ import { AIFormFill } from '@/components/ui/AIFormFill';
 import { Search, Pencil, Trash2, Plus, Globe, Upload, X, Building2, RefreshCw } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { fetchCompanyLogo, batchFetchLogos } from '@/lib/logoFetch';
+import { LogoPickerModal } from '@/components/ui/LogoPickerModal';
+import { getCompanyContext } from '@/lib/companySearch';
 import { customerService } from '@/services/customerService';
 import { supplierService } from '@/services/supplierService';
 import { serviceProviderService } from '@/services/serviceProviderService';
@@ -66,19 +69,8 @@ function LogoField({
   companyName: string;
   website?: string | null;
 }) {
-  const [fetching, setFetching] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  async function handleAutoFetch() {
-    const name = companyName.trim();
-    if (!name) { toast.error('Önce firma adını girin'); return; }
-    setFetching(true);
-    try {
-      const url = await fetchCompanyLogo(name, website);
-      if (url) { onChange(url); toast.success('Logo bulundu!'); }
-      else toast.error('Logo bulunamadı — manuel yükleyebilirsiniz');
-    } finally { setFetching(false); }
-  }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -89,37 +81,50 @@ function LogoField({
     reader.readAsDataURL(file);
   }
 
+  function openPicker() {
+    if (!companyName.trim()) { toast.error('Önce firma adını girin'); return; }
+    setPickerOpen(true);
+  }
+
   return (
-    <div className="flex items-center gap-3 mb-3 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
-      <div className="w-12 h-12 rounded-xl border border-gray-200 bg-white overflow-hidden shrink-0 flex items-center justify-center">
-        {value
-          ? <img src={value} alt="Logo" className="w-full h-full object-contain p-1" onError={() => onChange('')} />
-          : <Building2 className="h-5 w-5 text-gray-300" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex gap-1.5 mb-1">
-          <button type="button" onClick={handleAutoFetch} disabled={fetching}
-            className="flex-1 h-7 rounded-lg text-[11px] font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-1">
-            {fetching
-              ? <span className="inline-block w-3 h-3 border border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-              : <Globe className="h-3 w-3" />}
-            {fetching ? 'Aranıyor…' : 'İnternetten Bul'}
-          </button>
-          <button type="button" onClick={() => fileRef.current?.click()}
-            className="flex-1 h-7 rounded-lg text-[11px] font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors flex items-center justify-center gap-1">
-            <Upload className="h-3 w-3" /> Yükle
-          </button>
-          {value && (
-            <button type="button" onClick={() => onChange('')}
-              className="w-7 h-7 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+    <>
+      <div className="flex items-center gap-3 mb-3 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+        <div className="w-12 h-12 rounded-xl border border-gray-200 bg-white overflow-hidden shrink-0 flex items-center justify-center">
+          {value
+            ? <img src={value} alt="Logo" className="w-full h-full object-contain p-1" onError={() => onChange('')} />
+            : <Building2 className="h-5 w-5 text-gray-300" />}
         </div>
-        <p className="text-[10px] text-gray-400">Clearbit API — firma adı/websitesine göre otomatik aranır</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex gap-1.5 mb-1">
+            <button type="button" onClick={openPicker}
+              className="flex-1 h-7 rounded-lg text-[11px] font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
+              <Globe className="h-3 w-3" />
+              İnternetten Bul
+            </button>
+            <button type="button" onClick={() => fileRef.current?.click()}
+              className="flex-1 h-7 rounded-lg text-[11px] font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors flex items-center justify-center gap-1">
+              <Upload className="h-3 w-3" /> Yükle
+            </button>
+            {value && (
+              <button type="button" onClick={() => onChange('')}
+                className="w-7 h-7 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <p className="text-[10px] text-gray-400">PNG / SVG — birden fazla sonuç arasından seçin</p>
+        </div>
+        <input ref={fileRef} type="file" accept="image/png,image/svg+xml,image/webp" className="hidden" onChange={handleFile} />
       </div>
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-    </div>
+
+      <LogoPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={onChange}
+        companyName={companyName}
+        website={website}
+      />
+    </>
   );
 }
 
@@ -176,6 +181,37 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
     if (!name?.trim() || logo) return;
     fetchCompanyLogo(name, web).then(url => { if (url) setVal('logo_url', url); }).catch(() => {});
   }, [modalOpen]); // eslint-disable-line
+
+  // ── Auto AI form fill ──────────────────────────────────────────────────────
+  const [autoFilling, setAutoFilling] = useState(false);
+  const autoFillTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!modalOpen || editing) return;
+    const name = watchedName?.trim() ?? '';
+    const website = watchedWebsite?.trim() ?? '';
+    if (name.length < 3 && !website) return;
+    // Skip if key fields are already filled
+    const v = form.getValues();
+    if (v.country || v.contact_email || v.city || v.address) return;
+    if (autoFillTimer.current) clearTimeout(autoFillTimer.current);
+    autoFillTimer.current = setTimeout(async () => {
+      setAutoFilling(true);
+      try {
+        // İnternetten gerçek şirket bilgilerini topla, sonra AI'a ver
+        const text = await getCompanyContext(name || '', website || undefined);
+        const { data, error } = await supabase.functions.invoke('ai-form-fill', {
+          body: { text, formType: 'new_customer', context: {} },
+        });
+        if (!error && data?.fields) {
+          const { name: _n, code: _c, logo_url: _l, parent_customer_id: _p, ...rest } = data.fields as Record<string, unknown>;
+          const current = form.getValues();
+          reset({ ...current, ...(rest as Partial<CustomerFormData>) });
+        }
+      } catch { /* silent */ } finally { setAutoFilling(false); }
+    }, 900);
+    return () => { if (autoFillTimer.current) clearTimeout(autoFillTimer.current); };
+  }, [watchedName, watchedWebsite]); // eslint-disable-line
 
   const filtered = useMemo(() => {
     if (!search.trim()) return customers;
@@ -309,13 +345,23 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? t('modal.editCustomer') : t('modal.newCustomer')}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editing ? t('modal.editCustomer') : t('modal.newCustomer')}
+              {autoFilling && (
+                <span className="flex items-center gap-1 text-[11px] font-normal text-blue-500">
+                  <span className="inline-block w-3 h-3 border border-blue-300 border-t-blue-500 rounded-full animate-spin" />
+                  AI dolduruyor…
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <LogoField value={logoUrl} onChange={url => setVal('logo_url', url)} companyName={watchedName ?? ''} website={watchedWebsite} />
             <AIFormFill
               formType="new_customer"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<CustomerFormData>) })}
-              placeholder='e.g. "XYZ Paper Co., Istanbul, tax no 1234567890, Net 60 payment, info@xyz.com"'
+              enrichText={(q) => getCompanyContext(q)}
+              placeholder='Firma adı veya websitesi girin — internetten aranır'
             />
             <FormRow>
               <FormGroup label={`${t('form.companyName')} *`} error={errors.name?.message}><Input {...register('name')} /></FormGroup>
@@ -328,6 +374,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
                 />
               </FormGroup>
             </FormRow>
+            <LogoField value={logoUrl} onChange={url => setVal('logo_url', url)} companyName={watchedName ?? ''} website={watchedWebsite} />
             <FormRow>
               <FormGroup label={t('form.taxId')}><Input {...register('tax_id')} placeholder="e.g. 1234567890" /></FormGroup>
             </FormRow>
@@ -431,6 +478,35 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
     if (!n?.trim() || l) return;
     fetchCompanyLogo(n, w).then(url => { if (url) setValS('logo_url', url); }).catch(() => {});
   }, [modalOpen]); // eslint-disable-line
+
+  // ── Auto AI form fill ──────────────────────────────────────────────────────
+  const [sAutoFilling, setSAutoFilling] = useState(false);
+  const sAutoFillTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!modalOpen || editing) return;
+    const name = sName?.trim() ?? '';
+    const website = sWebsite?.trim() ?? '';
+    if (name.length < 3 && !website) return;
+    const v = form.getValues();
+    if (v.country || v.email || v.city || v.address) return;
+    if (sAutoFillTimer.current) clearTimeout(sAutoFillTimer.current);
+    sAutoFillTimer.current = setTimeout(async () => {
+      setSAutoFilling(true);
+      try {
+        const text = await getCompanyContext(name || '', website || undefined);
+        const { data, error } = await supabase.functions.invoke('ai-form-fill', {
+          body: { text, formType: 'new_supplier', context: {} },
+        });
+        if (!error && data?.fields) {
+          const { name: _n, logo_url: _l, ...rest } = data.fields as Record<string, unknown>;
+          const current = form.getValues();
+          reset({ ...current, ...(rest as Partial<SupplierFormData>) });
+        }
+      } catch { /* silent */ } finally { setSAutoFilling(false); }
+    }, 900);
+    return () => { if (sAutoFillTimer.current) clearTimeout(sAutoFillTimer.current); };
+  }, [sName, sWebsite]); // eslint-disable-line
 
   function openEdit(s: Supplier) {
     setEditing(s);
@@ -541,18 +617,29 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? t('modal.editSupplier') : t('modal.newSupplier')}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editing ? t('modal.editSupplier') : t('modal.newSupplier')}
+              {sAutoFilling && (
+                <span className="flex items-center gap-1 text-[11px] font-normal text-blue-500">
+                  <span className="inline-block w-3 h-3 border border-blue-300 border-t-blue-500 rounded-full animate-spin" />
+                  AI dolduruyor…
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <LogoField value={sLogoUrl} onChange={url => setValS('logo_url', url)} companyName={sName ?? ''} website={sWebsite} />
             <AIFormFill
               formType="new_supplier"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<SupplierFormData>) })}
-              placeholder='e.g. "ABC Pulp Co., Canada, Vancouver, swift AAAABBCC, TT 30 days payment"'
+              enrichText={(q) => getCompanyContext(q)}
+              placeholder='Firma adı veya websitesi girin — internetten aranır'
             />
             <FormRow>
               <FormGroup label={`${t('form.companyName')} *`} error={errors.name?.message}><Input {...register('name')} /></FormGroup>
               <FormGroup label={t('form.taxId')}><Input {...register('tax_id')} placeholder="e.g. 123456789" /></FormGroup>
             </FormRow>
+            <LogoField value={sLogoUrl} onChange={url => setValS('logo_url', url)} companyName={sName ?? ''} website={sWebsite} />
             <FormRow>
               <FormGroup label={tc('form.country')}><Input {...register('country')} /></FormGroup>
               <FormGroup label={tc('form.city')}><Input {...register('city')} /></FormGroup>
@@ -634,6 +721,34 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
     if (!n?.trim() || l) return;
     fetchCompanyLogo(n).then(url => { if (url) setValSP('logo_url', url); }).catch(() => {});
   }, [modalOpen]); // eslint-disable-line
+
+  // ── Auto AI form fill ──────────────────────────────────────────────────────
+  const [spAutoFilling, setSpAutoFilling] = useState(false);
+  const spAutoFillTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!modalOpen || editing) return;
+    const name = spName?.trim() ?? '';
+    if (name.length < 3) return;
+    const v = form.getValues();
+    if (v.country || v.email || v.city || v.address) return;
+    if (spAutoFillTimer.current) clearTimeout(spAutoFillTimer.current);
+    spAutoFillTimer.current = setTimeout(async () => {
+      setSpAutoFilling(true);
+      try {
+        const text = await getCompanyContext(name);
+        const { data, error } = await supabase.functions.invoke('ai-form-fill', {
+          body: { text, formType: 'new_service_provider', context: {} },
+        });
+        if (!error && data?.fields) {
+          const { name: _n, logo_url: _l, service_type: _st, ...rest } = data.fields as Record<string, unknown>;
+          const current = form.getValues();
+          reset({ ...current, ...(rest as Partial<ServiceProviderFormData>) });
+        }
+      } catch { /* silent */ } finally { setSpAutoFilling(false); }
+    }, 900);
+    return () => { if (spAutoFillTimer.current) clearTimeout(spAutoFillTimer.current); };
+  }, [spName]); // eslint-disable-line
 
   function openEdit(sp: ServiceProvider) {
     setEditing(sp);
@@ -765,13 +880,23 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? t('modal.editServiceProvider') : t('modal.newServiceProvider')}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editing ? t('modal.editServiceProvider') : t('modal.newServiceProvider')}
+              {spAutoFilling && (
+                <span className="flex items-center gap-1 text-[11px] font-normal text-blue-500">
+                  <span className="inline-block w-3 h-3 border border-blue-300 border-t-blue-500 rounded-full animate-spin" />
+                  AI dolduruyor…
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <LogoField value={spLogoUrl} onChange={url => setValSP('logo_url', url)} companyName={spName ?? ''} />
             <AIFormFill
               formType="new_service_provider"
               onFill={(fields) => reset({ ...form.getValues(), ...(fields as Partial<ServiceProviderFormData>) })}
-              placeholder='e.g. "XYZ Customs Brokerage, Istanbul, customs services, info@xyz.com"'
+              enrichText={(q) => getCompanyContext(q)}
+              placeholder='Firma adı veya websitesi girin — internetten aranır'
             />
             <FormRow>
               <FormGroup label={`${tc('table.name')} *`} error={errors.name?.message}><Input {...register('name')} /></FormGroup>
@@ -781,6 +906,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
                 </NativeSelect>
               </FormGroup>
             </FormRow>
+            <LogoField value={spLogoUrl} onChange={url => setValSP('logo_url', url)} companyName={spName ?? ''} />
             <FormRow>
               <FormGroup label={tc('form.country')}><Input {...register('country')} /></FormGroup>
               <FormGroup label={tc('form.city')}><Input {...register('city')} /></FormGroup>

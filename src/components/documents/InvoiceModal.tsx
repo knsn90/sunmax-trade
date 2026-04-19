@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { invoiceSchema, type InvoiceFormData } from '@/types/forms';
 import type { TradeFile, Invoice } from '@/types/database';
 import { useCreateInvoice, useUpdateInvoice } from '@/hooks/useDocuments';
+import { invoiceService } from '@/services/invoiceService';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers } from '@/hooks/useEntities';
@@ -245,9 +246,13 @@ export function InvoiceModal({
         await updateInvoice.mutateAsync({ id: invoice.id, data, existingInvoice: invoice });
       } else if (effectiveFile) {
         const isSale = effectiveType === 'sale';
-        const invNo = isSale
-          ? `SINV-${new Date().getFullYear()}-${String(Date.now() % 100000).padStart(5, '0')}`
-          : formatInvoiceNo(effectiveFile.file_no);
+        let invNo: string;
+        if (isSale) {
+          invNo = `SINV-${new Date().getFullYear()}-${String(Date.now() % 100000).padStart(5, '0')}`;
+        } else {
+          const baseNo = formatInvoiceNo(effectiveFile.file_no);
+          invNo = await invoiceService.generateUniqueCommercialInvoiceNo(effectiveFile.id, baseNo);
+        }
         await createInvoice.mutateAsync({
           tradeFileId: effectiveFile.id,
           customerId: effectiveFile.customer_id,

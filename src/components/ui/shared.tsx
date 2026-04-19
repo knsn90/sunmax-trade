@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
@@ -126,6 +127,72 @@ export function FormRow({
   return (
     <div className={cn('grid gap-2.5 mb-2.5', gridCols[cols], className)}>
       {children}
+    </div>
+  );
+}
+
+// ─── Entity Avatar ──────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = [
+  '#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316',
+  '#eab308','#22c55e','#14b8a6','#0ea5e9','#3b82f6',
+];
+
+function avatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+const SIZE_CLS = {
+  xs: 'w-5 h-5 text-[8px]',
+  sm: 'w-8 h-8 text-[11px]',
+  md: 'w-10 h-10 text-[13px]',
+  lg: 'w-12 h-12 text-[15px]',
+};
+
+export function EntityAvatar({
+  name,
+  logoUrl,
+  size = 'md',
+  shape = 'circle',
+  className,
+}: {
+  name: string;
+  logoUrl?: string | null;
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  shape?: 'circle' | 'square';
+  className?: string;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const rounded = shape === 'circle' ? 'rounded-full' : 'rounded-xl';
+  const sizeCls = SIZE_CLS[size];
+
+  if (logoUrl && !imgFailed) {
+    return (
+      <div className={cn(sizeCls, rounded, 'bg-white border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden', className)}>
+        <img
+          src={logoUrl}
+          alt={name}
+          className="w-full h-full object-contain p-0.5"
+          onError={() => setImgFailed(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(sizeCls, rounded, 'flex items-center justify-center shrink-0 text-white font-bold shadow-sm', className)}
+      style={{ background: avatarColor(name) }}
+    >
+      {initials(name)}
     </div>
   );
 }

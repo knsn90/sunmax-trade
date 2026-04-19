@@ -232,6 +232,23 @@ export const invoiceService = {
     return data as Invoice;
   },
 
+  /**
+   * Generate a unique commercial invoice number for a trade file.
+   * If the base number (e.g. "SUN ASJ-01 26-04 INV") already exists,
+   * appends a sequence suffix: "SUN ASJ-01 26-04 INV-02", "-03", etc.
+   */
+  async generateUniqueCommercialInvoiceNo(tradeFileId: string, baseNo: string): Promise<string> {
+    const { count } = await supabase
+      .from('invoices')
+      .select('id', { count: 'exact', head: true })
+      .eq('trade_file_id', tradeFileId)
+      .eq('invoice_type', 'commercial');
+
+    const existing = count ?? 0;
+    if (existing === 0) return baseNo;
+    return `${baseNo}-${String(existing + 1).padStart(2, '0')}`;
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('invoices')

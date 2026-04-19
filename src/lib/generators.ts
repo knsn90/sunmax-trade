@@ -125,18 +125,20 @@ export function formatInvoiceNo(fileNo: string): string {
 
 /**
  * Generate a packing list number based on the trade file number.
- * Format: SUN [fileNo] PL
- * Example: SUN PB-10 26-06 IP PL
+ * Format: SUN CODE-NN YY-MM PL  (product abbrev stripped)
+ * Example: "PB-10 26-06 IP" → "SUN PB-10 26-06 PL"
  */
 export function formatPLNo(fileNo: string): string {
-  return `SUN ${fileNo} PL`;
+  const short = fileNo.trim().split(/\s+/).slice(0, 2).join(' ');
+  return `SUN ${short} PL`;
 }
 
 /**
  * Generate a proforma invoice number based on the trade file number.
- * Format: SUN [fileNo] PI
- * Example: SUN PB-10 26-06 IP PI
+ * Format: SUN CODE-NN YY-MM PI  (product abbrev stripped)
+ * Example: "ASJ-01 26-04 UPM EUCA" → "SUN ASJ-01 26-04 PI"
  */
 export function formatProformaNo(fileNo: string): string {
-  return `SUN ${fileNo} PI`;
+  const short = fileNo.trim().split(/\s+/).slice(0, 2).join(' ');
+  return `SUN ${short} PI`;
 }

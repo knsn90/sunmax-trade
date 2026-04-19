@@ -26,7 +26,7 @@ import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { printInvoice, printPackingList, printProforma, generateProformaHtml, generateInvoiceHtml, generatePackingListHtml } from '@/lib/printDocument';
 import { NativeSelect } from '@/components/ui/form-elements';
-import { LoadingSpinner } from '@/components/ui/shared';
+import { LoadingSpinner, EntityAvatar } from '@/components/ui/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
@@ -832,10 +832,6 @@ export function TradeFileDetailPage() {
   const custName = file.customer?.name ?? t('unknown');
   // Alt firma mı? Varsa muhasebe firması (parent) türet
   const parentCust = (file.customer as any)?.parent as { id: string; name: string } | null ?? null;
-  const custInitials = custName.split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
-  const avatarColors = ['#dc2626','#2563eb','#7c3aed','#059669','#d97706'];
-  let hv = 0; for (let i = 0; i < custName.length; i++) hv = custName.charCodeAt(i) + ((hv << 5) - hv);
-  const avatarBg = avatarColors[Math.abs(hv) % avatarColors.length];
 
   // ── Combined file info card (replaces statsGrid + File Info section) ────────
   const fileInfoCard = (
@@ -1076,9 +1072,7 @@ export function TradeFileDetailPage() {
 
           {/* Müşteri bilgisi */}
           <div className="flex items-center gap-3 px-4 py-4">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-[13px] font-bold shrink-0 shadow-sm" style={{ background: avatarBg }}>
-              {custInitials}
-            </div>
+            <EntityAvatar name={custName} logoUrl={file.customer?.logo_url} size="md" shape="square" />
             <div className="flex-1 min-w-0">
               <div className="text-[14px] font-bold text-gray-900 leading-snug truncate">{custName}</div>
               {parentCust && (
@@ -1526,7 +1520,10 @@ export function TradeFileDetailPage() {
                   </span>
                 )}
               </div>
-              <h1 className="text-[24px] font-extrabold text-gray-900 leading-tight tracking-tight">{custName}</h1>
+              <div className="flex items-center gap-3 mt-1">
+                <EntityAvatar name={custName} logoUrl={file.customer?.logo_url} size="lg" shape="square" />
+                <h1 className="text-[24px] font-extrabold text-gray-900 leading-tight tracking-tight">{custName}</h1>
+              </div>
               {parentCust && (
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-widest">Muhasebe</span>
@@ -1765,7 +1762,12 @@ export function TradeFileDetailPage() {
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{file.supplier?.name ?? '—'}</span>
+                      {file.supplier ? (
+                        <div className="flex items-center gap-2">
+                          <EntityAvatar name={file.supplier.name} logoUrl={file.supplier.logo_url} size="xs" shape="square" />
+                          <span className="text-[13px] font-bold text-gray-900">{file.supplier.name}</span>
+                        </div>
+                      ) : <span className="text-[13px] font-bold text-gray-900">—</span>}
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.incoterms')}</span>

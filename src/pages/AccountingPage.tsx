@@ -24,7 +24,7 @@ import { ServiceInvoiceModal } from '@/components/accounting/ServiceInvoiceModal
 import { FlagButton } from '@/components/accounting/FlagButton';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
-import { LoadingSpinner } from '@/components/ui/shared';
+import { LoadingSpinner, EntityAvatar } from '@/components/ui/shared';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -92,6 +92,12 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint, sele
       {/* Main info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
+          <EntityAvatar
+            name={partyName}
+            logoUrl={t.customer?.logo_url ?? t.supplier?.logo_url ?? t.service_provider?.logo_url}
+            size="xs"
+            shape="circle"
+          />
           <span className="text-[13px] font-bold text-gray-900 truncate" style={{ fontFamily: 'Manrope, sans-serif' }}>{partyName}</span>
         </div>
         <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -928,7 +934,15 @@ export function AccountingPage() {
                         </td>
                         {/* Entity */}
                         <td className="px-3 py-3">
-                          <div className="text-[12px] text-gray-700 truncate">{partyName}</div>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <EntityAvatar
+                              name={partyName}
+                              logoUrl={txn.customer?.logo_url ?? txn.supplier?.logo_url ?? txn.service_provider?.logo_url}
+                              size="xs"
+                              shape="circle"
+                            />
+                            <div className="text-[12px] text-gray-700 truncate">{partyName}</div>
+                          </div>
                           {txn.creator?.full_name && (
                             <div className="text-[10px] text-gray-400 truncate mt-0.5">
                               ↳ {txn.creator.full_name}

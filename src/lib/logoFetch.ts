@@ -115,6 +115,76 @@ async function clearbitDomain(name: string): Promise<string | null> {
   return list?.find(s => s.domain)?.domain ?? null;
 }
 
+// ─── Çoklu aday arama (picker için) ─────────────────────────────────────────
+export interface LogoCandidate {
+  url: string;
+  label: string;
+}
+
+/**
+ * Şirket adı/websitesine göre logo adaylarını döndürür (picker UI için).
+ * ICO dosyalar hariç tutulur; PNG/SVG/WebP önceliklidir.
+ */
+export async function searchLogoCandidates(
+  name: string,
+  website?: string | null,
+): Promise<LogoCandidate[]> {
+  const results: LogoCandidate[] = [];
+  const seen = new Set<string>();
+
+  function add(url: string, label: string) {
+    if (!url || seen.has(url)) return;
+    if (/\.ico($|\?|#)/i.test(url)) return; // skip ICO
+    seen.add(url);
+    results.push({ url, label });
+  }
+
+  const [cbResult, ddgResult, wikiResult] = await Promise.allSettled([
+    // Clearbit Autocomplete — birden fazla şirket önerir, her birinin logosu var
+    getJson<{ name: string; domain: string; logo: string }[]>(
+      `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(name.trim())}`,
+    ),
+    tryDuckDuckGo(name),
+    tryWikipedia(name),
+  ]);
+
+  // 1. Clearbit autocomplete — ilk 8 öneri
+  if (cbResult.status === 'fulfilled' && cbResult.value) {
+    for (const s of cbResult.value.slice(0, 8)) {
+      if (s.logo) add(s.logo, s.name || s.domain);
+    }
+  }
+
+  // 2. Domain bazlı kaynaklar
+  const domains: string[] = [];
+  if (website?.trim()) {
+    const d = extractDomain(website.trim());
+    if (d) domains.push(d);
+  }
+  const ddgData = ddgResult.status === 'fulfilled' ? ddgResult.value : null;
+  if (ddgData?.domain) domains.push(ddgData.domain);
+
+  for (const domain of [...new Set(domains)]) {
+    add(`https://logo.clearbit.com/${domain}`, `${domain} (logo)`);
+    add(
+      `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=256`,
+      `${domain} (256px)`,
+    );
+    add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`, `${domain} (128px)`);
+  }
+
+  // 3. DuckDuckGo direkt görsel
+  if (ddgData?.imageUrl) add(ddgData.imageUrl, name);
+
+  // 4. Wikipedia thumbnail — sadece PNG/SVG
+  if (wikiResult.status === 'fulfilled' && wikiResult.value) {
+    const img = wikiResult.value;
+    if (/\.(png|svg)/i.test(img)) add(img, `${name} (Wikipedia)`);
+  }
+
+  return results;
+}
+
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
 /**
  * Şirket adı (ve varsa website) üzerinden logo URL'i döner.
