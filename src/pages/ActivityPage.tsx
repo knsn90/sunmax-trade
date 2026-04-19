@@ -70,10 +70,17 @@ function recordTitle(log: AuditLog) {
     v['name'] || v['full_name'] || v['company_name'] || '') as string;
 }
 
+// Sistem tarafından otomatik güncellenen alanlar — gösterilmez
+const SYSTEM_FIELDS = new Set([
+  'updated_at', 'created_at', 'tenant_id', 'id',
+  'subtotal', 'total', 'paid_amount', 'paid_amount_usd', 'amount_usd',
+]);
+
 function changedFields(log: AuditLog): string[] {
   if (!log.old_values || !log.new_values) return [];
-  return Object.keys(log.new_values).filter(
-    k => JSON.stringify(log.new_values![k]) !== JSON.stringify(log.old_values![k])
+  return Object.keys(log.new_values).filter(k =>
+    !SYSTEM_FIELDS.has(k) &&
+    JSON.stringify(log.new_values![k]) !== JSON.stringify(log.old_values![k])
   ).slice(0, 5);
 }
 
@@ -131,6 +138,11 @@ export function ActivityPage() {
   ].sort((a, b) => b.ts.localeCompare(a.ts));
 
   const filtered = allEntries.filter(entry => {
+    // Sadece sistem alanları değişmişse (kullanıcı eylemi yok) gizle
+    if (entry.kind === 'audit' && entry.data.action === 'update') {
+      const meaningful = changedFields(entry.data);
+      if (meaningful.length === 0) return false;
+    }
     if (filterUser !== 'all') {
       const uid = entry.kind === 'audit' ? entry.data.user_id : entry.data.user_id;
       if (uid !== filterUser) return false;
@@ -299,7 +311,7 @@ function AuditRow({ log }: { log: AuditLog }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13px] font-semibold text-gray-800">
-              {user?.full_name || t('unknown')}
+              {user?.full_name || (log.user_id ? user?.email : 'Sistem')}
             </span>
             <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${styles.bg}`}>
               <Icon className="h-3 w-3" />
