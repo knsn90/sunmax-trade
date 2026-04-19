@@ -13,7 +13,6 @@ import { fDate, fCurrency, fUSD, fN } from '@/lib/formatters';
 import { printInvoice, printReceipt, printTransactionInvoice } from '@/lib/printDocument';
 import type { TransactionType, PaymentStatus } from '@/types/enums';
 import type { Transaction, Invoice } from '@/types/database';
-import { ApproveWithPasswordDialog } from '@/components/ui/ApproveWithPasswordDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { TransactionModal } from '@/components/accounting/TransactionModal';
 import { KasaManager } from '@/components/accounting/KasaManager';
@@ -1098,60 +1097,47 @@ export function AccountingPage() {
         </div>
       )}
 
-      {/* ── Bulk action password dialogs ──────────────────────────────────── */}
-      <ApproveWithPasswordDialog
-        open={pendingBulkAction === 'approve'}
-        onClose={() => setPendingBulkAction(null)}
-        onConfirm={() => executeBulkStatus('approved')}
-        isPending={bulkSetStatus.isPending}
-        title="Toplu Onay"
-        subtitle={`${selectedIds.size} kaydı onaylamak için şifrenizi girin`}
-        buttonLabel="✅ Onayla"
-        headerClass="bg-gradient-to-r from-green-600 to-emerald-500"
-      />
-      <ApproveWithPasswordDialog
-        open={pendingBulkAction === 'reject'}
-        onClose={() => setPendingBulkAction(null)}
-        onConfirm={() => executeBulkStatus('rejected')}
-        isPending={bulkSetStatus.isPending}
-        title="Toplu Red"
-        subtitle={`${selectedIds.size} kaydı reddetmek için şifrenizi girin`}
-        buttonLabel="❌ Reddet"
-        headerClass="bg-gradient-to-r from-amber-500 to-orange-500"
-      />
-      <Dialog open={pendingBulkAction === 'revert'} onOpenChange={(o) => { if (!o) setPendingBulkAction(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-[15px] font-bold">Taslağa Döndür</DialogTitle>
-          </DialogHeader>
-          <p className="text-[13px] text-gray-500">{selectedIds.size} kaydı taslağa döndürmek istediğinizden emin misiniz?</p>
-          <DialogFooter className="gap-2">
-            <button
-              onClick={() => setPendingBulkAction(null)}
-              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
-            >
-              İptal
-            </button>
-            <button
-              onClick={() => { executeBulkStatus('draft'); setPendingBulkAction(null); }}
-              disabled={bulkSetStatus.isPending}
-              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-white bg-gray-700 hover:bg-gray-800 transition-colors disabled:opacity-50"
-            >
-              {bulkSetStatus.isPending ? '…' : '↩ Taslağa Döndür'}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <ApproveWithPasswordDialog
-        open={pendingBulkAction === 'delete'}
-        onClose={() => setPendingBulkAction(null)}
-        onConfirm={executeBulkDelete}
-        isPending={deleteTxn.isPending}
-        title="Toplu Silme"
-        subtitle={`${selectedIds.size} kaydı kalıcı silmek için şifrenizi girin`}
-        buttonLabel="🗑 Sil"
-        headerClass="bg-gradient-to-r from-red-600 to-rose-500"
-      />
+      {/* ── Bulk action confirm dialogs ───────────────────────────────────── */}
+      {(['approve', 'reject', 'revert', 'delete'] as const).map((action) => {
+        const meta = {
+          approve: { title: 'Toplu Onay',          message: `${selectedIds.size} kaydı onaylamak istediğinizden emin misiniz?`,          btnLabel: 'Onayla',          btnClass: 'bg-emerald-600 hover:bg-emerald-700' },
+          reject:  { title: 'Toplu Red',            message: `${selectedIds.size} kaydı reddetmek istediğinizden emin misiniz?`,           btnLabel: 'Reddet',          btnClass: 'bg-amber-500 hover:bg-amber-600' },
+          revert:  { title: 'Taslağa Döndür',       message: `${selectedIds.size} kaydı taslağa döndürmek istediğinizden emin misiniz?`,  btnLabel: 'Taslağa Döndür', btnClass: 'bg-gray-700 hover:bg-gray-800' },
+          delete:  { title: 'Toplu Sil',            message: `${selectedIds.size} kaydı kalıcı olarak silmek istediğinizden emin misiniz?`, btnLabel: 'Sil',             btnClass: 'bg-red-600 hover:bg-red-700' },
+        }[action];
+        const isPend = action === 'delete' ? deleteTxn.isPending : bulkSetStatus.isPending;
+        function handleConfirm() {
+          if (action === 'approve') executeBulkStatus('approved');
+          else if (action === 'reject') executeBulkStatus('rejected');
+          else if (action === 'revert') { executeBulkStatus('draft'); setPendingBulkAction(null); }
+          else executeBulkDelete();
+        }
+        return (
+          <Dialog key={action} open={pendingBulkAction === action} onOpenChange={(o) => { if (!o) setPendingBulkAction(null); }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-[15px] font-bold">{meta.title}</DialogTitle>
+              </DialogHeader>
+              <p className="text-[13px] text-gray-500">{meta.message}</p>
+              <DialogFooter className="gap-2">
+                <button
+                  onClick={() => setPendingBulkAction(null)}
+                  className="px-4 py-2 rounded-xl text-[12px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={isPend}
+                  className={`px-4 py-2 rounded-xl text-[12px] font-semibold text-white transition-colors disabled:opacity-50 ${meta.btnClass}`}
+                >
+                  {isPend ? '…' : meta.btnLabel}
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })}
 
       <TransactionModal
         open={txnModalOpen}

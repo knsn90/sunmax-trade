@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, X, RotateCcw } from 'lucide-react';
 import { useSetDocStatus, useCanApprove } from '@/hooks/useApproval';
 import type { DocStatus } from '@/types/database';
-import { ApproveWithPasswordDialog } from '@/components/ui/ApproveWithPasswordDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 type ApprovableTable = 'invoices' | 'proformas' | 'packing_lists' | 'transactions';
 
@@ -11,6 +11,27 @@ interface Props {
   id: string;
   currentStatus: DocStatus;
 }
+
+const CONFIRM_META = {
+  approve: {
+    title: 'Kaydı Onayla',
+    message: 'Bu kaydı onaylamak istediğinizden emin misiniz?',
+    buttonLabel: 'Onayla',
+    buttonClass: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+  },
+  reject: {
+    title: 'Kaydı Reddet',
+    message: 'Bu kaydı reddetmek istediğinizden emin misiniz?',
+    buttonLabel: 'Reddet',
+    buttonClass: 'bg-amber-500 hover:bg-amber-600 text-white',
+  },
+  revert: {
+    title: 'Taslağa Döndür',
+    message: 'Bu kaydı taslağa döndürmek istediğinizden emin misiniz? Kayıt tekrar düzenlenebilir hale gelecek.',
+    buttonLabel: 'Taslağa Döndür',
+    buttonClass: 'bg-gray-700 hover:bg-gray-800 text-white',
+  },
+} as const;
 
 export function ApprovalActions({ table, id, currentStatus }: Props) {
   const canApprove = useCanApprove();
@@ -21,32 +42,14 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
 
   const pending = setStatus.isPending;
 
-  function confirm(action: 'approve' | 'reject' | 'revert') {
+  function handleConfirm() {
+    if (!pendingAction) return;
     const statusMap = { approve: 'approved', reject: 'rejected', revert: 'draft' } as const;
-    setStatus.mutate({ id, status: statusMap[action] });
+    setStatus.mutate({ id, status: statusMap[pendingAction] });
     setPendingAction(null);
   }
 
-  const dialogConfig = {
-    approve: {
-      title: 'Onayla',
-      subtitle: 'Kaydı onaylamak için şifrenizi girin',
-      buttonLabel: '✅ Onayla',
-      headerClass: 'bg-gradient-to-r from-green-600 to-emerald-500',
-    },
-    reject: {
-      title: 'Reddet',
-      subtitle: 'Kaydı reddetmek için şifrenizi girin',
-      buttonLabel: '❌ Reddet',
-      headerClass: 'bg-gradient-to-r from-amber-500 to-orange-500',
-    },
-    revert: {
-      title: 'Taslağa Döndür',
-      subtitle: 'Kaydı taslağa döndürmek için şifrenizi girin',
-      buttonLabel: '↩ Taslağa Döndür',
-      headerClass: 'bg-gradient-to-r from-gray-500 to-gray-600',
-    },
-  } as const;
+  const meta = pendingAction ? CONFIRM_META[pendingAction] : null;
 
   return (
     <>
@@ -82,15 +85,29 @@ export function ApprovalActions({ table, id, currentStatus }: Props) {
         </button>
       )}
 
-      {pendingAction && (
-        <ApproveWithPasswordDialog
-          open
-          onClose={() => setPendingAction(null)}
-          onConfirm={() => confirm(pendingAction)}
-          isPending={pending}
-          {...dialogConfig[pendingAction]}
-        />
-      )}
+      <Dialog open={!!pendingAction} onOpenChange={(o) => { if (!o) setPendingAction(null); }}>
+        <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="text-[15px] font-bold">{meta?.title}</DialogTitle>
+          </DialogHeader>
+          <p className="text-[13px] text-gray-500">{meta?.message}</p>
+          <DialogFooter className="gap-2">
+            <button
+              onClick={() => setPendingAction(null)}
+              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              İptal
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={pending}
+              className={`px-4 py-2 rounded-xl text-[12px] font-semibold transition-colors disabled:opacity-50 ${meta?.buttonClass}`}
+            >
+              {pending ? '…' : meta?.buttonLabel}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
