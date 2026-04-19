@@ -233,16 +233,16 @@ export const invoiceService = {
   },
 
   /**
-   * Generate a unique commercial invoice number for a trade file.
-   * If the base number (e.g. "SUN ASJ-01 26-04 INV") already exists,
-   * appends a sequence suffix: "SUN ASJ-01 26-04 INV-02", "-03", etc.
+   * Generate a unique commercial invoice number.
+   * Checks ALL invoices globally for the base pattern so that
+   * partial-shipment batches sharing the same file_no prefix don't collide.
+   * e.g. "SUN PB-04 25-10 INV" already taken → returns "SUN PB-04 25-10 INV-02"
    */
-  async generateUniqueCommercialInvoiceNo(tradeFileId: string, baseNo: string): Promise<string> {
+  async generateUniqueCommercialInvoiceNo(_tradeFileId: string, baseNo: string): Promise<string> {
     const { count } = await supabase
       .from('invoices')
       .select('id', { count: 'exact', head: true })
-      .eq('trade_file_id', tradeFileId)
-      .eq('invoice_type', 'commercial');
+      .like('invoice_no', `${baseNo}%`);
 
     const existing = count ?? 0;
     if (existing === 0) return baseNo;
