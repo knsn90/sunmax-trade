@@ -160,20 +160,6 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
     };
   }, [open, recalc]);
 
-  // Dışarı tıklayınca kapat — popup kendi pointerdown'ını durdurduğu için
-  // bu listener yalnızca popup dışı tıklamalarda tetiklenir
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (
-        btnRef.current && !btnRef.current.contains(t) &&
-        popRef.current  && !popRef.current.contains(t)
-      ) setOpen(false);
-    };
-    const id = setTimeout(() => document.addEventListener('pointerdown', handler), 0);
-    return () => { clearTimeout(id); document.removeEventListener('pointerdown', handler); };
-  }, [open]);
 
   function confirm() { onChange(pending); setOpen(false); }
   function cancel()  { setPending(value); setOpen(false); }
@@ -316,19 +302,27 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
     </>
   );
 
-  // Popup: portal → document.body (position:absolute + scrollY offset)
-  // onPointerDown stopImmediatePropagation → Dialog'un dışarı-tıklama algılaması engellenir
+  // Popup: portal → document.body
+  // Backdrop (z:9998) dışarı tıklamayı yakalar; popup (z:9999) üstte olduğu için
+  // popup içi tıklamalar backdrop'a ulaşmaz → kapanmaz.
   const popup = open ? createPortal(
-    <div
-      ref={popRef}
-      onPointerDown={e => e.nativeEvent.stopImmediatePropagation()}
-      style={{ position: 'absolute', top: pos.top, left: pos.left, width: POPUP_W, zIndex: 9999 }}
-      className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
-    >
-      {view === 'day'   && dayPanel}
-      {view === 'month' && monthPanel}
-      {view === 'year'  && yearPanel}
-    </div>,
+    <>
+      {/* Şeffaf backdrop — sadece popup dışına tıklanınca kapatır */}
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+        onClick={() => setOpen(false)}
+      />
+      {/* Picker popup */}
+      <div
+        ref={popRef}
+        style={{ position: 'absolute', top: pos.top, left: pos.left, width: POPUP_W, zIndex: 9999 }}
+        className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+      >
+        {view === 'day'   && dayPanel}
+        {view === 'month' && monthPanel}
+        {view === 'year'  && yearPanel}
+      </div>
+    </>,
     document.body,
   ) : null;
 
