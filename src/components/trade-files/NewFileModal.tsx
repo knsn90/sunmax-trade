@@ -17,8 +17,9 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 // ── Input style constants ────────────────────────────────────────────────────
-const inp = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 placeholder:text-gray-400 border border-transparent focus:border-gray-300 focus:bg-white shadow-none focus:outline-none focus:ring-0 w-full transition-all';
-const sel = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 border border-transparent focus:border-gray-300 focus:bg-white shadow-none focus:outline-none w-full appearance-none cursor-pointer transition-all';
+const inp = 'bg-[#f2f4f7] rounded-xl px-4 h-10 text-[13px] font-medium text-gray-900 placeholder:text-gray-400 border border-transparent focus:border-gray-300 focus:bg-white shadow-none focus:outline-none focus:ring-0 w-full transition-all';
+const sel = 'bg-[#f2f4f7] rounded-xl px-4 h-10 text-[13px] font-medium text-gray-900 border border-transparent focus:border-gray-300 focus:bg-white shadow-none focus:outline-none w-full appearance-none cursor-pointer transition-all';
+const dateCls = 'w-full bg-[#f2f4f7] rounded-xl h-10 px-4 text-[13px] font-medium text-gray-900 border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden';
 
 /** Section header with icon */
 function Section({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
@@ -340,10 +341,10 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
             <Section icon={CalendarDays} label="Süreç" />
             <div className="grid grid-cols-3 gap-3">
               <Fld label="Tarih" error={errors.file_date?.message}>
-                <MonoDatePicker value={watch('file_date') ?? ''} onChange={v => setValue('file_date', v)} className="w-full bg-[#f2f4f7] rounded-xl h-10 px-4 text-[13px] font-medium text-gray-900 border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden" />
+                <MonoDatePicker value={watch('file_date') ?? ''} onChange={v => setValue('file_date', v)} className={dateCls} />
               </Fld>
               <Fld label="ETA" error={errors.eta?.message}>
-                <MonoDatePicker value={watch('eta') ?? ''} onChange={v => setValue('eta', v)} className="w-full bg-[#f2f4f7] rounded-xl h-10 px-4 text-[13px] font-medium text-gray-900 border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden" />
+                <MonoDatePicker value={watch('eta') ?? ''} onChange={v => setValue('eta', v)} className={dateCls} />
               </Fld>
               <Fld label="Miktar (MT)" error={errors.tonnage_mt?.message}>
                 <input
