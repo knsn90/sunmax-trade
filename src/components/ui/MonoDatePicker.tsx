@@ -59,8 +59,8 @@ function buildCells(vy: number, vm: number): Cell[] {
 
 // ─── DrumPicker ───────────────────────────────────────────────────────────────
 
-const ITEM_H  = 44;
-const VISIBLE = 5;
+const ITEM_H  = 36;
+const VISIBLE = 3;
 
 interface DrumItem { value: number; label: string }
 
@@ -138,8 +138,8 @@ function DrumPicker({
               style={{ scrollSnapAlign: 'center', height: ITEM_H }}
               className={`relative z-20 flex items-center justify-center cursor-pointer select-none transition-all duration-100 ${
                 isSel
-                  ? 'text-gray-900 text-[15px] font-bold'
-                  : 'text-gray-400 text-[13px] font-normal'
+                  ? 'text-gray-900 text-[14px] font-bold'
+                  : 'text-gray-400 text-[12px] font-normal'
               }`}
               onPointerDown={() => {
                 const idx = items.findIndex(i => i.value === item.value);
