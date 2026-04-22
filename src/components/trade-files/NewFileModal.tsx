@@ -9,44 +9,72 @@ import { today } from '@/lib/formatters';
 import type { TradeFile } from '@/types/database';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Plus, Trash2, Users, CalendarDays, Hash, FileText, StickyNote } from 'lucide-react';
+import { Plus, Trash2, FileText } from 'lucide-react';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
-// ── Input style constants ────────────────────────────────────────────────────
-const inp = 'bg-[#f2f4f7] rounded-xl px-4 h-10 text-[13px] font-medium text-gray-900 placeholder:text-gray-400 border border-transparent focus:border-gray-300 focus:bg-white shadow-none focus:outline-none focus:ring-0 w-full transition-all';
-const sel = 'bg-[#f2f4f7] rounded-xl px-4 h-10 text-[13px] font-medium text-gray-900 border border-transparent focus:border-gray-300 focus:bg-white shadow-none focus:outline-none w-full appearance-none cursor-pointer transition-all';
-const dateCls = 'w-full bg-[#f2f4f7] rounded-xl h-10 px-4 text-[13px] font-medium text-gray-900 border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden';
+// ── Stil sabitleri ────────────────────────────────────────────────────────────
+const inp = [
+  'h-10 w-full rounded-xl bg-gray-50 border border-gray-200 px-3.5',
+  'text-[13px] font-medium text-gray-900 placeholder:text-gray-400',
+  'focus:border-gray-400 focus:bg-white focus:outline-none focus:ring-0',
+  'transition-all shadow-none',
+].join(' ');
 
-/** Section header with icon */
-function Section({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+const sel = [
+  'h-10 w-full rounded-xl bg-gray-50 border border-gray-200 px-3.5',
+  'text-[13px] font-medium text-gray-900',
+  'focus:border-gray-400 focus:bg-white focus:outline-none',
+  'appearance-none cursor-pointer transition-all shadow-none',
+].join(' ');
+
+const dateCls = [
+  'h-10 w-full rounded-xl bg-gray-50 border border-gray-200 px-3.5',
+  'text-[13px] font-medium text-gray-900',
+  'focus:outline-none hover:bg-gray-100 transition-all',
+  'flex items-center justify-between overflow-hidden',
+].join(' ');
+
+// ── Field wrapper ─────────────────────────────────────────────────────────────
+function Fld({
+  label,
+  children,
+  className,
+  error,
+  required,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+  error?: string;
+  required?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
-        <Icon className="h-3 w-3 text-gray-400" />
-      </div>
+    <div className={className}>
+      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">
+        {label}
+        {required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {children}
+      {error && <p className="text-[11px] text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+// ── Section divider ───────────────────────────────────────────────────────────
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-1">
       <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</span>
       <div className="flex-1 h-px bg-gray-100" />
     </div>
   );
 }
 
-/** Field wrapper */
-function Fld({ label, children, className, error }: {
-  label: string; children: React.ReactNode; className?: string; error?: string;
-}) {
-  return (
-    <div className={className}>
-      <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{label}</div>
-      {children}
-      {error && <div className="text-[10px] text-red-500 mt-1">{error}</div>}
-    </div>
-  );
-}
-
+// ── Props ─────────────────────────────────────────────────────────────────────
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -54,9 +82,10 @@ interface Props {
   fileToEdit?: TradeFile | null;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit }: Props) {
   const { accent } = useTheme();
-  const navigate = useNavigate();
+  const navigate   = useNavigate();
   const deleteFile = useDeleteTradeFile();
 
   async function handleDelete() {
@@ -68,44 +97,56 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
   }
 
   const { data: customers = [] } = useCustomers();
-  const { data: products = [] } = useProducts();
-  const { data: allFiles = [] } = useTradeFiles();
-  const createFile = useCreateTradeFile();
+  const { data: products  = [] } = useProducts();
+  const { data: allFiles  = [] } = useTradeFiles();
+  const createFile    = useCreateTradeFile();
   const updateFileInfo = useUpdateFileInfo();
-  const createCust = useCreateCustomer();
-  const createProd = useCreateProduct();
+  const createCust    = useCreateCustomer();
+  const createProd    = useCreateProduct();
+
   const [showNewCust, setShowNewCust] = useState(false);
   const [showNewProd, setShowNewProd] = useState(false);
   const [newCustName, setNewCustName] = useState('');
   const [newProdName, setNewProdName] = useState('');
+  const [saving,      setSaving]      = useState(false);
 
-  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<NewTradeFileFormData>({
+  const {
+    register, handleSubmit,
+    formState: { errors },
+    reset, setValue, watch,
+  } = useForm<NewTradeFileFormData>({
     resolver: zodResolver(newTradeFileSchema),
-    defaultValues: { customer_id: '', product_id: '', file_date: today(), eta: '', tonnage_mt: 0, file_no: '', customer_ref: '', notes: '' },
+    defaultValues: {
+      customer_id: '', product_id: '', file_date: today(),
+      eta: '', tonnage_mt: 0, file_no: '', customer_ref: '', notes: '',
+    },
   });
 
   useEffect(() => {
     if (open && editMode && fileToEdit) {
       reset({
-        customer_id: fileToEdit.customer_id ?? '',
-        product_id: fileToEdit.product_id ?? '',
-        file_date: fileToEdit.file_date ?? today(),
-        eta: fileToEdit.eta ?? '',
-        tonnage_mt: fileToEdit.tonnage_mt ?? 0,
-        file_no: fileToEdit.file_no ?? '',
-        customer_ref: fileToEdit.customer_ref ?? '',
-        notes: fileToEdit.notes ?? '',
+        customer_id:  fileToEdit.customer_id  ?? '',
+        product_id:   fileToEdit.product_id   ?? '',
+        file_date:    fileToEdit.file_date     ?? today(),
+        eta:          fileToEdit.eta           ?? '',
+        tonnage_mt:   fileToEdit.tonnage_mt    ?? 0,
+        file_no:      fileToEdit.file_no       ?? '',
+        customer_ref: fileToEdit.customer_ref  ?? '',
+        notes:        fileToEdit.notes         ?? '',
       });
     } else if (open && !editMode) {
       reset({ customer_id: '', product_id: '', file_date: today(), eta: '', tonnage_mt: 0, file_no: '', customer_ref: '', notes: '' });
     }
   }, [open, editMode, fileToEdit, reset]);
 
+  useEffect(() => { if (open) setSaving(false); }, [open]);
+
   const selectedCustomerId = watch('customer_id');
   const selectedProductId  = watch('product_id');
   const selectedEta        = watch('eta');
   const fileNoValue        = watch('file_no');
 
+  // Auto-generate file number
   useEffect(() => {
     if (editMode || !selectedCustomerId) return;
     const customer     = customers.find(c => c.id === selectedCustomerId);
@@ -140,9 +181,8 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
     } else if (fields.customer_name) {
       const name = String(fields.customer_name).trim();
       const local = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
-      if (local) {
-        setValue('customer_id', local.id);
-      } else {
+      if (local) { setValue('customer_id', local.id); }
+      else {
         try {
           const created = await createCust.mutateAsync({ name, country: '', city: '', address: '', contact_email: '', contact_phone: '', tax_id: '', website: '', payment_terms: '', notes: '' });
           setValue('customer_id', created.id);
@@ -155,9 +195,8 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
     } else if (fields.product_name) {
       const name = String(fields.product_name).trim();
       const local = products.find(p => p.name.toLowerCase() === name.toLowerCase());
-      if (local) {
-        setValue('product_id', local.id);
-      } else {
+      if (local) { setValue('product_id', local.id); }
+      else {
         try {
           const created = await createProd.mutateAsync({ name, hs_code: '', unit: 'ADMT', description: '', origin_country: '', species: '', grade: '' });
           setValue('product_id', created.id);
@@ -170,10 +209,6 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
     if (fields.customer_ref !== undefined) setValue('customer_ref', String(fields.customer_ref ?? ''));
     if (fields.notes !== undefined)        setValue('notes',        String(fields.notes ?? ''));
   }
-
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => { if (open) setSaving(false); }, [open]);
 
   async function onSubmit(data: NewTradeFileFormData) {
     setSaving(true);
@@ -196,19 +231,21 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
         <DialogHeader>
           <div className="flex items-center justify-between gap-3 pr-8 md:pr-0 w-full">
             <div className="flex flex-col min-w-0">
-              <DialogTitle
-                className="text-[17px] font-extrabold tracking-tight text-gray-900 leading-tight"
-                style={{ fontFamily: 'Manrope, sans-serif' }}
-              >
+              <DialogTitle className="text-[17px] font-extrabold tracking-tight text-gray-900 leading-tight">
                 {editMode ? 'Dosyayı Düzenle' : 'Yeni Ticaret Dosyası'}
               </DialogTitle>
               {fileNoValue && (
                 <span className="text-[11px] font-mono text-gray-400 mt-0.5">
                   #{fileNoValue}
+                  {editMode && fileToEdit && (
+                    <span className="ml-2 text-gray-300">
+                      {[fileToEdit.file_date?.slice(5,7), fileToEdit.file_date?.slice(2,4)].filter(Boolean).join('-')}
+                    </span>
+                  )}
                 </span>
               )}
             </div>
@@ -224,19 +261,19 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
           </div>
         </DialogHeader>
 
-        {/* ── Form ────────────────────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-1">
+        {/* ── Form ───────────────────────────────────────────────────────────── */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-1">
 
-          {/* ── Section: Taraflar ─────────────────────────────────────────── */}
-          <div>
-            <Section icon={Users} label="Taraflar" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Taraflar */}
+          <div className="space-y-3">
+            <Divider label="Taraflar" />
+            <div className="grid grid-cols-2 gap-3">
 
               {/* Müşteri */}
-              <Fld label="Müşteri *" error={errors.customer_id?.message}>
+              <Fld label="Müşteri" required error={errors.customer_id?.message}>
                 <div className="flex gap-2">
                   <select {...register('customer_id')} className={cn(sel, 'flex-1')}>
-                    <option value="">— Müşteri Seçin —</option>
+                    <option value="">— Seçin —</option>
                     {(() => {
                       const parents = customers.filter(c => !c.parent_customer_id);
                       const subs    = customers.filter(c =>  c.parent_customer_id);
@@ -260,10 +297,12 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                     onClick={() => setShowNewCust(!showNewCust)}
                     title="Yeni müşteri ekle"
                     className={cn(
-                      'w-9 h-[46px] rounded-xl flex items-center justify-center font-bold transition-all shrink-0',
-                      showNewCust ? 'text-white' : 'bg-[#f2f4f7] text-gray-400 hover:text-gray-600 hover:bg-gray-200',
+                      'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all border',
+                      showNewCust
+                        ? 'text-white border-transparent'
+                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-100',
                     )}
-                    style={showNewCust ? { background: accent } : {}}
+                    style={showNewCust ? { background: accent, borderColor: accent } : {}}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -282,7 +321,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                       type="button"
                       onClick={addCust}
                       disabled={createCust.isPending || !newCustName.trim()}
-                      className="px-4 h-[46px] rounded-xl text-[12px] font-bold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
+                      className="px-4 h-10 rounded-xl text-[12px] font-bold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
                       style={{ background: accent }}
                     >
                       Ekle
@@ -292,10 +331,10 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               </Fld>
 
               {/* Ürün */}
-              <Fld label="Ürün *" error={errors.product_id?.message}>
+              <Fld label="Ürün" required error={errors.product_id?.message}>
                 <div className="flex gap-2">
                   <select {...register('product_id')} className={cn(sel, 'flex-1')}>
-                    <option value="">— Ürün Seçin —</option>
+                    <option value="">— Seçin —</option>
                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                   <button
@@ -303,10 +342,12 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                     onClick={() => setShowNewProd(!showNewProd)}
                     title="Yeni ürün ekle"
                     className={cn(
-                      'w-9 h-[46px] rounded-xl flex items-center justify-center font-bold transition-all shrink-0',
-                      showNewProd ? 'text-white' : 'bg-[#f2f4f7] text-gray-400 hover:text-gray-600 hover:bg-gray-200',
+                      'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all border',
+                      showNewProd
+                        ? 'text-white border-transparent'
+                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-100',
                     )}
-                    style={showNewProd ? { background: accent } : {}}
+                    style={showNewProd ? { background: accent, borderColor: accent } : {}}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -325,7 +366,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                       type="button"
                       onClick={addProd}
                       disabled={createProd.isPending || !newProdName.trim()}
-                      className="px-4 h-[46px] rounded-xl text-[12px] font-bold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
+                      className="px-4 h-10 rounded-xl text-[12px] font-bold text-white disabled:opacity-50 shrink-0 hover:opacity-90 transition-opacity"
                       style={{ background: accent }}
                     >
                       Ekle
@@ -336,15 +377,23 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
             </div>
           </div>
 
-          {/* ── Section: Süreç ────────────────────────────────────────────── */}
-          <div>
-            <Section icon={CalendarDays} label="Süreç" />
+          {/* Süreç */}
+          <div className="space-y-3">
+            <Divider label="Süreç" />
             <div className="grid grid-cols-3 gap-3">
               <Fld label="Tarih" error={errors.file_date?.message}>
-                <MonoDatePicker value={watch('file_date') ?? ''} onChange={v => setValue('file_date', v)} className={dateCls} />
+                <MonoDatePicker
+                  value={watch('file_date') ?? ''}
+                  onChange={v => setValue('file_date', v)}
+                  className={dateCls}
+                />
               </Fld>
               <Fld label="ETA" error={errors.eta?.message}>
-                <MonoDatePicker value={watch('eta') ?? ''} onChange={v => setValue('eta', v)} className={dateCls} />
+                <MonoDatePicker
+                  value={watch('eta') ?? ''}
+                  onChange={v => setValue('eta', v)}
+                  className={dateCls}
+                />
               </Fld>
               <Fld label="Miktar (MT)" error={errors.tonnage_mt?.message}>
                 <input
@@ -358,14 +407,14 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
             </div>
           </div>
 
-          {/* ── Section: Referans ─────────────────────────────────────────── */}
-          <div>
-            <Section icon={Hash} label="Referans" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Referans */}
+          <div className="space-y-3">
+            <Divider label="Referans" />
+            <div className="grid grid-cols-2 gap-3">
               {!editMode && (
                 <Fld label="Dosya No" error={errors.file_no?.message}>
                   <div className="relative">
-                    <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-300 pointer-events-none" />
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-300 pointer-events-none" />
                     <input
                       {...register('file_no')}
                       placeholder="Otomatik oluşturulacak…"
@@ -374,7 +423,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
                   </div>
                 </Fld>
               )}
-              <Fld label="Müşteri Referansı" className={editMode ? 'md:col-span-2' : ''}>
+              <Fld label="Müşteri Referansı" className={editMode ? 'col-span-2' : ''}>
                 <input
                   {...register('customer_ref')}
                   placeholder="Opsiyonel müşteri ref. no"
@@ -384,20 +433,24 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
             </div>
           </div>
 
-          {/* ── Section: Notlar ───────────────────────────────────────────── */}
-          <div>
-            <Section icon={StickyNote} label="Notlar" />
+          {/* Notlar */}
+          <div className="space-y-3">
+            <Divider label="Notlar" />
             <textarea
               {...register('notes')}
-              rows={3}
+              rows={4}
               placeholder="Dosyayla ilgili notlar…"
-              className={cn(inp, 'resize-none')}
+              className={cn(
+                'w-full rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-3',
+                'text-[13px] font-medium text-gray-900 placeholder:text-gray-400',
+                'focus:border-gray-400 focus:bg-white focus:outline-none focus:ring-0',
+                'transition-all resize-none',
+              )}
             />
           </div>
 
-          {/* ── Footer ──────────────────────────────────────────────────────── */}
+          {/* Footer */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            {/* Sol: Sil (sadece edit modda) */}
             <div>
               {editMode && fileToEdit ? (
                 <button
@@ -412,7 +465,6 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               ) : <div />}
             </div>
 
-            {/* Sağ: İptal + Kaydet */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -438,6 +490,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               </button>
             </div>
           </div>
+
         </form>
       </DialogContent>
     </Dialog>
