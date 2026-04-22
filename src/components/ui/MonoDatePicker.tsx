@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { Calendar } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ─── Sabitler ────────────────────────────────────────────────────────────────
 
@@ -11,7 +10,7 @@ const TR_MONTHS = [
 const TR_DAYS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
 const POPUP_W = 280;
-const POPUP_H = 370; // estimated max height
+const POPUP_H = 380;
 const MARGIN  = 8;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -58,35 +57,28 @@ function buildCells(vy: number, vm: number): Cell[] {
   return cells;
 }
 
-// ─── Pozisyon hesabı — viewport'a sığdır ─────────────────────────────────────
+// ─── Pozisyon hesabı — viewport-relative (position: fixed) ───────────────────
 
-interface PopupStyle { top: number; left: number }
+interface PopupPos { top: number; left: number }
 
-function calcPos(btn: HTMLButtonElement): PopupStyle {
+function calcPos(btn: HTMLButtonElement): PopupPos {
   const r  = btn.getBoundingClientRect();
   const sw = window.innerWidth;
   const sh = window.innerHeight;
-  const sy = window.scrollY;
-  const sx = window.scrollX;
 
-  // Dikey: önce aşağı dene, sığmazsa yukarı
-  let top: number;
-  const spaceBelow = sh - r.bottom;
-  const spaceAbove = r.top;
-  if (spaceBelow >= POPUP_H || spaceBelow >= spaceAbove) {
-    top = r.bottom + sy + MARGIN;
-  } else {
-    top = r.top + sy - POPUP_H - MARGIN;
+  // Dikey: aşağı sığmazsa yukarı
+  let top = r.bottom + MARGIN;
+  if (top + POPUP_H > sh - MARGIN) {
+    top = r.top - POPUP_H - MARGIN;
   }
-  // Viewport sınırına clamp
-  top = Math.max(sy + MARGIN, Math.min(top, sy + sh - POPUP_H - MARGIN));
+  top = Math.max(MARGIN, Math.min(top, sh - POPUP_H - MARGIN));
 
-  // Yatay: trigger sol kenarından başla, sağa taşarsa sola kaydır
-  let left = r.left + sx;
-  if (left + POPUP_W > sx + sw - MARGIN) {
-    left = sx + sw - POPUP_W - MARGIN;
+  // Yatay: sağa taşarsa sola kaydır
+  let left = r.left;
+  if (left + POPUP_W > sw - MARGIN) {
+    left = sw - POPUP_W - MARGIN;
   }
-  left = Math.max(sx + MARGIN, left);
+  left = Math.max(MARGIN, left);
 
   return { top, left };
 }
@@ -97,18 +89,15 @@ export interface MonoDatePickerProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** @deprecated artık gerekmiyor — otomatik hesaplanıyor */
+  /** @deprecated artık gerekmiyor */
   dropUp?: boolean;
 }
 
-export function MonoDatePicker({
-  value,
-  onChange,
-  placeholder = 'Tarih seç',
-}: MonoDatePickerProps) {
+type View = 'day' | 'month' | 'year';
+
+export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: MonoDatePickerProps) {
   const today  = todayStr();
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const popRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const initView = () => {
     if (value) {
@@ -123,15 +112,15 @@ export function MonoDatePicker({
   const [vy,      setVy]      = useState(() => initView().vy);
   const [vm,      setVm]      = useState(() => initView().vm);
   const [pending, setPending] = useState(value);
-  const [style,   setStyle]   = useState<PopupStyle>({ top: 0, left: 0 });
+  const [pos,     setPos]     = useState<PopupPos>({ top: 0, left: 0 });
+  const [view,    setView]    = useState<View>('day');
 
-  // Yıl aralığı: -10 … +10
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
 
-  // Pozisyonu yeniden hesapla
   const recalc = useCallback(() => {
-    if (btnRef.current) setStyle(calcPos(btnRef.current));
+    const btn = wrapRef.current?.querySelector('button');
+    if (btn) setPos(calcPos(btn as HTMLButtonElement));
   }, []);
 
   useEffect(() => { setPending(value); }, [value]);
@@ -141,6 +130,7 @@ export function MonoDatePicker({
     const iv = initView();
     setVy(iv.vy); setVm(iv.vm);
     setPending(value);
+    setView('day');
     recalc();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -157,68 +147,62 @@ export function MonoDatePicker({
 
   // Dışarı tıklayınca kapat
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (
-        btnRef.current && !btnRef.current.contains(t) &&
-        popRef.current  && !popRef.current.contains(t)
-      ) setOpen(false);
+    if (!open) return;
+    const handler = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
-    if (open) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    // Bir sonraki event loop'ta ekle — açılış click'ini atla
+    const id = setTimeout(() => document.addEventListener('pointerdown', handler), 0);
+    return () => { clearTimeout(id); document.removeEventListener('pointerdown', handler); };
   }, [open]);
 
   function confirm() { onChange(pending); setOpen(false); }
   function cancel()  { setPending(value); setOpen(false); }
 
+  function prevM() {
+    if (vm === 1) { setVy(y => y - 1); setVm(12); }
+    else setVm(m => m - 1);
+  }
+  function nextM() {
+    if (vm === 12) { setVy(y => y + 1); setVm(1); }
+    else setVm(m => m + 1);
+  }
+
   const cells   = buildCells(vy, vm);
   const display = formatDisplay(value);
 
-  // ── Seçim kutusu stili ─────────────────────────────────────────────────────
-  const selCls = 'bg-gray-100 rounded-lg px-2 h-7 text-[13px] font-bold text-gray-900 border-0 outline-none cursor-pointer appearance-none text-center hover:bg-gray-200 transition-colors';
+  const navBtn = 'w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors shrink-0';
+  const selBtn = 'px-2 py-0.5 rounded-lg text-[13px] font-bold text-gray-900 hover:bg-gray-100 transition-colors';
 
-  const popup = open ? createPortal(
-    <div
-      ref={popRef}
-      onMouseDown={e => e.stopPropagation()}
-      style={{ position: 'absolute', top: style.top, left: style.left, width: POPUP_W, zIndex: 9999 }}
-      className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
-    >
-      {/* ── Header: ay + yıl dropdown ── */}
-      <div className="flex items-center justify-center gap-2 px-4 py-3 border-b border-gray-50">
-        {/* Ay seçici */}
-        <select
-          value={vm}
-          onChange={e => setVm(Number(e.target.value))}
-          className={selCls}
-          style={{ width: 110 }}
-        >
-          {TR_MONTHS.map((name, i) => (
-            <option key={i} value={i + 1}>{name}</option>
-          ))}
-        </select>
+  // ── Paneller ──────────────────────────────────────────────────────────────
 
-        {/* Yıl seçici */}
-        <select
-          value={vy}
-          onChange={e => setVy(Number(e.target.value))}
-          className={selCls}
-          style={{ width: 80 }}
-        >
-          {years.map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+  const dayPanel = (
+    <>
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-50">
+        <button type="button" onClick={prevM} className={navBtn}>
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setView('month')} className={selBtn}>
+            {TR_MONTHS[vm - 1]}
+          </button>
+          <button type="button" onClick={() => setView('year')} className={selBtn}>
+            {vy}
+          </button>
+        </div>
+        <button type="button" onClick={nextM} className={navBtn}>
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
 
-      {/* ── Gün başlıkları ── */}
-      <div className="grid grid-cols-7 px-4 pt-3 pb-1">
+      <div className="grid grid-cols-7 px-4 pt-2.5 pb-1">
         {TR_DAYS.map(d => (
           <div key={d} className="text-center text-[10px] font-bold text-gray-400">{d}</div>
         ))}
       </div>
 
-      {/* ── Gün hücreleri ── */}
       <div className="grid grid-cols-7 px-3 pb-2 gap-y-0.5">
         {cells.map((cell, i) => {
           const str        = toStr(cell.year, cell.month, cell.day);
@@ -248,7 +232,6 @@ export function MonoDatePicker({
         })}
       </div>
 
-      {/* ── Footer ── */}
       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
         <span className="text-[12px] font-semibold text-gray-600">
           {formatDisplay(pending) || '—'}
@@ -264,14 +247,67 @@ export function MonoDatePicker({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
-  ) : null;
+    </>
+  );
+
+  const monthPanel = (
+    <>
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-50">
+        <button type="button" onClick={() => setVy(y => y - 1)} className={navBtn}>
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={() => setView('year')} className={selBtn}>{vy}</button>
+        <button type="button" onClick={() => setVy(y => y + 1)} className={navBtn}>
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-2 p-4">
+        {TR_MONTHS.map((name, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => { setVm(i + 1); setView('day'); }}
+            className={`h-9 rounded-xl text-[12px] font-semibold transition-colors
+              ${vm === i + 1
+                ? 'bg-red-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+              }`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+
+  const yearPanel = (
+    <>
+      <div className="px-4 py-2.5 border-b border-gray-50">
+        <span className="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Yıl Seç</span>
+      </div>
+      <div className="overflow-y-auto p-2 grid grid-cols-3 gap-1.5" style={{ maxHeight: 260 }}>
+        {years.map(y => (
+          <button
+            key={y}
+            type="button"
+            onClick={() => { setVy(y); setView('day'); }}
+            className={`h-9 rounded-xl text-[13px] font-semibold transition-colors
+              ${vy === y
+                ? 'bg-red-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+              }`}
+          >
+            {y}
+          </button>
+        ))}
+      </div>
+    </>
+  );
 
   return (
-    <div className="relative">
+    <div ref={wrapRef} className="relative">
+      {/* Trigger */}
       <button
-        ref={btnRef}
         type="button"
         onClick={() => setOpen(v => !v)}
         className="w-full bg-[#f2f4f7] rounded-xl h-[46px] px-4 text-[13px] font-medium text-left flex items-center justify-between border border-transparent focus:outline-none hover:bg-gray-200 transition-colors"
@@ -281,7 +317,24 @@ export function MonoDatePicker({
         </span>
         <Calendar className="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2" />
       </button>
-      {popup}
+
+      {/* Popup — position:fixed, aynı DOM ağacında (portal yok) */}
+      {open && (
+        <div
+          style={{
+            position: 'fixed',
+            top: pos.top,
+            left: pos.left,
+            width: POPUP_W,
+            zIndex: 9999,
+          }}
+          className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+        >
+          {view === 'day'   && dayPanel}
+          {view === 'month' && monthPanel}
+          {view === 'year'  && yearPanel}
+        </div>
+      )}
     </div>
   );
 }
