@@ -180,6 +180,7 @@ export function MonoDatePicker({
   const popup = open ? createPortal(
     <div
       ref={popRef}
+      onMouseDown={e => e.stopPropagation()}
       style={{ position: 'absolute', top: style.top, left: style.left, width: POPUP_W, zIndex: 9999 }}
       className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
     >
