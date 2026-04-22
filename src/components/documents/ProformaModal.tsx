@@ -283,10 +283,10 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
           {/* ── Satır 1: Tarihler + Alıcı ID ── */}
           <div className="grid grid-cols-3 gap-3 mb-3">
             <Fld label="PI Date *" error={errors.proforma_date?.message}>
-              <MonoDatePicker value={form.watch('proforma_date') ?? ''} onChange={v => setValue('proforma_date', v)} />
+              <MonoDatePicker value={form.watch('proforma_date') ?? ''} onChange={v => setValue('proforma_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
             </Fld>
             <Fld label="Validity Date">
-              <MonoDatePicker value={form.watch('validity_date') ?? ''} onChange={v => setValue('validity_date', v)} />
+              <MonoDatePicker value={form.watch('validity_date') ?? ''} onChange={v => setValue('validity_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
             </Fld>
             <Fld label="Buyer Commercial ID">
               <input className={inp} {...register('buyer_commercial_id')} />

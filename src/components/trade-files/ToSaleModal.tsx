@@ -515,6 +515,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
               <MonoDatePicker
                 value={form.watch('eta') ?? ''}
                 onChange={v => setValue('eta', v)}
+                className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors"
               />
             </Fld>
             <Fld label="Gemi Adı">

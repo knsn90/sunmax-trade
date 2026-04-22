@@ -360,7 +360,7 @@ export function InvoiceModal({
             {/* ── Fatura Bilgileri ── */}
             <div className="grid grid-cols-3 gap-3">
               <Field label={`${tc('form.date')} *`}>
-                <MonoDatePicker value={form.watch('invoice_date') ?? ''} onChange={v => setValue('invoice_date', v)} />
+                <MonoDatePicker value={form.watch('invoice_date') ?? ''} onChange={v => setValue('invoice_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
                 {errors.invoice_date && <p className="text-[11px] text-red-500 mt-0.5">{errors.invoice_date.message}</p>}
               </Field>
               <Field label={tc('form.currency')}>

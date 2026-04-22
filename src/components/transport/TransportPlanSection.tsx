@@ -256,6 +256,7 @@ export function TransportPlanSection({ file, writable }: Props) {
                   onChange={setLoadingDate}
                   placeholder="Tarih seç"
                   dropUp
+                  className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors"
                 />
               </div>
             ) : (

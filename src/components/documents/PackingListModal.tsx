@@ -295,7 +295,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
           {/* ── Temel Bilgiler ────────────────────────────────────────── */}
           <FormRow cols={3}>
             <FormGroup label="Date *" error={errors.pl_date?.message}>
-              <MonoDatePicker value={form.watch('pl_date') ?? ''} onChange={v => setValue('pl_date', v)} />
+              <MonoDatePicker value={form.watch('pl_date') ?? ''} onChange={v => setValue('pl_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
             </FormGroup>
             <FormGroup label="Transport Mode">
               <NativeSelect {...register('transport_mode')}>

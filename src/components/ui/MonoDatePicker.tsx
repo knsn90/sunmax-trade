@@ -175,7 +175,8 @@ export interface MonoDatePickerProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  dropUp?: boolean; // @deprecated
+  className?: string;  // trigger buton className override
+  dropUp?: boolean;    // @deprecated
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -184,6 +185,7 @@ export function MonoDatePicker({
   value,
   onChange,
   placeholder = 'Tarih seç',
+  className,
 }: MonoDatePickerProps) {
   const [open, setOpen] = useState(false);
   const today = todayStr();
@@ -225,7 +227,7 @@ export function MonoDatePicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-full h-[46px] bg-[#f2f4f7] rounded-xl px-4 text-[13px] font-medium border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden"
+          className={className ?? 'w-full h-[46px] bg-[#f2f4f7] rounded-xl px-4 text-[13px] font-medium border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden'}
         >
           <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${displayShort ? 'text-gray-900' : 'text-gray-400'}`}>
             {displayShort || placeholder}
