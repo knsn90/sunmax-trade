@@ -340,10 +340,10 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
             <Section icon={CalendarDays} label="Süreç" />
             <div className="grid grid-cols-3 gap-3">
               <Fld label="Tarih" error={errors.file_date?.message}>
-                <MonoDatePicker value={watch('file_date') ?? ''} onChange={v => setValue('file_date', v)} />
+                <MonoDatePicker value={watch('file_date') ?? ''} onChange={v => setValue('file_date', v)} className="w-full bg-[#f2f4f7] rounded-xl h-10 px-4 text-[13px] font-medium text-gray-900 border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden" />
               </Fld>
               <Fld label="ETA" error={errors.eta?.message}>
-                <MonoDatePicker value={watch('eta') ?? ''} onChange={v => setValue('eta', v)} />
+                <MonoDatePicker value={watch('eta') ?? ''} onChange={v => setValue('eta', v)} className="w-full bg-[#f2f4f7] rounded-xl h-10 px-4 text-[13px] font-medium text-gray-900 border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden" />
               </Fld>
               <Fld label="Miktar (MT)" error={errors.tonnage_mt?.message}>
                 <input
