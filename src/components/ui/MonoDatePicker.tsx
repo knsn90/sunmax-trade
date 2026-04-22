@@ -59,7 +59,7 @@ function buildCells(vy: number, vm: number): Cell[] {
 
 // ─── DrumPicker ───────────────────────────────────────────────────────────────
 
-const ITEM_H  = 36;
+const ITEM_H  = 30;
 const VISIBLE = 3;
 
 interface DrumItem { value: number; label: string }
