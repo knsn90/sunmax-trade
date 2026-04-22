@@ -225,12 +225,12 @@ export function MonoDatePicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-full items-center justify-between rounded-lg border border-border bg-white px-2.5 text-xs transition-colors hover:border-brand-500 focus:outline-none overflow-hidden"
+          className="w-full h-[46px] bg-[#f2f4f7] rounded-xl px-4 text-[13px] font-medium border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden"
         >
-          <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${displayShort ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${displayShort ? 'text-gray-900' : 'text-gray-400'}`}>
             {displayShort || placeholder}
           </span>
-          <CalendarIcon className="h-3 w-3 text-muted-foreground shrink-0 ml-1.5" />
+          <CalendarIcon className="h-3.5 w-3.5 text-gray-400 shrink-0 ml-1.5" />
         </button>
       </PopoverTrigger>
 
