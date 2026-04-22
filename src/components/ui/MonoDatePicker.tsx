@@ -73,8 +73,8 @@ export function MonoDatePicker({
             }
           }}
           captionLayout="dropdown"
-          startMonth={new Date(2000, 0)}
-          endMonth={new Date(2035, 11)}
+          startMonth={new Date(new Date().getFullYear() - 5, 0)}
+          endMonth={new Date(new Date().getFullYear() + 5, 11)}
           locale={tr}
           defaultMonth={selected ?? new Date()}
         />
