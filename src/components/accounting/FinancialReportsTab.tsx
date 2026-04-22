@@ -9,6 +9,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Banknote, Landmark, CalendarDays, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Sparkles, X, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { streamFinanceAnalysis } from '@/lib/financeAI';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 
 /** Basit markdown renderer — ##, **, - destekler */
 function AiMarkdown({ text }: { text: string }) {
@@ -580,21 +581,11 @@ export function FinancialReportsTab() {
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-gray-400 font-semibold">Başlangıç</span>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                className="h-8 px-2 text-[11px] border border-gray-200 rounded-lg bg-white outline-none focus:border-gray-400"
-              />
+              <MonoDatePicker value={dateFrom} onChange={v => setDateFrom(v)} className="h-8 w-36 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-gray-400 font-semibold">Bitiş</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                className="h-8 px-2 text-[11px] border border-gray-200 rounded-lg bg-white outline-none focus:border-gray-400"
-              />
+              <MonoDatePicker value={dateTo} onChange={v => setDateTo(v)} className="h-8 w-36 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
             </div>
             {(dateFrom || dateTo) && (
               <button

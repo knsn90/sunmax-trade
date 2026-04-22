@@ -11,7 +11,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { DateInput, NumericInput } from '@/components/ui/form-elements';
+import { NumericInput } from '@/components/ui/form-elements';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { Calculator } from '@/components/ui/Calculator';
@@ -277,7 +278,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                 <input className={inp} value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="AKS2026000000192" />
               </Field>
               <Field label="Fatura Tarihi *">
-                <DateInput value={faturaTarihi} onChange={setFaturaTarihi} className={inp} />
+                <MonoDatePicker value={faturaTarihi} onChange={setFaturaTarihi} className={inp} />
               </Field>
             </div>
           </div>

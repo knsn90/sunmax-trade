@@ -23,6 +23,7 @@ import {
 import { priceListSchema, type PriceListFormData } from '@/types/forms';
 import type { PriceList } from '@/types/database';
 import { fDate } from '@/lib/formatters';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -302,20 +303,12 @@ function PriceEntryModal({ open, onOpenChange, editing }: EntryModalProps) {
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.priceDate')}</label>
-              <input
-                {...register('price_date')}
-                type="date"
-                className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200"
-              />
+              <MonoDatePicker value={watch('price_date') ?? ''} onChange={v => setValue('price_date', v)} className="w-full h-9 bg-white border border-gray-200 rounded-xl px-3 text-[13px] text-gray-900 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
               {errors.price_date && <p className="text-xs text-red-500 mt-1">{errors.price_date.message}</p>}
             </div>
             <div className="flex-1">
               <label className="block text-xs font-medium text-gray-600 mb-1">{t('modal.validUntil')}</label>
-              <input
-                {...register('valid_until')}
-                type="date"
-                className="w-full h-9 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200"
-              />
+              <MonoDatePicker value={watch('valid_until') ?? ''} onChange={v => setValue('valid_until', v)} className="w-full h-9 bg-white border border-gray-200 rounded-xl px-3 text-[13px] text-gray-900 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
             </div>
           </div>
 

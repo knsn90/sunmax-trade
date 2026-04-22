@@ -12,8 +12,8 @@ import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEnti
 import { useTransactions, useTransactionsByEntityEnhanced } from '@/hooks/useTransactions';
 import { useSettings } from '@/hooks/useSettings';
 import { fDate, fCurrency, fN, fUSD } from '@/lib/formatters';
-import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { TradeFile } from '@/types/database';
@@ -171,11 +171,11 @@ function SalesReportTab() {
             </div>
             <div>
               <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.date_from')}</label>
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <MonoDatePicker value={dateFrom} onChange={v => setDateFrom(v)} className="h-8 w-36 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
             </div>
             <div>
               <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.date_to')}</label>
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <MonoDatePicker value={dateTo} onChange={v => setDateTo(v)} className="h-8 w-36 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-50">
@@ -1493,11 +1493,9 @@ export function AccountStatementTab() {
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Tarih Aralığı</label>
                     <div className="flex items-center gap-1.5">
-                      <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                      <MonoDatePicker value={dateFrom} onChange={v => setDateFrom(v)} className="h-8 flex-1 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
                       <span className="text-gray-300 text-[11px]">—</span>
-                      <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                      <MonoDatePicker value={dateTo} onChange={v => setDateTo(v)} className="h-8 flex-1 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
                     </div>
                   </div>
 
@@ -2640,11 +2638,9 @@ export function CustomerReportTab() {
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Tarih Aralığı</label>
                     <div className="flex items-center gap-1.5">
-                      <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                      <MonoDatePicker value={dateFrom} onChange={v => setDateFrom(v)} className="h-8 flex-1 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
                       <span className="text-gray-300 text-[11px]">—</span>
-                      <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                        className="h-8 flex-1 rounded-lg border border-gray-200 px-2 text-[11px] text-gray-700 outline-none focus:border-gray-300 bg-white" />
+                      <MonoDatePicker value={dateTo} onChange={v => setDateTo(v)} className="h-8 flex-1 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
                     </div>
                   </div>
 

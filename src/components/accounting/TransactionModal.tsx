@@ -15,7 +15,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
-import { DateInput, NumericInput } from '@/components/ui/form-elements';
+import { NumericInput } from '@/components/ui/form-elements';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight, Plus, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -555,10 +556,9 @@ export function TransactionModal({
                     name="transaction_date"
                     control={control}
                     render={({ field }) => (
-                      <DateInput
+                      <MonoDatePicker
                         value={field.value ?? ''}
                         onChange={field.onChange}
-                        onBlur={field.onBlur}
                         className={inp}
                       />
                     )}
@@ -657,10 +657,9 @@ export function TransactionModal({
                     name="transaction_date"
                     control={control}
                     render={({ field }) => (
-                      <DateInput
+                      <MonoDatePicker
                         value={field.value ?? ''}
                         onChange={field.onChange}
-                        onBlur={field.onBlur}
                         className={inp}
                       />
                     )}
@@ -742,10 +741,9 @@ export function TransactionModal({
                     name="transaction_date"
                     control={control}
                     render={({ field }) => (
-                      <DateInput
+                      <MonoDatePicker
                         value={field.value ?? ''}
                         onChange={field.onChange}
-                        onBlur={field.onBlur}
                         className={inp}
                       />
                     )}

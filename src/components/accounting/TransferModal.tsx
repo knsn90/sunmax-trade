@@ -14,7 +14,8 @@ import { OcrButton } from '@/components/ui/OcrButton';
 import { Calculator } from '@/components/ui/Calculator';
 import type { OcrResult } from '@/lib/openai';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, Textarea, DateInput, NumericInput } from '@/components/ui/form-elements';
+import { NativeSelect, Textarea, NumericInput } from '@/components/ui/form-elements';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { ArrowRight, ArrowLeftRight, Banknote, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -249,7 +250,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
                 name="transfer_date"
                 control={control}
                 render={({ field }) => (
-                  <DateInput value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} className={mo} />
+                  <MonoDatePicker value={field.value ?? ''} onChange={field.onChange} className="w-full h-8 bg-gray-100 rounded-lg px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
                 )}
               />
             </FormGroup>

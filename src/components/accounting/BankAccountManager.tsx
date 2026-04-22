@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { fCurrency, fDate } from '@/lib/formatters';
 import type { CurrencyCode } from '@/types/enums';
 import { Input } from '@/components/ui/input';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { FormRow, FormGroup } from '@/components/ui/shared';
 import { Landmark, Plus, Pencil, X, Check, ChevronsUpDown } from 'lucide-react';
@@ -216,7 +217,7 @@ export function BankAccountManager() {
               <Input type="number" step="0.01" value={form.opening_balance} onChange={f('opening_balance')} placeholder="0.00" className="bg-gray-100 border-0 focus:ring-0" />
             </FormGroup>
             <FormGroup label="Açılış Tarihi">
-              <Input type="date" value={form.opening_balance_date} onChange={f('opening_balance_date')} className="bg-gray-100 border-0 focus:ring-0" />
+              <MonoDatePicker value={form.opening_balance_date} onChange={v => setForm(prev => ({ ...prev, opening_balance_date: v }))} className="w-full h-8 bg-gray-100 rounded-lg px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
             </FormGroup>
           </FormRow>
 

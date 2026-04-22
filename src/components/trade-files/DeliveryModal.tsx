@@ -6,6 +6,7 @@ import type { TradeFile } from '@/types/database';
 import { useConvertToDelivery } from '@/hooks/useTradeFiles';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Package, Layers } from 'lucide-react';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 
 // ── Mono stil sabitleri ───────────────────────────────────────────────────────
 const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
@@ -45,7 +46,7 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
     },
   });
 
-  const { register, handleSubmit, formState: { errors }, reset } = form;
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = form;
 
   useEffect(() => {
     if (open && file) {
@@ -156,7 +157,7 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
                 <input type="number" {...register('packages')} className={inp} />
               </Fld>
               <Fld label="Varış Tarihi">
-                <input type="date" {...register('arrival_date')} className={inp} />
+                <MonoDatePicker value={watch('arrival_date') ?? ''} onChange={v => setValue('arrival_date', v)} className={inp} />
               </Fld>
             </div>
 

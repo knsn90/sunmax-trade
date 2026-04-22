@@ -38,6 +38,7 @@ import { NotesSection } from '@/components/trade-files/NotesSection';
 import { AttachmentsSection } from '@/components/trade-files/AttachmentsSection';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import {
   ArrowLeft, FileText, Package, Receipt, Pencil, Printer,
   Trash2, TrendingUp, Truck, ChevronDown, ChevronUp, Plus,
@@ -2120,11 +2121,10 @@ export function TradeFileDetailPage() {
               </div>
             )}
             <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('detail.delay.newEtaLabel')}</label>
-            <input
-              type="date"
+            <MonoDatePicker
               value={delayEta}
-              onChange={e => setDelayEta(e.target.value)}
-              className="w-full mt-1 mb-3 px-3 py-2.5 rounded-xl border border-gray-200 text-[13px] outline-none focus:border-blue-400"
+              onChange={v => setDelayEta(v)}
+              className="w-full mt-1 mb-3 h-10 bg-white border border-gray-200 rounded-xl px-3 text-[13px] text-gray-900 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors"
             />
             <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('detail.delay.reasonLabel')}</label>
             <textarea

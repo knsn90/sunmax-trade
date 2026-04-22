@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { useTranslation } from 'react-i18next';
 import {
   Wallet, Plus, X, CheckCircle2, Clock, AlertCircle, BookCheck, ChevronDown, ChevronUp,
@@ -77,9 +78,10 @@ function PaymentForm({ obligation, onClose }: { obligation: TradeObligation; onC
         </div>
         <div>
           <label className="text-[10px] text-gray-400 font-medium block mb-1">{t('obligations.date')}</label>
-          <input
-            type="date" required value={date} onChange={e => setDate(e.target.value)}
-            className="w-full px-3 py-2 text-[12px] rounded-xl border border-gray-200 bg-white outline-none focus:border-blue-400"
+          <MonoDatePicker
+            value={date}
+            onChange={(v: string) => setDate(v)}
+            className="w-full h-9 bg-white border border-gray-200 rounded-xl px-3 text-[12px] text-gray-900 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors"
           />
         </div>
       </div>

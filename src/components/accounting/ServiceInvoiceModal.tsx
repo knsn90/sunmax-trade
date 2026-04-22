@@ -16,7 +16,8 @@ import { Calculator } from '@/components/ui/Calculator';
 import type { OcrResult } from '@/lib/openai';
 import { PartyCombobox, type SelectedParty } from '@/components/accounting/PartyCombobox';
 import { cn } from '@/lib/utils';
-import { DateInput, NumericInput } from '@/components/ui/form-elements';
+import { NumericInput } from '@/components/ui/form-elements';
+import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import {
   HelpCircle, Banknote, Building2, CreditCard,
   ChevronDown, ChevronUp, Plus, Trash2, X,
@@ -253,7 +254,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                 <input className={inp} value={faturaNo} onChange={e => setFaturaNo(e.target.value)} placeholder="ÖRN: GÜM-2026-001" />
               </Field>
               <Field label="Fatura Tarihi">
-                <DateInput value={faturaTarihi} onChange={setFaturaTarihi} className={inp} />
+                <MonoDatePicker value={faturaTarihi} onChange={setFaturaTarihi} className={inp} />
               </Field>
             </div>
           </div>
