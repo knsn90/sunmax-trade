@@ -22,6 +22,7 @@ const FILE_DETAIL_SELECT = `
   customer:customers!customer_id(*, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
   product:products!product_id(*),
   supplier:suppliers!supplier_id(*),
+  suppliers:trade_file_suppliers(*, supplier:suppliers!supplier_id(id, name, logo_url, country)),
   invoices(*),
   packing_lists(*, packing_list_items(*)),
   proformas(*),
@@ -166,7 +167,45 @@ export const tradeFileService = {
       .single();
 
     if (error) throw new Error(error.message);
+    if (input.suppliers?.length) {
+      await this.syncSuppliers(id, input.suppliers);
+    }
     return data as TradeFile;
+  },
+
+  /**
+   * Bir trade file için çoklu tedarikçi satırlarını eşitler.
+   * Mevcut satırlar tamamen silinip yeniden yazılır (delete + insert).
+   * Sıralama `position` alanı ile yönetilir (1 = birincil tedarikçi).
+   */
+  async syncSuppliers(
+    tradeFileId: string,
+    rows: NonNullable<SaleConversionFormData['suppliers']>,
+  ): Promise<void> {
+    const { error: delError } = await supabase
+      .from('trade_file_suppliers')
+      .delete()
+      .eq('trade_file_id', tradeFileId);
+    if (delError) throw new Error(delError.message);
+
+    if (rows.length === 0) return;
+
+    const payload = rows.map((r, idx) => ({
+      trade_file_id: tradeFileId,
+      supplier_id: r.supplier_id,
+      position: idx + 1,
+      quantity_mt: r.quantity_mt,
+      purchase_price: r.purchase_price,
+      currency: r.currency,
+      fx_rate: r.currency === 'USD' ? 1 : r.fx_rate,
+      freight_cost: r.freight_cost ?? 0,
+      notes: r.notes ?? '',
+    }));
+
+    const { error: insError } = await supabase
+      .from('trade_file_suppliers')
+      .insert(payload);
+    if (insError) throw new Error(insError.message);
   },
 
   async convertToDelivery(
@@ -282,6 +321,9 @@ export const tradeFileService = {
       .single();
 
     if (error) throw new Error(error.message);
+    if (input.suppliers?.length) {
+      await this.syncSuppliers(id, input.suppliers);
+    }
     return data as TradeFile;
   },
 

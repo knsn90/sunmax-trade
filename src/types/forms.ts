@@ -102,6 +102,17 @@ export type NewTradeFileFormData = z.infer<typeof newTradeFileSchema> & {
   batch_no?: number | null;
 };
 
+export const saleSupplierRowSchema = z.object({
+  supplier_id: z.string().min(1, 'Tedarikçi seçin'),
+  quantity_mt: z.coerce.number().positive('MT > 0 olmalı'),
+  purchase_price: z.coerce.number().nonnegative('Fiyat ≥ 0 olmalı'),
+  currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
+  fx_rate: z.coerce.number().positive('Kur > 0 olmalı').default(1),
+  freight_cost: z.coerce.number().min(0).default(0),
+  notes: z.string().default(''),
+});
+export type SaleSupplierRowData = z.infer<typeof saleSupplierRowSchema>;
+
 export const saleConversionSchema = z.object({
   supplier_id: z.string().min(1, 'Select a supplier'),
   selling_price: z.coerce.number().positive('Selling price required'),
@@ -120,6 +131,7 @@ export const saleConversionSchema = z.object({
   vessel_name: z.string().default(''),
   proforma_ref: z.string().default(''),
   register_no: z.string().default(''),
+  suppliers: z.array(saleSupplierRowSchema).min(1).max(5).optional(),
 });
 export type SaleConversionFormData = z.infer<typeof saleConversionSchema>;
 
