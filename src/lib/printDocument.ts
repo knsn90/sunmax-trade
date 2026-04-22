@@ -213,7 +213,7 @@ const BASE_CSS = `
 
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 0mm;
   }
   @media print {
     html, body {
@@ -222,6 +222,7 @@ const BASE_CSS = `
       background: #fff;
       display: block;
       overflow: visible;
+      -webkit-print-color-adjust: exact;
     }
     .sidebar { display: none !important; }
     .doc-area {
