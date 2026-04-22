@@ -49,16 +49,16 @@ export function MonoDatePicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-full bg-[#f2f4f7] rounded-xl h-[46px] px-3 text-[12px] font-medium text-left flex items-center justify-between border border-transparent focus:outline-none hover:bg-gray-200 transition-colors overflow-hidden"
+          className="flex h-8 w-full items-center justify-between rounded-lg border border-border bg-white px-2.5 text-xs transition-colors hover:border-brand-500 focus:outline-none overflow-hidden"
         >
           <span
             className={`whitespace-nowrap overflow-hidden text-ellipsis ${
-              displayLabel ? 'text-gray-900' : 'text-gray-400'
+              displayLabel ? 'text-foreground' : 'text-muted-foreground'
             }`}
           >
             {displayLabel || placeholder}
           </span>
-          <CalendarIcon className="h-3.5 w-3.5 text-gray-400 shrink-0 ml-1.5" />
+          <CalendarIcon className="h-3 w-3 text-muted-foreground shrink-0 ml-1.5" />
         </button>
       </PopoverTrigger>
 
