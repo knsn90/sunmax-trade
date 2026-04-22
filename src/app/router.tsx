@@ -20,7 +20,6 @@ import { DocumentsPage } from '@/pages/DocumentsPage';
 import { PriceListPage } from '@/pages/PriceListPage';
 import { TenantManagementPage } from '@/pages/TenantManagementPage';
 import { ViewAsPage } from '@/pages/ViewAsPage';
-import { MultiSupplierMockupPage } from '@/pages/MultiSupplierMockupPage';
 
 function TradeFileDetailRoute() {
   const { id } = useParams();
@@ -57,7 +56,6 @@ export const router = createBrowserRouter([
       { path: 'pipeline', element: <PipelinePage /> },
       { path: 'files', element: <TradeFilesPage /> },
       { path: 'files/:id', element: <TradeFileDetailRoute /> },
-      { path: 'mockup/coklu-tedarikci', element: <MultiSupplierMockupPage /> },
       { path: 'documents', element: <DocumentsPage /> },
       { path: 'accounting', element: <AccountingPage /> },
       { path: 'fin-reports', element: <FinancialReportsPage /> },
