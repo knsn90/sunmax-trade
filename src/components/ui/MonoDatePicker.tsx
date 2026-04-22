@@ -302,27 +302,35 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
     </>
   );
 
-  // Popup: portal → document.body
-  // Backdrop (z:9998) dışarı tıklamayı yakalar; popup (z:9999) üstte olduğu için
-  // popup içi tıklamalar backdrop'a ulaşmaz → kapanmaz.
+  // Dışarı tıklayınca kapat — capture fazında listener
+  // (e.target daima gerçek hedef element; popup içiyse kapatma)
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!btnRef.current?.contains(t) && !popRef.current?.contains(t)) {
+        setOpen(false);
+      }
+    };
+    // setTimeout: açılış click'inin listener'ı tetiklememesi için
+    const id = setTimeout(() => document.addEventListener('click', handler, true), 0);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('click', handler, true);
+    };
+  }, [open]);
+
+  // Popup: portal → document.body, position:absolute + scrollY
   const popup = open ? createPortal(
-    <>
-      {/* Şeffaf backdrop — sadece popup dışına tıklanınca kapatır */}
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-        onClick={() => setOpen(false)}
-      />
-      {/* Picker popup */}
-      <div
-        ref={popRef}
-        style={{ position: 'absolute', top: pos.top, left: pos.left, width: POPUP_W, zIndex: 9999 }}
-        className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
-      >
-        {view === 'day'   && dayPanel}
-        {view === 'month' && monthPanel}
-        {view === 'year'  && yearPanel}
-      </div>
-    </>,
+    <div
+      ref={popRef}
+      style={{ position: 'absolute', top: pos.top, left: pos.left, width: POPUP_W, zIndex: 9999 }}
+      className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+    >
+      {view === 'day'   && dayPanel}
+      {view === 'month' && monthPanel}
+      {view === 'year'  && yearPanel}
+    </div>,
     document.body,
   ) : null;
 
