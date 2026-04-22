@@ -7,6 +7,7 @@ import type { TradeFile, Invoice } from '@/types/database';
 import { useCreateInvoice, useUpdateInvoice } from '@/hooks/useDocuments';
 import { invoiceService } from '@/services/invoiceService';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
+import { useCurrencies } from '@/hooks/useCurrencies';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers } from '@/hooks/useEntities';
 import { today, fCurrency } from '@/lib/formatters';
@@ -81,6 +82,7 @@ export function InvoiceModal({
   open, onOpenChange, file, invoice, invoiceType = 'commercial', onSwitchToTransaction,
 }: InvoiceModalProps) {
   const { t } = useTranslation('documents');
+  const currencies = useCurrencies();
   const { t: tc } = useTranslation('common');
 
   const { data: settings } = useSettings();
@@ -111,7 +113,7 @@ export function InvoiceModal({
   const [masrafOpen, setMasrafOpen] = useState(false);
   const [masrafTuru, setMasrafTuru] = useState('');
   const [masrafTutar, setMasrafTutar] = useState(0);
-  const [masrafCurrency, setMasrafCurrency] = useState<'USD' | 'EUR' | 'TRY'>('USD');
+  const [masrafCurrency, setMasrafCurrency] = useState<'USD' | 'EUR' | 'TRY' | 'AED'>('USD');
   const [masrafRate, setMasrafRate] = useState(1);
 
   // ── Form ────────────────────────────────────────────────────────────────
@@ -215,7 +217,7 @@ export function InvoiceModal({
 
   function handleOcrResult(result: OcrResult) {
     if (result.date) setValue('invoice_date', result.date);
-    if (result.currency && ['USD','EUR','TRY'].includes(result.currency))
+    if (result.currency && ['USD','EUR','TRY','AED'].includes(result.currency))
       setValue('currency', result.currency as InvoiceFormData['currency']);
     if (result.quantity_admt) setValue('quantity_admt', result.quantity_admt);
     if (result.unit_price)    setValue('unit_price',    result.unit_price);
@@ -363,9 +365,7 @@ export function InvoiceModal({
               </Field>
               <Field label={tc('form.currency')}>
                 <select className={sel} {...register('currency')}>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="TRY">TRY</option>
+                  {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </Field>
               <Field label={t('invoice.modal.incoterms')}>
@@ -513,9 +513,7 @@ export function InvoiceModal({
                     <div className="grid grid-cols-2 gap-3">
                       <Field label="Para Birimi">
                         <select className={sel} value={masrafCurrency} onChange={e => setMasrafCurrency(e.target.value as typeof masrafCurrency)}>
-                          <option value="USD">USD</option>
-                          <option value="EUR">EUR</option>
-                          <option value="TRY">TRY</option>
+                          {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </Field>
                       {masrafCurrency !== 'USD' && (

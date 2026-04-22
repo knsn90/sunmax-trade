@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { isAdmin } from '@/lib/permissions';
 import { useUsers, useCreateUser, useUpdateUserRole, useToggleUserActive, useUpdatePermissions, useDeleteUser } from '@/hooks/useUsers';
-import { USER_ROLES, PAGE_PERMISSIONS, type UserRole } from '@/types/enums';
+import { USER_ROLES, PAGE_PERMISSIONS, type UserRole, CURRENCY_CODES, CURRENCY_LABELS } from '@/types/enums';
 import type { Profile } from '@/types/database';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/form-elements';
@@ -85,7 +85,7 @@ export function SettingsPage() {
     resolver: zodResolver(companySettingsSchema),
   });
 
-  const { register, handleSubmit, formState: { errors }, reset } = form;
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = form;
 
   useEffect(() => {
     if (settings) {
@@ -98,6 +98,7 @@ export function SettingsPage() {
         email: settings.email,
         signatory: settings.signatory,
         default_currency: settings.default_currency,
+        active_currencies: settings.active_currencies?.length ? settings.active_currencies : [...CURRENCY_CODES],
         default_port_of_loading: settings.default_port_of_loading,
         default_incoterms: settings.default_incoterms,
         payment_terms: settings.payment_terms,
@@ -272,10 +273,41 @@ export function SettingsPage() {
                 <div>
                   <FieldLabel>{t('company.defaultCurrency')}</FieldLabel>
                   <NativeSelect {...register('default_currency')} className="h-9 text-sm">
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="TRY">TRY</option>
+                    {(watch('active_currencies') ?? [...CURRENCY_CODES]).map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
                   </NativeSelect>
+                </div>
+                <div>
+                  <FieldLabel>Aktif Para Birimleri</FieldLabel>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {CURRENCY_CODES.map(c => {
+                      const active = (watch('active_currencies') ?? [...CURRENCY_CODES]).includes(c);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            const current = watch('active_currencies') ?? [...CURRENCY_CODES];
+                            const next = active
+                              ? current.filter(x => x !== c)
+                              : [...current, c];
+                            if (next.length === 0) return;
+                            setValue('active_currencies', next, { shouldDirty: true });
+                          }}
+                          className={`px-3 h-8 rounded-xl text-[12px] font-semibold border transition-all ${
+                            active
+                              ? 'bg-gray-900 text-white border-gray-900'
+                              : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400 hover:text-gray-600'
+                          }`}
+                        >
+                          {c}
+                          <span className="ml-1 text-[10px] opacity-60">{CURRENCY_LABELS[c]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1.5">Seçilen para birimleri uygulamadaki tüm formlarda görünür.</p>
                 </div>
                 <div>
                   <FieldLabel>{t('company.defaultPort')}</FieldLabel>

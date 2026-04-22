@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useCurrencies } from '@/hooks/useCurrencies';
+import { CURRENCY_LABELS } from '@/types/enums';
 import { useKasalar, useCreateKasa, useUpdateKasa, useDeleteKasa } from '@/hooks/useKasalar';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -31,6 +33,7 @@ const EMPTY: KasaForm = {
 
 export function KasaManager() {
   const { accent } = useTheme();
+  const currencies = useCurrencies();
   const { data: kasalar = [], isLoading } = useKasalar();
   const { data: allTxns = [] } = useTransactions();
   const createKasa = useCreateKasa();
@@ -129,10 +132,7 @@ export function KasaManager() {
             </FormGroup>
             <FormGroup label="Para Birimi">
               <NativeSelect value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} className="bg-gray-100 border-0 focus:ring-0">
-                <option value="TRY">TRY — Türk Lirası</option>
-                <option value="USD">USD — Dolar</option>
-                <option value="EUR">EUR — Euro</option>
-                <option value="AED">AED — Dirhem</option>
+                {currencies.map(c => <option key={c} value={c}>{c}{CURRENCY_LABELS[c] ? ` — ${CURRENCY_LABELS[c]}` : ''}</option>)}
               </NativeSelect>
             </FormGroup>
           </FormRow>

@@ -13,6 +13,10 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export const CURRENCY_CODES = ['USD', 'EUR', 'TRY', 'AED', 'GBP'] as const;
 export type CurrencyCode = (typeof CURRENCY_CODES)[number];
 
+export const CURRENCY_LABELS: Record<string, string> = {
+  USD: 'Dolar', EUR: 'Euro', TRY: 'Türk Lirası', AED: 'Dirhem', GBP: 'Sterlin',
+};
+
 export const TRANSPORT_MODES = ['truck', 'railway', 'sea'] as const;
 export type TransportMode = (typeof TRANSPORT_MODES)[number];
 

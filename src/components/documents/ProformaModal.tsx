@@ -9,6 +9,7 @@ import { useCreateProforma, useUpdateProforma } from '@/hooks/useProformas';
 import { proformaService } from '@/services/proformaService';
 import { useCustomers } from '@/hooks/useEntities';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
+import { useCurrencies } from '@/hooks/useCurrencies';
 import { today, fCurrency } from '@/lib/formatters';
 import { formatProformaNo } from '@/lib/generators';
 import { parseProformaExcel, downloadProformaTemplate } from '@/lib/excelImport';
@@ -53,6 +54,7 @@ interface ProformaModalProps {
 
 export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaModalProps) {
   const { accent } = useTheme();
+  const currencies = useCurrencies();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
   const { data: allCustomers = [] } = useCustomers();
@@ -298,8 +300,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
             </Fld>
             <Fld label="Currency">
               <select className={sel} {...register('currency')}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
+                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </Fld>
           </div>

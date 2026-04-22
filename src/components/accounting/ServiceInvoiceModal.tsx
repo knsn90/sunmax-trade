@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useCurrencies } from '@/hooks/useCurrencies';
 import { useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { today, fCurrency, fN } from '@/lib/formatters';
@@ -85,6 +86,7 @@ interface Props {
 
 export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTradeFileId, onSwitchToTransaction }: Props) {
   const { accent } = useTheme();
+  const currencies = useCurrencies();
   const { data: allFiles = [] } = useAllTradeFiles(['sale', 'delivery', 'completed']);
   const createTxn = useCreateTransaction();
   const updateTxn = useUpdateTransaction();
@@ -438,11 +440,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Para Birimi">
                     <select className={sel} value={masrafCurrency} onChange={e => setMasrafCurrency(e.target.value as typeof masrafCurrency)}>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                      <option value="AED">AED</option>
-                      <option value="GBP">GBP</option>
-                      <option value="TRY">TRY</option>
+                      {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </Field>
                   {masrafCurrency !== 'USD' && (

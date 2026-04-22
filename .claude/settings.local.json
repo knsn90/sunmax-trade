@@ -161,7 +161,16 @@
       "Bash(sed -i '' \"s/, LoadingSpinner }/ }/g; s/{ LoadingSpinner, /{ /g; s/{ LoadingSpinner }//g\" src/pages/ContactsPage.tsx src/pages/CustomersPage.tsx src/pages/DocumentsPage.tsx)",
       "Bash(pdftotext \"/Users/saber/Library/CloudStorage/Dropbox/Family Room/01-SELÜLOZ/01-Müşteriler/Zarrin-Paper & Board Trading/P07-2026-02 IP/01-packing-Ls SUN-260226-14.pdf\" -)",
       "Bash(pdftoppm -r 150 -png \"/Users/saber/Library/CloudStorage/Dropbox/Family Room/01-SELÜLOZ/01-Müşteriler/Zarrin-Paper & Board Trading/P07-2026-02 IP/01-packing-Ls SUN-260226-14.pdf\" /tmp/pl_sample)",
-      "Read(//private/tmp/**)"
+      "Read(//private/tmp/**)",
+      "Bash(sed -n '448,475p' /Users/saber/Downloads/sunmax-trade/src/pages/PipelinePage.tsx)",
+      "Bash(sed -n '435,462p' /Users/saber/Downloads/sunmax-trade/src/pages/TradeFilesPage.tsx)",
+      "Bash(sed -n '464,500p' /Users/saber/Downloads/sunmax-trade/src/pages/AccountingPage.tsx)",
+      "Bash(sed -n '113,145p' /Users/saber/Downloads/sunmax-trade/src/pages/DashboardPage.tsx)",
+      "Bash(sed -n '280,300p' /Users/saber/Downloads/sunmax-trade/src/pages/ContactsPage.tsx)",
+      "Bash(sed -n '125,150p' /Users/saber/Downloads/sunmax-trade/src/pages/DocumentsPage.tsx)",
+      "Bash(sed -n '567,600p' /Users/saber/Downloads/sunmax-trade/src/pages/PriceListPage.tsx)",
+      "Bash(sed -n '484,510p' /Users/saber/Downloads/sunmax-trade/src/pages/FinancialReportsPage.tsx)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ]
   }
 }

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useBankAccounts, useUpsertBankAccount } from '@/hooks/useSettings';
+import { useCurrencies } from '@/hooks/useCurrencies';
+import { CURRENCY_LABELS } from '@/types/enums';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTheme } from '@/contexts/ThemeContext';
 import { fCurrency, fDate } from '@/lib/formatters';
@@ -58,6 +60,7 @@ function isMoneyIn(txnType: string, partyType: string): boolean {
 
 export function BankAccountManager() {
   const { accent } = useTheme();
+  const currencies = useCurrencies();
   const { data: accounts = [], isLoading } = useBankAccounts();
   const { data: allTxns = [] } = useTransactions();
   const upsert = useUpsertBankAccount();
@@ -162,11 +165,7 @@ export function BankAccountManager() {
             </FormGroup>
             <FormGroup label="Para Birimi">
               <NativeSelect value={form.currency} onChange={f('currency')} className="bg-gray-100 border-0 focus:ring-0">
-                <option value="USD">USD — Dolar</option>
-                <option value="EUR">EUR — Euro</option>
-                <option value="TRY">TRY — Türk Lirası</option>
-                <option value="AED">AED — Dirhem</option>
-                <option value="GBP">GBP — Sterlin</option>
+                {currencies.map(c => <option key={c} value={c}>{c}{CURRENCY_LABELS[c] ? ` — ${CURRENCY_LABELS[c]}` : ''}</option>)}
               </NativeSelect>
             </FormGroup>
           </FormRow>

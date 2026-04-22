@@ -259,6 +259,7 @@ export const companySettingsSchema = z.object({
   email: z.string().email().or(z.literal('')).default(''),
   signatory: z.string().max(200).default(''),
   default_currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
+  active_currencies: z.array(z.string()).default(['USD', 'EUR', 'TRY', 'AED', 'GBP']),
   default_port_of_loading: z.string().default('MERSIN, TURKEY'),
   default_incoterms: z.string().default('CPT'),
   payment_terms: z.string().default(''),

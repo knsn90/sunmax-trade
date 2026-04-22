@@ -6,6 +6,7 @@ import type { TradeFile } from '@/types/database';
 import { useSuppliers } from '@/hooks/useEntities';
 import { useConvertToSale, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useSettings } from '@/hooks/useSettings';
+import { useCurrencies } from '@/hooks/useCurrencies';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,7 @@ const PAYMENT_TERMS_OPTIONS = [
 ];
 
 export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSaleModalProps) {
+  const currencies = useCurrencies();
   const { data: suppliers = [] } = useSuppliers();
   const { data: settings } = useSettings();
   const convertToSale = useConvertToSale();
@@ -221,9 +223,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
               </Fld>
               <Fld label="Para Birimi">
                 <select {...register('purchase_currency')} className={cn(sel, 'bg-blue-100/60')}>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="TRY">TRY</option>
+                  {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                   <option value="AED">AED</option>
                 </select>
               </Fld>
@@ -237,10 +237,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
               </Fld>
               <Fld label="Para Birimi">
                 <select {...register('sale_currency')} className={cn(sel, 'bg-green-100/60')}>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="TRY">TRY</option>
-                  <option value="AED">AED</option>
+                  {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </Fld>
             </div>

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useKasalar } from '@/hooks/useKasalar';
 import { useBankAccounts } from '@/hooks/useSettings';
+import { useCurrencies } from '@/hooks/useCurrencies';
 import { useCreateTransfer } from '@/hooks/useTransfers';
 import { useTheme } from '@/contexts/ThemeContext';
 import { today } from '@/lib/formatters';
@@ -43,6 +44,7 @@ const mo = 'bg-gray-100 border-0 focus:ring-0';
 
 export function TransferModal({ open, onOpenChange }: Props) {
   const { accent } = useTheme();
+  const currencies = useCurrencies();
   const { data: kasalar = [] } = useKasalar();
   const { data: bankAccounts = [] } = useBankAccounts();
   const createTransfer = useCreateTransfer();
@@ -207,11 +209,7 @@ export function TransferModal({ open, onOpenChange }: Props) {
           <FormRow cols={isNonUSD ? 3 : 2}>
             <FormGroup label="Para Birimi">
               <NativeSelect {...register('currency')} className={mo}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="AED">AED</option>
-                <option value="TRY">TRY</option>
-                <option value="GBP">GBP</option>
+                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
               </NativeSelect>
             </FormGroup>
             <FormGroup label="Tutar *" error={errors.amount?.message}>

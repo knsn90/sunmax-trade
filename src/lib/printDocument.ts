@@ -213,7 +213,7 @@ const BASE_CSS = `
 
   @page {
     size: A4 portrait;
-    margin: 12mm 14mm;
+    margin: 0;
   }
   @media print {
     html, body {
@@ -238,7 +238,7 @@ const BASE_CSS = `
       box-shadow: none !important;
       width: 100% !important;
       min-width: 0 !important;
-      padding: 0 !important;
+      padding: 12mm 14mm !important;
       margin: 0 !important;
       border-radius: 0 !important;
     }

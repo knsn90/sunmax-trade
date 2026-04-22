@@ -58,6 +58,7 @@ export interface CompanySettings extends Timestamps {
   email: string;
   signatory: string;
   default_currency: CurrencyCode;
+  active_currencies: string[];
   default_port_of_loading: string;
   default_incoterms: string;
   payment_terms: string;

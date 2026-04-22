@@ -8,6 +8,7 @@ import { useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
 import { useKasalar } from '@/hooks/useKasalar';
 import { useBankAccounts } from '@/hooks/useSettings';
+import { useCurrencies } from '@/hooks/useCurrencies';
 import { useCreateTransfer } from '@/hooks/useTransfers';
 import { today, toUSD } from '@/lib/formatters';
 import {
@@ -133,6 +134,7 @@ export function TransactionModal({
   open, onOpenChange, transaction, defaultType, defaultTradeFileId, onSaleInvRedirect, onPurchaseInvRedirect, onSvcInvRedirect,
 }: TransactionModalProps) {
   const { t } = useTranslation('accounting');
+  const currencies = useCurrencies();
   const { t: tc } = useTranslation('common');
   const inp = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-2 focus:ring-red-500/20 w-full';
   const sel = 'bg-[#f2f4f7] rounded-xl px-4 py-3 text-[13px] font-medium text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
@@ -587,10 +589,7 @@ export function TransactionModal({
               <div className={`grid gap-3 ${isNonUSD ? 'grid-cols-4' : 'grid-cols-2'}`}>
                 <Fld label={tc('form.currency')}>
                   <select {...register('currency')} className={sel}>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="AED">AED</option>
-                    <option value="TRY">TRY</option>
+                    {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
@@ -678,10 +677,7 @@ export function TransactionModal({
               <div className={`grid gap-3 ${isNonUSD ? 'grid-cols-4' : 'grid-cols-2'}`}>
                 <Fld label={tc('form.currency')}>
                   <select {...register('currency')} className={sel}>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="AED">AED</option>
-                    <option value="TRY">TRY</option>
+                    {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
@@ -790,10 +786,7 @@ export function TransactionModal({
               <div className={`grid gap-3 ${isNonUSD ? 'grid-cols-4' : 'grid-cols-2'}`}>
                 <Fld label={tc('form.currency')}>
                   <select {...register('currency')} className={sel}>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="AED">AED</option>
-                    <option value="TRY">TRY</option>
+                    {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </Fld>
                 <Fld label={`${t('transaction.modal.amount')} *`}>
@@ -982,11 +975,7 @@ export function TransactionModal({
                         </Fld>
                         <Fld label="Para Birimi">
                           <select {...register('masraf_currency')} className={sel}>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="TRY">TRY</option>
-                            <option value="AED">AED</option>
-                            <option value="GBP">GBP</option>
+                            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </Fld>
                       </div>
