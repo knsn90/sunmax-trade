@@ -273,7 +273,7 @@ export function MonoDatePicker({
         ref={btnRef}
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-left flex items-center justify-between border-0 shadow-none focus:outline-none hover:bg-gray-200 transition-colors"
+        className="w-full bg-[#f2f4f7] rounded-xl h-[46px] px-4 text-[13px] font-medium text-left flex items-center justify-between border border-transparent focus:outline-none hover:bg-gray-200 transition-colors"
       >
         <span className={display ? 'text-gray-900' : 'text-gray-400'}>
           {display || placeholder}
