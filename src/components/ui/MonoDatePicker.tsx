@@ -7,6 +7,9 @@ const TR_MONTHS = [
   'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
   'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık',
 ];
+const TR_MONTHS_SHORT = [
+  'Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara',
+];
 const TR_DAYS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
 const POPUP_W = 280;
@@ -27,6 +30,12 @@ function formatDisplay(value: string) {
   const [y, m, d] = value.split('-').map(Number);
   if (!y || !m || !d) return '';
   return `${d} ${TR_MONTHS[m - 1]} ${y}`;
+}
+function formatShort(value: string) {
+  if (!value) return '';
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${d} ${TR_MONTHS_SHORT[m - 1]} ${y}`;
 }
 function firstDayOfMonth(year: number, month: number) {
   const raw = new Date(year, month - 1, 1).getDay();
@@ -172,6 +181,7 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
 
   const cells   = buildCells(vy, vm);
   const display = formatDisplay(value);
+  const displayShort = formatShort(value);
 
   const navBtn = 'w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors shrink-0';
   const selBtn = 'px-2 py-0.5 rounded-lg text-[13px] font-bold text-gray-900 hover:bg-gray-100 transition-colors';
@@ -313,12 +323,12 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
           if (!open) setPos(calcPos(e.currentTarget));
           setOpen(v => !v);
         }}
-        className="w-full bg-[#f2f4f7] rounded-xl h-[46px] px-4 text-[13px] font-medium text-left flex items-center justify-between border border-transparent focus:outline-none hover:bg-gray-200 transition-colors"
+        className="w-full bg-[#f2f4f7] rounded-xl h-[46px] px-3 text-[12px] font-medium text-left flex items-center justify-between border border-transparent focus:outline-none hover:bg-gray-200 transition-colors overflow-hidden"
       >
-        <span className={display ? 'text-gray-900' : 'text-gray-400'}>
-          {display || placeholder}
+        <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${displayShort ? 'text-gray-900' : 'text-gray-400'}`}>
+          {displayShort || placeholder}
         </span>
-        <Calendar className="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2" />
+        <Calendar className="h-3.5 w-3.5 text-gray-400 shrink-0 ml-1.5" />
       </button>
 
       {/* Popup — position:fixed, aynı DOM ağacında (portal yok) */}
