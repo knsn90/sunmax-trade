@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -17,10 +17,10 @@ const POPUP_W = 280;
 const POPUP_H = 370;
 const MARGIN  = 8;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function toStr(y: number, m: number, d: number) {
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 function todayStr() {
   const t = new Date();
@@ -67,54 +67,43 @@ function buildCells(vy: number, vm: number): Cell[] {
   return cells;
 }
 
-// ─── Pozisyon hesabı (position: absolute + scrollY/scrollX) ──────────────────
+// ─── Pozisyon — viewport-relative (position: fixed) ──────────────────────────
 
-interface PopupPos { top: number; left: number }
+interface Pos { top: number; left: number }
 
-function calcPos(btn: HTMLButtonElement): PopupPos {
+function calcPos(btn: HTMLButtonElement): Pos {
   const r  = btn.getBoundingClientRect();
   const sw = window.innerWidth;
   const sh = window.innerHeight;
-  const sy = window.scrollY;
-  const sx = window.scrollX;
 
-  // Dikey: aşağı sığmazsa yukarı
-  let top: number;
-  const spaceBelow = sh - r.bottom;
-  const spaceAbove = r.top;
-  if (spaceBelow >= POPUP_H || spaceBelow >= spaceAbove) {
-    top = r.bottom + sy + MARGIN;
-  } else {
-    top = r.top + sy - POPUP_H - MARGIN;
-  }
-  top = Math.max(sy + MARGIN, Math.min(top, sy + sh - POPUP_H - MARGIN));
+  let top = r.bottom + MARGIN;
+  if (top + POPUP_H > sh - MARGIN) top = r.top - POPUP_H - MARGIN;
+  top = Math.max(MARGIN, Math.min(top, sh - POPUP_H - MARGIN));
 
-  // Yatay: sağa taşarsa sola kaydır
-  let left = r.left + sx;
-  if (left + POPUP_W > sx + sw - MARGIN) {
-    left = sx + sw - POPUP_W - MARGIN;
-  }
-  left = Math.max(sx + MARGIN, left);
+  let left = r.left;
+  if (left + POPUP_W > sw - MARGIN) left = sw - POPUP_W - MARGIN;
+  left = Math.max(MARGIN, left);
 
   return { top, left };
 }
 
-// ─── MonoDatePicker ───────────────────────────────────────────────────────────
+// ─── Props ───────────────────────────────────────────────────────────────────
 
 export interface MonoDatePickerProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** @deprecated artık gerekmiyor */
-  dropUp?: boolean;
+  dropUp?: boolean; // @deprecated
 }
 
 type View = 'day' | 'month' | 'year';
 
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: MonoDatePickerProps) {
-  const today   = todayStr();
-  const btnRef  = useRef<HTMLButtonElement>(null);
-  const popRef  = useRef<HTMLDivElement>(null);
+  const uid    = useId();
+  const today  = todayStr();
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   const initView = () => {
     if (value) {
@@ -129,18 +118,16 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
   const [vy,      setVy]      = useState(() => initView().vy);
   const [vm,      setVm]      = useState(() => initView().vm);
   const [pending, setPending] = useState(value);
-  const [pos,     setPos]     = useState<PopupPos>({ top: 0, left: 0 });
+  const [pos,     setPos]     = useState<Pos>({ top: 0, left: 0 });
   const [view,    setView]    = useState<View>('day');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
 
-  const recalc = useCallback(() => {
-    if (btnRef.current) setPos(calcPos(btnRef.current));
-  }, []);
-
+  // Sync pending with external value changes
   useEffect(() => { setPending(value); }, [value]);
 
+  // Reset view state when popup opens
   useEffect(() => {
     if (!open) return;
     const iv = initView();
@@ -150,16 +137,35 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Reposition on scroll/resize
   useEffect(() => {
     if (!open) return;
+    const recalc = () => { if (btnRef.current) setPos(calcPos(btnRef.current)); };
     window.addEventListener('scroll', recalc, true);
     window.addEventListener('resize', recalc);
     return () => {
       window.removeEventListener('scroll', recalc, true);
       window.removeEventListener('resize', recalc);
     };
-  }, [open, recalc]);
+  }, [open]);
 
+  // Dışarı tıklayınca kapat.
+  // composedPath() → tıklanan elementin tüm DOM ataları listesi.
+  // Popup div'i veya trigger btn listede varsa → içeride → kapatma.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const path = e.composedPath() as Node[];
+      const popup = document.getElementById(uid);
+      const btn   = btnRef.current;
+      const insidePopup = popup && path.includes(popup);
+      const insideBtn   = btn   && path.includes(btn);
+      if (!insidePopup && !insideBtn) setOpen(false);
+    };
+    // setTimeout → açılış click'ini atla
+    const id = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+    return () => { clearTimeout(id); document.removeEventListener('mousedown', handler); };
+  }, [open, uid]);
 
   function confirm() { onChange(pending); setOpen(false); }
   function cancel()  { setPending(value); setOpen(false); }
@@ -174,13 +180,12 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
   }
 
   const cells        = buildCells(vy, vm);
-  const display      = formatDisplay(value);
   const displayShort = formatShort(value);
 
   const navBtn = 'w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors shrink-0';
   const selBtn = 'px-2 py-0.5 rounded-lg text-[13px] font-bold text-gray-900 hover:bg-gray-100 transition-colors';
 
-  // ── Paneller ──────────────────────────────────────────────────────────────
+  // ── Gün paneli ───────────────────────────────────────────────────────────
 
   const dayPanel = (
     <>
@@ -220,15 +225,13 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
                 setPending(str);
                 if (!cell.cur) { setVy(cell.year); setVm(cell.month); }
               }}
-              className={`h-9 w-full rounded-full text-[13px] font-medium transition-colors flex items-center justify-center
-                ${isSelected
-                  ? 'bg-red-600 text-white font-bold'
-                  : isToday
-                  ? 'text-red-600 font-bold hover:bg-red-50'
-                  : !cell.cur
-                  ? 'text-gray-300 hover:bg-gray-50'
-                  : 'text-gray-800 hover:bg-gray-100'
-                }`}
+              className={[
+                'h-9 w-full rounded-full text-[13px] font-medium transition-colors flex items-center justify-center',
+                isSelected ? 'bg-red-600 text-white font-bold'
+                  : isToday ? 'text-red-600 font-bold hover:bg-red-50'
+                  : !cell.cur ? 'text-gray-300 hover:bg-gray-50'
+                  : 'text-gray-800 hover:bg-gray-100',
+              ].join(' ')}
             >
               {cell.day}
             </button>
@@ -254,6 +257,8 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
     </>
   );
 
+  // ── Ay paneli ─────────────────────────────────────────────────────────────
+
   const monthPanel = (
     <>
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-50">
@@ -271,8 +276,10 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
             key={i}
             type="button"
             onClick={() => { setVm(i + 1); setView('day'); }}
-            className={`h-9 rounded-xl text-[12px] font-semibold transition-colors
-              ${vm === i + 1 ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+            className={[
+              'h-9 rounded-xl text-[12px] font-semibold transition-colors',
+              vm === i + 1 ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100',
+            ].join(' ')}
           >
             {name}
           </button>
@@ -280,6 +287,8 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
       </div>
     </>
   );
+
+  // ── Yıl paneli ────────────────────────────────────────────────────────────
 
   const yearPanel = (
     <>
@@ -292,8 +301,10 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
             key={y}
             type="button"
             onClick={() => { setVy(y); setView('day'); }}
-            className={`h-9 rounded-xl text-[13px] font-semibold transition-colors
-              ${vy === y ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+            className={[
+              'h-9 rounded-xl text-[13px] font-semibold transition-colors',
+              vy === y ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100',
+            ].join(' ')}
           >
             {y}
           </button>
@@ -302,29 +313,14 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
     </>
   );
 
-  // Dışarı tıklayınca kapat — capture fazında listener
-  // (e.target daima gerçek hedef element; popup içiyse kapatma)
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!btnRef.current?.contains(t) && !popRef.current?.contains(t)) {
-        setOpen(false);
-      }
-    };
-    // setTimeout: açılış click'inin listener'ı tetiklememesi için
-    const id = setTimeout(() => document.addEventListener('click', handler, true), 0);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('click', handler, true);
-    };
-  }, [open]);
+  // ── Portal popup ──────────────────────────────────────────────────────────
+  // position:fixed → viewport-relative (dialog transform'undan etkilenmez)
+  // id={uid} → mousedown handler'da composedPath ile tanınır
 
-  // Popup: portal → document.body, position:absolute + scrollY
   const popup = open ? createPortal(
     <div
-      ref={popRef}
-      style={{ position: 'absolute', top: pos.top, left: pos.left, width: POPUP_W, zIndex: 9999 }}
+      id={uid}
+      style={{ position: 'fixed', top: pos.top, left: pos.left, width: POPUP_W, zIndex: 9999 }}
       className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
     >
       {view === 'day'   && dayPanel}
@@ -333,6 +329,8 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
     </div>,
     document.body,
   ) : null;
+
+  // ── Trigger ───────────────────────────────────────────────────────────────
 
   return (
     <div className="relative">
