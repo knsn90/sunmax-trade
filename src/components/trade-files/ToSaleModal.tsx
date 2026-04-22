@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { saleConversionSchema, type SaleConversionFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
 import { useSuppliers } from '@/hooks/useEntities';
@@ -10,6 +11,29 @@ import { useCurrencies } from '@/hooks/useCurrencies';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { cn } from '@/lib/utils';
+
+const MAX_SUPPLIERS = 5;
+
+interface SupplierRow {
+  uid: string;
+  supplier_id: string;
+  quantity_mt: string;
+  purchase_price: string;
+  currency: string;
+  fx_rate: string;
+}
+
+function makeRow(overrides: Partial<SupplierRow> = {}): SupplierRow {
+  return {
+    uid: crypto.randomUUID(),
+    supplier_id: '',
+    quantity_mt: '',
+    purchase_price: '',
+    currency: 'USD',
+    fx_rate: '1',
+    ...overrides,
+  };
+}
 
 // ── Mono stil sabitleri ───────────────────────────────────────────────────────
 const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
@@ -92,6 +116,48 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   const isDownpayment    = paymentTerms === 'Downpayment';
   const tonnage = Number(file?.tonnage_mt ?? 0);
 
+  // ── Çoklu tedarikçi satırları (UI önizleme; backend şu an ilk satırı kullanır) ──
+  const baseCurrency = defCurrency;
+  const [rows, setRows] = useState<SupplierRow[]>([makeRow({ currency: baseCurrency })]);
+
+  function addRow() {
+    if (rows.length >= MAX_SUPPLIERS) return;
+    setRows((prev) => [...prev, makeRow({ currency: baseCurrency })]);
+  }
+  function removeRow(uid: string) {
+    if (rows.length <= 1) return;
+    setRows((prev) => prev.filter((r) => r.uid !== uid));
+  }
+  function updateRow(uid: string, patch: Partial<SupplierRow>) {
+    setRows((prev) => prev.map((r) => (r.uid === uid ? { ...r, ...patch } : r)));
+  }
+
+  // İlk satırı forma yansıt — backend entegrasyonu gelene kadar tek kayıt olarak gider
+  useEffect(() => {
+    const first = rows[0];
+    if (!first) return;
+    setValue('supplier_id', first.supplier_id);
+    if (first.purchase_price !== '') setValue('purchase_price', Number(first.purchase_price));
+    setValue('purchase_currency', first.currency as SaleConversionFormData['purchase_currency']);
+  }, [rows, setValue]);
+
+  // Toplam & özet
+  const supplierTotals = useMemo(() => {
+    let totalMt = 0;
+    let totalCostBase = 0;
+    for (const r of rows) {
+      const mt = Number(r.quantity_mt) || 0;
+      const price = Number(r.purchase_price) || 0;
+      const fx = r.currency === baseCurrency ? 1 : Number(r.fx_rate) || 0;
+      totalMt += mt;
+      totalCostBase += mt * price * fx;
+    }
+    const weightedAvg = totalMt > 0 ? totalCostBase / totalMt : 0;
+    const diff = Math.round((totalMt - tonnage) * 1000) / 1000;
+    const matches = tonnage > 0 && Math.abs(diff) < 0.001;
+    return { totalMt, totalCostBase, weightedAvg, diff, matches };
+  }, [rows, tonnage, baseCurrency]);
+
   useEffect(() => {
     if (advFocused.current) return;
     const base = Number(sellingPrice) * tonnage;
@@ -145,6 +211,14 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         proforma_ref: file.proforma_ref ?? '',
         register_no: file.register_no ?? file.septi_ref ?? '',
       });
+      setRows([
+        makeRow({
+          supplier_id: file.supplier_id ?? '',
+          quantity_mt: file.tonnage_mt ? String(file.tonnage_mt) : '',
+          purchase_price: file.purchase_price ? String(file.purchase_price) : '',
+          currency: (file.purchase_currency ?? file.currency ?? 'USD') as string,
+        }),
+      ]);
     } else if (open && !editMode) {
       reset({
         supplier_id: '',
@@ -165,6 +239,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         proforma_ref: '',
         register_no: '',
       });
+      setRows([makeRow({ currency: defCurrency })]);
     }
   }, [open, editMode, file, settings, reset, defCurrency]);
 
@@ -196,14 +271,8 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         {/* ── Form ────────────────────────────────────────────────────────── */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
 
-          {/* Tedarikçi · Taşıma */}
+          {/* Taşıma */}
           <div className="grid grid-cols-2 gap-3">
-            <Fld label="Tedarikçi *" error={errors.supplier_id?.message}>
-              <select {...register('supplier_id')} className={sel}>
-                <option value="">— Seçin —</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </Fld>
             <Fld label="Taşıma Şekli">
               <select {...register('transport_mode')} className={sel}>
                 <option value="truck">Kara (Tır)</option>
@@ -211,27 +280,180 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
                 <option value="sea">Deniz</option>
               </select>
             </Fld>
+            <div />
           </div>
 
-          {/* Alım · Satış fiyat kartları */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* Alım */}
-            <div className="bg-blue-50/60 rounded-xl p-3 space-y-2.5">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-blue-600">📦 Alım (Tedarikçi)</div>
-              <Fld label="Alım Fiyatı (MT) *" error={errors.purchase_price?.message}>
-                <input type="number" step="0.01" {...register('purchase_price')} className={cn(inp, 'bg-blue-100/60')} />
-              </Fld>
-              <Fld label="Para Birimi">
-                <select {...register('purchase_currency')} className={cn(sel, 'bg-blue-100/60')}>
-                  {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-                  <option value="AED">AED</option>
-                </select>
-              </Fld>
+          {/* ── Alım Kartı (Çoklu Tedarikçi) ──────────────────────────────────── */}
+          <div className="bg-blue-50/60 rounded-xl p-3 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-blue-600">
+                📦 Alım (Tedarikçiler)
+              </div>
+              <div className="text-[9px] text-blue-700/70 font-semibold">
+                {rows.length} / {MAX_SUPPLIERS}
+              </div>
             </div>
 
-            {/* Satış */}
-            <div className="bg-green-50/60 rounded-xl p-3 space-y-2.5">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-green-600">💰 Satış (Müşteri)</div>
+            {errors.supplier_id && rows[0]?.supplier_id === '' && (
+              <div className="text-[10px] text-red-500">{errors.supplier_id.message}</div>
+            )}
+
+            {rows.map((row, idx) => {
+              const isBase = row.currency === baseCurrency;
+              const lineTotalCur = (Number(row.quantity_mt) || 0) * (Number(row.purchase_price) || 0);
+              const lineTotalBase = lineTotalCur * (isBase ? 1 : Number(row.fx_rate) || 0);
+
+              return (
+                <div key={row.uid} className="bg-white rounded-lg p-2.5 border border-blue-100/70">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white text-[9px] font-bold">
+                        {idx + 1}
+                      </div>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                        Tedarikçi {idx + 1}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(row.uid)}
+                      disabled={rows.length <= 1}
+                      className="text-[10px] text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-12 gap-1.5">
+                    <div className="col-span-4">
+                      <Lbl>Tedarikçi {idx === 0 && '*'}</Lbl>
+                      <select
+                        className={cn(sel, 'bg-blue-50')}
+                        value={row.supplier_id}
+                        onChange={(e) => updateRow(row.uid, { supplier_id: e.target.value })}
+                      >
+                        <option value="">— Seçin —</option>
+                        {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <Lbl>MT</Lbl>
+                      <input
+                        type="number" step="0.001" min="0" placeholder="25"
+                        className={cn(inp, 'bg-blue-50')}
+                        value={row.quantity_mt}
+                        onChange={(e) => updateRow(row.uid, { quantity_mt: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Lbl>Fiyat {idx === 0 && '*'}</Lbl>
+                      <input
+                        type="number" step="0.01" min="0" placeholder="720"
+                        className={cn(inp, 'bg-blue-50')}
+                        value={row.purchase_price}
+                        onChange={(e) => updateRow(row.uid, { purchase_price: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Lbl>Kur</Lbl>
+                      <select
+                        className={cn(sel, 'bg-blue-50')}
+                        value={row.currency}
+                        onChange={(e) => updateRow(row.uid, {
+                          currency: e.target.value,
+                          fx_rate: e.target.value === baseCurrency ? '1' : row.fx_rate,
+                        })}
+                      >
+                        {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <Lbl>{isBase ? 'Kur' : `→ ${baseCurrency}`}</Lbl>
+                      <input
+                        type="number" step="0.0001" min="0"
+                        disabled={isBase}
+                        placeholder="1.08"
+                        className={cn(inp, 'bg-blue-50', isBase && 'opacity-40 cursor-not-allowed')}
+                        value={row.fx_rate}
+                        onChange={(e) => updateRow(row.uid, { fx_rate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {lineTotalCur > 0 && (
+                    <div className="mt-1.5 flex items-center justify-end gap-2 text-[9px]">
+                      <span className="text-gray-400">
+                        {Number(row.quantity_mt).toLocaleString()} MT × {Number(row.purchase_price).toLocaleString()} {row.currency}
+                      </span>
+                      <span className="font-mono font-bold text-gray-700">
+                        = {lineTotalCur.toLocaleString('en-US', { minimumFractionDigits: 2 })} {row.currency}
+                      </span>
+                      {!isBase && (Number(row.fx_rate) || 0) > 0 && (
+                        <span className="font-mono font-bold text-blue-700">
+                          ≈ {lineTotalBase.toLocaleString('en-US', { minimumFractionDigits: 2 })} {baseCurrency}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={addRow}
+              disabled={rows.length >= MAX_SUPPLIERS}
+              className="w-full h-8 rounded-lg border-2 border-dashed border-blue-300 text-[11px] font-semibold text-blue-700 hover:bg-blue-100/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Tedarikçi Ekle {rows.length >= MAX_SUPPLIERS && '(maks. 5)'}
+            </button>
+
+            {/* Özet bandı */}
+            <div className="bg-white rounded-lg px-3 py-2 border border-blue-100/70 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                {supplierTotals.matches ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                )}
+                <span className="text-[10px] font-semibold text-gray-500">Toplam:</span>
+                <span className={cn('text-[11px] font-extrabold font-mono', supplierTotals.matches ? 'text-green-700' : 'text-amber-700')}>
+                  {supplierTotals.totalMt.toLocaleString()} / {tonnage} MT
+                </span>
+                {!supplierTotals.matches && tonnage > 0 && (
+                  <span className="text-[9px] text-amber-600 font-semibold">
+                    ({supplierTotals.diff > 0 ? '+' : ''}{supplierTotals.diff})
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">Ort. Birim</div>
+                  <div className="text-[11px] font-extrabold text-gray-900 font-mono">
+                    {supplierTotals.weightedAvg.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {baseCurrency}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">Toplam</div>
+                  <div className="text-[12px] font-extrabold font-mono text-blue-700">
+                    {supplierTotals.totalCostBase.toLocaleString('en-US', { minimumFractionDigits: 2 })} {baseCurrency}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {rows.length > 1 && (
+              <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                <strong>Not:</strong> Şu an yalnızca 1. tedarikçi kayıt edilir. Çoklu tedarikçi kaydı için backend güncellemesi bekleniyor.
+              </div>
+            )}
+          </div>
+
+          {/* ── Satış Kartı ─────────────────────────────────────────────────── */}
+          <div className="bg-green-50/60 rounded-xl p-3 space-y-2.5">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-green-600">💰 Satış (Müşteri)</div>
+            <div className="grid grid-cols-2 gap-3">
               <Fld label="Satış Fiyatı (MT) *" error={errors.selling_price?.message}>
                 <input type="number" step="0.01" {...register('selling_price')} className={cn(inp, 'bg-green-100/60')} />
               </Fld>
