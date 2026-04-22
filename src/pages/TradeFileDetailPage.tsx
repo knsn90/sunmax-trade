@@ -1244,7 +1244,14 @@ export function TradeFileDetailPage() {
             <>
               <KV label={t('detail.saleDetails.salePrice')} value={file.selling_price ? `${fCurrency(file.selling_price)}/MT` : '—'} bold />
               <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
-              <KV label={t('detail.saleDetails.supplier')} value={file.supplier?.name ?? '—'} />
+              <KV
+                label={t('detail.saleDetails.supplier')}
+                value={
+                  (file.suppliers?.length ?? 0) > 1
+                    ? `${file.suppliers!.length} tedarikçi`
+                    : (file.supplier?.name ?? '—')
+                }
+              />
               <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
               {file.eta && <KV label={t('detail.saleDetails.eta')} value={fDate(file.eta)} />}
               {file.revised_eta && (
@@ -1826,15 +1833,46 @@ export function TradeFileDetailPage() {
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
                       <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.purchase_price)}/MT</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
-                      {file.supplier ? (
-                        <div className="flex items-center gap-2">
-                          <EntityAvatar name={file.supplier.name} logoUrl={file.supplier.logo_url} size="xs" shape="square" />
-                          <span className="text-[13px] font-bold text-gray-900">{file.supplier.name}</span>
+                    {(file.suppliers?.length ?? 0) > 1 ? (
+                      <div className="py-2 border-b border-dashed border-gray-100">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
+                          <span className="text-[10px] font-semibold text-gray-400">{file.suppliers!.length} tedarikçi</span>
                         </div>
-                      ) : <span className="text-[13px] font-bold text-gray-900">—</span>}
-                    </div>
+                        <div className="space-y-1">
+                          {[...file.suppliers!].sort((a, b) => a.position - b.position).map((s) => (
+                            <div key={s.id} className="flex items-center justify-between bg-gray-50 rounded-md px-2 py-1.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                                  {s.position}
+                                </div>
+                                {s.supplier && (
+                                  <EntityAvatar name={s.supplier.name} logoUrl={s.supplier.logo_url} size="xs" shape="square" />
+                                )}
+                                <span className="text-[12px] font-semibold text-gray-900 truncate">
+                                  {s.supplier?.name ?? '—'}
+                                </span>
+                              </div>
+                              <div className="text-right shrink-0 ml-2">
+                                <div className="text-[11px] font-mono font-bold text-gray-900">
+                                  {s.quantity_mt} MT · {fCurrency(s.purchase_price)}/{s.currency}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                        <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
+                        {file.supplier ? (
+                          <div className="flex items-center gap-2">
+                            <EntityAvatar name={file.supplier.name} logoUrl={file.supplier.logo_url} size="xs" shape="square" />
+                            <span className="text-[13px] font-bold text-gray-900">{file.supplier.name}</span>
+                          </div>
+                        ) : <span className="text-[13px] font-bold text-gray-900">—</span>}
+                      </div>
+                    )}
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.incoterms')}</span>
                       <span className="text-[13px] font-bold text-gray-900">{`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'}</span>

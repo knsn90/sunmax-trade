@@ -190,6 +190,23 @@ export interface PriceList {
   supplier?: Supplier | null;
 }
 
+// ─── Trade File Suppliers (çoklu tedarikçi ilişki tablosu) ──────────────────
+
+export interface TradeFileSupplier extends Timestamps {
+  id: string;
+  tenant_id: string;
+  trade_file_id: string;
+  supplier_id: string;
+  position: number;
+  quantity_mt: number;
+  purchase_price: number;
+  currency: CurrencyCode;
+  fx_rate: number;
+  freight_cost: number;
+  notes: string;
+  supplier?: Supplier;
+}
+
 // ─── Trade Files ────────────────────────────────────────────────────────────
 
 export interface TradeFile extends Timestamps {
@@ -254,6 +271,7 @@ export interface TradeFile extends Timestamps {
   invoices?: Invoice[];
   packing_lists?: PackingList[];
   proformas?: Proforma[];
+  suppliers?: TradeFileSupplier[];
   // Alt partiler (detail sorgusunda gelir)
   batches?: (Pick<TradeFile, 'id' | 'file_no' | 'batch_no' | 'status' | 'tonnage_mt' | 'transport_mode' | 'eta'> & {
     packing_lists?: { id: string; packing_list_no: string; doc_status: string; total_admt: number | null }[];

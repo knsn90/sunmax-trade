@@ -211,14 +211,29 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         proforma_ref: file.proforma_ref ?? '',
         register_no: file.register_no ?? file.septi_ref ?? '',
       });
-      setRows([
-        makeRow({
-          supplier_id: file.supplier_id ?? '',
-          quantity_mt: file.tonnage_mt ? String(file.tonnage_mt) : '',
-          purchase_price: file.purchase_price ? String(file.purchase_price) : '',
-          currency: (file.purchase_currency ?? file.currency ?? 'USD') as string,
-        }),
-      ]);
+      const existing = file.suppliers ?? [];
+      if (existing.length > 0) {
+        setRows(
+          [...existing]
+            .sort((a, b) => a.position - b.position)
+            .map((s) => makeRow({
+              supplier_id: s.supplier_id,
+              quantity_mt: String(s.quantity_mt),
+              purchase_price: String(s.purchase_price),
+              currency: s.currency,
+              fx_rate: String(s.fx_rate),
+            })),
+        );
+      } else {
+        setRows([
+          makeRow({
+            supplier_id: file.supplier_id ?? '',
+            quantity_mt: file.tonnage_mt ? String(file.tonnage_mt) : '',
+            purchase_price: file.purchase_price ? String(file.purchase_price) : '',
+            currency: (file.purchase_currency ?? file.currency ?? 'USD') as string,
+          }),
+        ]);
+      }
     } else if (open && !editMode) {
       reset({
         supplier_id: '',
@@ -245,7 +260,21 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
 
   async function onSubmit(data: SaleConversionFormData) {
     if (!file) return;
-    await mutation.mutateAsync({ id: file.id, data });
+    const suppliersPayload = rows
+      .filter((r) => r.supplier_id && Number(r.quantity_mt) > 0 && r.purchase_price !== '')
+      .map((r) => ({
+        supplier_id: r.supplier_id,
+        quantity_mt: Number(r.quantity_mt),
+        purchase_price: Number(r.purchase_price),
+        currency: r.currency as SaleConversionFormData['purchase_currency'],
+        fx_rate: r.currency === baseCurrency ? 1 : Number(r.fx_rate) || 1,
+        freight_cost: 0,
+        notes: '',
+      }));
+    await mutation.mutateAsync({
+      id: file.id,
+      data: { ...data, suppliers: suppliersPayload.length ? suppliersPayload : undefined },
+    });
     onOpenChange(false);
   }
 
@@ -443,11 +472,6 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
               </div>
             </div>
 
-            {rows.length > 1 && (
-              <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
-                <strong>Not:</strong> Şu an yalnızca 1. tedarikçi kayıt edilir. Çoklu tedarikçi kaydı için backend güncellemesi bekleniyor.
-              </div>
-            )}
           </div>
 
           {/* ── Satış Kartı ─────────────────────────────────────────────────── */}
