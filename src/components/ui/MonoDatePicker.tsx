@@ -309,7 +309,10 @@ export function MonoDatePicker({ value, onChange, placeholder = 'Tarih seç' }: 
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen(v => !v)}
+        onClick={(e) => {
+          if (!open) setPos(calcPos(e.currentTarget));
+          setOpen(v => !v);
+        }}
         className="w-full bg-[#f2f4f7] rounded-xl h-[46px] px-4 text-[13px] font-medium text-left flex items-center justify-between border border-transparent focus:outline-none hover:bg-gray-200 transition-colors"
       >
         <span className={display ? 'text-gray-900' : 'text-gray-400'}>
