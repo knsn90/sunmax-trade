@@ -88,12 +88,12 @@ BEGIN
     UPDATE trade_files
       SET supplier_id       = primary_row.supplier_id,
           purchase_price    = primary_row.purchase_price,
-          purchase_currency = primary_row.currency
+          purchase_currency = primary_row.currency::text
       WHERE id = tf_id
         AND (
-          supplier_id       IS DISTINCT FROM primary_row.supplier_id OR
-          purchase_price    IS DISTINCT FROM primary_row.purchase_price OR
-          purchase_currency IS DISTINCT FROM primary_row.currency
+          supplier_id                IS DISTINCT FROM primary_row.supplier_id OR
+          purchase_price             IS DISTINCT FROM primary_row.purchase_price OR
+          purchase_currency::text    IS DISTINCT FROM primary_row.currency::text
         );
   END IF;
 
@@ -120,6 +120,8 @@ CREATE POLICY "tfs_write" ON trade_file_suppliers
   WITH CHECK (can_write_transactions());
 
 -- ── Back-fill: mevcut trade_files kayıtları için birincil tedarikçi satırı ───
+-- NOT: trade_files.purchase_currency text olarak eklenmiş olabiliyor
+-- (Studio'dan manuel); bu yüzden text'e çevirip tekrar currency_code'a cast'liyoruz.
 INSERT INTO trade_file_suppliers
   (tenant_id, trade_file_id, supplier_id, position, quantity_mt,
    purchase_price, currency, fx_rate)
@@ -130,7 +132,11 @@ SELECT
   1,
   GREATEST(tf.tonnage_mt, 0.001),
   COALESCE(tf.purchase_price, 0),
-  COALESCE(tf.purchase_currency, tf.currency, 'USD'),
+  COALESCE(
+    NULLIF(tf.purchase_currency::text, ''),
+    tf.currency::text,
+    'USD'
+  )::currency_code,
   1
 FROM trade_files tf
 LEFT JOIN trade_file_suppliers tfs ON tfs.trade_file_id = tf.id
