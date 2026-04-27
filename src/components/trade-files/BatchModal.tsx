@@ -76,6 +76,17 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
             vessel_name:           parent.vessel_name ?? '',
             proforma_ref:          parent.proforma_ref ?? '',
             register_no:           parent.register_no ?? '',
+            suppliers: parent.suppliers?.length
+              ? parent.suppliers.map(s => ({
+                  supplier_id:    s.supplier_id,
+                  quantity_mt:    s.quantity_mt || values.tonnage_mt,
+                  purchase_price: s.purchase_price ?? 0,
+                  currency:       (s.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
+                  fx_rate:        s.fx_rate ?? 1,
+                  freight_cost:   s.freight_cost ?? 0,
+                  notes:          s.notes ?? '',
+                }))
+              : undefined,
           },
         });
       }

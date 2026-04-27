@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { newTradeFileSchema, type NewTradeFileFormData } from '@/types/forms';
 import { useCustomers, useCreateCustomer, useProducts, useCreateProduct } from '@/hooks/useEntities';
-import { useCreateTradeFile, useUpdateFileInfo, useDeleteTradeFile, useTradeFiles } from '@/hooks/useTradeFiles';
+import { useCreateTradeFile, useUpdateFileInfo, useDeleteTradeFileWithChoice, useTradeFiles } from '@/hooks/useTradeFiles';
+import { DeleteTradeFileDialog } from './DeleteTradeFileDialog';
 import { generateTradeFileNo } from '@/lib/generators';
 import { today } from '@/lib/formatters';
 import type { TradeFile } from '@/types/database';
@@ -86,12 +87,13 @@ interface Props {
 export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit }: Props) {
   const { accent } = useTheme();
   const navigate   = useNavigate();
-  const deleteFile = useDeleteTradeFile();
+  const deleteFile = useDeleteTradeFileWithChoice();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  async function handleDelete() {
+  async function handleDeleteConfirm(keepDocuments: boolean) {
     if (!fileToEdit) return;
-    if (!window.confirm(`"${fileToEdit.file_no}" dosyasını silmek istediğinizden emin misiniz?\nBu işlem geri alınamaz.`)) return;
-    await deleteFile.mutateAsync(fileToEdit.id);
+    await deleteFile.mutateAsync({ id: fileToEdit.id, keepDocuments });
+    setDeleteDialogOpen(false);
     onOpenChange(false);
     navigate('/files');
   }
@@ -228,6 +230,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
 
@@ -455,7 +458,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
               {editMode && fileToEdit ? (
                 <button
                   type="button"
-                  onClick={handleDelete}
+                  onClick={() => setDeleteDialogOpen(true)}
                   disabled={deleteFile.isPending}
                   className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                 >
@@ -494,5 +497,16 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
         </form>
       </DialogContent>
     </Dialog>
+
+    {editMode && fileToEdit && (
+      <DeleteTradeFileDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        file={fileToEdit}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={deleteFile.isPending}
+      />
+    )}
+  </>
   );
 }

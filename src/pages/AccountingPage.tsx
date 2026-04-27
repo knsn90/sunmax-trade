@@ -103,7 +103,10 @@ function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint, sele
           <Badge variant={t.transaction_type as TransactionType} className="text-[9px] px-1.5 py-0">
             {tc('txType.' + t.transaction_type)}
           </Badge>
-          {t.trade_file?.file_no && (
+          {t.is_orphaned && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
+          )}
+          {!t.is_orphaned && t.trade_file?.file_no && (
             <>
               <span>·</span>
               <span className="font-mono">{t.trade_file.file_no}</span>

@@ -308,7 +308,8 @@ export type DocStatus = 'draft' | 'approved' | 'rejected';
 export interface Proforma extends Timestamps {
   id: string;
   proforma_no: string;
-  trade_file_id: string;
+  trade_file_id: string | null;
+  is_orphaned: boolean;
   proforma_date: string;
   validity_date: string | null;
   buyer_commercial_id: string;
@@ -354,7 +355,8 @@ export interface Proforma extends Timestamps {
 export interface Invoice extends Timestamps {
   id: string;
   invoice_no: string;
-  trade_file_id: string;
+  trade_file_id: string | null;
+  is_orphaned: boolean;
   customer_id: string;
   invoice_date: string;
   currency: CurrencyCode;
@@ -391,7 +393,8 @@ export interface Invoice extends Timestamps {
 export interface PackingList extends Timestamps {
   id: string;
   packing_list_no: string;
-  trade_file_id: string;
+  trade_file_id: string | null;
+  is_orphaned: boolean;
   customer_id: string;
   pl_date: string;
   transport_mode: TransportMode;
@@ -492,6 +495,7 @@ export interface Transaction extends Timestamps {
   bank_account_id: string | null;
   flagged: boolean;
   flag_note: string | null;
+  is_orphaned: boolean;
   // Joined
   trade_file?: TradeFile;
   customer?: Customer;

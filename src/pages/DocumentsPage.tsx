@@ -103,7 +103,10 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
               {/* Satır 2: Meta + tarih + butonlar */}
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] text-gray-400 truncate min-w-0">
-                  <span className="font-mono text-gray-500">{(inv.trade_file as any)?.file_no ?? '—'}</span>
+                  {inv.is_orphaned
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
+                    : <span className="font-mono text-gray-500">{(inv.trade_file as any)?.file_no ?? '—'}</span>
+                  }
                   {' · '}{(inv.customer as any)?.name ?? '—'}
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
@@ -145,7 +148,12 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
                     <span className="text-[13px] font-bold text-gray-900">{inv.invoice_no}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">{(inv.trade_file as any)?.file_no ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">
+                  {inv.is_orphaned
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
+                    : ((inv.trade_file as any)?.file_no ?? '—')
+                  }
+                </td>
                 <td className="px-4 py-3 text-[12px] text-gray-700">{(inv.customer as any)?.name ?? '—'}</td>
                 <td className="px-4 py-3 text-[12px] text-gray-600">{fN(inv.quantity_admt, 3)}</td>
                 <td className="px-4 py-3 text-[12px] text-gray-600">{fCurrency(inv.unit_price)}</td>
@@ -221,7 +229,10 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
               </div>
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] text-gray-400 truncate min-w-0">
-                  <span className="font-mono text-gray-500">{(pi.trade_file as any)?.file_no ?? '—'}</span>
+                  {pi.is_orphaned
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
+                    : <span className="font-mono text-gray-500">{(pi.trade_file as any)?.file_no ?? '—'}</span>
+                  }
                   {' · '}{fDate(pi.proforma_date)} · {fN(pi.quantity_admt, 3)} MT
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
@@ -262,7 +273,12 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
                     <span className="text-[13px] font-bold text-gray-900">{pi.proforma_no}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">{(pi.trade_file as any)?.file_no ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">
+                  {pi.is_orphaned
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
+                    : ((pi.trade_file as any)?.file_no ?? '—')
+                  }
+                </td>
                 <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(pi.proforma_date)}</td>
                 <td className="px-4 py-3 text-[12px] text-gray-600">{fN(pi.quantity_admt, 3)}</td>
                 <td className="px-4 py-3 text-[12px] text-gray-600">{fCurrency(pi.unit_price)}</td>
@@ -336,7 +352,10 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
               </div>
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] text-gray-400 truncate min-w-0">
-                  <span className="font-mono text-gray-500">{(pl.trade_file as any)?.file_no ?? '—'}</span>
+                  {pl.is_orphaned
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
+                    : <span className="font-mono text-gray-500">{(pl.trade_file as any)?.file_no ?? '—'}</span>
+                  }
                   {' · '}{(pl.customer as any)?.name ?? '—'}
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
@@ -378,7 +397,12 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
                     <span className="text-[13px] font-bold text-gray-900">{pl.packing_list_no}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">{(pl.trade_file as any)?.file_no ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">
+                  {pl.is_orphaned
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
+                    : ((pl.trade_file as any)?.file_no ?? '—')
+                  }
+                </td>
                 <td className="px-4 py-3 text-[12px] text-gray-700">{(pl.customer as any)?.name ?? '—'}</td>
                 <td className="px-4 py-3 text-[12px] text-gray-600">{pl.packing_list_items?.length ?? 0}</td>
                 <td className="px-4 py-3 text-[12px] font-semibold text-gray-700">{fN(pl.total_admt, 3)}</td>

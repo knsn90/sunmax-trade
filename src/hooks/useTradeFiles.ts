@@ -120,6 +120,19 @@ export function useDeleteTradeFile() {
   });
 }
 
+export function useDeleteTradeFileWithChoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, keepDocuments }: { id: string; keepDocuments: boolean }) =>
+      tradeFileService.deleteWithChoice(id, keepDocuments),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tradeFileKeys.all });
+      toast.success('Dosya silindi');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 export function useUpdateSaleDetails() {
   const qc = useQueryClient();
   return useMutation({
