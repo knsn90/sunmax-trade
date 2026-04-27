@@ -105,9 +105,21 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const [masrafRate,   setMasrafRate]   = useState(1);
   const [masrafKurYon, setMasrafKurYon] = useState<'direct' | 'inverse'>('direct');
 
-  // Dosya dropdown — tüm dosyalar gösterilir, tedarikçi filtresiz
-  const parentFiles      = allFiles.filter(f => !f.parent_file_id);
-  const batchFiles       = allFiles.filter(f => !!f.parent_file_id);
+  // Dosya dropdown — tedarikçi seçiliyse sadece o tedarikçiye ait dosyalar gösterilir
+  const belongsToSupplier = (f: typeof allFiles[number]) => {
+    if (!supplierId) return true; // tedarikçi seçilmemişse hepsi göster
+    if (f.parent_file_id) {
+      // Alt parti → sadece o partinin birincil tedarikçisiyle eşleş
+      return f.supplier_id === supplierId;
+    }
+    // Ana dosya → birincil veya ikincil tedarikçi
+    return f.supplier_id === supplierId ||
+      (f.suppliers as { supplier_id: string }[] | undefined)?.some(s => s.supplier_id === supplierId);
+  };
+
+  const filteredFiles    = allFiles.filter(belongsToSupplier);
+  const parentFiles      = filteredFiles.filter(f => !f.parent_file_id);
+  const batchFiles       = filteredFiles.filter(f => !!f.parent_file_id);
   const parentMap        = new Map(allFiles.filter(f => !f.parent_file_id).map(f => [f.id, f.file_no]));
   const parentsWithBatch = [...new Set(batchFiles.map(b => b.parent_file_id!))];
 
@@ -181,6 +193,19 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       setPaymentMethod(''); setMasrafOpen(false); setMasrafTuru(''); setMasrafTutar(0); setMasrafCurrency('USD'); setMasrafRate(1); setMasrafKurYon('direct');
     }
   }, [open, transaction, defaultTradeFileId]);
+
+  // Tedarikçi değiştiğinde, seçili dosya o tedarikçiye ait değilse temizle
+  useEffect(() => {
+    if (!supplierId || !fileId || transaction) return;
+    const file = allFiles.find(f => f.id === fileId);
+    if (!file) return;
+    const fileOk = file.parent_file_id
+      ? file.supplier_id === supplierId
+      : file.supplier_id === supplierId ||
+        (file.suppliers as { supplier_id: string }[] | undefined)?.some(s => s.supplier_id === supplierId);
+    if (!fileOk) setFileId('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supplierId]);
 
   // Dosya seçildiğinde tedarikçiyi otomatik doldur
   useEffect(() => {
