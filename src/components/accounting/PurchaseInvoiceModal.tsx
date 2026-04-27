@@ -105,8 +105,11 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const [masrafRate,   setMasrafRate]   = useState(1);
   const [masrafKurYon, setMasrafKurYon] = useState<'direct' | 'inverse'>('direct');
 
-  // Tedarikçiye göre filtrele — hem ana dosyalar hem alt partiler (status zaten listAll'dan geliyor)
-  const supplierFiles  = allFiles.filter(f => f.supplier_id === supplierId);
+  // Tedarikçiye göre filtrele — hem birincil hem ikincil tedarikçiyi kontrol et
+  const supplierFiles  = allFiles.filter(f =>
+    f.supplier_id === supplierId ||
+    f.suppliers?.some(s => s.supplier_id === supplierId),
+  );
   const parentFiles    = supplierFiles.filter(f => !f.parent_file_id);
   const batchFiles     = supplierFiles.filter(f =>  !!f.parent_file_id);
   // Parent id → file_no (optgroup başlığı için)

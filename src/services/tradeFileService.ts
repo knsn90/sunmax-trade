@@ -39,7 +39,8 @@ const FILE_SELECT_ALL = `
   supplier_id, customer_id,
   customer:customers!customer_id(id, name),
   product:products!product_id(id, name),
-  supplier:suppliers!supplier_id(id, name)
+  supplier:suppliers!supplier_id(id, name),
+  suppliers:trade_file_suppliers(supplier_id)
 `;
 
 export const tradeFileService = {
