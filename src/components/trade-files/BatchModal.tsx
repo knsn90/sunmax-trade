@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -34,12 +35,22 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
 
   const batchFileNo = `${parent.file_no}/P${nextBatchNo}`;
 
+  // Çoklu tedarikçi varsa kullanıcıdan seçim istenir
+  const multiSuppliers = (parent.suppliers ?? []).length > 1;
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: { tonnage_mt: undefined },
   });
 
   async function onSubmit(values: Form) {
+    // Çok tedarikçili dosyada seçim zorunlu
+    if (multiSuppliers && !selectedSupplierId) {
+      toast.error('Lütfen bu parti için bir tedarikçi seçin');
+      return;
+    }
+
     try {
       const created = await createFile.mutateAsync({
         file_no: batchFileNo,
@@ -56,17 +67,30 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
       });
 
       if (parent.supplier_id || parent.selling_price != null || parent.incoterms || parent.payment_terms) {
+        // Çok tedarikçili → sadece seçilen tedarikçi bu partiye atanır
+        let batchSuppliers: typeof parent.suppliers | undefined;
+        if (multiSuppliers && selectedSupplierId) {
+          const picked = (parent.suppliers ?? []).find(s => s.supplier_id === selectedSupplierId);
+          batchSuppliers = picked
+            ? [{ ...picked, quantity_mt: values.tonnage_mt }]
+            : undefined;
+        } else {
+          batchSuppliers = parent.suppliers?.length ? parent.suppliers : undefined;
+        }
+
         await updateSaleDetails.mutateAsync({
           id: created.id,
           data: {
-            supplier_id:           parent.supplier_id ?? '',
+            supplier_id: multiSuppliers
+              ? (selectedSupplierId || (parent.supplier_id ?? ''))
+              : (parent.supplier_id ?? ''),
             selling_price:         parent.selling_price ?? 0,
-            purchase_price:        parent.purchase_price ?? 0,
-            freight_cost:          parent.freight_cost ?? 0,
+            purchase_price:        batchSuppliers?.[0]?.purchase_price ?? parent.purchase_price ?? 0,
+            freight_cost:          batchSuppliers?.[0]?.freight_cost ?? parent.freight_cost ?? 0,
             port_of_loading:       parent.port_of_loading ?? '',
             port_of_discharge:     parent.port_of_discharge ?? '',
             incoterms:             parent.incoterms ?? '',
-            purchase_currency:     (parent.purchase_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
+            purchase_currency:     (batchSuppliers?.[0]?.currency ?? parent.purchase_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
             sale_currency:         (parent.sale_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY',
             payment_terms:         parent.payment_terms ?? '',
             advance_rate:          parent.advance_rate ?? 0,
@@ -76,23 +100,22 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
             vessel_name:           parent.vessel_name ?? '',
             proforma_ref:          parent.proforma_ref ?? '',
             register_no:           parent.register_no ?? '',
-            suppliers: parent.suppliers?.length
-              ? parent.suppliers.map(s => ({
-                  supplier_id:    s.supplier_id,
-                  quantity_mt:    s.quantity_mt || values.tonnage_mt,
-                  purchase_price: s.purchase_price ?? 0,
-                  currency:       (s.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
-                  fx_rate:        s.fx_rate ?? 1,
-                  freight_cost:   s.freight_cost ?? 0,
-                  notes:          s.notes ?? '',
-                }))
-              : undefined,
+            suppliers: batchSuppliers?.map(s => ({
+              supplier_id:    s.supplier_id,
+              quantity_mt:    s.quantity_mt || values.tonnage_mt,
+              purchase_price: s.purchase_price ?? 0,
+              currency:       (s.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
+              fx_rate:        s.fx_rate ?? 1,
+              freight_cost:   s.freight_cost ?? 0,
+              notes:          s.notes ?? '',
+            })),
           },
         });
       }
 
       toast.success(`Parti ${batchFileNo} oluşturuldu`);
       reset();
+      setSelectedSupplierId('');
       onClose();
       navigate(`/files/${created.id}`);
     } catch (e) {
@@ -104,7 +127,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
   const remainingTon = Math.max(0, parent.tonnage_mt - usedTon);
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+    <Dialog open={open} onOpenChange={v => { if (!v) { reset(); setSelectedSupplierId(''); onClose(); } }}>
       <DialogContent className="max-w-sm">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -134,6 +157,52 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
+
+          {/* ── Çoklu tedarikçi seçimi ── */}
+          {multiSuppliers && (
+            <div>
+              <Lbl>Bu Parti İçin Tedarikçi *</Lbl>
+              <div className="space-y-1.5">
+                {(parent.suppliers ?? []).map(s => {
+                  const isSelected = selectedSupplierId === s.supplier_id;
+                  return (
+                    <button
+                      key={s.supplier_id}
+                      type="button"
+                      onClick={() => setSelectedSupplierId(s.supplier_id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                        isSelected
+                          ? 'border-transparent text-white shadow-sm'
+                          : 'border-gray-100 bg-gray-50 hover:bg-gray-100'
+                      }`}
+                      style={isSelected ? { background: accent } : {}}
+                    >
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                        {(s.supplier?.name ?? s.supplier_id).slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[12px] font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+                          {s.supplier?.name ?? s.supplier_id}
+                        </p>
+                        {s.purchase_price > 0 && (
+                          <p className={`text-[10px] ${isSelected ? 'text-white/70' : 'text-gray-400'}`}>
+                            ${s.purchase_price.toLocaleString('tr-TR')}/{s.currency ?? 'USD'} · {s.quantity_mt} MT
+                          </p>
+                        )}
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${isSelected ? 'border-white bg-white/30' : 'border-gray-300'}`}>
+                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {!selectedSupplierId && (
+                <p className="text-[10px] text-amber-600 mt-1">Bu parti için tedarikçi seçimi zorunludur</p>
+              )}
+            </div>
+          )}
+
           <div>
             <Lbl>Tonaj (MT) *</Lbl>
             <input
@@ -152,7 +221,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
           <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 pt-2 border-t border-gray-100">
             <button
               type="button"
-              onClick={() => { reset(); onClose(); }}
+              onClick={() => { reset(); setSelectedSupplierId(''); onClose(); }}
               className="hidden md:flex px-4 h-8 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors items-center justify-center"
             >
               İptal
