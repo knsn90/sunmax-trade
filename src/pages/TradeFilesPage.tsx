@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHeaderAction } from '@/contexts/HeaderContext';
 import { useNavigate } from 'react-router-dom';
-import { useTradeFiles, useDeleteTradeFile } from '@/hooks/useTradeFiles';
+import { useTradeFiles, useDeleteTradeFileWithChoice } from '@/hooks/useTradeFiles';
+import { DeleteTradeFileDialog } from '@/components/trade-files/DeleteTradeFileDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate } from '@/lib/formatters';
@@ -14,9 +15,6 @@ import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2, FolderOpen } 
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FileActivityPopover } from '@/components/trade-files/FileActivityPopover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { EntityAvatar } from '@/components/ui/shared';
 
 // ─── Status meta ───────────────────────────────────────────────────────────────
@@ -32,56 +30,6 @@ type FilterKey = 'all' | 'request' | 'sale' | 'delivery' | 'completed' | 'cancel
 
 const PAGE_SIZE = 12;
 
-const ACCEPTED_PHRASES = ['Sil', 'sil', 'SIL', 'SİL'];
-
-// ─── Delete confirm modal ──────────────────────────────────────────────────────
-function DeleteConfirmModal({
-  open, file, onConfirm, onCancel, isPending,
-}: {
-  open: boolean;
-  file: TradeFile | null;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isPending: boolean;
-}) {
-  const [phrase, setPhrase] = useState('');
-  useEffect(() => { if (open) setPhrase(''); }, [open]);
-
-  const accepted = ACCEPTED_PHRASES.includes(phrase.trim());
-
-  if (!file) return null;
-  return (
-    <Dialog open={open} onOpenChange={v => { if (!v && !isPending) onCancel(); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="text-red-600">Dosyayı Sil</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 py-1">
-          <p className="text-[13px] text-gray-600">
-            <span className="font-semibold text-gray-900">{file.file_no}</span> — {file.customer?.name} dosyası kalıcı olarak silinecek.
-          </p>
-          <p className="text-[12px] text-gray-500">
-            Onaylamak için aşağıya <span className="font-bold text-red-600">SİL</span> yazın:
-          </p>
-          <Input
-            value={phrase}
-            onChange={e => setPhrase(e.target.value)}
-            placeholder="SİL"
-            autoFocus
-            disabled={isPending}
-            onKeyDown={e => { if (e.key === 'Enter' && accepted) onConfirm(); }}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={isPending}>Vazgeç</Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={!accepted || isPending}>
-            {isPending ? 'Siliniyor…' : 'Kalıcı Olarak Sil'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ─── Mobile row menu ───────────────────────────────────────────────────────────
 function MobileRowMenu({
@@ -251,7 +199,7 @@ export function TradeFilesPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: files = [], isLoading } = useTradeFiles();
-  const deleteFile = useDeleteTradeFile();
+  const deleteFile = useDeleteTradeFileWithChoice();
   const writable = canWrite(profile?.role);
   const { accent } = useTheme();
 
@@ -310,9 +258,10 @@ export function TradeFilesPage() {
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  function handleDeleteConfirm() {
+  async function handleDeleteConfirm(keepDocuments: boolean) {
     if (!deleteTarget) return;
-    deleteFile.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+    await deleteFile.mutateAsync({ id: deleteTarget.id, keepDocuments });
+    setDeleteTarget(null);
   }
 
   // isLoading guard kaldırıldı — sayfa hemen render edilir, içerik yüklenince görünür
@@ -562,13 +511,16 @@ export function TradeFilesPage() {
         editMode
         fileToEdit={editFile}
       />
-      <DeleteConfirmModal
-        open={!!deleteTarget}
-        file={deleteTarget}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTarget(null)}
-        isPending={deleteFile.isPending}
-      />
+      {deleteTarget && (
+        <DeleteTradeFileDialog
+          open={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          file={deleteTarget}
+          txnCount={1}
+          onConfirm={handleDeleteConfirm}
+          isDeleting={deleteFile.isPending}
+        />
+      )}
     </>
   );
 }

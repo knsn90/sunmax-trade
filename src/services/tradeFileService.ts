@@ -275,10 +275,16 @@ export const tradeFileService = {
     if (error) throw new Error(error.message);
   },
 
+  /**
+   * Soft-delete with document choice.
+   * keepDocuments=false → dosya + tüm belgeler çöp kutusuna atılır
+   * keepDocuments=true  → sadece dosya çöp kutusuna atılır, belgeler "Eşlenmedi" olarak işaretlenir
+   */
   async deleteWithChoice(id: string, keepDocuments: boolean): Promise<void> {
+    const now = new Date().toISOString();
+
     if (keepDocuments) {
-      // Detach invoices/proformas/packing_lists before deleting so CASCADE skips them.
-      // transactions.trade_file_id is handled via ON DELETE SET NULL (migration 061).
+      // Belgeleri orphan olarak işaretle — çöp kutusuna atma, listede "Eşlenmedi" göster
       const [r1, r2, r3, r4] = await Promise.all([
         supabase.from('invoices').update({ is_orphaned: true, trade_file_id: null }).eq('trade_file_id', id),
         supabase.from('proformas').update({ is_orphaned: true, trade_file_id: null }).eq('trade_file_id', id),
@@ -287,8 +293,20 @@ export const tradeFileService = {
       ]);
       const detachErr = r1.error ?? r2.error ?? r3.error ?? r4.error;
       if (detachErr) throw new Error(detachErr.message);
+    } else {
+      // Tüm bağlı belgeleri de çöp kutusuna at
+      const [r1, r2, r3, r4] = await Promise.all([
+        supabase.from('invoices').update({ deleted_at: now }).eq('trade_file_id', id),
+        supabase.from('proformas').update({ deleted_at: now }).eq('trade_file_id', id),
+        supabase.from('packing_lists').update({ deleted_at: now }).eq('trade_file_id', id),
+        supabase.from('transactions').update({ deleted_at: now }).eq('trade_file_id', id),
+      ]);
+      const err = r1.error ?? r2.error ?? r3.error ?? r4.error;
+      if (err) throw new Error(err.message);
     }
-    const { error } = await supabase.from('trade_files').delete().eq('id', id);
+
+    // Her iki durumda da dosyayı çöp kutusuna at
+    const { error } = await supabase.from('trade_files').update({ deleted_at: now }).eq('id', id);
     if (error) throw new Error(error.message);
   },
 

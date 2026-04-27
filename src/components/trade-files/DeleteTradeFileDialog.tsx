@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { TradeFile } from '@/types/database';
-import { AlertTriangle, Trash2, Archive } from 'lucide-react';
+import { AlertTriangle, Trash2, Archive, FolderX } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function DeleteTradeFileDialog({ open, onClose, file, txnCount = 0, onConfirm, isDeleting }: Props) {
-  const { accent } = useTheme();
+  useTheme();
 
   const proformaCount  = file.proformas?.length  ?? 0;
   const invoiceCount   = file.invoices?.length   ?? 0;
@@ -68,7 +68,7 @@ export function DeleteTradeFileDialog({ open, onClose, file, txnCount = 0, onCon
 
             {/* Seçenekler */}
             <div className="mt-3 space-y-2">
-              {/* Hepsini Sil */}
+              {/* Hepsini Çöp Kutusuna At */}
               <button
                 onClick={() => onConfirm(false)}
                 disabled={isDeleting}
@@ -78,26 +78,26 @@ export function DeleteTradeFileDialog({ open, onClose, file, txnCount = 0, onCon
                   <Trash2 className="h-3.5 w-3.5 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-red-700">Hepsini Sil</p>
+                  <p className="text-[13px] font-bold text-red-700">Hepsini Çöp Kutusuna At</p>
                   <p className="text-[11px] text-red-500 mt-0.5">
-                    Dosya ve tüm bağlı belgeler kalıcı olarak silinir.
+                    Dosya ve tüm bağlı belgeler çöp kutusuna taşınır, geri alınabilir.
                   </p>
                 </div>
               </button>
 
-              {/* Belgeleri Koru */}
+              {/* Sadece Dosyayı Sil */}
               <button
                 onClick={() => onConfirm(true)}
                 disabled={isDeleting}
                 className="w-full flex items-start gap-3 px-4 py-3.5 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition-colors text-left disabled:opacity-50 group"
               >
                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-gray-200 flex items-center justify-center shrink-0 transition-colors mt-0.5">
-                  <Archive className="h-3.5 w-3.5 text-gray-600" />
+                  <FolderX className="h-3.5 w-3.5 text-gray-600" />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-gray-800">Belgeleri Koru</p>
+                  <p className="text-[13px] font-bold text-gray-800">Sadece Dosyayı Çöp Kutusuna At</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">
-                    Belgeler silinmez, listelerde "Eşlenmedi" olarak işaretlenir.
+                    Belgeler silinmez, listelerde <span className="font-semibold text-orange-600">Eşlenmedi</span> olarak işaretlenir.
                   </p>
                 </div>
               </button>
@@ -107,7 +107,7 @@ export function DeleteTradeFileDialog({ open, onClose, file, txnCount = 0, onCon
           /* Bağlı belge yok — basit onay */
           <div className="mt-2">
             <p className="text-[13px] text-gray-600">
-              Bu dosya kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              Bu dosya çöp kutusuna taşınacak. Çöp kutusundan geri alabilir veya kalıcı silebilirsiniz.
             </p>
             <button
               onClick={() => onConfirm(false)}
@@ -115,7 +115,7 @@ export function DeleteTradeFileDialog({ open, onClose, file, txnCount = 0, onCon
               className="mt-4 w-full h-10 rounded-xl text-white text-[13px] font-bold disabled:opacity-50 transition-opacity hover:opacity-90"
               style={{ background: '#dc2626' }}
             >
-              {isDeleting ? 'Siliniyor…' : 'Evet, Sil'}
+              {isDeleting ? 'Taşınıyor…' : 'Çöp Kutusuna At'}
             </button>
           </div>
         )}
