@@ -39,6 +39,13 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
   const multiSuppliers = (parent.suppliers ?? []).length > 1;
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
 
+  // Her tedarikçi için mevcut partilerde kullanılan tonaj
+  const usedTonBySupplier = (parent.batches ?? []).reduce<Record<string, number>>((acc, b) => {
+    const sid = (b as unknown as { supplier_id?: string }).supplier_id;
+    if (sid) acc[sid] = (acc[sid] ?? 0) + (b.tonnage_mt ?? 0);
+    return acc;
+  }, {});
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: { tonnage_mt: undefined },
@@ -164,35 +171,44 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
               <Lbl>Bu Parti İçin Tedarikçi *</Lbl>
               <div className="space-y-1.5">
                 {(parent.suppliers ?? []).map(s => {
-                  const isSelected = selectedSupplierId === s.supplier_id;
+                  const isSelected  = selectedSupplierId === s.supplier_id;
+                  const usedTon     = usedTonBySupplier[s.supplier_id] ?? 0;
+                  const remaining   = Math.max(0, (s.quantity_mt ?? 0) - usedTon);
+                  const isFull      = s.quantity_mt > 0 && remaining <= 0;
                   return (
                     <button
                       key={s.supplier_id}
                       type="button"
-                      onClick={() => setSelectedSupplierId(s.supplier_id)}
+                      disabled={isFull}
+                      onClick={() => !isFull && setSelectedSupplierId(s.supplier_id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
-                        isSelected
-                          ? 'border-transparent text-white shadow-sm'
-                          : 'border-gray-100 bg-gray-50 hover:bg-gray-100'
+                        isFull
+                          ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                          : isSelected
+                            ? 'border-transparent text-white shadow-sm'
+                            : 'border-gray-100 bg-gray-50 hover:bg-gray-100'
                       }`}
-                      style={isSelected ? { background: accent } : {}}
+                      style={isSelected && !isFull ? { background: accent } : {}}
                     >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isSelected && !isFull ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'}`}>
                         {(s.supplier?.name ?? s.supplier_id).slice(0, 2).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[12px] font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+                        <p className={`text-[12px] font-semibold truncate ${isSelected && !isFull ? 'text-white' : 'text-gray-800'}`}>
                           {s.supplier?.name ?? s.supplier_id}
                         </p>
-                        {s.purchase_price > 0 && (
-                          <p className={`text-[10px] ${isSelected ? 'text-white/70' : 'text-gray-400'}`}>
-                            ${s.purchase_price.toLocaleString('tr-TR')}/{s.currency ?? 'USD'} · {s.quantity_mt} MT
-                          </p>
-                        )}
+                        <p className={`text-[10px] ${isSelected && !isFull ? 'text-white/70' : isFull ? 'text-red-400' : 'text-gray-400'}`}>
+                          {isFull
+                            ? `Doldu — ${s.quantity_mt} MT tamamı kullanıldı`
+                            : `${remaining.toLocaleString('tr-TR')} MT kalan · $${s.purchase_price?.toLocaleString('tr-TR') ?? 0}/${s.currency ?? 'USD'}`
+                          }
+                        </p>
                       </div>
-                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${isSelected ? 'border-white bg-white/30' : 'border-gray-300'}`}>
-                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-                      </div>
+                      {!isFull && (
+                        <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${isSelected ? 'border-white bg-white/30' : 'border-gray-300'}`}>
+                          {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
