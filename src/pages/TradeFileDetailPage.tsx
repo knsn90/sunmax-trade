@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFile, useUpdateSaleDetails, tradeFileKeys } from '@/hooks/useTradeFiles';
+import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFile, useDeleteTradeFileWithChoice, useUpdateSaleDetails, tradeFileKeys } from '@/hooks/useTradeFiles';
+import { DeleteTradeFileDialog } from '@/components/trade-files/DeleteTradeFileDialog';
 import { tradeFileService } from '@/services/tradeFileService';
 import { invoiceService } from '@/services/invoiceService';
 import { packingListService } from '@/services/packingListService';
@@ -205,13 +206,13 @@ function PartilerCard({
   onToggle?: () => void;
 }) {
   const navigate = useNavigate();
-  const deleteFile = useDeleteTradeFile();
+  const deleteFile = useDeleteTradeFileWithChoice();
   const batches = file.batches ?? [];
+  const [pendingDeleteBatch, setPendingDeleteBatch] = useState<typeof batches[number] | null>(null);
 
-  function handleDeleteBatch(e: React.MouseEvent, batchId: string, batchNo: string) {
+  function handleDeleteBatch(e: React.MouseEvent, batch: typeof batches[number]) {
     e.stopPropagation();
-    if (!window.confirm(`P${batchNo} partisini silmek istediğinizden emin misiniz?\nBu işlem geri alınamaz.`)) return;
-    deleteFile.mutate(batchId);
+    setPendingDeleteBatch(batch);
   }
   if (batches.length === 0 && !writable) return null;
 
@@ -226,6 +227,7 @@ function PartilerCard({
   };
 
   return (
+    <>
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header */}
       <div
@@ -325,7 +327,7 @@ function PartilerCard({
                     {/* Sil butonu — sadece writable modda, hover'da görünür */}
                     {writable && (
                       <button
-                        onClick={(e) => handleDeleteBatch(e, b.id, String(b.batch_no))}
+                        onClick={(e) => handleDeleteBatch(e, b)}
                         disabled={deleteFile.isPending}
                         className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                         title="Partiyi sil"
@@ -340,6 +342,20 @@ function PartilerCard({
         </>
       )}
     </div>
+
+    {pendingDeleteBatch && (
+      <DeleteTradeFileDialog
+        open={!!pendingDeleteBatch}
+        onClose={() => setPendingDeleteBatch(null)}
+        file={pendingDeleteBatch as unknown as import('@/types/database').TradeFile}
+        onConfirm={async (keepDocuments) => {
+          await deleteFile.mutateAsync({ id: pendingDeleteBatch.id, keepDocuments });
+          setPendingDeleteBatch(null);
+        }}
+        isDeleting={deleteFile.isPending}
+      />
+    )}
+  </>
   );
 }
 

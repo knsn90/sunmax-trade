@@ -256,6 +256,23 @@ export const tradeFileService = {
     if (error) throw new Error(error.message);
   },
 
+  async deleteWithChoice(id: string, keepDocuments: boolean): Promise<void> {
+    if (keepDocuments) {
+      // Detach invoices/proformas/packing_lists before deleting so CASCADE skips them.
+      // transactions.trade_file_id is handled via ON DELETE SET NULL (migration 061).
+      const [r1, r2, r3, r4] = await Promise.all([
+        supabase.from('invoices').update({ is_orphaned: true, trade_file_id: null }).eq('trade_file_id', id),
+        supabase.from('proformas').update({ is_orphaned: true, trade_file_id: null }).eq('trade_file_id', id),
+        supabase.from('packing_lists').update({ is_orphaned: true, trade_file_id: null }).eq('trade_file_id', id),
+        supabase.from('transactions').update({ is_orphaned: true }).eq('trade_file_id', id),
+      ]);
+      const detachErr = r1.error ?? r2.error ?? r3.error ?? r4.error;
+      if (detachErr) throw new Error(detachErr.message);
+    }
+    const { error } = await supabase.from('trade_files').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
   async noteDelay(id: string, data: { revised_eta: string; delay_notes?: string }): Promise<void> {
     const { error } = await supabase
       .from('trade_files')
