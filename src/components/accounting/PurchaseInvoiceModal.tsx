@@ -105,20 +105,26 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const [masrafRate,   setMasrafRate]   = useState(1);
   const [masrafKurYon, setMasrafKurYon] = useState<'direct' | 'inverse'>('direct');
 
-  // Tedarikçiye göre filtrele — hem birincil hem ikincil tedarikçiyi kontrol et
-  const supplierFiles  = allFiles.filter(f =>
-    f.supplier_id === supplierId ||
-    f.suppliers?.some(s => s.supplier_id === supplierId),
-  );
-  const parentFiles    = supplierFiles.filter(f => !f.parent_file_id);
-  const batchFiles     = supplierFiles.filter(f =>  !!f.parent_file_id);
-  // Parent id → file_no (optgroup başlığı için)
-  const parentMap      = new Map(allFiles.filter(f => !f.parent_file_id).map(f => [f.id, f.file_no]));
-  // Hangi parent'ların batch'i var (sadece bunlar için optgroup açılır)
+  // Dosya dropdown — tüm dosyalar gösterilir, tedarikçi filtresiz
+  const parentFiles      = allFiles.filter(f => !f.parent_file_id);
+  const batchFiles       = allFiles.filter(f => !!f.parent_file_id);
+  const parentMap        = new Map(allFiles.filter(f => !f.parent_file_id).map(f => [f.id, f.file_no]));
   const parentsWithBatch = [...new Set(batchFiles.map(b => b.parent_file_id!))];
 
-  const pickedFile     = supplierFiles.find(f => f.id === fileId) ?? null;
+  const pickedFile       = allFiles.find(f => f.id === fileId) ?? null;
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
+
+  // Seçili dosyaya ait tedarikçiler (birincil + ikincil)
+  const fileSupplierIds = pickedFile
+    ? [
+        ...(pickedFile.supplier_id ? [pickedFile.supplier_id] : []),
+        ...(pickedFile.suppliers?.map((s: { supplier_id: string }) => s.supplier_id) ?? []),
+      ].filter((id, i, arr) => arr.indexOf(id) === i)
+    : [];
+  const fileSuppliers        = fileSupplierIds.length > 0 ? suppliers.filter(s => fileSupplierIds.includes(s.id)) : [];
+  const hasMultipleSuppliers = fileSuppliers.length > 1;
+  // Dropdown için tedarikçi listesi: dosya seçiliyse dosyanın tedarikçileri, değilse hepsi
+  const supplierOptions = fileSuppliers.length > 0 ? fileSuppliers : suppliers;
 
   const toplamYerel = lines.reduce((s, l) => s + lineTotal(l), 0);
   const isNonUsd    = currency !== 'USD';
@@ -172,7 +178,21 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
     }
   }, [open, transaction, defaultTradeFileId]);
 
-  useEffect(() => { if (!transaction) setFileId(''); }, [supplierId, transaction]);
+  // Dosya seçildiğinde tedarikçiyi otomatik doldur (tek tedarikçiliyse)
+  useEffect(() => {
+    if (!pickedFile || transaction) return;
+    const ids = [
+      ...(pickedFile.supplier_id ? [pickedFile.supplier_id] : []),
+      ...(pickedFile.suppliers?.map((s: { supplier_id: string }) => s.supplier_id) ?? []),
+    ].filter((id, i, arr) => arr.indexOf(id) === i);
+    if (ids.length === 1) {
+      setSupplierId(ids[0]);
+    } else if (ids.length > 1 && !ids.includes(supplierId)) {
+      // Çok tedarikçili dosya — mevcut seçim bu dosyaya ait değilse temizle
+      setSupplierId('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileId]);
 
   useEffect(() => {
     if (!pickedFile || transaction) return;
@@ -195,6 +215,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   }
 
   async function handleSubmit() {
+    if (hasMultipleSuppliers && !supplierId) { toast.error('Çok tedarikçili dosya — lütfen tedarikçi seçin'); return; }
     if (!supplierId)    { toast.error('Lütfen tedarikçi seçin'); return; }
     if (!faturaNo)      { toast.error('Fatura numarası zorunlu'); return; }
     if (toplamUsd <= 0) { toast.error('Tutar sıfırdan büyük olmalı'); return; }
@@ -293,7 +314,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
 
 
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Tedarikçi">
+              <Field label={hasMultipleSuppliers && !supplierId ? 'Tedarikçi *' : 'Tedarikçi'}>
                 {supplierId && selectedSupplier ? (
                   <div className="flex items-center gap-2 bg-gray-100 rounded-lg h-8 px-3">
                     <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
@@ -305,14 +326,23 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
                     </button>
                   </div>
                 ) : (
-                  <select className={sel} value={supplierId} onChange={e => setSupplierId(e.target.value)}>
-                    <option value="">— Tedarikçi seçin —</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <select
+                    className={cn(sel, hasMultipleSuppliers && !supplierId && 'ring-1 ring-amber-400')}
+                    value={supplierId}
+                    onChange={e => setSupplierId(e.target.value)}
+                  >
+                    <option value="">
+                      {hasMultipleSuppliers ? '— Tedarikçi seçin (zorunlu) —' : '— Tedarikçi seçin —'}
+                    </option>
+                    {supplierOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
+                )}
+                {hasMultipleSuppliers && !supplierId && (
+                  <p className="text-[10px] text-amber-600 mt-1">Bu dosyada {fileSuppliers.length} tedarikçi var, birini seçin</p>
                 )}
               </Field>
               <Field label="Ticaret Dosyası">
-                <select className={cn(sel, !supplierId && 'opacity-50')} value={fileId} onChange={e => setFileId(e.target.value)} disabled={!supplierId}>
+                <select className={sel} value={fileId} onChange={e => setFileId(e.target.value)}>
                   <option value="">— Opsiyonel —</option>
 
                   {/* Ana dosyalar — batch'i olmayanlar */}
