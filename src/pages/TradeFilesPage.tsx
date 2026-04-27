@@ -102,7 +102,7 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
             {tc(`status.${file.status}` as `status.${string}`)}
           </span>
           {file.tonnage_mt > 0 && (
-            <span className="text-[10px] text-gray-400">· {fN(file.tonnage_mt, 0)} MT</span>
+            <span className="text-[10px] text-gray-400">· {fN(file.tonnage_mt, 0)} {file.product?.unit ?? 'MT'}</span>
           )}
           {file.selling_price && (
             <span className="text-[10px] text-gray-400">· {fCurrency(file.selling_price)}/MT</span>
@@ -155,7 +155,7 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
         </div>
       </td>
       <td className="px-4 py-3 text-[12px] text-gray-600 whitespace-nowrap">{file.product?.name ?? '—'}</td>
-      <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 whitespace-nowrap">{fN(file.tonnage_mt, 0)} MT</td>
+      <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 whitespace-nowrap">{fN(file.tonnage_mt, 0)} {file.product?.unit ?? 'MT'}</td>
       <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{fDate(file.file_date)}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">

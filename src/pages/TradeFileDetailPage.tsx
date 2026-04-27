@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFile, useDeleteTradeFileWithChoice, useUpdateSaleDetails, tradeFileKeys } from '@/hooks/useTradeFiles';
+import { useTradeFile, useChangeStatus, useNoteDelay, useDeleteTradeFileWithChoice, useUpdateSaleDetails, tradeFileKeys } from '@/hooks/useTradeFiles';
 import { DeleteTradeFileDialog } from '@/components/trade-files/DeleteTradeFileDialog';
 import { tradeFileService } from '@/services/tradeFileService';
 import { invoiceService } from '@/services/invoiceService';
@@ -208,6 +208,7 @@ function PartilerCard({
   const navigate = useNavigate();
   const deleteFile = useDeleteTradeFileWithChoice();
   const batches = file.batches ?? [];
+  const tUnit = file.product?.unit ?? 'MT'; // Ürün birimi: MT veya ADMT
   const [pendingDeleteBatch, setPendingDeleteBatch] = useState<typeof batches[number] | null>(null);
 
   function handleDeleteBatch(e: React.MouseEvent, batch: typeof batches[number]) {
@@ -268,11 +269,11 @@ function PartilerCard({
             <div className="px-6 py-3 border-b border-gray-50 bg-gray-50/40">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[11px] font-semibold text-gray-500">
-                  Yüklenen: <strong className="text-gray-900">{usedTon.toLocaleString('tr-TR')} MT</strong>
+                  Yüklenen: <strong className="text-gray-900">{usedTon.toLocaleString('tr-TR')} {tUnit}</strong>
                 </span>
                 <span className="text-[11px] font-semibold text-gray-500">
                   Kalan: <strong className={remaining > 0 ? 'text-amber-600' : 'text-green-600'}>
-                    {remaining.toLocaleString('tr-TR')} MT
+                    {remaining.toLocaleString('tr-TR')} {tUnit}
                   </strong>
                 </span>
               </div>
@@ -317,7 +318,7 @@ function PartilerCard({
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold text-gray-800">{b.file_no}</p>
                         <p className="text-[11px] text-gray-400">
-                          {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} MT` : '—'}
+                          {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} ${tUnit}` : '—'}
                           {b.transport_mode ? ` · ${TRANSPORT_LABEL[b.transport_mode] ?? b.transport_mode}` : ''}
                           {b.eta ? ` · ETA ${b.eta}` : ''}
                         </p>
@@ -422,6 +423,7 @@ export function TradeFileDetailPage() {
   const queryClient = useQueryClient();
   const [editingFileNo, setEditingFileNo] = useState(false);
   const [fileNoInput, setFileNoInput] = useState('');
+  const tUnit = file?.product?.unit ?? 'MT'; // Ürün birimi: MT veya ADMT
 
   async function handleSaveFileNo() {
     if (!fileNoInput.trim() || !file) return;
@@ -923,7 +925,7 @@ export function TradeFileDetailPage() {
         </div>
         <div className="px-4 py-3 border-b border-gray-50">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.tonnage')}</div>
-          <div className="text-[13px] font-bold text-gray-900">{fN(file.tonnage_mt, 3)} MT</div>
+          <div className="text-[13px] font-bold text-gray-900">{fN(file.tonnage_mt, 3)} {tUnit}</div>
         </div>
         <div className="px-4 py-3 border-b border-gray-50">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.salePrice')}</div>
@@ -1632,7 +1634,7 @@ export function TradeFileDetailPage() {
                 </div>
                 <div className="px-5 py-4 border-b border-gray-50">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.tonnage')}</div>
-                  <div className="text-[15px] font-extrabold text-gray-900">{fN(file.tonnage_mt, 3)} MT</div>
+                  <div className="text-[15px] font-extrabold text-gray-900">{fN(file.tonnage_mt, 3)} {tUnit}</div>
                 </div>
                 <div className="px-5 py-4">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.salePrice')}</div>
@@ -1872,7 +1874,7 @@ export function TradeFileDetailPage() {
                               </div>
                               <div className="text-right shrink-0 ml-2">
                                 <div className="text-[11px] font-mono font-bold text-gray-900">
-                                  {s.quantity_mt} MT · {fCurrency(s.purchase_price)}/{s.currency}
+                                  {s.quantity_mt} {tUnit} · {fCurrency(s.purchase_price)}/{s.currency}
                                 </div>
                               </div>
                             </div>
@@ -2217,7 +2219,7 @@ export function TradeFileDetailPage() {
                   <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded-md">{batch.file_no}</span>
-                      <span className="text-[10px] text-gray-400">{batch.tonnage_mt ? `${batch.tonnage_mt} MT` : ''}</span>
+                      <span className="text-[10px] text-gray-400">{batch.tonnage_mt ? `${batch.tonnage_mt} ${tUnit}` : ''}</span>
                     </div>
                     <button
                       onClick={() => navigate(`/files/${batch.id}`)}
@@ -2317,7 +2319,7 @@ export function TradeFileDetailPage() {
               >
                 <div>
                   <p className="text-[13px] font-semibold text-gray-800">{batch.file_no}</p>
-                  <p className="text-[10px] text-gray-400">{batch.tonnage_mt ? `${batch.tonnage_mt} MT` : ''} · {batch.status}</p>
+                  <p className="text-[10px] text-gray-400">{batch.tonnage_mt ? `${batch.tonnage_mt} ${tUnit}` : ''} · {batch.status}</p>
                 </div>
                 <span className="text-[10px] font-mono text-gray-300 group-hover:text-gray-500">Seç →</span>
               </button>

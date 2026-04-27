@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { TradeFile } from '@/types/database';
-import { AlertTriangle, Trash2, Archive, FolderX } from 'lucide-react';
+import { AlertTriangle, Trash2, FolderX } from 'lucide-react';
 
 interface Props {
   open: boolean;

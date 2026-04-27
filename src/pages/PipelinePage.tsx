@@ -156,7 +156,7 @@ function PipelineCard({ file, onClick }: { file: TradeFile; onClick: () => void 
               {tc(`status.${file.status}` as `status.${string}`)}
             </span>
             {file.tonnage_mt > 0 && (
-              <span className="text-[11px] font-semibold text-gray-500">{fN(file.tonnage_mt, 0)} MT</span>
+              <span className="text-[11px] font-semibold text-gray-500">{fN(file.tonnage_mt, 0)} {file.product?.unit ?? 'MT'}</span>
             )}
             {file.eta && (
               <span className={cn(
@@ -541,7 +541,7 @@ export function PipelinePage() {
                               <div className="text-[10px] font-mono text-gray-400">{f.file_no}</div>
                               <div className="text-[11px] text-gray-500 truncate mt-0.5">{f.product?.name ?? '—'}</div>
                               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                                <span className="text-[11px] font-semibold text-gray-700">{fN(f.tonnage_mt, 0)} MT</span>
+                                <span className="text-[11px] font-semibold text-gray-700">{fN(f.tonnage_mt, 0)} {f.product?.unit ?? 'MT'}</span>
                                 <span className="text-gray-300">·</span>
                                 <span className="text-[10px] text-gray-400">{fDate(f.file_date)}</span>
                                 {f.eta && (
