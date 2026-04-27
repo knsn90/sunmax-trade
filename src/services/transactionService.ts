@@ -31,6 +31,7 @@ export const transactionService = {
     let query = supabase
       .from('transactions')
       .select(TXN_SELECT)
+      .is('deleted_at', null)
       .order('transaction_date', { ascending: false })
       .limit(10000); // Supabase default is 1000; reports need all rows
 
@@ -92,6 +93,7 @@ export const transactionService = {
     let query = supabase
       .from('transactions')
       .select(TXN_SELECT, { count: 'exact' })
+      .is('deleted_at', null)
       .order('transaction_date', { ascending: false })
       .range(from, to);
 
@@ -398,10 +400,35 @@ export const transactionService = {
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('transactions')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async restore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('transactions')
+      .update({ deleted_at: null })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async hardDelete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('transactions')
       .delete()
       .eq('id', id);
-
     if (error) throw new Error(error.message);
+  },
+
+  async listDeleted(): Promise<Transaction[]> {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(TXN_SELECT)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as Transaction[];
   },
 
   /** Aggregate summary for dashboard cards */

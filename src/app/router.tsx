@@ -20,6 +20,7 @@ import { DocumentsPage } from '@/pages/DocumentsPage';
 import { PriceListPage } from '@/pages/PriceListPage';
 import { TenantManagementPage } from '@/pages/TenantManagementPage';
 import { ViewAsPage } from '@/pages/ViewAsPage';
+import { TrashPage } from '@/pages/TrashPage';
 
 function TradeFileDetailRoute() {
   const { id } = useParams();
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'products', element: <ProductsPage /> },
       { path: 'price-list', element: <PriceListPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'trash',   element: <TrashPage /> },
       {
         path: 'activity',
         element: (

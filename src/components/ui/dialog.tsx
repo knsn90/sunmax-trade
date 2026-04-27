@@ -38,10 +38,11 @@ DialogOverlay.displayName = 'DialogOverlay';
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    size?: 'default' | 'lg' | 'xl';
+    size?: 'default' | 'lg' | 'xl' | 'preview';
+    layout?: 'default' | 'split';
     dismissible?: boolean;
   }
->(({ className, children, size = 'default', dismissible = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
+>(({ className, children, size = 'default', layout = 'default', dismissible = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
   const isMobile = useIsMobile();
 
   // Separate DialogHeader (first child) from body so the header is
@@ -85,6 +86,7 @@ const DialogContent = React.forwardRef<
           size === 'default' && 'md:max-w-[600px]',
           size === 'lg'      && 'md:max-w-[800px]',
           size === 'xl'      && 'md:max-w-[920px]',
+          size === 'preview' && 'md:w-[95vw] md:max-w-[1480px]',
           'outline-none',
         )}
         {...props}
@@ -110,8 +112,13 @@ const DialogContent = React.forwardRef<
 
           {/* ── Scrollable body ────────────────────────────────────── */}
           <div
-            className="flex-1 overflow-y-auto px-5 pt-3 pb-8 md:px-6 md:pt-2 md:pb-6"
-            style={isMobile ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' } : undefined}
+            className={cn(
+              'flex-1 min-h-0',
+              layout === 'split'
+                ? 'overflow-hidden flex'
+                : 'overflow-y-auto px-5 pt-3 pb-8 md:px-6 md:pt-2 md:pb-6',
+            )}
+            style={layout !== 'split' && isMobile ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' } : undefined}
           >
             {bodyChildren}
           </div>

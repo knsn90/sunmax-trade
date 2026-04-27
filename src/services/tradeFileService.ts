@@ -49,6 +49,7 @@ export const tradeFileService = {
     let query = supabase
       .from('trade_files')
       .select(FILE_SELECT_ALL)
+      .is('deleted_at', null)
       .order('file_no', { ascending: true });
 
     if (statuses?.length) {
@@ -68,6 +69,7 @@ export const tradeFileService = {
     let query = supabase
       .from('trade_files')
       .select(FILE_SELECT)
+      .is('deleted_at', null)
       .is('parent_file_id', null)          // sadece ana dosyalar — parti/batch'ler hariç
       .order('created_at', { ascending: false });
 
@@ -246,13 +248,30 @@ export const tradeFileService = {
     if (error) throw new Error(error.message);
   },
 
+  /** Soft-delete — çöp kutusuna taşı */
   async delete(id: string): Promise<void> {
-    // CASCADE on trade_files handles dependent rows automatically (migration 028+).
+    const { error } = await supabase
+      .from('trade_files')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  /** Geri yükle — çöp kutusundan çıkar */
+  async restore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('trade_files')
+      .update({ deleted_at: null })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  /** Kalıcı sil — CASCADE ile tüm bağlı kayıtları da siler */
+  async hardDelete(id: string): Promise<void> {
     const { error } = await supabase
       .from('trade_files')
       .delete()
       .eq('id', id);
-
     if (error) throw new Error(error.message);
   },
 
@@ -271,6 +290,17 @@ export const tradeFileService = {
     }
     const { error } = await supabase.from('trade_files').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  },
+
+  /** Çöp kutusundaki dosyaları listele */
+  async listDeleted(): Promise<TradeFile[]> {
+    const { data, error } = await supabase
+      .from('trade_files')
+      .select(FILE_SELECT)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data as TradeFile[];
   },
 
   async noteDelay(id: string, data: { revised_eta: string; delay_notes?: string }): Promise<void> {

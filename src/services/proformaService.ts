@@ -13,6 +13,7 @@ export const proformaService = {
     const { data, error } = await supabase
       .from('proformas')
       .select(PI_SELECT)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -25,6 +26,7 @@ export const proformaService = {
       .from('proformas')
       .select(PI_SELECT)
       .eq('trade_file_id', tradeFileId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -146,10 +148,35 @@ export const proformaService = {
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('proformas')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async restore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('proformas')
+      .update({ deleted_at: null })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async hardDelete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('proformas')
       .delete()
       .eq('id', id);
-
     if (error) throw new Error(error.message);
+  },
+
+  async listDeleted(): Promise<Proforma[]> {
+    const { data, error } = await supabase
+      .from('proformas')
+      .select(PI_SELECT)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as Proforma[];
   },
 
   /** Generate a unique proforma number — checks globally by LIKE pattern */

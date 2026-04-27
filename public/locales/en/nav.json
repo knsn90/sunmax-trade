@@ -25,6 +25,7 @@
     "products": "Products",
     "activityLog": "Activity Log",
     "settings": "Settings",
+    "trash": "Trash",
     "legacyImport": "Legacy Import",
     "profile": "Profile"
   },
@@ -42,6 +43,7 @@
       "contacts": "Contacts",
       "products": "Products",
       "settings": "Settings",
+      "trash": "Trash",
       "profile": "Profile",
       "priceList": "Price List",
       "activity": "Activity Log"

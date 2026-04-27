@@ -8,7 +8,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import {
   BarChart3, FileText, Receipt, LineChart, Users,
   Box, Settings, LayoutDashboard, Home, Activity, Tag,
-  TrendingUp, Building2,
+  TrendingUp, Building2, Trash2,
 } from 'lucide-react';
 
 interface NavItem {
@@ -71,8 +71,9 @@ export function Sidebar() {
         ...(isAdmin ? [
           { to: '/activity', labelKey: 'items.activityLog', icon: <Activity className="h-4 w-4" /> },
         ] : []),
-        { to: '/reports',       labelKey: 'items.reports',      icon: <LineChart className="h-4 w-4" /> },
-        { to: '/settings',      labelKey: 'items.settings',     icon: <Settings className="h-4 w-4" /> },
+        { to: '/reports',  labelKey: 'items.reports',  icon: <LineChart className="h-4 w-4" /> },
+        { to: '/settings', labelKey: 'items.settings', icon: <Settings className="h-4 w-4" /> },
+        { to: '/trash',    labelKey: 'items.trash',    icon: <Trash2 className="h-4 w-4" /> },
       ],
     },
   ];

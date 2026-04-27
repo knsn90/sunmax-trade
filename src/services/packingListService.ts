@@ -15,6 +15,7 @@ export const packingListService = {
     const { data, error } = await supabase
       .from('packing_lists')
       .select(PL_SELECT)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -26,6 +27,7 @@ export const packingListService = {
       .from('packing_lists')
       .select(PL_SELECT)
       .eq('trade_file_id', tradeFileId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -165,10 +167,35 @@ export const packingListService = {
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('packing_lists')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async restore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('packing_lists')
+      .update({ deleted_at: null })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async hardDelete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('packing_lists')
       .delete()
       .eq('id', id);
-
     if (error) throw new Error(error.message);
+  },
+
+  async listDeleted(): Promise<PackingList[]> {
+    const { data, error } = await supabase
+      .from('packing_lists')
+      .select(PL_SELECT)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as PackingList[];
   },
 
   /** Generate a unique PL number — checks globally by LIKE pattern to avoid collisions on batch files */

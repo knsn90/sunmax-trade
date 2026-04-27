@@ -10,10 +10,10 @@ import { useSettings } from '@/hooks/useSettings';
 import { today, fN } from '@/lib/formatters';
 import { formatPLNo } from '@/lib/generators';
 import { parsePLExcel, downloadPLTemplate } from '@/lib/excelImport';
-import { printPackingList } from '@/lib/printDocument';
+import { generatePackingListHtml, printPackingList } from '@/lib/printDocument';
 import { toast } from 'sonner';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { MonoNumberInput } from '@/components/ui/MonoNumberInput';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
+import { FileText } from 'lucide-react';
 import type { OcrResult } from '@/lib/openai';
 
 interface PackingListModalProps {
@@ -52,6 +53,14 @@ function buildAddress(customer: Customer | undefined): string {
 const UNIT_LABELS = ['Reels', 'Bales', 'Packages', 'Cartons'] as const;
 const QTY_UNITS   = ['ADMT', 'MT'] as const;
 
+// ── Preview CSS injection — hides sidebar ───────────────────────────────────
+function injectPreviewCss(html: string): string {
+  return html.replace(
+    '</style>',
+    '.sidebar{display:none!important}.doc-area{padding:16px!important;}\n</style>',
+  );
+}
+
 export function PackingListModal({ open, onOpenChange, file, packingList }: PackingListModalProps) {
   const { data: settings } = useSettings();
   const { data: allCustomers = [] } = useCustomers();
@@ -59,6 +68,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   const updatePL = useUpdatePackingList();
   const isEdit = !!packingList;
   const [saving, setSaving] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
 
   // ── Consignee (Alıcı Firma) ───────────────────────────────────────────
   const [consigneeId, setConsigneeId] = useState<string>('');
@@ -79,21 +89,15 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   const unitLabel     = useWatch({ control, name: 'unit_label' }) ?? 'Reels';
   const qtyUnit       = useWatch({ control, name: 'qty_unit' }) ?? 'ADMT';
 
-  // ── Auto-fill bill_to/ship_to when customer data loads (async) ────────
-  // mainCustomer is derived from allCustomers which may not be ready
-  // when the form first opens, so we fill when it becomes available.
+  // ── Watch all form values for live preview ───────────────────────────────
+  const allValues = useWatch({ control });
+
   useEffect(() => {
     if (!open || !mainCustomer) return;
-    // Only fill if the field is still empty (don't overwrite user edits)
-    if (!form.getValues('bill_to')) {
-      setValue('bill_to', buildAddress(mainCustomer));
-    }
-    if (!form.getValues('ship_to')) {
-      setValue('ship_to', buildAddress(mainCustomer));
-    }
+    if (!form.getValues('bill_to')) setValue('bill_to', buildAddress(mainCustomer));
+    if (!form.getValues('ship_to')) setValue('ship_to', buildAddress(mainCustomer));
   }, [open, mainCustomer]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-fill ship_to when consignee changes ──────────────────────────
   useEffect(() => {
     if (!open) return;
     const consignee = allCustomers.find(c => c.id === consigneeId);
@@ -123,7 +127,6 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
         insurance_no:   packingList.insurance_no ?? '',
         description:    packingList.description ?? '',
         comments:       packingList.comments ?? '',
-        // If DB columns don't exist yet (pre-migration) fall back gracefully
         bill_to:        (packingList as { bill_to?: string | null }).bill_to ?? '',
         ship_to:        (packingList as { ship_to?: string | null }).ship_to ?? '',
         unit_label:     ((packingList as { unit_label?: string }).unit_label as PackingListFormData['unit_label']) ?? 'Reels',
@@ -150,6 +153,37 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
       });
     }
   }, [open, file, packingList, reset]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Debounced preview update ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!open || !settings) return;
+    const timer = setTimeout(() => {
+      try {
+        const v = form.getValues();
+        const consignee = consigneeId ? allCustomers.find(c => c.id === consigneeId) ?? null : null;
+        const fakePL = {
+          ...v,
+          id: packingList?.id ?? 'preview',
+          packing_list_no: packingList?.packing_list_no ?? 'PREVIEW',
+          doc_status: 'draft',
+          packing_list_items: rows.map(r => ({
+            id: 'preview',
+            packing_list_id: 'preview',
+            vehicle_plate: r.vehicle_plate,
+            reels: r.reels,
+            admt: r.admt,
+            gross_weight_kg: r.gross_weight_kg,
+          })),
+          customer: file?.customer ?? null,
+          trade_file: file ?? null,
+          consignee,
+        } as unknown as PackingList;
+        const raw = generatePackingListHtml(fakePL, settings, true);
+        setPreviewHtml(injectPreviewCss(raw));
+      } catch { /* ignore preview errors */ }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [allValues, rows, open, settings, consigneeId, allCustomers, file, packingList]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function addRow() {
     const newRows = [...rows, { vehicle_plate: '', reels: 0, admt: 0, gross_weight_kg: 0 }];
@@ -203,11 +237,33 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
     }
   }
 
-  function handlePrint() {
-    if (!packingList) { toast.error('Save the packing list first to print it.'); return; }
+  function handlePrintPreview() {
     if (!settings) return;
-    const isDraft = (packingList.doc_status ?? 'draft') !== 'approved';
-    printPackingList(packingList, settings, isDraft);
+    if (packingList) {
+      const isDraft = (packingList.doc_status ?? 'draft') !== 'approved';
+      printPackingList(packingList, settings, isDraft);
+    } else {
+      const v = form.getValues();
+      const consignee = consigneeId ? allCustomers.find(c => c.id === consigneeId) ?? null : null;
+      const fakePL = {
+        ...v,
+        id: 'preview',
+        packing_list_no: 'PREVIEW',
+        doc_status: 'draft',
+        packing_list_items: rows.map(r => ({
+          id: 'preview',
+          packing_list_id: 'preview',
+          vehicle_plate: r.vehicle_plate,
+          reels: r.reels,
+          admt: r.admt,
+          gross_weight_kg: r.gross_weight_kg,
+        })),
+        customer: file?.customer ?? null,
+        trade_file: file ?? null,
+        consignee,
+      } as unknown as PackingList;
+      printPackingList(fakePL, settings, true);
+    }
   }
 
   async function onSubmit(data: PackingListFormData) {
@@ -234,9 +290,9 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl">
+      <DialogContent size="preview" layout="split">
         <DialogHeader>
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 pr-8">
             <div className="min-w-0">
               <DialogTitle>{isEdit ? 'Edit Packing List' : 'New Packing List'}</DialogTitle>
               <DialogDescription className="truncate">
@@ -250,224 +306,247 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        {/* ── Split panels ─────────────────────────────────────────────────── */}
+        <div className="flex h-full min-h-0">
 
-          {/* ── Alıcı Firma (Consignee) — sadece alt firma varsa göster ── */}
-          {hasSubCustomers && (
-            <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">
-                Alıcı Firma (Consignee)
-              </label>
-              <NativeSelect
-                value={consigneeId}
-                onChange={e => setConsigneeId(e.target.value)}
-                className="text-[12px]"
+          {/* LEFT: Scrollable form */}
+          <div className="flex-1 overflow-y-auto px-5 py-3 md:px-6 md:py-4 min-w-0">
+            <form onSubmit={handleSubmit(onSubmit)}>
+
+              {/* ── Alıcı Firma (Consignee) — sadece alt firma varsa göster ── */}
+              {hasSubCustomers && (
+                <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">
+                    Alıcı Firma (Consignee)
+                  </label>
+                  <NativeSelect
+                    value={consigneeId}
+                    onChange={e => setConsigneeId(e.target.value)}
+                    className="text-[12px]"
+                  >
+                    <option value="">{mainCustomer?.name ?? '—'} (Ana Firma)</option>
+                    {subCustomers.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </NativeSelect>
+                  <p className="text-[10px] text-blue-500 mt-1">Muhasebe değişmez — sadece evrak üzerindeki alıcı adı değişir.</p>
+                </div>
+              )}
+
+              {/* ── Bill To / Ship To ── */}
+              <FormRow cols={2}>
+                <FormGroup label="Bill To">
+                  <Textarea
+                    rows={3}
+                    {...register('bill_to')}
+                    className="text-[12px] resize-none"
+                    placeholder={`Firma adı\nAdres\nŞehir, Ülke`}
+                  />
+                </FormGroup>
+                <FormGroup label="Ship To">
+                  <Textarea
+                    rows={3}
+                    {...register('ship_to')}
+                    className="text-[12px] resize-none"
+                    placeholder={`Teslim adresi\nAdres\nŞehir, Ülke`}
+                  />
+                </FormGroup>
+              </FormRow>
+
+              {/* ── Temel Bilgiler ── */}
+              <FormRow cols={3}>
+                <FormGroup label="Date *" error={errors.pl_date?.message}>
+                  <MonoDatePicker value={form.watch('pl_date') ?? ''} onChange={v => setValue('pl_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
+                </FormGroup>
+                <FormGroup label="Transport Mode">
+                  <NativeSelect {...register('transport_mode')}>
+                    <option value="truck">By Truck</option>
+                    <option value="railway">By Railway</option>
+                    <option value="sea">By Sea</option>
+                  </NativeSelect>
+                </FormGroup>
+                <FormGroup label="Description">
+                  <Input {...register('description')} />
+                </FormGroup>
+              </FormRow>
+
+              <FormRow cols={3}>
+                <FormGroup label="Invoice No.">
+                  <Input {...register('invoice_no')} />
+                </FormGroup>
+                <FormGroup label="CB No.">
+                  <Input {...register('cb_no')} />
+                </FormGroup>
+                <FormGroup label="Insurance No.">
+                  <Input {...register('insurance_no')} />
+                </FormGroup>
+              </FormRow>
+
+              {/* ── Unit selectors ── */}
+              <div className="flex items-center gap-4 mb-2 px-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Count Unit</span>
+                  <div className="flex gap-1">
+                    {UNIT_LABELS.map(lbl => (
+                      <button
+                        key={lbl}
+                        type="button"
+                        onClick={() => setValue('unit_label', lbl)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                          unitLabel === lbl
+                            ? 'bg-gray-800 text-white'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Qty Unit</span>
+                  <div className="flex gap-1">
+                    {QTY_UNITS.map(u => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setValue('qty_unit', u)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                          qtyUnit === u
+                            ? 'bg-gray-800 text-white'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Vehicle rows table ── */}
+              <div className="border border-border rounded-lg overflow-hidden mb-3 overflow-x-auto">
+                <table className="w-full min-w-[480px]">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-left w-8">#</th>
+                      <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-left">
+                        {transportMode === 'truck' ? 'TIR No / Plate' : 'Wagon No'}
+                      </th>
+                      <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-center w-24">{unitLabel}</th>
+                      <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-center w-24">{qtyUnit}</th>
+                      <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-center w-24">Gross (KG)</th>
+                      <th className="w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={i} className="border-t border-border">
+                        <td className="px-2 py-1 text-2xs text-muted-foreground">{i + 1}</td>
+                        <td className="px-1 py-1">
+                          <Input
+                            value={row.vehicle_plate}
+                            onChange={(e) => updateRow(i, 'vehicle_plate', e.target.value)}
+                            placeholder={transportMode === 'truck' ? '04AAE583 / 04AAZ457' : 'WAGON-001'}
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <MonoNumberInput
+                            value={row.reels || undefined}
+                            onChange={v => updateRow(i, 'reels', v ?? 0)}
+                            decimals={0}
+                            className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <MonoNumberInput
+                            value={row.admt || undefined}
+                            onChange={v => updateRow(i, 'admt', v ?? 0)}
+                            decimals={3}
+                            className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <MonoNumberInput
+                            value={row.gross_weight_kg || undefined}
+                            onChange={v => updateRow(i, 'gross_weight_kg', v ?? 0)}
+                            decimals={3}
+                            className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <Button type="button" variant="destructive" size="xs" onClick={() => removeRow(i)}>×</Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div
+                  className="border-t border-dashed border-border py-2 text-center text-[11px] text-muted-foreground cursor-pointer hover:bg-gray-50"
+                  onClick={addRow}
+                >
+                  + Add Row
+                </div>
+              </div>
+
+              {/* ── Totals ── */}
+              <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>Vehicles: <strong>{rows.length}</strong></div>
+                <div>{unitLabel}: <strong>{totalReels}</strong></div>
+                <div>{qtyUnit}: <strong className="text-brand-600">{fN(totalAdmt, 3)}</strong></div>
+                <div>Gross: <strong>{fN(totalGross, 0)}</strong></div>
+              </div>
+
+              <FormGroup label="Comments" className="mb-2.5">
+                <Textarea rows={3} {...register('comments')} />
+              </FormGroup>
+
+              {/* ── Footer ── */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 mt-1 border-t border-gray-100">
+                <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => downloadPLTemplate()}>
+                    ↓ Template
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => importRef.current?.click()}>
+                    ↑ Import Excel
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Saving…' : isEdit ? 'Update Packing List' : 'Save Packing List'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* RIGHT: Live preview — desktop only */}
+          <div className="w-[520px] shrink-0 hidden md:flex flex-col border-l border-gray-100">
+            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-gray-400" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Önizleme</span>
+              </div>
+              <button
+                type="button"
+                onClick={handlePrintPreview}
+                className="h-7 px-3 rounded-lg text-[11px] font-bold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
               >
-                <option value="">{mainCustomer?.name ?? '—'} (Ana Firma)</option>
-                {subCustomers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </NativeSelect>
-              <p className="text-[10px] text-blue-500 mt-1">Muhasebe değişmez — sadece evrak üzerindeki alıcı adı değişir.</p>
+                🖨 PDF / Yazdır
+              </button>
             </div>
-          )}
-
-          {/* ── Bill To / Ship To ─────────────────────────────────────── */}
-          <FormRow cols={2}>
-            <FormGroup label="Bill To">
-              <Textarea
-                rows={3}
-                {...register('bill_to')}
-                className="text-[12px] resize-none"
-                placeholder={`Firma adı\nAdres\nŞehir, Ülke`}
-              />
-            </FormGroup>
-            <FormGroup label="Ship To">
-              <Textarea
-                rows={3}
-                {...register('ship_to')}
-                className="text-[12px] resize-none"
-                placeholder={`Teslim adresi\nAdres\nŞehir, Ülke`}
-              />
-            </FormGroup>
-          </FormRow>
-
-          {/* ── Temel Bilgiler ────────────────────────────────────────── */}
-          <FormRow cols={3}>
-            <FormGroup label="Date *" error={errors.pl_date?.message}>
-              <MonoDatePicker value={form.watch('pl_date') ?? ''} onChange={v => setValue('pl_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
-            </FormGroup>
-            <FormGroup label="Transport Mode">
-              <NativeSelect {...register('transport_mode')}>
-                <option value="truck">By Truck</option>
-                <option value="railway">By Railway</option>
-                <option value="sea">By Sea</option>
-              </NativeSelect>
-            </FormGroup>
-            <FormGroup label="Description">
-              <Input {...register('description')} />
-            </FormGroup>
-          </FormRow>
-
-          <FormRow cols={3}>
-            <FormGroup label="Invoice No.">
-              <Input {...register('invoice_no')} />
-            </FormGroup>
-            <FormGroup label="CB No.">
-              <Input {...register('cb_no')} />
-            </FormGroup>
-            <FormGroup label="Insurance No.">
-              <Input {...register('insurance_no')} />
-            </FormGroup>
-          </FormRow>
-
-          {/* ── Unit selectors (above table) ─────────────────────────── */}
-          <div className="flex items-center gap-4 mb-2 px-0.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Count Unit</span>
-              <div className="flex gap-1">
-                {UNIT_LABELS.map(lbl => (
-                  <button
-                    key={lbl}
-                    type="button"
-                    onClick={() => setValue('unit_label', lbl)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-                      unitLabel === lbl
-                        ? 'bg-gray-800 text-white'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                  >
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Qty Unit</span>
-              <div className="flex gap-1">
-                {QTY_UNITS.map(u => (
-                  <button
-                    key={u}
-                    type="button"
-                    onClick={() => setValue('qty_unit', u)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-                      qtyUnit === u
-                        ? 'bg-gray-800 text-white'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Vehicle rows table ────────────────────────────────────── */}
-          <div className="border border-border rounded-lg overflow-hidden mb-3 overflow-x-auto">
-            <table className="w-full min-w-[480px]">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-left w-8">#</th>
-                  <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-left">
-                    {transportMode === 'truck' ? 'TIR No / Plate' : 'Wagon No'}
-                  </th>
-                  <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-center w-24">{unitLabel}</th>
-                  <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-center w-24">{qtyUnit}</th>
-                  <th className="px-2 py-1.5 text-2xs font-bold text-muted-foreground text-center w-24">Gross (KG)</th>
-                  <th className="w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className="px-2 py-1 text-2xs text-muted-foreground">{i + 1}</td>
-                    <td className="px-1 py-1">
-                      <Input
-                        value={row.vehicle_plate}
-                        onChange={(e) => updateRow(i, 'vehicle_plate', e.target.value)}
-                        placeholder={transportMode === 'truck' ? '04AAE583 / 04AAZ457' : 'WAGON-001'}
-                      />
-                    </td>
-                    <td className="px-1 py-1">
-                      <MonoNumberInput
-                        value={row.reels || undefined}
-                        onChange={v => updateRow(i, 'reels', v ?? 0)}
-                        decimals={0}
-                        className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
-                      />
-                    </td>
-                    <td className="px-1 py-1">
-                      <MonoNumberInput
-                        value={row.admt || undefined}
-                        onChange={v => updateRow(i, 'admt', v ?? 0)}
-                        decimals={3}
-                        className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
-                      />
-                    </td>
-                    <td className="px-1 py-1">
-                      <MonoNumberInput
-                        value={row.gross_weight_kg || undefined}
-                        onChange={v => updateRow(i, 'gross_weight_kg', v ?? 0)}
-                        decimals={3}
-                        className="bg-gray-100 rounded-lg h-8 px-2 text-[12px] text-gray-900 border-0 focus:outline-none focus:ring-0 w-full text-center"
-                      />
-                    </td>
-                    <td className="px-1 py-1">
-                      <Button type="button" variant="destructive" size="xs" onClick={() => removeRow(i)}>×</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div
-              className="border-t border-dashed border-border py-2 text-center text-[11px] text-muted-foreground cursor-pointer hover:bg-gray-50"
-              onClick={addRow}
-            >
-              + Add Row
-            </div>
-          </div>
-
-          {/* ── Totals ───────────────────────────────────────────────── */}
-          <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div>Vehicles: <strong>{rows.length}</strong></div>
-            <div>{unitLabel}: <strong>{totalReels}</strong></div>
-            <div>{qtyUnit}: <strong className="text-brand-600">{fN(totalAdmt, 3)}</strong></div>
-            <div>Gross: <strong>{fN(totalGross, 0)}</strong></div>
-          </div>
-
-          <FormGroup label="Comments" className="mb-2.5">
-            <Textarea rows={3} {...register('comments')} />
-          </FormGroup>
-
-          <DialogFooter>
-            {/* Hidden file input for Excel import */}
-            <input
-              ref={importRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={handleImportFile}
+            <iframe
+              srcDoc={previewHtml || '<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9ca3af;font-family:Arial;font-size:13px">Önizleme yükleniyor…</body></html>'}
+              className="flex-1 w-full border-0 bg-gray-100"
+              title="Packing List Preview"
+              sandbox="allow-scripts allow-same-origin"
             />
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-1">
-              <Button type="button" variant="outline" size="sm" onClick={() => downloadPLTemplate()}>
-                ↓ Template
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => importRef.current?.click()}>
-                ↑ Import Excel
-              </Button>
-            </div>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            {isEdit && (
-              <Button type="button" variant="outline" onClick={handlePrint}>
-                🖨 Print / PDF
-              </Button>
-            )}
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : isEdit ? 'Update Packing List' : 'Save Packing List'}
-            </Button>
-          </DialogFooter>
-        </form>
+          </div>
+
+        </div>
       </DialogContent>
     </Dialog>
   );

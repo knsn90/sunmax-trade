@@ -25,6 +25,7 @@
     "products": "Ürünler",
     "activityLog": "Aktivite Kaydı",
     "settings": "Ayarlar",
+    "trash": "Çöp Kutusu",
     "legacyImport": "Geçmiş Veri Aktarma",
     "profile": "Profil"
   },
@@ -42,6 +43,7 @@
       "contacts": "Rehber",
       "products": "Ürünler",
       "settings": "Ayarlar",
+      "trash": "Çöp Kutusu",
       "profile": "Profil",
       "priceList": "Fiyat Listesi",
       "activity": "Aktivite Kaydı"

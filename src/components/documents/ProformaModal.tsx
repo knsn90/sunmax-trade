@@ -13,10 +13,10 @@ import { useCurrencies } from '@/hooks/useCurrencies';
 import { today, fCurrency } from '@/lib/formatters';
 import { formatProformaNo } from '@/lib/generators';
 import { parseProformaExcel, downloadProformaTemplate } from '@/lib/excelImport';
-import { printProforma } from '@/lib/printDocument';
+import { generateProformaHtml, printProforma } from '@/lib/printDocument';
 import { toast } from 'sonner';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { OcrButton } from '@/components/ui/OcrButton';
@@ -24,6 +24,7 @@ import { SmartFill } from '@/components/ui/SmartFill';
 import { WeekPicker } from '@/components/ui/WeekPicker';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { MonoNumberInput } from '@/components/ui/MonoNumberInput';
+import { FileText } from 'lucide-react';
 
 // ── Mono stil sabitleri ────────────────────────────────────────────────────────
 const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
@@ -42,6 +43,14 @@ const Fld = ({
     {error && <div className="text-[10px] text-red-500 mt-0.5">{error}</div>}
   </div>
 );
+
+// ── Preview CSS injection — hides sidebar ───────────────────────────────────
+function injectPreviewCss(html: string): string {
+  return html.replace(
+    '</style>',
+    '.sidebar{display:none!important}.doc-area{padding:16px!important;}\n</style>',
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -63,6 +72,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   const isEdit = !!proforma;
   const importRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
 
   // ── Consignee (Alıcı Firma) ───────────────────────────────────────────
   const [consigneeId, setConsigneeId] = useState<string>('');
@@ -168,15 +178,40 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
     }
   }, [open, file, proforma, settings, reset, defaultNotes]);
 
-  const qty         = useWatch({ control, name: 'quantity_admt' }) ?? 0;
-  const price       = useWatch({ control, name: 'unit_price' }) ?? 0;
-  const freight     = useWatch({ control, name: 'freight' }) ?? 0;
-  const discount    = useWatch({ control, name: 'discount' }) ?? 0;
+  const qty          = useWatch({ control, name: 'quantity_admt' }) ?? 0;
+  const price        = useWatch({ control, name: 'unit_price' }) ?? 0;
+  const freight      = useWatch({ control, name: 'freight' }) ?? 0;
+  const discount     = useWatch({ control, name: 'discount' }) ?? 0;
   const otherCharges = useWatch({ control, name: 'other_charges' }) ?? 0;
-  const currency    = useWatch({ control, name: 'currency' }) ?? 'USD';
+  const currency     = useWatch({ control, name: 'currency' }) ?? 'USD';
 
   const subtotal = qty * price;
   const total    = subtotal + freight - discount + otherCharges;
+
+  // ── Watch all form values for live preview ───────────────────────────────
+  const allValues = useWatch({ control });
+
+  useEffect(() => {
+    if (!open || !settings) return;
+    const timer = setTimeout(() => {
+      try {
+        const v = form.getValues();
+        const defaultBank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
+        const consignee = consigneeId ? allCustomers.find(c => c.id === consigneeId) ?? null : null;
+        const fakePI = {
+          ...v,
+          id: proforma?.id ?? 'preview',
+          proforma_no: proforma?.proforma_no ?? 'PREVIEW',
+          doc_status: 'draft',
+          customer: file?.customer ?? null,
+          consignee,
+        } as unknown as Proforma;
+        const raw = generateProformaHtml(fakePI, settings, defaultBank, file, true);
+        setPreviewHtml(injectPreviewCss(raw));
+      } catch { /* ignore preview errors */ }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [allValues, open, settings, bankAccounts, file, proforma, consigneeId, allCustomers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -214,11 +249,24 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
     if (result.payment_terms) setValue('payment_terms', result.payment_terms);
   }
 
-  function handlePrint() {
-    if (!proforma) { toast.error('Save the proforma first to print it.'); return; }
+  function handlePrintPreview() {
     if (!settings) return;
     const defaultBank = bankAccounts?.find((b) => b.is_default) ?? bankAccounts?.[0] ?? null;
-    printProforma(proforma, settings, defaultBank, file);
+    if (proforma) {
+      printProforma(proforma, settings, defaultBank, file);
+    } else {
+      const v = form.getValues();
+      const consignee = consigneeId ? allCustomers.find(c => c.id === consigneeId) ?? null : null;
+      const fakePI = {
+        ...v,
+        id: 'preview',
+        proforma_no: 'PREVIEW',
+        doc_status: 'draft',
+        customer: file?.customer ?? null,
+        consignee,
+      } as unknown as Proforma;
+      printProforma(fakePI, settings, defaultBank, file, true);
+    }
   }
 
   async function onSubmit(data: ProformaFormData) {
@@ -244,9 +292,9 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl">
+      <DialogContent size="preview" layout="split">
         <DialogHeader>
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 pr-8">
             <div className="min-w-0">
               <DialogTitle>{isEdit ? 'Edit Proforma' : 'New Proforma Invoice'}</DialogTitle>
               <DialogDescription className="truncate">
@@ -260,256 +308,279 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        {/* ── Split panels ─────────────────────────────────────────────────── */}
+        <div className="flex h-full min-h-0">
 
-          {/* ── Alıcı Firma (Consignee) — sadece alt firma varsa göster ── */}
-          {hasSubCustomers && (
-            <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <Lbl>Alıcı Firma (Consignee)</Lbl>
-              <select
-                value={consigneeId}
-                onChange={e => setConsigneeId(e.target.value)}
-                className={sel}
+          {/* LEFT: Scrollable form */}
+          <div className="flex-1 overflow-y-auto px-5 py-3 md:px-6 md:py-4 min-w-0">
+            <form onSubmit={handleSubmit(onSubmit)}>
+
+              {/* ── Alıcı Firma (Consignee) — sadece alt firma varsa göster ── */}
+              {hasSubCustomers && (
+                <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                  <Lbl>Alıcı Firma (Consignee)</Lbl>
+                  <select
+                    value={consigneeId}
+                    onChange={e => setConsigneeId(e.target.value)}
+                    className={sel}
+                  >
+                    <option value="">{mainCustomer?.name ?? '—'} (Ana Firma)</option>
+                    {subCustomers.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-blue-500 mt-1">Muhasebe değişmez — sadece evrak üzerindeki alıcı adı değişir.</p>
+                </div>
+              )}
+
+              {/* ── Satır 1: Tarihler + Alıcı ID ── */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Fld label="PI Date *" error={errors.proforma_date?.message}>
+                  <MonoDatePicker value={form.watch('proforma_date') ?? ''} onChange={v => setValue('proforma_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
+                </Fld>
+                <Fld label="Validity Date">
+                  <MonoDatePicker value={form.watch('validity_date') ?? ''} onChange={v => setValue('validity_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
+                </Fld>
+                <Fld label="Buyer Commercial ID">
+                  <input className={inp} {...register('buyer_commercial_id')} />
+                </Fld>
+              </div>
+
+              {/* ── Satır 2: Menşei + Döviz ── */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Fld label="Country of Origin">
+                  <input className={inp} {...register('country_of_origin')} />
+                </Fld>
+                <Fld label="Currency">
+                  <select className={sel} {...register('currency')}>
+                    {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Fld>
+              </div>
+
+              {/* ── Satır 3: Yükleme / Boşaltma Limanı ── */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Fld label="Port of Loading">
+                  <input className={inp} {...register('port_of_loading')} />
+                </Fld>
+                <Fld label="Port of Discharge">
+                  <input className={inp} {...register('port_of_discharge')} />
+                </Fld>
+              </div>
+
+              {/* ── Satır 4: Teslimat + Incoterms ── */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Fld label="Final Delivery Place">
+                  <input className={inp} {...register('final_delivery')} />
+                </Fld>
+                <Fld label="Incoterms">
+                  <input className={inp} {...register('incoterms')} placeholder="CPT MERSIN" />
+                </Fld>
+              </div>
+
+              {/* ── Satır 5: Ödeme + Taşıma + Ödeme Yeri ── */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Fld label="Payment Terms">
+                  <input className={inp} {...register('payment_terms')} />
+                </Fld>
+                <Fld label="Transport Mode">
+                  <select className={sel} {...register('transport_mode')}>
+                    <option value="truck">By Truck</option>
+                    <option value="railway">By Railway</option>
+                    <option value="sea">By Sea</option>
+                  </select>
+                </Fld>
+                <Fld label="Place of Payment">
+                  <input className={inp} {...register('place_of_payment')} />
+                </Fld>
+              </div>
+
+              {/* ── Satır 6: Sevkiyat Yöntemi + Teslimat Haftası + Gemi Konfirme ── */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Fld label="Shipment Method">
+                  <select className={sel} {...register('shipment_method')}>
+                    <option value="">— Select —</option>
+                    <option value="bulk">Bulk</option>
+                    <option value="container">Container</option>
+                  </select>
+                </Fld>
+                <Fld label="Time of Delivery">
+                  <WeekPicker
+                    value={form.watch('delivery_time') ?? ''}
+                    onChange={v => setValue('delivery_time', v)}
+                  />
+                </Fld>
+                <Fld label="Vessel Details Confirmation">
+                  <input className={inp} {...register('vessel_details_confirmation')} placeholder="e.g. 7 days before loading" />
+                </Fld>
+              </div>
+
+              {/* ── Satır 7: Ürün + HS Kodu + Kısmi Sevkiyat ── */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Fld label="Description">
+                  <input className={inp} {...register('description')} />
+                </Fld>
+                <Fld label="HS Code">
+                  <input className={inp} {...register('hs_code')} />
+                </Fld>
+                <Fld label="Partial Shipment">
+                  <select className={sel} {...register('partial_shipment')}>
+                    <option value="allowed">Allowed</option>
+                    <option value="not">Not Allowed</option>
+                  </select>
+                </Fld>
+              </div>
+
+              {/* ── Satır 8: Sigorta + Net/Brüt Ağırlık ── */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Fld label="Insurance">
+                  <input className={inp} {...register('insurance')} />
+                </Fld>
+                <Fld label="Net Weight (KG)">
+                  <MonoNumberInput
+                    value={form.watch('net_weight_kg')}
+                    onChange={v => setValue('net_weight_kg', v as number)}
+                    className={inp}
+                    decimals={3}
+                  />
+                </Fld>
+                <Fld label="Gross Weight (KG)">
+                  <MonoNumberInput
+                    value={form.watch('gross_weight_kg')}
+                    onChange={v => setValue('gross_weight_kg', v as number)}
+                    className={inp}
+                    decimals={3}
+                  />
+                </Fld>
+              </div>
+
+              {/* ── Satır 9: Miktar + Fiyat + Navlun ── */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Fld label="Quantity (ADMT) *" error={errors.quantity_admt?.message}>
+                  <MonoNumberInput
+                    value={form.watch('quantity_admt')}
+                    onChange={v => setValue('quantity_admt', v ?? 0)}
+                    className={inp}
+                    decimals={3}
+                  />
+                </Fld>
+                <Fld label="Unit Price *" error={errors.unit_price?.message}>
+                  <MonoNumberInput
+                    value={form.watch('unit_price')}
+                    onChange={v => setValue('unit_price', v ?? 0)}
+                    className={inp}
+                    decimals={3}
+                  />
+                </Fld>
+                <Fld label="Freight (0=N/A)">
+                  <MonoNumberInput
+                    value={form.watch('freight')}
+                    onChange={v => setValue('freight', v ?? 0)}
+                    className={inp}
+                    decimals={3}
+                  />
+                </Fld>
+              </div>
+
+              {/* ── Satır 10: İskonto + Diğer ── */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Fld label="Discount">
+                  <MonoNumberInput
+                    value={form.watch('discount')}
+                    onChange={v => setValue('discount', v)}
+                    className={inp}
+                    decimals={3}
+                    placeholder="N/A"
+                  />
+                </Fld>
+                <Fld label="Other Charges">
+                  <MonoNumberInput
+                    value={form.watch('other_charges')}
+                    onChange={v => setValue('other_charges', v)}
+                    className={inp}
+                    decimals={3}
+                    placeholder="N/A"
+                  />
+                </Fld>
+              </div>
+
+              {/* ── Toplam Banner ── */}
+              <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3 flex flex-wrap gap-5">
+                <span className="text-[11px] text-gray-500">
+                  Subtotal:{' '}
+                  <strong className="text-gray-900 text-[12px]">{fCurrency(subtotal, currency as 'USD')}</strong>
+                </span>
+                <span className="text-[11px] text-gray-500">
+                  Freight:{' '}
+                  <strong className="text-gray-900 text-[12px]">{fCurrency(freight, currency as 'USD')}</strong>
+                </span>
+                <span className="text-[11px] text-gray-500">
+                  TOTAL:{' '}
+                  <strong className="text-red-600 text-[13px] font-extrabold">{fCurrency(total, currency as 'USD')}</strong>
+                </span>
+              </div>
+
+              {/* ── İmzalayan ── */}
+              <Fld label="Signatory" className="mb-3">
+                <input className={inp} {...register('signatory')} />
+              </Fld>
+
+              {/* ── Notlar ── */}
+              <Fld label="Notes" className="mb-3">
+                <textarea className={ta} rows={6} {...register('notes')} />
+              </Fld>
+
+              {/* ── Footer ── */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 mt-1 border-t border-gray-100">
+                <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => downloadProformaTemplate()}>
+                    ↓ Template
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => importRef.current?.click()}>
+                    ↑ Import Excel
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="h-9 px-5 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                    style={{ background: accent }}
+                  >
+                    {saving ? 'Saving…' : isEdit ? 'Update Proforma' : 'Save Proforma'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* RIGHT: Live preview — desktop only */}
+          <div className="w-[520px] shrink-0 hidden md:flex flex-col border-l border-gray-100">
+            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-gray-400" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Önizleme</span>
+              </div>
+              <button
+                type="button"
+                onClick={handlePrintPreview}
+                className="h-7 px-3 rounded-lg text-[11px] font-bold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
               >
-                <option value="">{mainCustomer?.name ?? '—'} (Ana Firma)</option>
-                {subCustomers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <p className="text-[10px] text-blue-500 mt-1">Muhasebe değişmez — sadece evrak üzerindeki alıcı adı değişir.</p>
+                🖨 PDF / Yazdır
+              </button>
             </div>
-          )}
-
-          {/* ── Satır 1: Tarihler + Alıcı ID ── */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <Fld label="PI Date *" error={errors.proforma_date?.message}>
-              <MonoDatePicker value={form.watch('proforma_date') ?? ''} onChange={v => setValue('proforma_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
-            </Fld>
-            <Fld label="Validity Date">
-              <MonoDatePicker value={form.watch('validity_date') ?? ''} onChange={v => setValue('validity_date', v)} className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors" />
-            </Fld>
-            <Fld label="Buyer Commercial ID">
-              <input className={inp} {...register('buyer_commercial_id')} />
-            </Fld>
-          </div>
-
-          {/* ── Satır 2: Menşei + Döviz ── */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Fld label="Country of Origin">
-              <input className={inp} {...register('country_of_origin')} />
-            </Fld>
-            <Fld label="Currency">
-              <select className={sel} {...register('currency')}>
-                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </Fld>
-          </div>
-
-          {/* ── Satır 3: Yükleme / Boşaltma Limanı ── */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Fld label="Port of Loading">
-              <input className={inp} {...register('port_of_loading')} />
-            </Fld>
-            <Fld label="Port of Discharge">
-              <input className={inp} {...register('port_of_discharge')} />
-            </Fld>
-          </div>
-
-          {/* ── Satır 4: Teslimat + Incoterms ── */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Fld label="Final Delivery Place">
-              <input className={inp} {...register('final_delivery')} />
-            </Fld>
-            <Fld label="Incoterms">
-              <input className={inp} {...register('incoterms')} placeholder="CPT MERSIN" />
-            </Fld>
-          </div>
-
-          {/* ── Satır 5: Ödeme + Taşıma + Ödeme Yeri ── */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <Fld label="Payment Terms">
-              <input className={inp} {...register('payment_terms')} />
-            </Fld>
-            <Fld label="Transport Mode">
-              <select className={sel} {...register('transport_mode')}>
-                <option value="truck">By Truck</option>
-                <option value="railway">By Railway</option>
-                <option value="sea">By Sea</option>
-              </select>
-            </Fld>
-            <Fld label="Place of Payment">
-              <input className={inp} {...register('place_of_payment')} />
-            </Fld>
-          </div>
-
-          {/* ── Satır 6: Sevkiyat Yöntemi + Teslimat Haftası + Gemi Konfirme ── */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <Fld label="Shipment Method">
-              <select className={sel} {...register('shipment_method')}>
-                <option value="">— Select —</option>
-                <option value="bulk">Bulk</option>
-                <option value="container">Container</option>
-              </select>
-            </Fld>
-            <Fld label="Time of Delivery">
-              <WeekPicker
-                value={form.watch('delivery_time') ?? ''}
-                onChange={v => setValue('delivery_time', v)}
-              />
-            </Fld>
-            <Fld label="Vessel Details Confirmation">
-              <input className={inp} {...register('vessel_details_confirmation')} placeholder="e.g. 7 days before loading" />
-            </Fld>
-          </div>
-
-          {/* ── Satır 7: Ürün + HS Kodu + Kısmi Sevkiyat ── */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <Fld label="Description">
-              <input className={inp} {...register('description')} />
-            </Fld>
-            <Fld label="HS Code">
-              <input className={inp} {...register('hs_code')} />
-            </Fld>
-            <Fld label="Partial Shipment">
-              <select className={sel} {...register('partial_shipment')}>
-                <option value="allowed">Allowed</option>
-                <option value="not">Not Allowed</option>
-              </select>
-            </Fld>
-          </div>
-
-          {/* ── Satır 8: Sigorta + Net/Brüt Ağırlık ── */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <Fld label="Insurance">
-              <input className={inp} {...register('insurance')} />
-            </Fld>
-            <Fld label="Net Weight (KG)">
-              <MonoNumberInput
-                value={form.watch('net_weight_kg')}
-                onChange={v => setValue('net_weight_kg', v as number)}
-                className={inp}
-                decimals={3}
-              />
-            </Fld>
-            <Fld label="Gross Weight (KG)">
-              <MonoNumberInput
-                value={form.watch('gross_weight_kg')}
-                onChange={v => setValue('gross_weight_kg', v as number)}
-                className={inp}
-                decimals={3}
-              />
-            </Fld>
-          </div>
-
-          {/* ── Satır 9: Miktar + Fiyat + Navlun ── */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <Fld label="Quantity (ADMT) *" error={errors.quantity_admt?.message}>
-              <MonoNumberInput
-                value={form.watch('quantity_admt')}
-                onChange={v => setValue('quantity_admt', v ?? 0)}
-                className={inp}
-                decimals={3}
-              />
-            </Fld>
-            <Fld label="Unit Price *" error={errors.unit_price?.message}>
-              <MonoNumberInput
-                value={form.watch('unit_price')}
-                onChange={v => setValue('unit_price', v ?? 0)}
-                className={inp}
-                decimals={3}
-              />
-            </Fld>
-            <Fld label="Freight (0=N/A)">
-              <MonoNumberInput
-                value={form.watch('freight')}
-                onChange={v => setValue('freight', v ?? 0)}
-                className={inp}
-                decimals={3}
-              />
-            </Fld>
-          </div>
-
-          {/* ── Satır 10: İskonto + Diğer ── */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Fld label="Discount">
-              <MonoNumberInput
-                value={form.watch('discount')}
-                onChange={v => setValue('discount', v)}
-                className={inp}
-                decimals={3}
-                placeholder="N/A"
-              />
-            </Fld>
-            <Fld label="Other Charges">
-              <MonoNumberInput
-                value={form.watch('other_charges')}
-                onChange={v => setValue('other_charges', v)}
-                className={inp}
-                decimals={3}
-                placeholder="N/A"
-              />
-            </Fld>
-          </div>
-
-          {/* ── Toplam Banner ── */}
-          <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3 flex flex-wrap gap-5">
-            <span className="text-[11px] text-gray-500">
-              Subtotal:{' '}
-              <strong className="text-gray-900 text-[12px]">{fCurrency(subtotal, currency as 'USD')}</strong>
-            </span>
-            <span className="text-[11px] text-gray-500">
-              Freight:{' '}
-              <strong className="text-gray-900 text-[12px]">{fCurrency(freight, currency as 'USD')}</strong>
-            </span>
-            <span className="text-[11px] text-gray-500">
-              TOTAL:{' '}
-              <strong className="text-red-600 text-[13px] font-extrabold">{fCurrency(total, currency as 'USD')}</strong>
-            </span>
-          </div>
-
-          {/* ── İmzalayan ── */}
-          <Fld label="Signatory" className="mb-3">
-            <input className={inp} {...register('signatory')} />
-          </Fld>
-
-          {/* ── Notlar ── */}
-          <Fld label="Notes" className="mb-3">
-            <textarea className={ta} rows={6} {...register('notes')} />
-          </Fld>
-
-          <DialogFooter>
-            {/* Hidden file input for Excel import */}
-            <input
-              ref={importRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={handleImportFile}
+            <iframe
+              srcDoc={previewHtml || '<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9ca3af;font-family:Arial;font-size:13px">Önizleme yükleniyor…</body></html>'}
+              className="flex-1 w-full border-0 bg-gray-100"
+              title="Proforma Preview"
+              sandbox="allow-scripts allow-same-origin"
             />
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-1">
-              <Button type="button" variant="outline" size="sm" onClick={() => downloadProformaTemplate()}>
-                ↓ Template
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => importRef.current?.click()}>
-                ↑ Import Excel
-              </Button>
-            </div>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            {isEdit && (
-              <Button type="button" variant="outline" onClick={handlePrint}>
-                🖨 Print / PDF
-              </Button>
-            )}
-            <button
-              type="submit"
-              disabled={saving}
-              className="h-9 px-5 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-              style={{ background: accent }}
-            >
-              {saving ? 'Saving…' : isEdit ? 'Update Proforma' : 'Save Proforma'}
-            </button>
-          </DialogFooter>
-        </form>
+          </div>
+
+        </div>
       </DialogContent>
     </Dialog>
   );

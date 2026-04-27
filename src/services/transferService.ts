@@ -21,6 +21,7 @@ export const transferService = {
     const { data, error } = await supabase
       .from('account_transfers')
       .select('*')
+      .is('deleted_at', null)
       .order('transfer_date', { ascending: false });
     if (error) throw new Error(error.message);
     if (data === null) throw new Error('Request aborted or timed out — please refresh');
@@ -41,8 +42,34 @@ export const transferService = {
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('account_transfers')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async restore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('account_transfers')
+      .update({ deleted_at: null })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async hardDelete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('account_transfers')
       .delete()
       .eq('id', id);
     if (error) throw new Error(error.message);
+  },
+
+  async listDeleted(): Promise<AccountTransfer[]> {
+    const { data, error } = await supabase
+      .from('account_transfers')
+      .select('*')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as AccountTransfer[];
   },
 };

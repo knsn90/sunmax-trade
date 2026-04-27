@@ -47,7 +47,10 @@ export function fUSD(value: number | null | undefined): string {
 export function fDateDMY(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
   try {
-    const d = new Date(dateStr + 'T00:00:00');
+    // Eğer zaten tam timestamp ise (T veya Z içeriyorsa) doğrudan Date'e ver
+    const d = dateStr.includes('T') || dateStr.includes('Z')
+      ? new Date(dateStr)
+      : new Date(dateStr + 'T00:00:00');
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const yyyy = d.getFullYear();
