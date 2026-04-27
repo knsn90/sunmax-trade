@@ -114,12 +114,16 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
   const pickedFile       = allFiles.find(f => f.id === fileId) ?? null;
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
-  // Seçili dosyaya ait tedarikçiler (birincil + ikincil)
+  // Seçili dosyaya ait tedarikçiler
+  // Alt parti → sadece o partinin supplier_id'si (kesin tek tedarikçi)
+  // Ana dosya → birincil + ikincil tedarikçiler
   const fileSupplierIds = pickedFile
-    ? [
-        ...(pickedFile.supplier_id ? [pickedFile.supplier_id] : []),
-        ...(pickedFile.suppliers?.map((s: { supplier_id: string }) => s.supplier_id) ?? []),
-      ].filter((id, i, arr) => arr.indexOf(id) === i)
+    ? pickedFile.parent_file_id
+      ? (pickedFile.supplier_id ? [pickedFile.supplier_id] : [])
+      : [
+          ...(pickedFile.supplier_id ? [pickedFile.supplier_id] : []),
+          ...(pickedFile.suppliers?.map((s: { supplier_id: string }) => s.supplier_id) ?? []),
+        ].filter((id, i, arr) => arr.indexOf(id) === i)
     : [];
   const fileSuppliers        = fileSupplierIds.length > 0 ? suppliers.filter(s => fileSupplierIds.includes(s.id)) : [];
   const hasMultipleSuppliers = fileSuppliers.length > 1;
@@ -178,9 +182,17 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
     }
   }, [open, transaction, defaultTradeFileId]);
 
-  // Dosya seçildiğinde tedarikçiyi otomatik doldur (tek tedarikçiliyse)
+  // Dosya seçildiğinde tedarikçiyi otomatik doldur
   useEffect(() => {
     if (!pickedFile || transaction) return;
+
+    // Alt parti → kesin tek tedarikçi, direkt ata
+    if (pickedFile.parent_file_id) {
+      if (pickedFile.supplier_id) setSupplierId(pickedFile.supplier_id);
+      return;
+    }
+
+    // Ana dosya → birincil + ikincil tedarikçilerden hesapla
     const ids = [
       ...(pickedFile.supplier_id ? [pickedFile.supplier_id] : []),
       ...(pickedFile.suppliers?.map((s: { supplier_id: string }) => s.supplier_id) ?? []),
