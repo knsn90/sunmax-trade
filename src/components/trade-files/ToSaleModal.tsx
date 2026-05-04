@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, CheckCircle2, Check, X } from 'lucide-react';
 import { saleConversionSchema, type SaleConversionFormData } from '@/types/forms';
 import type { TradeFile } from '@/types/database';
-import { useSuppliers } from '@/hooks/useEntities';
+import { useSuppliers, useCreateSupplier } from '@/hooks/useEntities';
 import { useConvertToSale, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
 import { useSettings } from '@/hooks/useSettings';
 import { useCurrencies } from '@/hooks/useCurrencies';
@@ -79,6 +79,11 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   const advFocused   = useRef(false);
   const purchFocused = useRef(false);
 
+  const createSupplier = useCreateSupplier();
+  const [quickAddUid, setQuickAddUid]   = useState<string | null>(null);
+  const [quickAddName, setQuickAddName] = useState('');
+  const quickAddRef = useRef<HTMLInputElement>(null);
+
   const mutation = editMode ? updateSaleDetails : convertToSale;
   const defCurrency = (settings?.default_currency ?? 'USD') as SaleConversionFormData['purchase_currency'];
 
@@ -119,6 +124,31 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
   // ── Çoklu tedarikçi satırları (UI önizleme; backend şu an ilk satırı kullanır) ──
   const baseCurrency = defCurrency;
   const [rows, setRows] = useState<SupplierRow[]>([makeRow({ currency: baseCurrency })]);
+
+  async function confirmQuickAdd(uid: string) {
+    const name = quickAddName.trim();
+    if (!name) return;
+    const newSupplier = await createSupplier.mutateAsync({
+      name,
+      country: '', city: '', address: '', contact_name: '',
+      phone: '', email: '', tax_id: '', website: '',
+      payment_terms: '', swift_code: '', iban: '', notes: '',
+    });
+    updateRow(uid, { supplier_id: newSupplier.id });
+    setQuickAddUid(null);
+    setQuickAddName('');
+  }
+
+  function openQuickAdd(uid: string) {
+    setQuickAddUid(uid);
+    setQuickAddName('');
+    setTimeout(() => quickAddRef.current?.focus(), 50);
+  }
+
+  function cancelQuickAdd() {
+    setQuickAddUid(null);
+    setQuickAddName('');
+  }
 
   function addRow() {
     if (rows.length >= MAX_SUPPLIERS) return;
@@ -356,14 +386,58 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
                   <div className="grid grid-cols-12 gap-1.5">
                     <div className="col-span-4">
                       <Lbl>Tedarikçi {idx === 0 && '*'}</Lbl>
-                      <select
-                        className={cn(sel, 'bg-blue-50')}
-                        value={row.supplier_id}
-                        onChange={(e) => updateRow(row.uid, { supplier_id: e.target.value })}
-                      >
-                        <option value="">— Seçin —</option>
-                        {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
+                      {quickAddUid === row.uid ? (
+                        /* ── Hızlı Ekle modu ── */
+                        <div className="flex gap-1">
+                          <input
+                            ref={quickAddRef}
+                            type="text"
+                            placeholder="Tedarikçi adı…"
+                            value={quickAddName}
+                            onChange={(e) => setQuickAddName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); confirmQuickAdd(row.uid); }
+                              if (e.key === 'Escape') cancelQuickAdd();
+                            }}
+                            className={cn(inp, 'bg-blue-50 flex-1')}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => confirmQuickAdd(row.uid)}
+                            disabled={!quickAddName.trim() || createSupplier.isPending}
+                            className="w-8 h-8 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-colors"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelQuickAdd}
+                            className="w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center shrink-0 transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        /* ── Normal seçim modu ── */
+                        <div className="flex gap-1">
+                          <select
+                            className={cn(sel, 'bg-blue-50 flex-1')}
+                            value={row.supplier_id}
+                            onChange={(e) => updateRow(row.uid, { supplier_id: e.target.value })}
+                          >
+                            <option value="">— Seçin —</option>
+                            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => openQuickAdd(row.uid)}
+                            title="Listede yoksa yeni tedarikçi ekle"
+                            className="w-8 h-8 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center shrink-0 transition-colors"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="col-span-2">
                       <Lbl>MT</Lbl>
