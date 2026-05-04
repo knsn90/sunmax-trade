@@ -399,7 +399,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
                               if (e.key === 'Enter') { e.preventDefault(); confirmQuickAdd(row.uid); }
                               if (e.key === 'Escape') cancelQuickAdd();
                             }}
-                            className={cn(inp, 'bg-blue-50 flex-1')}
+                            className={cn(inp, 'bg-blue-50 flex-1 min-w-0 !w-auto')}
                           />
                           <button
                             type="button"
@@ -419,9 +419,9 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
                         </div>
                       ) : (
                         /* ── Normal seçim modu ── */
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 items-center">
                           <select
-                            className={cn(sel, 'bg-blue-50 flex-1')}
+                            className={cn(sel, 'bg-blue-50 flex-1 min-w-0 !w-auto')}
                             value={row.supplier_id}
                             onChange={(e) => updateRow(row.uid, { supplier_id: e.target.value })}
                           >
