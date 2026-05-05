@@ -97,7 +97,8 @@ const DialogContent = React.forwardRef<
             // Mobile: full-screen flex column, gray page background
             'relative flex flex-col h-full bg-[#f7f9fc]',
             // Desktop: rounded modal card, max height, flex column still
-            'md:rounded-2xl md:bg-white md:shadow-xl md:max-h-[90vh] md:h-auto',
+            'md:rounded-2xl md:bg-white md:shadow-xl md:max-h-[90vh]',
+            size === 'preview' ? 'md:h-[90vh]' : 'md:h-auto',
             className,
           )}
           // Mobile: push content below status bar (safe-area-inset-top)
