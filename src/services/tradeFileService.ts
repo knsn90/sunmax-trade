@@ -7,13 +7,25 @@ import type {
   DeliveryFormData,
 } from '@/types/forms';
 
-// Used for list queries — joins resolved by PostgREST
+// Minimal select for paginated list page (TradeFilesPage) — sadece gösterilen alanlar
+const FILE_SELECT_PAGINATED = `
+  id, file_no, file_date, status, tonnage_mt, delivered_admt, selling_price,
+  eta, batch_no, parent_file_id,
+  customer:customers!customer_id(id, name, code, country, logo_url),
+  product:products!product_id(id, name, unit),
+  creator:profiles!created_by(id, full_name)
+`;
+
+// Used for list queries — reports ve diğer genel kullanım için
+// supplier join kaldırıldı (liste sayfasında kullanılmıyor), * yerine explicit colonlar
 const FILE_SELECT = `
-  *,
-  customer:customers!customer_id(*, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
-  product:products!product_id(*),
-  supplier:suppliers!supplier_id(*),
-  creator:profiles!created_by(id,full_name)
+  id, file_no, file_date, status, tonnage_mt, delivered_admt, selling_price, purchase_price,
+  incoterms, transport_mode, port_of_loading, port_of_discharge,
+  proforma_ref, register_no, insurance_tr, eta, currency,
+  purchase_currency, sale_currency, freight_cost, parent_file_id, batch_no,
+  customer:customers!customer_id(id, name, code, country, logo_url),
+  product:products!product_id(id, name, unit),
+  creator:profiles!created_by(id, full_name)
 `;
 
 // Used for detail page — includes sub-documents + batches
@@ -88,7 +100,37 @@ export const tradeFileService = {
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     if (data === null) throw new Error('Request aborted or timed out — please refresh');
-    return data as TradeFile[];
+    return data as unknown as TradeFile[];
+  },
+
+  /** Sayfalı liste — TradeFilesPage için. Sunucu tarafında filtre + pagination. */
+  async listPaginated(params: {
+    status?: TradeFileStatus;
+    customerId?: string;
+    search?: string;
+    page: number;
+    pageSize: number;
+  }): Promise<{ data: TradeFile[]; count: number }> {
+    const { page, pageSize, status, customerId, search } = params;
+    const from = (page - 1) * pageSize;
+    const to   = from + pageSize - 1;
+
+    let query = supabase
+      .from('trade_files')
+      .select(FILE_SELECT_PAGINATED, { count: 'exact' })
+      .is('deleted_at', null)
+      .is('parent_file_id', null)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (status) query = query.eq('status', status);
+    if (customerId) query = query.eq('customer_id', customerId);
+    // Trailing wildcard — B-tree index kullanabilir, leading % kaldırıldı
+    if (search?.trim()) query = query.ilike('file_no', `${search.trim()}%`);
+
+    const { data, error, count } = await query;
+    if (error) throw new Error(error.message);
+    return { data: (data ?? []) as unknown as TradeFile[], count: count ?? 0 };
   },
 
   async getById(id: string): Promise<TradeFile> {
@@ -318,7 +360,7 @@ export const tradeFileService = {
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return data as TradeFile[];
+    return data as unknown as TradeFile[];
   },
 
   async noteDelay(id: string, data: { revised_eta: string; delay_notes?: string }): Promise<void> {

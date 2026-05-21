@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { tradeFileService } from '@/services/tradeFileService';
 import type { TradeFile } from '@/types/database';
 import type { TradeFileStatus } from '@/types/enums';
@@ -24,6 +24,26 @@ export function useTradeFiles(filters?: {
   return useQuery({
     queryKey: tradeFileKeys.list(filters),
     queryFn: () => tradeFileService.list(filters),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+const PAGE_SIZE_DEFAULT = 25;
+
+/**
+ * Sayfalı + filtrelenmiş dosya listesi — TradeFilesPage için.
+ * Her sayfa bağımsız cache'lenir; sayfa değişince önceki veri korunur (keepPreviousData).
+ */
+export function useTradeFilesPaginated(
+  filters?: { status?: TradeFileStatus; customerId?: string; search?: string },
+  page = 1,
+  pageSize = PAGE_SIZE_DEFAULT,
+) {
+  return useQuery({
+    queryKey: [...tradeFileKeys.lists(), 'paginated', filters, page, pageSize],
+    queryFn: () => tradeFileService.listPaginated({ ...filters, page, pageSize }),
+    staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -42,11 +62,14 @@ export function useTradeFile(id: string | undefined) {
     queryKey: tradeFileKeys.detail(id!),
     queryFn: () => tradeFileService.getById(id!),
     enabled: !!id,
+    staleTime: 1000 * 60 * 2,
     // Show list-cache data instantly while full detail loads in background
     initialData: (): TradeFile | undefined => {
-      const lists = qc.getQueriesData<TradeFile[]>({ queryKey: tradeFileKeys.lists() });
+      const lists = qc.getQueriesData<TradeFile[] | { data: TradeFile[]; count: number }>({ queryKey: tradeFileKeys.lists() });
       for (const [, data] of lists) {
-        const found = data?.find(f => f.id === id);
+        // listPaginated { data, count } veya düz dizi olabilir
+        const arr = Array.isArray(data) ? data : (data as { data: TradeFile[] } | undefined)?.data;
+        const found = arr?.find(f => f.id === id);
         if (found) return found;
       }
       return undefined;

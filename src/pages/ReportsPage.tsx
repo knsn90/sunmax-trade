@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, FileText, ChevronDown, X, Printer, SlidersHorizontal, ClipboardList } from 'lucide-react';
+import { Search, FileText, ChevronDown, ChevronUp, X, Printer, SlidersHorizontal, ClipboardList, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -30,6 +30,43 @@ function openPrint(html: string, title: string, companyName?: string) {
 
 type RepTab = 'sales' | 'analytics' | 'eta';
 
+// ─── Sales Report — sütun şeması ─────────────────────────────────────────
+
+type ColKey =
+  | 'file_no' | 'customer' | 'product' | 'admt'
+  | 'incoterms' | 'transport' | 'loading_port' | 'discharge_port'
+  | 'selling_price' | 'purchase_price' | 'status'
+  | 'pi_no' | 'reg_no' | 'insurance' | 'eta';
+
+interface PrintColDef {
+  key: ColKey;
+  label: string;
+  w: number;           // baz genişlik (toplam ≈100)
+  align: 'left' | 'right';
+  getValue: (f: TradeFile) => string;
+  isAdmt?: boolean;
+  isRevenue?: boolean;
+  isPurchase?: boolean;
+}
+
+const ALL_PRINT_COLS: PrintColDef[] = [
+  { key: 'file_no',        label: 'No',            w: 10, align: 'left',  getValue: f => f.file_no ?? '—' },
+  { key: 'customer',       label: 'Müşteri',        w: 12, align: 'left',  getValue: f => f.customer?.name ?? '—' },
+  { key: 'product',        label: 'Ürün',           w: 8,  align: 'left',  getValue: f => f.product?.name ?? '—' },
+  { key: 'admt',           label: 'ADMT',           w: 6,  align: 'right', getValue: f => fN(f.delivered_admt ?? f.tonnage_mt ?? 0, 3), isAdmt: true },
+  { key: 'incoterms',      label: 'Incoterms',      w: 5,  align: 'left',  getValue: f => f.incoterms ?? '—' },
+  { key: 'transport',      label: 'Taşıma',         w: 6,  align: 'left',  getValue: f => f.transport_mode ?? '—' },
+  { key: 'loading_port',   label: 'Yükleme Lim.',   w: 8,  align: 'left',  getValue: f => f.port_of_loading ?? '—' },
+  { key: 'discharge_port', label: 'Boşaltma Lim.',  w: 8,  align: 'left',  getValue: f => f.port_of_discharge ?? '—' },
+  { key: 'selling_price',  label: 'Satış Fiy.',     w: 7,  align: 'right', getValue: f => f.selling_price ? fCurrency(f.selling_price) : '—', isRevenue: true },
+  { key: 'purchase_price', label: 'Alış Fiy.',      w: 7,  align: 'right', getValue: f => f.purchase_price ? fCurrency(f.purchase_price) : '—', isPurchase: true },
+  { key: 'status',         label: 'Durum',          w: 6,  align: 'left',  getValue: f => f.status ?? '—' },
+  { key: 'pi_no',          label: 'PI No',          w: 5,  align: 'left',  getValue: f => f.proforma_ref ?? '—' },
+  { key: 'reg_no',         label: 'Kayıt No',       w: 6,  align: 'left',  getValue: f => f.register_no ?? '—' },
+  { key: 'insurance',      label: 'Sigorta',        w: 4,  align: 'left',  getValue: f => f.insurance_tr ?? '—' },
+  { key: 'eta',            label: 'ETA',            w: 5,  align: 'left',  getValue: f => f.eta ? fDate(f.eta) : '—' },
+];
+
 // ─── Sales Report ──────────────────────────────────────────────────────────
 
 function SalesReportTab() {
@@ -40,11 +77,59 @@ function SalesReportTab() {
   const { accent } = useTheme();
 
   const [custFilter, setCustFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [ran, setRan] = useState(false);
   const [statusTab, setStatusTab] = useState('all');
+
+  type SortCol = 'file_no' | 'file_date' | 'eta' | 'customer' | 'admt' | 'selling_price' | 'status';
+  const [sortBy, setSortBy] = useState<SortCol>('file_no');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Sütun görünürlüğü (PDF yazdırma)
+  const [printCols, setPrintCols] = useState<Set<ColKey>>(
+    () => new Set(ALL_PRINT_COLS.map(c => c.key)),
+  );
+  const [colPickerOpen, setColPickerOpen] = useState(false);
+  const [colPickerPos, setColPickerPos] = useState({ top: 0, right: 0 });
+  const colBtnRef   = useRef<HTMLButtonElement>(null);
+  const colPickerRef = useRef<HTMLDivElement>(null);
+
+  function openColPicker() {
+    if (colBtnRef.current) {
+      const r = colBtnRef.current.getBoundingClientRect();
+      setColPickerPos({ top: r.bottom + window.scrollY + 6, right: window.innerWidth - r.right });
+    }
+    setColPickerOpen(o => !o);
+  }
+
+  useEffect(() => {
+    if (!colPickerOpen) return;
+    function onOutside(e: MouseEvent) {
+      const t = e.target as Node;
+      if (
+        colPickerRef.current && !colPickerRef.current.contains(t) &&
+        colBtnRef.current   && !colBtnRef.current.contains(t)
+      ) {
+        setColPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [colPickerOpen]);
+
+  function toggleSort(col: SortCol) {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(col); setSortDir('asc'); }
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortBy !== col) return <ChevronDown className="h-3 w-3 opacity-20" />;
+    return sortDir === 'asc'
+      ? <ChevronUp className="h-3 w-3" />
+      : <ChevronDown className="h-3 w-3" />;
+  }
 
   const STATUS_TABS = [
     { key: 'all',       label: 'Tümü' },
@@ -63,7 +148,7 @@ function SalesReportTab() {
     if (!ran) return [];
     return files.filter((f) => {
       if (custFilter && f.customer_id !== custFilter) return false;
-      if (statusFilter && f.status !== statusFilter) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(f.status)) return false;
       if (dateFrom && f.file_date < dateFrom) return false;
       if (dateTo && f.file_date > dateTo) return false;
       return true;
@@ -75,42 +160,150 @@ function SalesReportTab() {
     const admt = f.delivered_admt ?? f.tonnage_mt ?? 0;
     return s + admt * (f.selling_price ?? 0);
   }, 0);
+  const totalPurchase = results.reduce((s, f) => {
+    const admt = f.delivered_admt ?? f.tonnage_mt ?? 0;
+    return s + admt * (f.purchase_price ?? 0);
+  }, 0);
 
   const visibleRows = statusTab === 'all' ? results : results.filter(f => f.status === statusTab);
 
+  const sortedRows = useMemo(() => {
+    const rows = [...visibleRows];
+    rows.sort((a, b) => {
+      let av: string | number = 0;
+      let bv: string | number = 0;
+      switch (sortBy) {
+        case 'file_no':        av = a.file_no ?? '';                        bv = b.file_no ?? '';                        break;
+        case 'file_date':      av = a.file_date ?? '';                      bv = b.file_date ?? '';                      break;
+        case 'eta':            av = a.eta ?? '';                            bv = b.eta ?? '';                            break;
+        case 'customer':       av = a.customer?.name ?? '';                 bv = b.customer?.name ?? '';                 break;
+        case 'admt':           av = a.delivered_admt ?? a.tonnage_mt ?? 0;  bv = b.delivered_admt ?? b.tonnage_mt ?? 0;  break;
+        case 'selling_price':  av = a.selling_price ?? 0;                   bv = b.selling_price ?? 0;                   break;
+        case 'status':         av = a.status ?? '';                         bv = b.status ?? '';                         break;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return rows;
+  }, [visibleRows, sortBy, sortDir]);
+
   function printSalesReport(rows: TradeFile[]) {
-    const tbody = rows.map((f) => `
-      <tr style="border-bottom:1px solid #e5e7eb">
-        <td style="padding:5px 6px;font-weight:700">${f.file_no}</td>
-        <td style="padding:5px 6px">${f.customer?.name ?? '—'}</td>
-        <td style="padding:5px 6px">${f.product?.name ?? '—'}</td>
-        <td style="padding:5px 6px;text-align:right">${fN(f.delivered_admt ?? f.tonnage_mt ?? 0, 3)}</td>
-        <td style="padding:5px 6px">${f.incoterms ?? '—'}</td>
-        <td style="padding:5px 6px">${f.transport_mode ?? '—'}</td>
-        <td style="padding:5px 6px">${f.port_of_loading ?? '—'}</td>
-        <td style="padding:5px 6px">${f.port_of_discharge ?? '—'}</td>
-        <td style="padding:5px 6px;text-align:right">${f.selling_price ? fCurrency(f.selling_price) : '—'}</td>
-        <td style="padding:5px 6px;text-align:right">${f.purchase_price ? fCurrency(f.purchase_price) : '—'}</td>
-        <td style="padding:5px 6px">${f.status}</td>
-        <td style="padding:5px 6px">${f.proforma_ref ?? '—'}</td>
-        <td style="padding:5px 6px">${f.register_no ?? '—'}</td>
-        <td style="padding:5px 6px">${f.insurance_tr ?? '—'}</td>
-      </tr>`).join('');
+    const activeCols = ALL_PRINT_COLS.filter(c => printCols.has(c.key));
+    if (activeCols.length === 0) return;
+
+    const totalW = activeCols.reduce((s, c) => s + c.w, 0);
+
+    // status → badge rengi
+    const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+      request:   { bg: '#fef3c7', color: '#92400e', label: 'Talep' },
+      sale:      { bg: '#dbeafe', color: '#1e40af', label: 'Satış' },
+      delivery:  { bg: '#ede9fe', color: '#5b21b6', label: 'Teslimatta' },
+      completed: { bg: '#d1fae5', color: '#065f46', label: 'Tamamlandı' },
+      cancelled: { bg: '#f3f4f6', color: '#6b7280', label: 'İptal' },
+    };
+
+    const cell = (col: PrintColDef, val: string, rowIdx: number) => {
+      const stripe = rowIdx % 2 === 1 ? 'background:#f8fafc;' : '';
+      if (col.key === 'file_no') {
+        return `<td style="${stripe}padding:2px 4px;font-family:ui-monospace,monospace;font-size:6px;font-weight:700;color:#0f172a;white-space:normal;word-break:break-word;overflow:hidden">${val}</td>`;
+      }
+      if (col.key === 'customer' || col.key === 'product') {
+        return `<td style="${stripe}padding:2px 4px;font-size:6px;color:#374151;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${val}">${val}</td>`;
+      }
+      if (col.key === 'status') {
+        const s = STATUS_COLORS[val] ?? { bg: '#f3f4f6', color: '#6b7280', label: val };
+        return `<td style="${stripe}padding:2px 4px;text-align:left"><span style="display:inline-block;background:${s.bg};color:${s.color};font-size:5.5px;font-weight:700;padding:1px 4px;border-radius:20px;white-space:nowrap">${s.label}</span></td>`;
+      }
+      const isNum = col.align === 'right';
+      const isBold = col.isRevenue || col.isPurchase;
+      const numColor = col.isRevenue ? 'color:#1d4ed8;' : col.isPurchase ? 'color:#374151;' : '';
+      return `<td style="${stripe}padding:2px 4px;font-size:6px;text-align:${col.align};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isNum ? 'font-variant-numeric:tabular-nums;' : ''}${isBold ? 'font-weight:700;' : ''}${numColor}">${val}</td>`;
+    };
+
+    const tbody = rows.map((f, i) =>
+      `<tr style="border-bottom:1px solid #e2e8f0">${activeCols.map(c => cell(c, c.getValue(f), i)).join('')}</tr>`
+    ).join('');
+
+    const tfootCells = activeCols.map(c => {
+      const stripe = 'background:#0f172a;color:#f8fafc;';
+      if (c.isAdmt)     return `<td style="${stripe}padding:4px 4px;font-size:6px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">${fN(totalAdmt, 3)}</td>`;
+      if (c.isRevenue)  return `<td style="${stripe}padding:4px 4px;font-size:6px;text-align:right;font-weight:800;color:#93c5fd;font-variant-numeric:tabular-nums">${fUSD(totalRevenue)}</td>`;
+      if (c.isPurchase) return `<td style="${stripe}padding:4px 4px;font-size:6px;text-align:right;font-weight:700;color:#94a3b8;font-variant-numeric:tabular-nums">${fUSD(totalPurchase)}</td>`;
+      return `<td style="${stripe}padding:4px 4px"></td>`;
+    }).join('');
+
+    // tarih aralığı etiketi
+    const dateRange = (dateFrom || dateTo)
+      ? `${dateFrom ? fDate(dateFrom) : '…'} – ${dateTo ? fDate(dateTo) : '…'}`
+      : 'Tüm tarihler';
+
+    const profit = totalRevenue - totalPurchase;
+    const margin = totalRevenue > 0 ? (profit / totalRevenue * 100).toFixed(1) : '—';
+
     const html = `
-      <div style="font-size:20px;font-weight:300;color:#374151;margin-bottom:16px">${t('tabs.sales')}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:10px">
-        <thead><tr style="background:#1e40af;color:#fff">
-          ${[t('sales.col_no'),t('sales.col_customer'),t('sales.col_product'),t('sales.col_admt'),t('sales.col_incoterms'),t('sales.col_transport'),t('sales.col_loading_port'),t('sales.col_discharge_port'),t('sales.col_selling_price'),t('sales.col_purchase_price'),t('sales.col_status'),t('sales.col_pi_no'),t('sales.col_reg_no'),t('sales.col_insurance_no')].map(h=>`<th style="padding:6px;text-align:left">${h}</th>`).join('')}
-        </tr></thead>
+      <style>
+        @page { size: A4 landscape !important; margin: 8mm 7mm !important; }
+        @media print { html, body { width: 297mm !important; } }
+        body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; }
+      </style>
+
+      <!-- ── Başlık ── -->
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #0f172a">
+        <div>
+          <div style="font-size:6.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin-bottom:2px">Satış Raporu</div>
+          <div style="font-size:15px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1">${t('tabs.sales')}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:7px;color:#64748b;font-weight:500">${dateRange}</div>
+          <div style="font-size:6.5px;color:#94a3b8;margin-top:1px">Oluşturulma: ${new Date().toLocaleDateString('tr-TR', { day:'2-digit', month:'long', year:'numeric' })}</div>
+        </div>
+      </div>
+
+      <!-- ── KPI Kartları ── -->
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <div style="flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px">
+          <div style="font-size:5.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:2px">Kayıt Sayısı</div>
+          <div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1">${rows.length}</div>
+        </div>
+        <div style="flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px">
+          <div style="font-size:5.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:2px">Toplam ADMT</div>
+          <div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1;font-variant-numeric:tabular-nums">${fN(totalAdmt, 3)}</div>
+        </div>
+        <div style="flex:2;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 10px">
+          <div style="font-size:5.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#3b82f6;margin-bottom:2px">Satış Toplamı</div>
+          <div style="font-size:13px;font-weight:800;color:#1d4ed8;line-height:1;font-variant-numeric:tabular-nums">${fUSD(totalRevenue)}</div>
+        </div>
+        <div style="flex:2;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px">
+          <div style="font-size:5.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:2px">Alış Toplamı</div>
+          <div style="font-size:13px;font-weight:800;color:#374151;line-height:1;font-variant-numeric:tabular-nums">${fUSD(totalPurchase)}</div>
+        </div>
+        <div style="flex:2;background:${profit >= 0 ? '#f0fdf4' : '#fff1f2'};border:1px solid ${profit >= 0 ? '#bbf7d0' : '#fecdd3'};border-radius:6px;padding:6px 10px">
+          <div style="font-size:5.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${profit >= 0 ? '#16a34a' : '#e11d48'};margin-bottom:2px">Brüt Kâr · %${margin}</div>
+          <div style="font-size:13px;font-weight:800;color:${profit >= 0 ? '#15803d' : '#be123c'};line-height:1;font-variant-numeric:tabular-nums">${fUSD(profit)}</div>
+        </div>
+      </div>
+
+      <!-- ── Tablo ── -->
+      <table style="width:100%;border-collapse:collapse;font-size:6px;table-layout:fixed">
+        <colgroup>${activeCols.map(c => `<col style="width:${(c.w / totalW * 100).toFixed(1)}%">`).join('')}</colgroup>
+        <thead>
+          <tr style="background:#0f172a">
+            ${activeCols.map(c => `<th style="padding:4px 4px;text-align:${c.align};color:#94a3b8;font-size:5.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.label}</th>`).join('')}
+          </tr>
+        </thead>
         <tbody>${tbody}</tbody>
-        <tfoot><tr style="background:#f9fafb;font-weight:700;border-top:2px solid #374151">
-          <td colspan="3" style="padding:6px;text-align:right">TOTAL</td>
-          <td style="padding:6px;text-align:right">${fN(totalAdmt, 3)}</td>
-          <td colspan="4"></td>
-          <td style="padding:6px;text-align:right;color:#1e40af">${fUSD(totalRevenue)}</td>
-          <td colspan="4"></td>
-        </tr></tfoot>
-      </table>`;
+        <tfoot>
+          <tr>${tfootCells}</tr>
+        </tfoot>
+      </table>
+
+      <!-- ── Sayfa alt bilgisi ── -->
+      <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center;padding-top:4px;border-top:1px solid #e2e8f0">
+        <span style="font-size:5px;color:#cbd5e1">Sunmax Trade — Gizlilik: Dahili Kullanım</span>
+        <span style="font-size:5px;color:#cbd5e1">${new Date().toLocaleString('tr-TR')}</span>
+      </div>`;
+
     openPrint(html, t('tabs.sales'));
   }
 
@@ -144,88 +337,184 @@ function SalesReportTab() {
 
   return (
     <div className="space-y-4">
-      {/* Filter panel */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Card header */}
-        <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60 flex items-center gap-2">
-          <SlidersHorizontal className="h-3.5 w-3.5 text-gray-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Filtreler</span>
+      {/* Filter panel — kompakt */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3 space-y-2.5">
+
+        {/* Satır 1: filtreler + sıralama + aksiyonlar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <NativeSelect value={custFilter} onChange={e => setCustFilter(e.target.value)} className="h-8 text-[12px] w-44 shrink-0">
+            <option value="">{t('sales.all_customers')}</option>
+            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </NativeSelect>
+
+          <MonoDatePicker value={dateFrom} onChange={v => setDateFrom(v)}
+            className="h-8 w-32 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors shrink-0"
+          />
+          <span className="text-[11px] text-gray-300 shrink-0">–</span>
+          <MonoDatePicker value={dateTo} onChange={v => setDateTo(v)}
+            className="h-8 w-32 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors shrink-0"
+          />
+
+          <div className="w-px h-5 bg-gray-200 shrink-0 mx-1" />
+
+          <NativeSelect value={sortBy} onChange={e => setSortBy(e.target.value as SortCol)} className="h-8 text-[12px] w-36 shrink-0">
+            <option value="file_no">Dosya No</option>
+            <option value="file_date">Tarih</option>
+            <option value="customer">Müşteri</option>
+            <option value="admt">ADMT</option>
+            <option value="selling_price">Satış Fiyatı</option>
+            <option value="eta">ETA</option>
+            <option value="status">Durum</option>
+          </NativeSelect>
+          <button
+            onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+            className="h-8 px-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1 text-[11px] font-semibold text-gray-600 shrink-0"
+          >
+            {sortDir === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {sortDir === 'asc' ? 'Artan' : 'Azalan'}
+          </button>
+
+          <div className="flex-1" />
+
+          <button
+            onClick={() => setRan(true)}
+            className="h-8 px-4 rounded-xl text-[12px] font-semibold text-white hover:opacity-90 transition-opacity shrink-0"
+            style={{ background: accent }}
+          >
+            {t('sales.show_report')}
+          </button>
+          <button
+            onClick={() => { setCustFilter(''); setStatusFilter(new Set()); setDateFrom(''); setDateTo(''); setRan(false); }}
+            className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors shrink-0"
+          >
+            {t('sales.reset')}
+          </button>
+
+          {ran && results.length > 0 && (
+            <>
+              <div className="w-px h-5 bg-gray-200 shrink-0 mx-0.5" />
+              {/* Sütun seçici */}
+              <button
+                ref={colBtnRef}
+                onClick={openColPicker}
+                className="h-8 px-2.5 rounded-lg text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1 shrink-0"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                <span className="text-[10px] bg-gray-100 text-gray-400 rounded-full px-1.5 leading-5">{printCols.size}/{ALL_PRINT_COLS.length}</span>
+              </button>
+              <button
+                onClick={() => printSalesReport(results)}
+                className="h-8 px-2.5 rounded-lg text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1 shrink-0"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                PDF
+              </button>
+              <button
+                onClick={() => exportSalesExcel(results)}
+                className="h-8 px-2.5 rounded-lg text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors shrink-0"
+              >
+                Excel
+              </button>
+            </>
+          )}
         </div>
-        <div className="px-5 py-4 space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.customer')}</label>
-              <NativeSelect value={custFilter} onChange={(e) => setCustFilter(e.target.value)}>
-                <option value="">{t('sales.all_customers')}</option>
-                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </NativeSelect>
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.status')}</label>
-              <NativeSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">{tc('all')}</option>
-                <option value="request">{tc('status.request')}</option>
-                <option value="sale">{tc('status.sale')}</option>
-                <option value="delivery">{tc('status.delivery')}</option>
-              </NativeSelect>
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.date_from')}</label>
-              <MonoDatePicker value={dateFrom} onChange={v => setDateFrom(v)} className="h-8 w-36 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-400 font-medium block mb-1.5">{t('sales.date_to')}</label>
-              <MonoDatePicker value={dateTo} onChange={v => setDateTo(v)} className="h-8 w-36 bg-white border border-gray-200 rounded-lg px-2 text-[11px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors" />
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-50">
-            <button
-              onClick={() => setRan(true)}
-              className="h-8 px-4 rounded-xl text-[12px] font-semibold text-white transition-colors hover:opacity-90"
-              style={{ background: accent }}
+
+        {/* Satır 2: durum pilleri */}
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 shrink-0 mr-1">Durum</span>
+          {([
+            { key: 'request',   label: tc('status.request'),   dot: 'bg-amber-400'  },
+            { key: 'sale',      label: tc('status.sale'),      dot: 'bg-blue-400'   },
+            { key: 'delivery',  label: tc('status.delivery'),  dot: 'bg-violet-400' },
+            { key: 'completed', label: tc('status.completed'), dot: 'bg-green-400'  },
+            { key: 'cancelled', label: tc('status.cancelled'), dot: 'bg-gray-300'   },
+          ] as { key: string; label: string; dot: string }[]).map(opt => {
+            const active = statusFilter.has(opt.key);
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setStatusFilter(prev => {
+                  const next = new Set(prev);
+                  if (next.has(opt.key)) next.delete(opt.key); else next.add(opt.key);
+                  return next;
+                })}
+                className={cn(
+                  'flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-semibold transition-all border',
+                  active ? 'text-white border-transparent shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300',
+                )}
+                style={active ? { background: accent } : {}}
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', active ? 'bg-white/70' : opt.dot)} />
+                {opt.label}
+              </button>
+            );
+          })}
+          {statusFilter.size > 0 && (
+            <button type="button" onClick={() => setStatusFilter(new Set())}
+              className="h-6 px-2 rounded-full text-[10px] text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex items-center gap-0.5"
             >
-              {t('sales.show_report')}
+              <X className="h-3 w-3" /> Temizle
             </button>
-            <button
-              onClick={() => { setCustFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setRan(false); }}
-              className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              {t('sales.reset')}
-            </button>
-            {ran && results.length > 0 && (
-              <>
-                <div className="flex-1" />
-                <button
-                  onClick={() => printSalesReport(results)}
-                  className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  {t('sales.print_pdf')}
-                </button>
-                <button
-                  onClick={() => exportSalesExcel(results)}
-                  className="h-8 px-3 rounded-xl text-[12px] font-semibold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  {t('sales.excel')}
-                </button>
-              </>
-            )}
-          </div>
+          )}
         </div>
+
+        {/* Portal: sütun seçici dropdown */}
+        {colPickerOpen && createPortal(
+          <div
+            ref={colPickerRef}
+            style={{ position: 'absolute', top: colPickerPos.top, right: colPickerPos.right, zIndex: 9999 }}
+            className="bg-white rounded-2xl shadow-xl border border-gray-100 p-3 w-52"
+          >
+            <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">PDF Sütunları</div>
+            <div className="space-y-0.5 max-h-64 overflow-y-auto">
+              {ALL_PRINT_COLS.map(col => (
+                <label key={col.key} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={printCols.has(col.key)}
+                    onChange={() => setPrintCols(prev => {
+                      const next = new Set(prev);
+                      if (next.has(col.key)) next.delete(col.key); else next.add(col.key);
+                      return next;
+                    })}
+                    className="rounded"
+                    style={{ accentColor: accent }}
+                  />
+                  <span className="text-[12px] text-gray-700">{col.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-2 pt-2 border-t border-gray-50">
+              <button onClick={() => setPrintCols(new Set(ALL_PRINT_COLS.map(c => c.key)))}
+                className="flex-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                Tümünü Seç
+              </button>
+              <button onClick={() => setColPickerOpen(false)}
+                className="flex-1 text-[11px] font-semibold text-white py-1.5 rounded-lg hover:opacity-90 transition-colors"
+                style={{ background: accent }}>
+                Tamam
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
       </div>
 
       {ran && results.length > 0 && (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: t('sales.total_files'),        value: String(results.length) },
-              { label: t('sales.total_admt'),         value: fN(totalAdmt, 3) },
-              { label: t('sales.estimated_revenue'),  value: fUSD(totalRevenue) },
+              { label: t('sales.total_files'),       value: String(results.length),  sub: undefined },
+              { label: t('sales.total_admt'),        value: fN(totalAdmt, 3),        sub: 'MT' },
+              { label: t('sales.estimated_revenue'), value: fUSD(totalRevenue),      sub: 'Satış' },
+              { label: 'Toplam Alış Maliyeti',       value: fUSD(totalPurchase),     sub: 'Alış' },
             ].map(card => (
               <div key={card.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
                 <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{card.label}</div>
                 <div className="text-[17px] font-extrabold text-gray-900 tabular-nums">{card.value}</div>
+                {card.sub && <div className="text-[10px] text-gray-400 mt-0.5">{card.sub}</div>}
               </div>
             ))}
           </div>
@@ -255,31 +544,49 @@ function SalesReportTab() {
               })}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px]">
+              <table className="w-full min-w-[1400px]">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {[
-                      t('sales.col_no'),
-                      t('sales.col_customer'),
-                      t('sales.col_product'),
-                      t('sales.col_admt'),
-                      t('sales.col_incoterms'),
-                      t('sales.col_transport'),
-                      t('sales.col_loading_port'),
-                      t('sales.col_discharge_port'),
-                      t('sales.col_selling_price'),
-                      t('sales.col_purchase_price'),
-                      t('sales.col_status'),
-                      t('sales.col_pi_no'),
-                      t('sales.col_reg_no'),
-                      t('sales.col_insurance_no'),
-                    ].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
-                    ))}
+                    {([
+                      { label: t('sales.col_no'),             col: 'file_no'       as SortCol },
+                      { label: t('sales.col_customer'),       col: 'customer'      as SortCol },
+                      { label: t('sales.col_product'),        col: null },
+                      { label: t('sales.col_admt'),           col: 'admt'          as SortCol, right: true },
+                      { label: t('sales.col_incoterms'),      col: null },
+                      { label: t('sales.col_transport'),      col: null },
+                      { label: t('sales.col_loading_port'),   col: null },
+                      { label: t('sales.col_discharge_port'), col: null },
+                      { label: t('sales.col_selling_price'),  col: 'selling_price' as SortCol, right: true },
+                      { label: t('sales.col_purchase_price'), col: null, right: true },
+                      { label: t('sales.col_status'),         col: 'status'        as SortCol },
+                      { label: t('sales.col_pi_no'),          col: null },
+                      { label: t('sales.col_reg_no'),         col: null },
+                      { label: t('sales.col_insurance_no'),   col: null },
+                      { label: 'ETA',                         col: 'eta'           as SortCol },
+                    ] as { label: string; col: SortCol | null; right?: boolean }[]).map(({ label, col, right }) =>
+                      col ? (
+                        <th
+                          key={label}
+                          onClick={() => toggleSort(col)}
+                          className={cn(
+                            'px-4 py-3 text-[10px] font-bold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap',
+                            right ? 'text-right' : 'text-left',
+                            sortBy === col ? 'text-gray-700' : 'text-gray-400 hover:text-gray-600',
+                          )}
+                        >
+                          <span className={cn('inline-flex items-center gap-1', right && 'justify-end w-full')}>
+                            {label}
+                            <SortIcon col={col} />
+                          </span>
+                        </th>
+                      ) : (
+                        <th key={label} className={cn('px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400', right ? 'text-right' : 'text-left')}>{label}</th>
+                      )
+                    )}
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleRows.map((f) => (
+                  {sortedRows.map((f) => (
                     <tr key={f.id} className={cn('border-b border-gray-50 transition-colors', ROW_BG[f.status] ?? 'hover:bg-gray-50/60')}>
                       <td className="px-4 py-3 text-[12px] font-bold">{f.file_no}</td>
                       <td className="px-4 py-3 text-[12px]">{f.customer?.name ?? '—'}</td>
@@ -295,14 +602,32 @@ function SalesReportTab() {
                       <td className="px-4 py-3 text-[12px]">{f.proforma_ref ?? '—'}</td>
                       <td className="px-4 py-3 text-[12px]">{f.register_no ?? '—'}</td>
                       <td className="px-4 py-3 text-[12px]">{f.insurance_tr ?? '—'}</td>
+                      <td className="px-4 py-3 text-[12px] text-gray-500">{f.eta ? fDate(f.eta) : '—'}</td>
                     </tr>
                   ))}
-                  {visibleRows.length === 0 && (
+                  {sortedRows.length === 0 && (
                     <tr>
-                      <td colSpan={14} className="px-4 py-12 text-center text-[12px] text-gray-400">Bu durumda kayıt yok</td>
+                      <td colSpan={15} className="px-4 py-12 text-center text-[12px] text-gray-400">Bu durumda kayıt yok</td>
                     </tr>
                   )}
                 </tbody>
+                {sortedRows.length > 0 && (() => {
+                  const rowAdmt    = sortedRows.reduce((s, f) => s + (f.delivered_admt ?? f.tonnage_mt ?? 0), 0);
+                  const rowRevenue = sortedRows.reduce((s, f) => s + (f.delivered_admt ?? f.tonnage_mt ?? 0) * (f.selling_price ?? 0), 0);
+                  const rowPurchase = sortedRows.reduce((s, f) => s + (f.delivered_admt ?? f.tonnage_mt ?? 0) * (f.purchase_price ?? 0), 0);
+                  return (
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 bg-gray-50/80 font-bold">
+                        <td colSpan={3} className="px-4 py-3 text-[11px] text-right text-gray-400 uppercase tracking-wider">Toplam</td>
+                        <td className="px-4 py-3 text-[12px] text-right">{fN(rowAdmt, 3)}</td>
+                        <td colSpan={4} />
+                        <td className="px-4 py-3 text-[12px] text-right text-blue-700">{fUSD(rowRevenue)}</td>
+                        <td className="px-4 py-3 text-[12px] text-right text-gray-600">{fUSD(rowPurchase)}</td>
+                        <td colSpan={5} />
+                      </tr>
+                    </tfoot>
+                  );
+                })()}
               </table>
             </div>
           </div>

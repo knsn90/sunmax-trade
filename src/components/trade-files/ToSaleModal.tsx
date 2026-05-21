@@ -271,18 +271,18 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         purchase_price: 0,
         freight_cost: 0,
         port_of_loading: settings?.default_port_of_loading ?? 'MERSIN, TURKEY',
-        port_of_discharge: '',
+        port_of_discharge: file?.port_of_discharge ?? '',
         incoterms: settings?.default_incoterms ?? 'CPT',
         purchase_currency: defCurrency,
         sale_currency: defCurrency,
         payment_terms: settings?.payment_terms ?? '',
         advance_rate: 0,
         purchase_advance_rate: 0,
-        transport_mode: 'truck',
-        eta: '',
-        vessel_name: '',
+        transport_mode: (file?.transport_mode as SaleConversionFormData['transport_mode']) ?? 'truck',
+        eta: file?.eta ?? '',
+        vessel_name: file?.vessel_name ?? '',
         proforma_ref: '',
-        register_no: '',
+        register_no: file?.register_no ?? '',
       });
       setRows([makeRow({ currency: defCurrency })]);
     }
@@ -329,18 +329,6 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
 
         {/* ── Form ────────────────────────────────────────────────────────── */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
-
-          {/* Taşıma */}
-          <div className="grid grid-cols-2 gap-3">
-            <Fld label="Taşıma Şekli">
-              <select {...register('transport_mode')} className={sel}>
-                <option value="truck">Kara (Tır)</option>
-                <option value="railway">Demiryolu</option>
-                <option value="sea">Deniz</option>
-              </select>
-            </Fld>
-            <div />
-          </div>
 
           {/* ── Alım Kartı (Çoklu Tedarikçi) ──────────────────────────────────── */}
           <div className="bg-blue-50/60 rounded-xl p-3 space-y-2.5">
@@ -563,13 +551,20 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
             </div>
           </div>
 
-          {/* Navlun · Incoterms */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Navlun · Incoterms · Taşıma Şekli */}
+          <div className="grid grid-cols-3 gap-3">
             <Fld label="Navlun">
               <input type="number" step="0.01" {...register('freight_cost')} className={inp} />
             </Fld>
             <Fld label="Incoterms *" error={errors.incoterms?.message}>
               <input {...register('incoterms')} className={inp} />
+            </Fld>
+            <Fld label="Taşıma Şekli">
+              <select {...register('transport_mode')} className={sel}>
+                <option value="truck">Kara (Tır)</option>
+                <option value="railway">Demiryolu</option>
+                <option value="sea">Deniz</option>
+              </select>
             </Fld>
           </div>
 
