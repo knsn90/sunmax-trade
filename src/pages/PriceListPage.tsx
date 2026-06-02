@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Plus, Search, History, Pencil, Trash2, Tag, X, ChevronDown, TrendingUp,
+  Plus, Search, History, Pencil, Trash2, Tag, X, ChevronDown, TrendingUp, Sparkles,
 } from 'lucide-react';
+import { streamPriceListAnalysis } from '@/lib/priceListAI';
 import { EntityAvatar } from '@/components/ui/shared';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -534,6 +535,13 @@ export function PriceListPage() {
   const [historyProductId, setHistoryProductId] = useState('');
   const [pricePage, setPricePage] = useState(1);
 
+  // AI Analiz state
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const abortRef = useRef(false);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return entries.filter(e => {
@@ -564,6 +572,26 @@ export function PriceListPage() {
   function isExpired(entry: PriceList) {
     if (!entry.valid_until) return false;
     return new Date(entry.valid_until) < new Date();
+  }
+
+  async function handleAiAnalysis() {
+    if (aiLoading) { abortRef.current = true; return; }
+    setAiOpen(true);
+    setAiText('');
+    setAiError('');
+    setAiLoading(true);
+    abortRef.current = false;
+    try {
+      const gen = streamPriceListAnalysis(entries);
+      for await (const chunk of gen) {
+        if (abortRef.current) break;
+        setAiText(prev => prev + chunk);
+      }
+    } catch (e) {
+      setAiError((e as Error).message);
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   return (
@@ -742,6 +770,22 @@ export function PriceListPage() {
             {t('btnPriceHistory')}
           </button>
 
+          {/* AI Analizi butonu */}
+          <button
+            onClick={handleAiAnalysis}
+            disabled={isLoading}
+            className="h-9 px-4 rounded-xl text-[13px] font-semibold flex items-center gap-1.5 shrink-0 whitespace-nowrap border transition-all"
+            style={aiOpen
+              ? { background: accent, color: '#fff', borderColor: accent }
+              : { background: '#fff', color: '#6b21a8', borderColor: '#e9d5ff' }
+            }
+          >
+            {aiLoading
+              ? <><div className="w-3.5 h-3.5 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin shrink-0" />Analiz ediliyor…</>
+              : <><Sparkles className="h-3.5 w-3.5 shrink-0" />AI Analizi</>
+            }
+          </button>
+
           {/* Yeni Fiyat butonu */}
           {canWrite && (
             <button
@@ -754,6 +798,57 @@ export function PriceListPage() {
             </button>
           )}
         </div>
+
+        {/* AI Analiz Paneli */}
+        {aiOpen && (
+          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+            <div className="px-5 py-3 border-b border-purple-50 bg-purple-50/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-purple-700">AI Fiyat Analizi</span>
+                {aiLoading && (
+                  <div className="w-3.5 h-3.5 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+                )}
+              </div>
+              <button
+                onClick={() => setAiOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-5 py-4 min-h-[80px]">
+              {aiError ? (
+                <p className="text-[12px] text-red-500">⚠️ {aiError}</p>
+              ) : aiText ? (
+                <div className="space-y-1.5">
+                  {aiText.split('\n').map((line, i) => {
+                    if (line.startsWith('## '))
+                      return <h3 key={i} className="text-[13px] font-bold text-gray-900 mt-4 first:mt-0">{line.slice(3)}</h3>;
+                    if (line.startsWith('### '))
+                      return <h4 key={i} className="text-[12px] font-bold text-gray-700 mt-3">{line.slice(4)}</h4>;
+                    if (line.startsWith('- ') || line.startsWith('* '))
+                      return (
+                        <div key={i} className="flex gap-2 text-[12px] text-gray-600">
+                          <span className="text-purple-300 shrink-0 mt-0.5">•</span>
+                          <span dangerouslySetInnerHTML={{ __html: line.slice(2).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+                        </div>
+                      );
+                    if (line.trim() === '') return <div key={i} className="h-1" />;
+                    return (
+                      <p key={i} className="text-[12px] text-gray-600 leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }}
+                      />
+                    );
+                  })}
+                  {aiLoading && <span className="inline-block w-1.5 h-4 bg-purple-400 animate-pulse rounded-sm ml-0.5" />}
+                </div>
+              ) : aiLoading ? (
+                <p className="text-[12px] text-gray-400 animate-pulse">Fiyat listesi analiz ediliyor…</p>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {/* Table */}
         {isLoading ? (
