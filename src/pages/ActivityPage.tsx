@@ -107,23 +107,30 @@ export function ActivityPage() {
     { key: 'logout', label: t('filters.logout') },
   ];
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   async function fetchLogs() {
     setLoading(true);
+    setFetchError(null);
     try {
       const [auditRes, loginRes] = await Promise.all([
         supabase
           .from('audit_logs')
-          .select('*, user:profiles(id,full_name,email,role,is_active,created_at,updated_at,permissions,deleted_at)')
+          .select('*, user:profiles!user_id(id,full_name,email,role)')
           .order('created_at', { ascending: false })
           .limit(500),
         supabase
           .from('user_logins')
-          .select('*, user:profiles(id,full_name,email,role,is_active,created_at,updated_at,permissions,deleted_at)')
+          .select('*, user:profiles!user_id(id,full_name,email,role)')
           .order('created_at', { ascending: false })
           .limit(200),
       ]);
-      if (auditRes.data) setAuditLogs(auditRes.data as AuditLog[]);
-      if (loginRes.data) setLoginLogs(loginRes.data as LoginEvent[]);
+      if (auditRes.error) throw new Error(`Audit: ${auditRes.error.message}`);
+      if (loginRes.error) throw new Error(`Login: ${loginRes.error.message}`);
+      setAuditLogs((auditRes.data ?? []) as AuditLog[]);
+      setLoginLogs((loginRes.data ?? []) as LoginEvent[]);
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : 'Bilinmeyen hata');
     } finally {
       setLoading(false);
     }
@@ -229,6 +236,11 @@ export function ActivityPage() {
       </div>
 
       {/* Log list */}
+      {fetchError && (
+        <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-[12px] text-red-600 font-medium">
+          ⚠️ {fetchError}
+        </div>
+      )}
       {loading ? (
         <div className="flex justify-center py-16"><LoadingSpinner /></div>
       ) : paged.length === 0 ? (
