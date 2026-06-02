@@ -12,6 +12,7 @@
     "uploadHint": "Click to upload",
     "hint": "PNG, JPG — max 2MB",
     "btnUpload": "Upload",
+    "btnChange": "Change",
     "btnRemove": "Remove",
     "confirm": "Remove logo?",
     "errorSize": "Max 2MB"

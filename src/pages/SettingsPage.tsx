@@ -28,6 +28,7 @@ import {
 import { getApiKeyFromCache, saveApiKeyToDb, deleteApiKeyFromDb, type ApiService } from '@/services/companySettingsService';
 import { supabase } from '@/services/supabase';
 import { setLanguage, SUPPORTED_LANGUAGES } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Globe, Palette, ExternalLink } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useNavigate as _useNavigate } from 'react-router-dom';
@@ -80,6 +81,7 @@ export function SettingsPage() {
   const upsertBank = useUpsertBankAccount();
   const fileRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>('company');
+  const { accent } = useTheme();
 
   const form = useForm<CompanySettingsFormData>({
     resolver: zodResolver(companySettingsSchema),
@@ -214,22 +216,23 @@ export function SettingsPage() {
                   </div>
                 )}
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => fileRef.current?.click()}
-                  className="flex items-center gap-1.5 px-3 h-8 rounded-xl border border-gray-200 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-1.5 px-4 h-8 rounded-xl text-[12px] font-semibold text-white hover:opacity-90 transition-opacity shadow-sm"
+                  style={{ background: accent }}
                 >
-                  <Upload className="h-3.5 w-3.5" /> {t('logo.btnUpload')}
+                  <Upload className="h-3.5 w-3.5" />
+                  {settings?.logo_url ? t('logo.btnChange') : t('logo.btnUpload')}
                 </button>
                 {settings?.logo_url && (
                   <button
                     onClick={() => { if (window.confirm(t('logo.confirm'))) removeLogo.mutate(); }}
-                    className="flex items-center gap-1.5 px-3 h-8 rounded-xl border border-red-200 text-[12px] font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 h-8 rounded-xl text-[12px] font-semibold text-red-500 border border-red-200 bg-white hover:bg-red-50 transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" /> {t('logo.btnRemove')}
                   </button>
                 )}
-                <p className="text-[10px] text-gray-400">{t('logo.hint')}</p>
               </div>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             </div>
@@ -419,6 +422,7 @@ const COLOR_PRESETS_SETTINGS = [
 function AppearanceTab() {
   const navigate = _useNavigate();
   const { profile } = useAuth();
+  const { accent } = useTheme();
   const { currentTenant, refetch } = useTenant();
   const updateTenant  = useUpdateTenant();
   const uploadLogo    = useUploadTenantLogo();
@@ -525,7 +529,8 @@ function AppearanceTab() {
       />
       <button
         onClick={() => inputRef.current?.click()}
-        className="h-7 px-3 rounded-lg bg-gray-100 text-[11px] font-semibold text-gray-600 hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+        className="h-7 px-3 rounded-lg text-[11px] font-semibold text-white hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+        style={{ background: accent }}
       >
         <Upload className="h-3 w-3" />
         {url ? 'Değiştir' : 'Yükle'}

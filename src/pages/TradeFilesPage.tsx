@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHeaderAction } from '@/contexts/HeaderContext';
 import { useNavigate } from 'react-router-dom';
-import { useTradeFiles, useDeleteTradeFileWithChoice } from '@/hooks/useTradeFiles';
+import { useTradeFilesPaginated, useDeleteTradeFileWithChoice } from '@/hooks/useTradeFiles';
 import { DeleteTradeFileDialog } from '@/components/trade-files/DeleteTradeFileDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
@@ -28,7 +28,7 @@ const STATUS_META: Record<string, { dot: string; text: string }> = {
 
 type FilterKey = 'all' | 'request' | 'sale' | 'delivery' | 'completed' | 'cancelled';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 25;
 
 
 // ─── Mobile row menu ───────────────────────────────────────────────────────────
@@ -198,7 +198,6 @@ export function TradeFilesPage() {
   const { t: tc } = useTranslation('common');
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { data: files = [], isLoading } = useTradeFiles();
   const deleteFile = useDeleteTradeFileWithChoice();
   const writable = canWrite(profile?.role);
   const { accent } = useTheme();
@@ -208,9 +207,33 @@ export function TradeFilesPage() {
   const [deleteTarget, setDeleteTarget] = useState<TradeFile | null>(null);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [page, setPage] = useState(1);
   const { setAction } = useHeaderAction();
+
+  // Arama debounce — 350ms sonra sunucuya gönder
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  // Filtre veya arama değişince ilk sayfaya dön
+  useEffect(() => { setPage(1); }, [filter, debouncedSearch]);
+
+  const { data: pageResult, isLoading } = useTradeFilesPaginated(
+    {
+      status: filter !== 'all' ? filter as import('@/types/enums').TradeFileStatus : undefined,
+      search: debouncedSearch,
+    },
+    page,
+    PAGE_SIZE,
+  );
+
+  const paged      = pageResult?.data  ?? [];
+  const totalCount = pageResult?.count ?? 0;
+  const totalPages  = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
 
   const STATUS_FILTERS: { key: FilterKey; label: string }[] = [
     { key: 'all',       label: tc('all') },
@@ -234,29 +257,6 @@ export function TradeFilesPage() {
     );
     return () => setAction(null);
   }, [writable, accent, setAction]);
-
-  const filtered = useMemo(() => {
-    let list = files;
-    if (filter !== 'all') list = list.filter(f => f.status === filter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(f =>
-        f.file_no?.toLowerCase().includes(q) ||
-        f.customer?.name?.toLowerCase().includes(q) ||
-        f.product?.name?.toLowerCase().includes(q)
-      );
-    }
-    // Tarihe göre azalan sıra (en yeni üstte)
-    return [...list].sort((a, b) => {
-      const da = a.file_date ?? '';
-      const db = b.file_date ?? '';
-      return db.localeCompare(da);
-    });
-  }, [files, filter, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   async function handleDeleteConfirm(keepDocuments: boolean) {
     if (!deleteTarget) return;
@@ -284,7 +284,7 @@ export function TradeFilesPage() {
               style={{ fontFamily: 'Manrope, sans-serif' }}
             >
               {filter === 'all' ? 'Tüm Dosyalar' : tc(`status.${filter}`)}<br />
-              <span style={{ color: '#b70011' }}>— {files.length} dosya</span>
+              <span style={{ color: '#b70011' }}>— {totalCount} dosya</span>
             </h2>
           </div>
         )}
@@ -322,7 +322,6 @@ export function TradeFilesPage() {
 
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mx-4 mb-3 overflow-x-auto scrollbar-none">
           {STATUS_FILTERS.map(s => {
-            const count = s.key === 'all' ? files.length : files.filter(f => f.status === s.key).length;
             const active = filter === s.key;
             return (
               <button
@@ -332,7 +331,7 @@ export function TradeFilesPage() {
                   active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {s.label} {count > 0 && <span className={active ? 'text-gray-500' : 'text-gray-400'}>({count})</span>}
+                {s.label}{active && totalCount > 0 && <span className="ml-1 text-gray-500">({totalCount})</span>}
               </button>
             );
           })}
@@ -426,7 +425,6 @@ export function TradeFilesPage() {
         {/* Filter pills (segment) */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mb-4 overflow-x-auto scrollbar-none">
           {STATUS_FILTERS.map(s => {
-            const count = s.key === 'all' ? files.length : files.filter(f => f.status === s.key).length;
             const active = filter === s.key;
             return (
               <button
@@ -438,10 +436,8 @@ export function TradeFilesPage() {
                 )}
               >
                 {s.label}
-                {count > 0 && (
-                  <span className={cn('ml-1', active ? 'text-gray-400' : 'text-gray-400 opacity-60')}>
-                    {count}
-                  </span>
+                {active && totalCount > 0 && (
+                  <span className="ml-1 text-gray-400">{totalCount}</span>
                 )}
               </button>
             );

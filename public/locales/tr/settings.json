@@ -12,6 +12,7 @@
     "uploadHint": "Yüklemek için tıklayın",
     "hint": "PNG, JPG — maks 2MB",
     "btnUpload": "Yükle",
+    "btnChange": "Değiştir",
     "btnRemove": "Kaldır",
     "confirm": "Logo kaldırılsın mı?",
     "errorSize": "Maks 2MB"

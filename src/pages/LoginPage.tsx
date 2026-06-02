@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
@@ -157,7 +157,10 @@ export function LoginPage() {
   const { t } = useTranslation('auth');
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { tenantSlug } = useParams<{ tenantSlug?: string }>();
+  // AuthGuard'ın geçtiği "nereden gelindi" bilgisi — login sonrası oraya dön
+  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
 
   const [branding, setBranding] = useState<TenantBranding | null>(null);
   const [brandingLoaded, setBrandingLoaded] = useState(false);
@@ -197,8 +200,8 @@ export function LoginPage() {
   }, [setValue]);
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(from, { replace: true });
+  }, [user, navigate, from]);
 
   async function onSubmit(data: LoginFormData) {
     setError('');
@@ -271,7 +274,7 @@ export function LoginPage() {
       // Hard reload KULLANMA — React Router navigate kullan.
       // window.location.href tüm auth state'i sıfırlayıp isLoading=true'ya
       // döndürür ve race condition'a yol açar.
-      navigate('/dashboard', { replace: true });
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('login.error.generic'));
     }
