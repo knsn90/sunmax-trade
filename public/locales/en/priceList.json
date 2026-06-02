@@ -5,6 +5,7 @@
   "search": "Search…",
   "allProducts": "All Products",
   "allSuppliers": "All Suppliers",
+  "btnNew": "New Price",
   "btnPriceHistory": "Price History",
   "empty": {
     "title": "No price entries",

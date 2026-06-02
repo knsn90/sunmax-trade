@@ -27,6 +27,7 @@ import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+const PRICE_PAGE_SIZE = 50;
 const CURRENCIES = ['USD', 'EUR', 'TRY'] as const;
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', TRY: '₺' };
 
@@ -531,6 +532,7 @@ export function PriceListPage() {
   const [editing, setEditing] = useState<PriceList | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyProductId, setHistoryProductId] = useState('');
+  const [pricePage, setPricePage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -544,6 +546,13 @@ export function PriceListPage() {
       return matchSearch && matchProduct && matchSupplier;
     });
   }, [entries, search, filterProductId, filterSupplierId]);
+
+  const priceTotalPages = Math.max(1, Math.ceil(filtered.length / PRICE_PAGE_SIZE));
+  const priceCurrentPage = Math.min(pricePage, priceTotalPages);
+  const pagedEntries = filtered.slice((priceCurrentPage - 1) * PRICE_PAGE_SIZE, priceCurrentPage * PRICE_PAGE_SIZE);
+
+  // Filtre değişince ilk sayfaya dön
+  const resetPricePage = () => setPricePage(1);
 
   function openNew() { setEditing(null); setModalOpen(true); }
   function openEdit(e: PriceList) { setEditing(e); setModalOpen(true); }
@@ -599,7 +608,7 @@ export function PriceListPage() {
             <Search className="h-4 w-4 text-gray-400 shrink-0" />
             <input
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); resetPricePage(); }}
               placeholder={t('search')}
               className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
             />
@@ -618,7 +627,7 @@ export function PriceListPage() {
           </div>
         ) : (
           <div className="mx-3 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
-            {filtered.map((entry) => {
+            {pagedEntries.map((entry) => {
               const expired = isExpired(entry);
               const supplierAny = entry.supplier as { name?: string; logo_url?: string | null } | null;
               return (
@@ -676,63 +685,72 @@ export function PriceListPage() {
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:flex flex-col h-full">
 
-        {/* Page Header */}
-        <div className="flex items-center gap-2.5 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-            <Tag style={{ width: 18, height: 18 }} className="text-gray-600" />
-          </div>
-          <div>
-            <h1 className="text-[15px] font-bold text-gray-900">Fiyat Listesi</h1>
-            <p className="text-[11px] text-gray-400">Ürün ve tedarikçi fiyat geçmişi</p>
-          </div>
-        </div>
-
-        {/* Toolbar */}
+        {/* Page Header + Toolbar */}
         <div className="flex items-center gap-3 mb-5">
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">
+          {/* Başlık */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+              <Tag style={{ width: 18, height: 18 }} className="text-gray-600" />
+            </div>
+            <div>
+              <h1 className="text-[15px] font-bold text-gray-900">Fiyat Listesi</h1>
+              <p className="text-[11px] text-gray-400">Ürün ve tedarikçi fiyat geçmişi</p>
+            </div>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Arama */}
+          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 w-52">
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
             <input
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); resetPricePage(); }}
               placeholder={t('search')}
               className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
             />
           </div>
 
+          {/* Filtre — Ürün */}
           <select
             value={filterProductId}
-            onChange={e => setFilterProductId(e.target.value)}
-            className="h-9 px-3 text-[12px] bg-white border border-gray-100 rounded-xl shadow-sm text-gray-600 focus:outline-none"
+            onChange={e => { setFilterProductId(e.target.value); resetPricePage(); }}
+            className="h-9 px-3 pr-8 text-[12px] bg-white border border-gray-100 rounded-xl shadow-sm text-gray-600 focus:outline-none appearance-none cursor-pointer"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
           >
             <option value="">{t('allProducts')}</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
 
+          {/* Filtre — Tedarikçi */}
           <select
             value={filterSupplierId}
-            onChange={e => setFilterSupplierId(e.target.value)}
-            className="h-9 px-3 text-[12px] bg-white border border-gray-100 rounded-xl shadow-sm text-gray-600 focus:outline-none"
+            onChange={e => { setFilterSupplierId(e.target.value); resetPricePage(); }}
+            className="h-9 px-3 pr-8 text-[12px] bg-white border border-gray-100 rounded-xl shadow-sm text-gray-600 focus:outline-none appearance-none cursor-pointer"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
           >
             <option value="">{t('allSuppliers')}</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
 
-          <div className="flex-1" />
-
+          {/* Fiyat Geçmişi butonu */}
           <button
             onClick={() => openHistory()}
-            className="h-9 px-4 rounded-xl text-[13px] font-semibold text-gray-600 bg-white border border-gray-100 shadow-sm flex items-center gap-2 hover:bg-gray-50 transition-colors"
+            className="h-9 px-4 rounded-xl text-[13px] font-semibold text-gray-600 bg-white border border-gray-200 shadow-sm flex items-center gap-1.5 hover:bg-gray-50 transition-colors shrink-0 whitespace-nowrap"
           >
-            <TrendingUp className="h-3.5 w-3.5" /> Fiyat Geçmişi
+            <TrendingUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            {t('btnPriceHistory')}
           </button>
 
+          {/* Yeni Fiyat butonu */}
           {canWrite && (
             <button
               onClick={openNew}
-              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-2"
+              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 whitespace-nowrap"
               style={{ background: accent }}
             >
-              <Plus className="h-3.5 w-3.5" /> {t('btnNew') || 'Yeni Fiyat'}
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              {t('btnNew')}
             </button>
           )}
         </div>
@@ -849,6 +867,23 @@ export function PriceListPage() {
                 })}
               </tbody>
             </table>
+
+            {priceTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-1.5 py-3 border-t border-gray-50">
+                {Array.from({ length: priceTotalPages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPricePage(p)}
+                    className={`w-7 h-7 rounded-full text-[11px] font-bold transition-all ${
+                      p === priceCurrentPage ? 'text-white shadow-sm' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                    }`}
+                    style={p === priceCurrentPage ? { background: accent } : {}}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
