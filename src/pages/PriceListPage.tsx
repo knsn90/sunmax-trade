@@ -713,10 +713,9 @@ export function PriceListPage() {
       ══════════════════════════════════════════════════════════════ */}
       <div className="hidden md:flex flex-col h-full">
 
-        {/* Page Header + Toolbar */}
-        <div className="flex items-center gap-3 mb-5">
-          {/* Başlık */}
-          <div className="flex items-center gap-2.5 shrink-0">
+        {/* Satır 1: Başlık + Ana Aksiyon */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
               <Tag style={{ width: 18, height: 18 }} className="text-gray-600" />
             </div>
@@ -725,11 +724,23 @@ export function PriceListPage() {
               <p className="text-[11px] text-gray-400">Ürün ve tedarikçi fiyat geçmişi</p>
             </div>
           </div>
-
           <div className="flex-1" />
+          {canWrite && (
+            <button
+              onClick={openNew}
+              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 whitespace-nowrap"
+              style={{ background: accent }}
+            >
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              {t('btnNew')}
+            </button>
+          )}
+        </div>
 
+        {/* Satır 2: Arama + Filtreler + Diğer Butonlar */}
+        <div className="flex items-center gap-2 mb-5">
           {/* Arama */}
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 w-52">
+          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 w-48">
             <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
             <input
               value={search}
@@ -761,6 +772,8 @@ export function PriceListPage() {
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
 
+          <div className="flex-1" />
+
           {/* Fiyat Geçmişi butonu */}
           <button
             onClick={() => openHistory()}
@@ -785,18 +798,6 @@ export function PriceListPage() {
               : <><Sparkles className="h-3.5 w-3.5 shrink-0" />AI Analizi</>
             }
           </button>
-
-          {/* Yeni Fiyat butonu */}
-          {canWrite && (
-            <button
-              onClick={openNew}
-              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 whitespace-nowrap"
-              style={{ background: accent }}
-            >
-              <Plus className="h-3.5 w-3.5 shrink-0" />
-              {t('btnNew')}
-            </button>
-          )}
         </div>
 
         {/* AI Analiz Paneli */}
