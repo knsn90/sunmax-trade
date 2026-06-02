@@ -800,57 +800,6 @@ export function PriceListPage() {
           </button>
         </div>
 
-        {/* AI Analiz Paneli */}
-        {aiOpen && (
-          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
-            <div className="px-5 py-3 border-b border-purple-50 bg-purple-50/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-500" />
-                <span className="text-[11px] font-bold uppercase tracking-widest text-purple-700">AI Fiyat Analizi</span>
-                {aiLoading && (
-                  <div className="w-3.5 h-3.5 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-                )}
-              </div>
-              <button
-                onClick={() => setAiOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="px-5 py-4 min-h-[80px]">
-              {aiError ? (
-                <p className="text-[12px] text-red-500">⚠️ {aiError}</p>
-              ) : aiText ? (
-                <div className="space-y-1.5">
-                  {aiText.split('\n').map((line, i) => {
-                    if (line.startsWith('## '))
-                      return <h3 key={i} className="text-[13px] font-bold text-gray-900 mt-4 first:mt-0">{line.slice(3)}</h3>;
-                    if (line.startsWith('### '))
-                      return <h4 key={i} className="text-[12px] font-bold text-gray-700 mt-3">{line.slice(4)}</h4>;
-                    if (line.startsWith('- ') || line.startsWith('* '))
-                      return (
-                        <div key={i} className="flex gap-2 text-[12px] text-gray-600">
-                          <span className="text-purple-300 shrink-0 mt-0.5">•</span>
-                          <span dangerouslySetInnerHTML={{ __html: line.slice(2).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
-                        </div>
-                      );
-                    if (line.trim() === '') return <div key={i} className="h-1" />;
-                    return (
-                      <p key={i} className="text-[12px] text-gray-600 leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }}
-                      />
-                    );
-                  })}
-                  {aiLoading && <span className="inline-block w-1.5 h-4 bg-purple-400 animate-pulse rounded-sm ml-0.5" />}
-                </div>
-              ) : aiLoading ? (
-                <p className="text-[12px] text-gray-400 animate-pulse">Fiyat listesi analiz ediliyor…</p>
-              ) : null}
-            </div>
-          </div>
-        )}
-
         {/* Table */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -987,6 +936,84 @@ export function PriceListPage() {
       {/* Modals */}
       <PriceEntryModal open={modalOpen} onOpenChange={setModalOpen} editing={editing} />
       <PriceHistoryModal open={historyOpen} onOpenChange={setHistoryOpen} initialProductId={historyProductId} />
+
+      {/* AI Analiz Popup */}
+      <Dialog open={aiOpen} onOpenChange={open => { if (!open) { abortRef.current = true; setAiOpen(false); } }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-white shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-[14px] font-bold text-gray-900">AI Fiyat Analizi</h2>
+                <p className="text-[11px] text-gray-400">{entries.length} fiyat kaydı · {new Set(entries.map(e => e.product_id)).size} ürün</p>
+              </div>
+              {aiLoading && (
+                <div className="w-3.5 h-3.5 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin ml-1" />
+              )}
+            </div>
+          </div>
+
+          {/* Body — scrollable */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 min-h-[200px]">
+            {aiError ? (
+              <div className="flex items-start gap-2 text-red-500 text-[12px] bg-red-50 px-3 py-2.5 rounded-xl">
+                <span>⚠️</span>
+                <span>{aiError}</span>
+              </div>
+            ) : aiText ? (
+              <div className="space-y-1.5">
+                {aiText.split('\n').map((line, i) => {
+                  if (line.startsWith('## '))
+                    return <h3 key={i} className="text-[14px] font-bold text-gray-900 mt-5 first:mt-0 flex items-center gap-2">
+                      <span className="w-1 h-4 rounded-full bg-purple-400 shrink-0" />
+                      {line.slice(3)}
+                    </h3>;
+                  if (line.startsWith('### '))
+                    return <h4 key={i} className="text-[12px] font-bold text-gray-700 mt-3 ml-3">{line.slice(4)}</h4>;
+                  if (line.startsWith('- ') || line.startsWith('* '))
+                    return (
+                      <div key={i} className="flex gap-2 text-[12px] text-gray-600 ml-3">
+                        <span className="text-purple-300 shrink-0 mt-0.5">•</span>
+                        <span dangerouslySetInnerHTML={{ __html: line.slice(2).replace(/\*\*(.+?)\*\*/g, '<strong class="text-gray-800">$1</strong>') }} />
+                      </div>
+                    );
+                  if (line.trim() === '') return <div key={i} className="h-1.5" />;
+                  return (
+                    <p key={i} className="text-[12px] text-gray-600 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.+?)\*\*/g, '<strong class="text-gray-800">$1</strong>') }}
+                    />
+                  );
+                })}
+                {aiLoading && (
+                  <span className="inline-block w-1.5 h-4 bg-purple-400 animate-pulse rounded-sm ml-1 align-middle" />
+                )}
+              </div>
+            ) : aiLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-400">
+                <div className="w-8 h-8 border-2 border-purple-200 border-t-purple-500 rounded-full animate-spin" />
+                <p className="text-[12px]">Fiyat listesi analiz ediliyor…</p>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Footer */}
+          {!aiLoading && aiText && (
+            <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between shrink-0">
+              <p className="text-[10px] text-gray-400">Claude Haiku · Sonuçlar bilgi amaçlıdır</p>
+              <button
+                onClick={handleAiAnalysis}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-600 hover:text-purple-800 transition-colors"
+              >
+                <Sparkles className="h-3 w-3" />
+                Yeniden Analiz Et
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
