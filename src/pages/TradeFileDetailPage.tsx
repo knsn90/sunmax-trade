@@ -575,9 +575,9 @@ export function TradeFileDetailPage() {
   // Kalan tonaj: tüm parti tonajları ana dosyadan düşülür
   const usedTonnage   = (file.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
   const remainingTonnage = Math.max(0, file.tonnage_mt - usedTonnage);
-  // Tamamlandı butonu: tüm partiler completed VE tüm tonaj dağıtılmış olmalı
+  // Tamamlandı butonu: tüm partiler completed olmalı (kalan tonaj fark etmez — gerçek teslimatta sapma olabilir)
   const allBatchesDone = isPartial
-    && remainingTonnage === 0
+    && (file.batches ?? []).length > 0
     && (file.batches ?? []).every(b => b.status === 'completed');
   // Batch file_no = "ANA/P1" → ana dosya no = "ANA"
   const parentFileNo = isBatch ? file.file_no.split('/').slice(0, -1).join('/') : null;
@@ -751,8 +751,13 @@ export function TradeFileDetailPage() {
     if (allBatchesDone) {
       checkAndComplete();
     } else {
-      const remaining = (file!.batches ?? []).filter(b => b.status !== 'completed').length;
-      toast.warning(`${remaining} parti henüz tamamlanmadı — önce tüm teslimat partilerini tamamlayın`);
+      const incomplete = (file!.batches ?? []).filter(b => b.status !== 'completed').length;
+      const noBatches = (file!.batches ?? []).length === 0;
+      if (noBatches) {
+        toast.warning('Henüz parti eklenmedi — en az bir teslimat partisi ekleyin');
+      } else {
+        toast.warning(`${incomplete} parti henüz tamamlanmadı — tüm partileri tamamlayın`);
+      }
     }
   }
 
