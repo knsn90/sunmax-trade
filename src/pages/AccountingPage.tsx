@@ -245,6 +245,21 @@ export function AccountingPage() {
   // Reset selection when tab changes
   useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
 
+  // Ticaret dosyası detayından yönlendirme — eksik fatura doğrudan açılsın
+  useEffect(() => {
+    const st = location.state as { newInvoice?: 'sale' | 'purchase' } | null;
+    if (st?.newInvoice === 'sale') {
+      setEditingSaleInv(null);
+      setSaleInvModalOpen(true);
+      window.history.replaceState({}, ''); // state'i temizle (yeniden tetiklenmesin)
+    } else if (st?.newInvoice === 'purchase') {
+      setEditingPurchaseInv(null);
+      setPurchaseInvModalOpen(true);
+      window.history.replaceState({}, '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const tabDefaultType: Record<AccTab, string | undefined> = {
     all: undefined, buy: 'purchase_inv', svc: 'svc_inv', sale: undefined, cash: 'receipt', expense: 'expense', ayarlar: undefined,
   };

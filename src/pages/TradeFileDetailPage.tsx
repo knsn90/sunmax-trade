@@ -1027,12 +1027,36 @@ export function TradeFileDetailPage() {
           {/* Checklist */}
           <div className="divide-y divide-dashed divide-gray-100">
             {completionChecks && ([
-              { ok: completionChecks.purchaseCovered, label: 'Satın Alma Faturası', sub: 'Tonajı kapsayan purchase_inv' },
-              { ok: completionChecks.saleCovered,     label: 'Satış Faturası',      sub: 'Tonajı kapsayan sale_inv' },
-
-              { ok: completionChecks.hasProforma,     label: 'Proforma Fatura',     sub: 'Belgeler → Proforma' },
-              { ok: completionChecks.hasPackingList,  label: 'Packing List',        sub: 'Belgeler → Ambalaj Listesi' },
-              { ok: completionChecks.hasCommInvoice,  label: 'Commercial Invoice',  sub: 'Belgeler → Ticari Fatura' },
+              {
+                ok: completionChecks.purchaseCovered,
+                label: 'Satın Alma Faturası',
+                sub: 'Muhasebe → Satın Alma Faturası',
+                onAdd: () => { setCompletionBlockerOpen(false); navigate('/accounting', { state: { newInvoice: 'purchase' } }); },
+              },
+              {
+                ok: completionChecks.saleCovered,
+                label: 'Satış Faturası',
+                sub: 'Muhasebe → Satış Faturası',
+                onAdd: () => { setCompletionBlockerOpen(false); navigate('/accounting', { state: { newInvoice: 'sale' } }); },
+              },
+              {
+                ok: completionChecks.hasProforma,
+                label: 'Proforma Fatura',
+                sub: 'Belgeler → Proforma',
+                onAdd: () => { setCompletionBlockerOpen(false); setEditPI(null); setProformaOpen(true); },
+              },
+              {
+                ok: completionChecks.hasPackingList,
+                label: 'Packing List',
+                sub: 'Belgeler → Ambalaj Listesi',
+                onAdd: () => { setCompletionBlockerOpen(false); setEditPL(null); setPackingOpen(true); },
+              },
+              {
+                ok: completionChecks.hasCommInvoice,
+                label: 'Commercial Invoice',
+                sub: 'Belgeler → Ticari Fatura',
+                onAdd: () => { setCompletionBlockerOpen(false); setEditInvoice(null); setInvoiceOpen(true); },
+              },
             ].map(item => (
               <div key={item.label} className="flex items-center justify-between px-6 py-3">
                 <div>
@@ -1041,7 +1065,15 @@ export function TradeFileDetailPage() {
                 </div>
                 {item.ok
                   ? <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">✓ Tamam</span>
-                  : <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">✗ Eksik</span>
+                  : (
+                    <button
+                      onClick={item.onAdd}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-white px-2.5 py-1 rounded-full transition-opacity hover:opacity-90"
+                      style={{ background: accent }}
+                    >
+                      + Ekle
+                    </button>
+                  )
                 }
               </div>
             )))}
