@@ -15,6 +15,7 @@ export function useCustomers() {
   return useQuery({
     queryKey: ['customers'],
     queryFn: () => customerService.list(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -61,6 +62,7 @@ export function useSuppliers() {
   return useQuery({
     queryKey: ['suppliers'],
     queryFn: () => supplierService.list(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -107,6 +109,7 @@ export function useProducts() {
   return useQuery({
     queryKey: ['products'],
     queryFn: () => productService.list(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -155,6 +158,7 @@ export function useServiceProviders(typeFilter?: ServiceProviderType) {
   return useQuery({
     queryKey: ['service-providers', typeFilter],
     queryFn: () => serviceProviderService.list(typeFilter),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -201,6 +205,7 @@ export function useProductCategories() {
   return useQuery({
     queryKey: ['product-categories'],
     queryFn: () => productCategoryService.list(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -248,6 +253,7 @@ export function usePriceList() {
   return useQuery({
     queryKey: ['price-list'],
     queryFn: () => priceListService.list(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -256,6 +262,7 @@ export function usePriceListByProduct(productId: string) {
     queryKey: ['price-list', productId],
     queryFn: () => priceListService.listByProduct(productId),
     enabled: !!productId,
+    staleTime: 1000 * 60 * 5,
   });
 }
 

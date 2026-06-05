@@ -8,6 +8,7 @@ export function useTradeFileNotes(tradeFileId: string | undefined) {
     queryFn: () => tradeFileNotesService.list(tradeFileId!),
     enabled: !!tradeFileId,
     retry: false,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

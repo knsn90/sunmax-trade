@@ -8,7 +8,7 @@ export const kasaKeys = {
 };
 
 export function useKasalar() {
-  return useQuery({ queryKey: kasaKeys.list(), queryFn: kasaService.list, retry: false });
+  return useQuery({ queryKey: kasaKeys.list(), queryFn: kasaService.list, retry: false, staleTime: 1000 * 60 * 5 });
 }
 
 export function useCreateKasa() {

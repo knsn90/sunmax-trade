@@ -22,6 +22,8 @@ export interface TransactionFilters {
   tab?: 'all' | 'buy' | 'svc' | 'cash' | 'sale' | 'expense';
   /** Sadece onaylanmış kayıtları getir (raporlar için) */
   approvedOnly?: boolean;
+  /** Maksimum satır sayısı. Varsayılan = 10000 (raporlar için). Dashboard gibi kısmi görünümler için 200 gibi bir değer girin. */
+  limit?: number;
 }
 
 export const PAGE_SIZE = 30;
@@ -33,7 +35,7 @@ export const transactionService = {
       .select(TXN_SELECT)
       .is('deleted_at', null)
       .order('transaction_date', { ascending: false })
-      .limit(10000); // Supabase default is 1000; reports need all rows
+      .limit(filters?.limit ?? 10000); // Raporlar için 10000; dashboard gibi kısmi görünümler limit: 200 geçirmeli
 
     if (filters?.type) {
       query = query.eq('transaction_type', filters.type);

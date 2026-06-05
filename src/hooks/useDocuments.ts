@@ -11,6 +11,7 @@ export function useInvoices() {
   return useQuery({
     queryKey: ['invoices'],
     queryFn: () => invoiceService.list(),
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -19,6 +20,7 @@ export function useInvoicesByTradeFile(tradeFileId: string | undefined) {
     queryKey: ['invoices', 'by-file', tradeFileId],
     queryFn: () => invoiceService.listByTradeFile(tradeFileId!),
     enabled: !!tradeFileId,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -95,6 +97,7 @@ export function useSaleInvoices() {
   return useQuery({
     queryKey: ['invoices', 'sale'],
     queryFn: () => invoiceService.listSaleInvoices(),
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -121,6 +124,7 @@ export function usePackingLists() {
   return useQuery({
     queryKey: ['packing-lists'],
     queryFn: () => packingListService.list(),
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -129,6 +133,7 @@ export function usePackingListsByTradeFile(tradeFileId: string | undefined) {
     queryKey: ['packing-lists', 'by-file', tradeFileId],
     queryFn: () => packingListService.listByTradeFile(tradeFileId!),
     enabled: !!tradeFileId,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

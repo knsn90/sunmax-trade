@@ -8,6 +8,7 @@ export function useProformas() {
   return useQuery({
     queryKey: ['proformas'],
     queryFn: () => proformaService.list(),
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -16,6 +17,7 @@ export function useProformasByTradeFile(tradeFileId: string | undefined) {
     queryKey: ['proformas', 'by-file', tradeFileId],
     queryFn: () => proformaService.listByTradeFile(tradeFileId!),
     enabled: !!tradeFileId,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

@@ -8,6 +8,7 @@ export function useUsers() {
   return useQuery({
     queryKey: ['users'],
     queryFn: () => userService.listUsers(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 

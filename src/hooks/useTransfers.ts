@@ -7,6 +7,7 @@ export function useTransfers() {
     queryKey: ['transfers'],
     queryFn: transferService.list,
     retry: false,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

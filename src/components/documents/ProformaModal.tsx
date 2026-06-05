@@ -159,7 +159,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         shipment_method: '',
         currency: file.currency ?? settings?.default_currency ?? 'USD',
         place_of_payment: 'ISTANBUL - TURKEY',
-        delivery_time: '',
+        delivery_time: file.eta ?? '',
         vessel_details_confirmation: '',
         description: file.product?.name ?? '',
         hs_code: file.product?.hs_code ?? '470321',

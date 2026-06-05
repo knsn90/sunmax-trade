@@ -23,6 +23,7 @@ export function useTransactions(filters?: TransactionFilters) {
     queryKey: ['transactions', filters],
     queryFn: () => transactionService.list(filters),
     retry: false,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -34,6 +35,7 @@ export function useTransactionsByEntity(
     queryKey: ['transactions', 'entity', entityType, entityId],
     queryFn: () => transactionService.listByEntity(entityType, entityId!),
     enabled: !!entityId,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -46,6 +48,7 @@ export function useTransactionsByEntityEnhanced(
     queryKey: ['transactions', 'entity-enhanced', entityType, entityId, approvedOnly],
     queryFn: () => transactionService.listByEntityEnhanced(entityType, entityId!, approvedOnly),
     enabled: !!entityId,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -53,6 +56,7 @@ export function useTransactionSummary() {
   return useQuery({
     queryKey: ['transactions', 'summary'],
     queryFn: () => transactionService.getSummary(),
+    staleTime: 1000 * 60 * 2,
   });
 }
 

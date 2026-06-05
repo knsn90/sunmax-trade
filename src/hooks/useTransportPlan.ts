@@ -10,6 +10,7 @@ export function useTransportPlan(tradeFileId?: string) {
     queryKey: KEY(tradeFileId),
     queryFn: () => transportService.getPlanByFile(tradeFileId!),
     enabled: !!tradeFileId,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

@@ -11,6 +11,7 @@ export function useSettings() {
     queryKey: ['settings', currentTenant?.id ?? 'global'],
     queryFn: () => settingsService.getSettings(),
     enabled: !!currentTenant,
+    staleTime: 1000 * 60 * 5,
   });
   // React Query v5: enabled:false → status:'pending' → isLoading:true (spinner forever)
   // Tenant yokken loading false döndür
@@ -61,6 +62,7 @@ export function useBankAccounts() {
   return useQuery({
     queryKey: ['bank-accounts'],
     queryFn: () => settingsService.getBankAccounts(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 

@@ -9,6 +9,7 @@ export function useTradeFileAttachments(tradeFileId: string | undefined) {
     queryFn: () => tradeFileAttachmentsService.list(tradeFileId!),
     enabled: !!tradeFileId,
     retry: false,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

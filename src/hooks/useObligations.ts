@@ -8,6 +8,7 @@ export function useTradeObligations(tradeFileId: string | undefined) {
     queryKey: ['trade-obligations', tradeFileId],
     queryFn: () => obligationService.getByTradeFile(tradeFileId!),
     enabled: !!tradeFileId,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

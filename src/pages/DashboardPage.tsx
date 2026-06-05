@@ -458,7 +458,8 @@ export function DashboardPage() {
   const { profile } = useAuth();
   const { data: files = [], isLoading: filesLoading } = useTradeFiles();
   const { data: summary, isLoading: summaryLoading } = useTransactionSummary();
-  const { data: transactions = [] } = useTransactions();
+  // Dashboard'da tüm işlemlere gerek yok — uyarılar ve son 3 işlem için 300 yeterli
+  const { data: transactions = [] } = useTransactions({ limit: 300 });
   const { data: priceEntries = [] } = usePriceList();
   const { accent } = useTheme();
   const writable = canWrite(profile?.role);

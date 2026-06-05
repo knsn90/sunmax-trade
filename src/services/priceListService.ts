@@ -6,7 +6,7 @@ export const priceListService = {
   async list(): Promise<PriceList[]> {
     const { data, error } = await supabase
       .from('price_list')
-      .select('*, product:products(*), supplier:suppliers(*)')
+      .select('*, product:products(id, name, logo_url), supplier:suppliers(id, name, logo_url)')
       .order('price_date', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -17,7 +17,7 @@ export const priceListService = {
   async listByProduct(productId: string): Promise<PriceList[]> {
     const { data, error } = await supabase
       .from('price_list')
-      .select('*, product:products(*), supplier:suppliers(*)')
+      .select('*, product:products(id, name, logo_url), supplier:suppliers(id, name, logo_url)')
       .eq('product_id', productId)
       .order('price_date', { ascending: false });
 
@@ -47,7 +47,7 @@ export const priceListService = {
         valid_until: input.valid_until || null,
         notes:       input.notes,
       })
-      .select('*, product:products(*), supplier:suppliers(*)')
+      .select('*, product:products(id, name, logo_url), supplier:suppliers(id, name, logo_url)')
       .single();
 
     if (error) throw new Error(error.message);
@@ -67,7 +67,7 @@ export const priceListService = {
         notes:       input.notes,
       })
       .eq('id', id)
-      .select('*, product:products(*), supplier:suppliers(*)')
+      .select('*, product:products(id, name, logo_url), supplier:suppliers(id, name, logo_url)')
       .single();
 
     if (error) throw new Error(error.message);
