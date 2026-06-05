@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/services/supabase';
 import { journalService } from '@/services/journalService';
@@ -172,6 +172,7 @@ export function AccountingPage() {
   ];
 
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AccTab>(() => {
     const t = (location.state as { tab?: string } | null)?.tab;
     return (['all','buy','svc','sale','cash','expense','ayarlar'].includes(t ?? '') ? t : 'all') as AccTab;
@@ -246,15 +247,19 @@ export function AccountingPage() {
   useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
 
   // Ticaret dosyası detayından yönlendirme — eksik fatura doğrudan açılsın
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+
   useEffect(() => {
-    const st = location.state as { newInvoice?: 'sale' | 'purchase' } | null;
+    const st = location.state as { newInvoice?: 'sale' | 'purchase'; returnTo?: string } | null;
     if (st?.newInvoice === 'sale') {
       setEditingSaleInv(null);
       setSaleInvModalOpen(true);
+      if (st.returnTo) setReturnTo(st.returnTo);
       window.history.replaceState({}, ''); // state'i temizle (yeniden tetiklenmesin)
     } else if (st?.newInvoice === 'purchase') {
       setEditingPurchaseInv(null);
       setPurchaseInvModalOpen(true);
+      if (st.returnTo) setReturnTo(st.returnTo);
       window.history.replaceState({}, '');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1179,7 +1184,7 @@ export function AccountingPage() {
       />
       <InvoiceModal
         open={saleInvModalOpen}
-        onOpenChange={setSaleInvModalOpen}
+        onOpenChange={(open) => { setSaleInvModalOpen(open); if (!open && returnTo) { setReturnTo(null); navigate(returnTo); } }}
         file={editingSaleInv?.trade_file ?? null}
         invoice={editingSaleInv}
         invoiceType="sale"
@@ -1201,7 +1206,7 @@ export function AccountingPage() {
       />
       <PurchaseInvoiceModal
         open={purchaseInvModalOpen}
-        onOpenChange={(v) => { setPurchaseInvModalOpen(v); if (!v) setEditingPurchaseInv(null); }}
+        onOpenChange={(v) => { setPurchaseInvModalOpen(v); if (!v) { setEditingPurchaseInv(null); if (returnTo) { setReturnTo(null); navigate(returnTo); } } }}
         transaction={editingPurchaseInv}
         onSwitchToTransaction={(type) => {
           setPurchaseInvModalOpen(false);

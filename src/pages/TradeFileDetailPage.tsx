@@ -1031,13 +1031,13 @@ export function TradeFileDetailPage() {
                 ok: completionChecks.purchaseCovered,
                 label: 'Satın Alma Faturası',
                 sub: 'Muhasebe → Satın Alma Faturası',
-                onAdd: () => { setCompletionBlockerOpen(false); navigate('/accounting', { state: { newInvoice: 'purchase' } }); },
+                onAdd: () => { setCompletionBlockerOpen(false); navigate('/accounting', { state: { newInvoice: 'purchase', returnTo: `/files/${file!.id}` } }); },
               },
               {
                 ok: completionChecks.saleCovered,
                 label: 'Satış Faturası',
                 sub: 'Muhasebe → Satış Faturası',
-                onAdd: () => { setCompletionBlockerOpen(false); navigate('/accounting', { state: { newInvoice: 'sale' } }); },
+                onAdd: () => { setCompletionBlockerOpen(false); navigate('/accounting', { state: { newInvoice: 'sale', returnTo: `/files/${file!.id}` } }); },
               },
               {
                 ok: completionChecks.hasProforma,
