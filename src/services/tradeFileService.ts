@@ -23,6 +23,7 @@ const FILE_SELECT = `
   incoterms, transport_mode, port_of_loading, port_of_discharge,
   proforma_ref, register_no, insurance_tr, eta, currency,
   purchase_currency, sale_currency, freight_cost, parent_file_id, batch_no,
+  customer_id, product_id,
   customer:customers!customer_id(id, name, code, country, logo_url),
   product:products!product_id(id, name, unit),
   creator:profiles!created_by(id, full_name)
