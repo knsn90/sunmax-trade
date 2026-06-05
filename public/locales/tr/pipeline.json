@@ -5,9 +5,9 @@
     "search": "Müşteri, dosya no, ürün…"
   },
   "buttons": {
-    "newFile": "+ Yeni Dosya",
+    "newFile": "Yeni Dosya",
     "toSale": "Satışa Geç",
-    "delivery": "+ Teslimat",
+    "delivery": "Teslimat Ekle",
     "deliveryUpdate": "Teslimat",
     "invoice": "Fatura",
     "pnl": "K/Z"

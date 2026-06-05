@@ -5,9 +5,9 @@
     "search": "Customer, file no, product…"
   },
   "buttons": {
-    "newFile": "+ New File",
+    "newFile": "New File",
     "toSale": "To Sale",
-    "delivery": "+ Delivery",
+    "delivery": "Add Delivery",
     "deliveryUpdate": "Delivery",
     "invoice": "Invoice",
     "pnl": "P&L"
