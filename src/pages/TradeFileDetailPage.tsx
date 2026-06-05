@@ -573,8 +573,6 @@ export function TradeFileDetailPage() {
   // Dropbox klasör adı olarak file_no'yu kullan (edge function "/" → nested folder yapıyor)
   const dropboxFileNo = file.file_no;
   // Kalan tonaj: tüm parti tonajları ana dosyadan düşülür
-  const usedTonnage   = (file.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
-  const remainingTonnage = Math.max(0, file.tonnage_mt - usedTonnage);
   // Tamamlandı butonu: tüm partiler completed olmalı (kalan tonaj fark etmez — gerçek teslimatta sapma olabilir)
   const allBatchesDone = isPartial
     && (file.batches ?? []).length > 0
