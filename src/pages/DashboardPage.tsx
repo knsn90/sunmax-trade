@@ -124,40 +124,41 @@ function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-2xl px-4 py-4 md:px-5 md:py-4 shadow-sm border border-gray-100 overflow-hidden${onClick ? ' cursor-pointer hover:shadow-md hover:border-gray-200 active:scale-[0.98] transition-all' : ''}`}
+      style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
+      className={`bg-white rounded-xl px-4 py-4 md:px-5 md:py-4 border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden${onClick ? ' cursor-pointer hover:border-[#D1D5DB] active:scale-[0.99] transition-all' : ''}`}
     >
       {/* Mobile */}
       <div className="flex items-center gap-3 md:hidden">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: accent + '18' }}>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: accent + '14' }}>
           <span style={{ color: accent }}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{label}</div>
-          <div className="text-[15px] font-extrabold text-gray-900 leading-tight tabular-nums" style={{ fontFamily: 'Manrope, sans-serif' }}>{value}</div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] mb-0.5">{label}</div>
+          <div className="text-[16px] font-bold text-[#1A1A1A] leading-tight tabular-nums tracking-[-0.01em]">{value}</div>
           {sub && (
             <div className="flex items-center gap-1 mt-0.5">
-              {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-green-500 shrink-0" />}
-              {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-red-500 shrink-0" />}
-              <span className="text-[10px] text-gray-400 truncate">{sub}</span>
+              {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-[#27AE60] shrink-0" />}
+              {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-[#FF5151] shrink-0" />}
+              <span className="text-[11px] text-[#9CA3AF] truncate">{sub}</span>
             </div>
           )}
         </div>
       </div>
       {/* Desktop */}
-      <div className="hidden md:flex items-start gap-4">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: accent + '15' }}>
+      <div className="hidden md:flex items-start gap-3.5">
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: accent + '12' }}>
           <span style={{ color: accent }}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</div>
-          <div className="text-[22px] font-extrabold text-gray-900 leading-none">{value}</div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] mb-1">{label}</div>
+          <div className="text-[24px] font-bold text-[#1A1A1A] leading-none tracking-[-0.02em]">{value}</div>
           {sub && (
             <div className="flex items-center gap-1 mt-1.5">
-              {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-green-500 shrink-0" />}
-              {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />}
-              <span className="text-[11px] text-gray-400">{sub}</span>
+              {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-[#27AE60] shrink-0" />}
+              {trend === 'down' && <TrendingDown className="h-3 w-3 text-[#FF5151] shrink-0" />}
+              <span className="text-[11px] text-[#6F6F6F]">{sub}</span>
             </div>
           )}
         </div>
@@ -174,23 +175,24 @@ function Card({ title, icon, children, action, actionLabel, className, dragHandl
   isFull?: boolean; onToggleSize?: () => void;
 }) {
   return (
-    <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[340px]', className)}>
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          {icon && <span className="text-gray-400 shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
-          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500 truncate">{title}</span>
+    <div className={cn('bg-white rounded-xl border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col h-[340px]', className)}
+      style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#F2F2F2] shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {icon && <span className="text-[#9CA3AF] shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6F6F6F] truncate">{title}</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {action && (
-            <button onClick={action} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 flex items-center gap-0.5 transition-colors mr-1">
-              {actionLabel} <ChevronRight className="h-3 w-3" />
+            <button onClick={action} className="text-[12px] font-medium text-[#6F6F6F] hover:text-[#1A1A1A] flex items-center gap-0.5 transition-colors mr-1">
+              {actionLabel} <ChevronRight className="h-3.5 w-3.5" />
             </button>
           )}
           {/* Size toggle — desktop only */}
           {onToggleSize && (
             <button
               onClick={onToggleSize}
-              className="hidden md:flex items-center justify-center w-6 h-6 rounded-md text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="hidden md:flex items-center justify-center w-6 h-6 rounded-md text-[#D1D5DB] hover:text-[#6F6F6F] hover:bg-[#F2F2F2] transition-colors"
               title={isFull ? 'Shrink to half width' : 'Expand to full width'}
             >
               {isFull ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
@@ -199,7 +201,7 @@ function Card({ title, icon, children, action, actionLabel, className, dragHandl
           {dragHandleProps && (
             <div
               {...dragHandleProps}
-              className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none flex items-center justify-center w-6 h-6 rounded-md hover:bg-gray-100 transition-colors"
+              className="cursor-grab active:cursor-grabbing text-[#D1D5DB] hover:text-[#6F6F6F] touch-none flex items-center justify-center w-6 h-6 rounded-md hover:bg-[#F2F2F2] transition-colors"
               title="Drag to reorder"
             >
               <GripVertical className="h-4 w-4" />
@@ -1564,28 +1566,26 @@ export function DashboardPage() {
       {/* ═══════════════════════════════════════════════════════════════════
           DESKTOP — Existing layout (unchanged)
       ════════════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block bg-gray-50 min-h-screen pb-8">
-        <div className="px-6 space-y-4">
+      <div className="hidden md:block min-h-screen pb-8" style={{ background: '#F9F9F9', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+        <div className="px-6 pt-6 space-y-4">
 
           {/* Desktop greeting */}
-          <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden px-6 py-4">
+          <div className="flex items-center justify-between px-1 py-1">
             <div>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{greeting}</div>
-              <div className="text-[22px] font-extrabold text-gray-900 leading-tight">{profile?.full_name ?? 'Dashboard'}</div>
+              <div className="text-[12px] font-medium text-[#9CA3AF] mb-0.5">{greeting}</div>
+              <div className="text-[28px] font-bold text-[#1A1A1A] leading-tight tracking-[-0.02em]">{profile?.full_name ?? 'Dashboard'}</div>
             </div>
             <div className="flex items-center gap-4">
               {writable && (
                 <button
                   onClick={() => setFabOpen(v => !v)}
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 active:scale-95 transition-transform"
-                  style={{
-                    background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)',
-                    boxShadow: '0 8px 24px rgba(183,0,17,0.28)',
-                    transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.25s ease',
-                  }}
+                  className="h-10 px-4 rounded-lg flex items-center gap-2 text-white text-[14px] font-semibold transition-colors"
+                  style={{ background: accent }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = accent; }}
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-4 w-4" style={{ transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                  Yeni
                 </button>
               )}
             </div>
