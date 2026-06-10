@@ -29,6 +29,7 @@ import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet, Tag,
   GripVertical, Maximize2, Minimize2, Plus,
+  Layers, Bell, Truck, Banknote, Trophy, FileWarning, Scale, LineChart as LineChartIcon,
 } from 'lucide-react';
 
 // ─── Widget order & sizes ─────────────────────────────────────────────────────
@@ -166,8 +167,8 @@ function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
 }
 
 // ─── Card wrapper ─────────────────────────────────────────────────────────────
-function Card({ title, children, action, actionLabel, className, dragHandleProps, isFull, onToggleSize }: {
-  title: string; children: React.ReactNode;
+function Card({ title, icon, children, action, actionLabel, className, dragHandleProps, isFull, onToggleSize }: {
+  title: string; icon?: React.ReactNode; children: React.ReactNode;
   action?: () => void; actionLabel?: string; className?: string;
   dragHandleProps?: React.HTMLAttributes<HTMLElement>;
   isFull?: boolean; onToggleSize?: () => void;
@@ -175,7 +176,10 @@ function Card({ title, children, action, actionLabel, className, dragHandleProps
   return (
     <div className={cn('bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[340px]', className)}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 shrink-0">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{title}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          {icon && <span className="text-gray-400 shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
+          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500 truncate">{title}</span>
+        </div>
         <div className="flex items-center gap-1.5">
           {action && (
             <button onClick={action} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 flex items-center gap-0.5 transition-colors mr-1">
@@ -681,13 +685,13 @@ export function DashboardPage() {
 
   // 2. Top 5 Müşteri (ciro sırası)
   const topCustomers = useMemo(() => {
-    const map = new Map<string, { name: string; revenue: number; files: number }>();
+    const map = new Map<string, { name: string; logoUrl: string | null; revenue: number; files: number }>();
     files.forEach(f => {
       const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
       const rev = (f.selling_price ?? 0) * qty;
       const custId = f.customer_id ?? 'unknown';
-      const custName = (f.customer as { name?: string } | null)?.name ?? 'Bilinmeyen';
-      if (!map.has(custId)) map.set(custId, { name: custName, revenue: 0, files: 0 });
+      const cust = f.customer as { name?: string; logo_url?: string | null } | null;
+      if (!map.has(custId)) map.set(custId, { name: cust?.name ?? 'Bilinmeyen', logoUrl: cust?.logo_url ?? null, revenue: 0, files: 0 });
       const d = map.get(custId)!;
       d.revenue += rev;
       d.files++;
@@ -746,7 +750,7 @@ export function DashboardPage() {
 
       case 'pipeline':
         return (
-          <Card title={t('widgets.pipeline')} action={() => navigate('/pipeline')} actionLabel={t('actions.seeAll')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.pipeline')} icon={<Layers />} action={() => navigate('/pipeline')} actionLabel={t('actions.seeAll')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-1">
               {(['request','sale','delivery','completed','cancelled'] as const).map((key) => {
                 const cfg = STATUS_CFG[key];
@@ -771,7 +775,7 @@ export function DashboardPage() {
 
       case 'alerts':
         return (
-          <Card title={`${t('widgets.alerts')}${alerts.length > 0 ? ` · ${alerts.length}` : ''}`} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={`${t('widgets.alerts')}${alerts.length > 0 ? ` · ${alerts.length}` : ''}`} icon={<Bell />} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {alerts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <CheckCircle2 className="h-8 w-8 text-green-400" />
@@ -800,7 +804,7 @@ export function DashboardPage() {
 
       case 'recent_files':
         return (
-          <Card title={t('widgets.recentFiles')} action={() => navigate('/files')} actionLabel={t('actions.allFiles')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.recentFiles')} icon={<FileText />} action={() => navigate('/files')} actionLabel={t('actions.allFiles')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {recentFiles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <FileText className="h-8 w-8 text-gray-200" />
@@ -836,7 +840,7 @@ export function DashboardPage() {
       case 'delivery':
         if (delayPieData.length === 0) return null;
         return (
-          <Card title={t('widgets.delivery')} action={() => navigate('/reports')} actionLabel={t('actions.etaReport')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.delivery')} icon={<Truck />} action={() => navigate('/reports')} actionLabel={t('actions.etaReport')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-4">
               <div className="flex items-center gap-6">
                 <PieChart width={100} height={100}>
@@ -883,7 +887,7 @@ export function DashboardPage() {
 
       case 'latest_prices':
         return (
-          <Card title={t('widgets.latestPrices')} action={() => navigate('/price-list')} actionLabel={t('actions.priceList')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.latestPrices')} icon={<Tag />} action={() => navigate('/price-list')} actionLabel={t('actions.priceList')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <DesktopPriceCarousel
               prices={latestPrices.slice(0, 10)}
               onNavigate={() => navigate('/price-list')}
@@ -893,7 +897,7 @@ export function DashboardPage() {
 
       case 'revenue_chart':
         return (
-          <Card title={t('widgets.revenueChart')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title={t('widgets.revenueChart')} icon={<LineChartIcon />} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <div className="px-5 py-5">
               {!hasChart ? (
                 <div className="flex flex-col items-center justify-center h-36 gap-2">
@@ -935,89 +939,132 @@ export function DashboardPage() {
         );
 
       // ── 1. Tahsilat Özeti ─────────────────────────────────────────────────
-      case 'collection_summary':
+      case 'collection_summary': {
+        const fmtUsd = (n: number) =>
+          n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M`
+          : n >= 1_000   ? `$${(n / 1_000).toFixed(0)}K`
+          : `$${n.toFixed(0)}`;
         return (
-          <Card title="TAHSİLAT ÖZETİ" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
-            <div className="px-5 py-4 space-y-3">
-              {/* Progress bar */}
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tahsilat Oranı</span>
-                  <span className="text-[12px] font-bold" style={{ color: accent }}>{collectionData.pct}%</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${collectionData.pct}%`, background: accent }} />
+          <Card title="Tahsilat Özeti" icon={<Banknote />} action={() => navigate('/accounting')} actionLabel="Muhasebe" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            <div className="px-6 py-4 flex flex-col h-full">
+              {/* Hero: bekleyen tutar */}
+              <div className="mb-4">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Bekleyen Tahsilat</div>
+                <div className="flex items-baseline gap-2">
+                  <span className={cn('text-[26px] font-black leading-none tabular-nums tracking-tight', collectionData.outstanding > 0 ? 'text-gray-900' : 'text-green-600')}>
+                    {fmtUsd(collectionData.outstanding)}
+                  </span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: accent + '14', color: accent }}>
+                    %{collectionData.pct} tahsil edildi
+                  </span>
                 </div>
               </div>
-              {/* 3 KPI */}
-              <div className="grid grid-cols-3 gap-3 pt-1">
+
+              {/* Segmentli bar: tahsil edilen (accent) + bekleyen (açık gri) */}
+              <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100 mb-5">
+                <div className="h-full transition-all duration-700 rounded-l-full" style={{ width: `${collectionData.pct}%`, background: accent }} />
+              </div>
+
+              {/* KV satırları — Bento ERP dashed separator */}
+              <div className="space-y-0">
                 {[
-                  { label: 'Faturalanan', value: collectionData.invoiced, color: 'text-gray-900' },
-                  { label: 'Tahsil Edilen', value: collectionData.collected, color: 'text-green-600' },
-                  { label: 'Bekleyen', value: collectionData.outstanding, color: 'text-red-500' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
-                    <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</div>
-                    <div className={`text-[14px] font-extrabold ${color}`}>${(value / 1000).toFixed(0)}K</div>
+                  { label: 'Faturalanan', value: collectionData.invoiced, cls: 'text-gray-900' },
+                  { label: 'Tahsil Edilen', value: collectionData.collected, cls: 'text-green-600' },
+                  { label: 'Bekleyen', value: collectionData.outstanding, cls: collectionData.outstanding > 0 ? 'text-red-500' : 'text-gray-400' },
+                ].map(({ label, value, cls }) => (
+                  <div key={label} className="flex justify-between items-center py-2.5 border-b border-dashed border-gray-100 last:border-0">
+                    <span className="text-[12px] text-gray-500">{label}</span>
+                    <span className={cn('text-[13px] font-bold tabular-nums', cls)}>{fmtUsd(value)}</span>
                   </div>
                 ))}
               </div>
             </div>
           </Card>
         );
+      }
 
       // ── 2. Top Müşteriler ──────────────────────────────────────────────────
       case 'top_customers':
         return (
-          <Card title="TOP 5 MÜŞTERİ · CİRO" action={() => navigate('/contacts')} actionLabel="Tüm Müşteriler" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
-            <div className="px-5 py-3 space-y-2.5">
-              {topCustomers.length === 0 ? (
-                <p className="text-[12px] text-gray-400 py-4 text-center">Henüz veri yok</p>
-              ) : topCustomers.map((c, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="text-[10px] font-bold text-gray-300 w-4 text-right shrink-0">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[12px] font-semibold text-gray-800 truncate max-w-[160px]">{c.name}</span>
-                      <span className="text-[11px] font-bold text-gray-700 shrink-0 ml-2">${(c.revenue / 1000).toFixed(0)}K</span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${c.pct}%`, background: accent, opacity: 0.7 + i * 0.05 }} />
+          <Card title="Top 5 Müşteri · Ciro" icon={<Trophy />} action={() => navigate('/contacts')} actionLabel="Tüm Müşteriler" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            {topCustomers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <Trophy className="h-8 w-8 text-gray-200" />
+                <span className="text-[12px] text-gray-400">Henüz veri yok</span>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {topCustomers.map((c, i) => (
+                  <div key={i} className="flex items-center gap-3.5 px-6 py-3 hover:bg-gray-50/60 transition-colors">
+                    {/* Sıra rozeti — 1. sıra accent, diğerleri gri */}
+                    <span
+                      className={cn(
+                        'w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0',
+                        i === 0 ? 'text-white' : 'bg-gray-100 text-gray-400',
+                      )}
+                      style={i === 0 ? { background: accent } : undefined}
+                    >
+                      {i + 1}
+                    </span>
+                    <EntityAvatar name={c.name} logoUrl={c.logoUrl} size="sm" shape="square" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline mb-1.5 gap-2">
+                        <span className="text-[12px] font-semibold text-gray-800 truncate">{c.name}</span>
+                        <span className="text-[12px] font-black text-gray-900 tabular-nums shrink-0">
+                          ${(c.revenue / 1000).toFixed(0)}K
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-[5px] bg-gray-100 rounded-full overflow-hidden flex-1">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${c.pct}%`, background: `linear-gradient(90deg, ${accent}99, ${accent})` }}
+                          />
+                        </div>
+                        <span className="text-[9px] font-semibold text-gray-300 tabular-nums shrink-0 w-10 text-right">{c.files} dosya</span>
+                      </div>
                     </div>
                   </div>
-                  <span className="text-[10px] text-gray-400 shrink-0">{c.files} dos.</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         );
 
       // ── 3. Bekleyen Belgeler ───────────────────────────────────────────────
       case 'pending_docs':
         return (
-          <Card title={`FATURA EKSİK DOSYALAR${pendingDocs.length > 0 ? ` · ${pendingDocs.length}` : ''}`} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
-            <div className="divide-y divide-gray-50">
-              {pendingDocs.length === 0 ? (
-                <div className="flex flex-col items-center py-8 gap-1 text-gray-400">
-                  <span className="text-2xl">✓</span>
-                  <p className="text-[12px] font-medium text-gray-500">Tüm aktif dosyalarda fatura mevcut</p>
-                </div>
-              ) : pendingDocs.map(f => {
-                const custName = (f.customer as { name?: string } | null)?.name ?? '—';
-                const statusCfg = STATUS_CFG[f.status] ?? STATUS_CFG.sale;
-                return (
-                  <button key={f.id} onClick={() => navigate(`/files/${f.id}`)} className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusCfg.dot}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12px] font-semibold text-gray-900">{f.file_no}</div>
-                      <div className="text-[10px] text-gray-400 truncate">{custName}</div>
-                    </div>
-                    <span className="text-[10px] text-red-400 font-semibold shrink-0">Fatura Eksik</span>
-                    <ChevronRight className="h-3 w-3 text-gray-300 shrink-0" />
-                  </button>
-                );
-              })}
-            </div>
+          <Card title={`Fatura Eksik Dosyalar${pendingDocs.length > 0 ? ` · ${pendingDocs.length}` : ''}`} icon={<FileWarning />} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            {pendingDocs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <CheckCircle2 className="h-8 w-8 text-green-400" />
+                <p className="text-[12px] font-medium text-gray-500">Tüm aktif dosyalarda fatura mevcut</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {pendingDocs.map(f => {
+                  const cust = f.customer as { name?: string; logo_url?: string | null } | null;
+                  const custName = cust?.name ?? '—';
+                  return (
+                    <button key={f.id} onClick={() => navigate(`/files/${f.id}`)} className="w-full flex items-center gap-4 px-6 py-3 hover:bg-gray-50 transition-colors text-left group">
+                      <EntityAvatar name={custName} logoUrl={cust?.logo_url} size="sm" shape="square" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold text-gray-900 truncate">{custName}</div>
+                        <div className="text-[10px] font-mono text-gray-400 mt-0.5">{f.file_no}</div>
+                      </div>
+                      <span className="hidden md:inline-flex items-center gap-1.5 shrink-0">
+                        <span className={cn('w-1.5 h-1.5 rounded-full', (STATUS_CFG[f.status] ?? STATUS_CFG.sale).dot)} />
+                        <span className={cn('text-[10px] font-semibold', (STATUS_CFG[f.status] ?? STATUS_CFG.sale).text)}>{tc('status.' + f.status)}</span>
+                      </span>
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-500 shrink-0">
+                        Fatura Eksik
+                      </span>
+                      <ChevronRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         );
 
@@ -1025,35 +1072,55 @@ export function DashboardPage() {
       case 'monthly_tonnage': {
         const maxAdmt = Math.max(...monthlyTonnage.map(d => d.admt), 1);
         const hasTonnage = monthlyTonnage.some(d => d.admt > 0);
+        const totalAdmt6m = monthlyTonnage.reduce((s, d) => s + d.admt, 0);
+        const totalFiles6m = monthlyTonnage.reduce((s, d) => s + d.count, 0);
+        const avgAdmt = totalFiles6m > 0 ? totalAdmt6m / totalFiles6m : 0;
         return (
-          <Card title="AYLIK HACİM · ADMT" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+          <Card title="Aylık Hacim · Son 6 Ay" icon={<Scale />} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             {!hasTonnage ? (
-              <div className="flex flex-col items-center py-10 text-gray-400">
-                <BarChart2 className="h-8 w-8 mb-2 opacity-20" />
-                <p className="text-[12px] font-medium text-gray-400">Henüz veri yok</p>
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <BarChart2 className="h-8 w-8 text-gray-200" />
+                <p className="text-[12px] text-gray-400">Henüz veri yok</p>
               </div>
             ) : (
-              <div className="px-5 py-4">
-                <ResponsiveContainer width="100%" height={140}>
+              <div className="px-6 py-4">
+                {/* Üst özet: 3 mini stat */}
+                <div className="flex items-end gap-6 mb-4">
+                  <div>
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Toplam Hacim</div>
+                    <div className="text-[22px] font-black text-gray-900 leading-none tabular-nums tracking-tight">
+                      {totalAdmt6m >= 1000 ? `${(totalAdmt6m / 1000).toFixed(1)}K` : totalAdmt6m.toFixed(0)}
+                      <span className="text-[11px] font-bold text-gray-400 ml-1">ADMT</span>
+                    </div>
+                  </div>
+                  <div className="pb-0.5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Dosya</div>
+                    <div className="text-[14px] font-extrabold text-gray-700 leading-none tabular-nums">{totalFiles6m}</div>
+                  </div>
+                  <div className="pb-0.5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Ort. / Dosya</div>
+                    <div className="text-[14px] font-extrabold text-gray-700 leading-none tabular-nums">{avgAdmt.toFixed(0)} <span className="text-[10px] font-semibold text-gray-400">ADMT</span></div>
+                  </div>
+                </div>
+
+                <ResponsiveContainer width="100%" height={150}>
                   <BarChart data={monthlyTonnage} barCategoryGap="35%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                     <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} width={36} />
                     <Tooltip
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       formatter={(v: any) => [`${Number(v).toLocaleString('tr-TR')} ADMT`, 'Hacim']}
+                      cursor={{ fill: '#f9fafb' }}
                       contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                     />
-                    <Bar dataKey="admt" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="admt" radius={[5, 5, 0, 0]} maxBarSize={36}>
                       {monthlyTonnage.map((d, i) => (
-                        <Cell key={i} fill={d.admt === maxAdmt ? accent : `${accent}66`} />
+                        <Cell key={i} fill={d.admt === maxAdmt ? accent : `${accent}55`} />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
-                  <span>Toplam: <strong className="text-gray-700">{monthlyTonnage.reduce((s, d) => s + d.admt, 0).toLocaleString('tr-TR')} ADMT</strong></span>
-                  <span>{monthlyTonnage.reduce((s, d) => s + d.count, 0)} dosya</span>
-                </div>
               </div>
             )}
           </Card>
@@ -1063,40 +1130,54 @@ export function DashboardPage() {
       // ── 5. Döviz Pozisyonu ─────────────────────────────────────────────────
       case 'fx_position':
         return (
-          <Card title="DÖVİZ POZİSYONU · AÇIK" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
-            <div className="px-5 py-4">
-              {fxPosition.length === 0 ? (
-                <p className="text-[12px] text-gray-400 py-4 text-center">Açık işlem yok</p>
-              ) : (
-                <div className="space-y-3">
-                  {fxPosition.map(([cur, v]) => {
-                    const net = v.receivable - v.payable;
-                    const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
-                    const fmtK = (n: number) => `${sym}${(Math.abs(n) >= 1000 ? (Math.abs(n)/1000).toFixed(0)+'K' : Math.abs(n).toFixed(0))}`;
-                    return (
-                      <div key={cur} className="bg-gray-50 rounded-xl px-4 py-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] font-bold text-gray-500">{cur}</span>
-                          <span className={`text-[13px] font-extrabold ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {net >= 0 ? '+' : ''}{fmtK(net)}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                          <div>
-                            <span className="text-gray-400">Alacak </span>
-                            <span className="font-semibold text-green-600">{fmtK(v.receivable)}</span>
+          <Card title="Döviz Pozisyonu · Açık" icon={<Scale />} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            {fxPosition.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <CheckCircle2 className="h-8 w-8 text-green-400" />
+                <p className="text-[12px] text-gray-400">Açık işlem yok</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {fxPosition.map(([cur, v]) => {
+                  const net = v.receivable - v.payable;
+                  const total = v.receivable + v.payable;
+                  const recPct = total > 0 ? (v.receivable / total) * 100 : 0;
+                  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
+                  const fmtK = (n: number) => `${sym}${(Math.abs(n) >= 1000 ? (Math.abs(n)/1000).toFixed(0)+'K' : Math.abs(n).toFixed(0))}`;
+                  return (
+                    <div key={cur} className="px-6 py-4">
+                      <div className="flex items-center gap-3 mb-2.5">
+                        {/* Para birimi rozeti */}
+                        <span className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-[13px] font-black text-gray-600 shrink-0">
+                          {sym}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{cur} Net Pozisyon</div>
+                          <div className={cn('text-[18px] font-black leading-tight tabular-nums', net >= 0 ? 'text-green-600' : 'text-red-500')}>
+                            {net >= 0 ? '+' : '−'}{fmtK(net)}
                           </div>
-                          <div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-[10px] tabular-nums">
+                            <span className="text-gray-400">Alacak </span>
+                            <span className="font-bold text-green-600">{fmtK(v.receivable)}</span>
+                          </div>
+                          <div className="text-[10px] tabular-nums mt-0.5">
                             <span className="text-gray-400">Borç </span>
-                            <span className="font-semibold text-red-500">{fmtK(v.payable)}</span>
+                            <span className="font-bold text-red-500">{fmtK(v.payable)}</span>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      {/* Alacak/borç oran çubuğu */}
+                      <div className="flex h-[5px] rounded-full overflow-hidden bg-gray-100">
+                        <div className="h-full bg-green-400" style={{ width: `${recPct}%` }} />
+                        <div className="h-full bg-red-300" style={{ width: `${100 - recPct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         );
 
