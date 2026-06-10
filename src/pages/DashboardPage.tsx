@@ -630,9 +630,10 @@ export function DashboardPage() {
 
   const delayBarData = useMemo(() =>
     delayData.filter(d => d.status !== 'pending')
-      .sort((a, b) => b.days - a.days).slice(0, 7)
+      .sort((a, b) => b.days - a.days).slice(0, 8)
       .map(d => ({
-        name: d.file.file_no,
+        name: d.file.file_no.length > 12 ? d.file.file_no.slice(0, 11) + '…' : d.file.file_no,
+        fullName: d.file.file_no,  // tooltip'te tam isim göster
         days: d.days,
         fill: d.status === 'ontime' ? '#4ade80' : d.status === 'late' ? '#f87171' : '#dc2626',
       })),
@@ -782,13 +783,15 @@ export function DashboardPage() {
               {delayBarData.length > 0 && (
                 <div className="mt-5">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">{t('widgets.delayByFile')}</div>
-                  <ResponsiveContainer width="100%" height={delayBarData.length * 28}>
-                    <BarChart data={delayBarData} layout="vertical" barCategoryGap="25%" margin={{ left: 0, right: 16 }}>
+                  <ResponsiveContainer width="100%" height={delayBarData.length * 34}>
+                    <BarChart data={delayBarData} layout="vertical" barCategoryGap="30%" margin={{ left: 0, right: 16 }}>
                       <XAxis type="number" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}d`} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} width={80} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} width={96} />
                       <Tooltip
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        formatter={(v: any) => [`${v > 0 ? '+' : ''}${v} days`, 'vs ETA']}
+                        formatter={(v: any) => [`${v > 0 ? '+' : ''}${v} gün`, 'ETA\'ya göre']}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        labelFormatter={(_: any, payload: any[]) => payload?.[0]?.payload?.fullName ?? ''}
                         contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                       />
                       <Bar dataKey="days" radius={[0, 4, 4, 0]}>
