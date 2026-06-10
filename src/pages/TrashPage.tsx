@@ -285,32 +285,32 @@ export function TrashPage() {
       </div>
 
       {/* Desktop */}
-      <div className="hidden md:block">
-        {/* Toolbar */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <Trash2 className="h-5 w-5 text-gray-400" />
-            <h1 className="text-[17px] font-bold text-gray-900">Çöp Kutusu</h1>
+      <div className="hidden md:block" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+            <Trash2 style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
           </div>
-          {totalCount > 0 && (
-            <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
-              {totalCount} kayıt
-            </span>
-          )}
-          <p className="text-[12px] text-gray-400 ml-2">
-            Silinen kayıtları geri yükleyebilir veya kalıcı olarak silebilirsiniz.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Çöp Kutusu</h1>
+              {totalCount > 0 && (
+                <span className="text-[11px] font-bold text-[#8A8A8E] bg-[#EAE7E0] px-2.5 py-1 rounded-full">{totalCount}</span>
+              )}
+            </div>
+            <p className="text-[13px] text-[#8A8A8E] mt-0.5">Silinen kayıtları geri yükleyebilir veya kalıcı olarak silebilirsiniz.</p>
+          </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mb-4 w-fit">
+        <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full mb-4 w-fit max-w-full overflow-x-auto scrollbar-none">
           {tabs.map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
               className={cn(
-                'px-3 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
-                activeTab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                'shrink-0 px-4 h-8 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap',
+                activeTab === t.key ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]',
               )}
             >
               {t.label} {t.count > 0 && <span className="ml-1 opacity-60">({t.count})</span>}
@@ -320,22 +320,22 @@ export function TrashPage() {
 
         {/* Tablo */}
         {visibleItems.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center py-20 text-[#A8A8AD]">
             <Trash2 className="h-10 w-10 mb-3 opacity-20" />
-            <p className="text-[14px] font-medium text-gray-500">Çöp kutusu boş</p>
-            <p className="text-[12px] text-gray-400 mt-1">Silinen kayıtlar burada görünür</p>
+            <p className="text-[14px] font-medium text-[#8A8A8E]">Çöp kutusu boş</p>
+            <p className="text-[12px] text-[#A8A8AD] mt-1">Silinen kayıtlar burada görünür</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-8"></th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Tür</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Kayıt</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">İlgili</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Silinme Tarihi</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">İşlem</th>
+                <tr className="border-b border-[#F4F2EE]">
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-8"></th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Tür</th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Kayıt</th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">İlgili</th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Silinme Tarihi</th>
+                  <th className="px-4 py-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">İşlem</th>
                 </tr>
               </thead>
               <tbody>
@@ -345,42 +345,42 @@ export function TrashPage() {
                     <tr
                       key={`${item.category}-${item.id}`}
                       className={cn(
-                        'border-b border-gray-50 hover:bg-gray-50/60 transition-colors',
-                        i % 2 === 1 && 'bg-gray-50/40',
+                        'border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors',
+                        i % 2 === 1 && 'bg-[#FBFAF8]',
                       )}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center', meta.color)}>
                           {meta.icon}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', meta.color)}>
                           {meta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[13px] font-semibold text-gray-900">{item.label}</span>
+                      <td className="px-4 py-3.5">
+                        <span className="text-[13px] font-semibold text-[#0A0A0A]">{item.label}</span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[12px] text-gray-400">{item.sublabel}</span>
+                      <td className="px-4 py-3.5">
+                        <span className="text-[12px] text-[#8A8A8E]">{item.sublabel}</span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[12px] text-gray-400">{fDate(item.deletedAt)}</span>
+                      <td className="px-4 py-3.5">
+                        <span className="text-[12px] text-[#8A8A8E]">{fDate(item.deletedAt)}</span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => restoreMutation.mutate({ id: item.id, category: item.category })}
                             disabled={restoreMutation.isPending}
-                            className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-semibold text-green-700 bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-3 h-8 rounded-full text-[11px] font-semibold text-[#16A34A] bg-[#16A34A]/10 hover:bg-[#16A34A]/16 transition-colors disabled:opacity-50"
                           >
                             <RotateCcw className="h-3 w-3" />
                             Geri Yükle
                           </button>
                           <button
                             onClick={() => setConfirmItem(item)}
-                            className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                            className="flex items-center gap-1.5 px-3 h-8 rounded-full text-[11px] font-semibold text-[#A8A8AD] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors"
                           >
                             <X className="h-3 w-3" />
                             Kalıcı Sil
