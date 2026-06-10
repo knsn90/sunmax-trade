@@ -18,10 +18,11 @@ export function useInfiniteTransactions(filters: TransactionFilters) {
   });
 }
 
-export function useTransactions(filters?: TransactionFilters) {
+export function useTransactions(filters?: TransactionFilters, enabled = true) {
   return useQuery({
     queryKey: ['transactions', filters],
     queryFn: () => transactionService.list(filters),
+    enabled,
     retry: false,
     staleTime: 1000 * 60 * 2,
   });

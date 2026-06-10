@@ -199,13 +199,15 @@ export function AccountingPage() {
   } = useInfiniteTransactions(paginatedFilters);
 
   const { data: allTxns = [], isLoading: allLoading } = useTransactions(
-    activeTab === 'all' ? {
+    {
       type: typeFilter as TransactionType | undefined || undefined,
       status: statusFilter as PaymentStatus | undefined || undefined,
-    } : undefined,
+    },
+    activeTab === 'all' || activeTab === 'sale', // sadece bu tablarda lazım
   );
   const { data: expenseTxns = [], isLoading: expenseLoading } = useTransactions(
-    activeTab === 'expense' ? { tab: 'expense' } : undefined,
+    { tab: 'expense' },
+    activeTab === 'expense', // sadece expense tabında çalış
   );
 
   const isLoading = isPaginatedTab ? infiniteLoading : activeTab === 'expense' ? expenseLoading : allLoading;
@@ -218,7 +220,8 @@ export function AccountingPage() {
 
   // sale_inv transactions (advance receivables) shown separately in sale tab
   const { data: saleInvTxns = [] } = useTransactions(
-    activeTab === 'sale' ? { tab: 'sale' } : undefined,
+    { tab: 'sale' },
+    activeTab === 'sale',
   );
   const { data: summary } = useTransactionSummary();
   const { data: settings } = useSettings();
