@@ -88,17 +88,24 @@ export function Sidebar() {
         to="/admin/tenants"
         className={({ isActive }) =>
           cn(
-            'flex items-center gap-2.5 w-full px-3.5 h-9 rounded-full transition-colors mb-0.5 text-[13px]',
+            'relative flex items-center gap-2.5 w-full px-3 h-9 rounded-xl transition-colors mb-0.5 text-[13px]',
             isActive ? 'font-semibold bg-[#6B4EE6]/10 text-[#6B4EE6]' : 'text-[#8A8A8E] hover:text-[#0A0A0A] hover:bg-[#F4F2EE]',
           )
         }
       >
-        <Building2 className="flex-shrink-0 h-4 w-4" />
-        <span>Firma Yönetimi</span>
-        {allTenants.length > 0 && (
-          <span className="ml-auto text-[10px] font-bold bg-[#6B4EE6] text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
-            {allTenants.length}
-          </span>
+        {({ isActive }) => (
+          <>
+            {isActive && (
+              <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#6B4EE6]" />
+            )}
+            <Building2 className="flex-shrink-0 h-4 w-4" />
+            <span>Firma Yönetimi</span>
+            {allTenants.length > 0 && (
+              <span className="ml-auto text-[10px] font-bold bg-[#6B4EE6] text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                {allTenants.length}
+              </span>
+            )}
+          </>
         )}
       </NavLink>
     </div>
@@ -161,7 +168,7 @@ export function Sidebar() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-2.5 w-full px-3.5 h-9 rounded-full transition-colors mb-0.5 text-[13px]',
+                    'relative flex items-center gap-2.5 w-full px-3 h-9 rounded-xl transition-colors mb-0.5 text-[13px]',
                     isActive ? 'font-semibold' : 'text-[#8A8A8E] hover:text-[#0A0A0A] hover:bg-[#F4F2EE]',
                   )
                 }
@@ -169,6 +176,13 @@ export function Sidebar() {
               >
                 {({ isActive }) => (
                   <>
+                    {/* Seçili göstergesi — kenar rail */}
+                    {isActive && (
+                      <span
+                        className="absolute -left-2 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+                        style={{ background: barBg }}
+                      />
+                    )}
                     <span
                       className="flex-shrink-0 h-4 w-4"
                       style={{ color: isActive ? barBg : '#A8A8AD' }}
