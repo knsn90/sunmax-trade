@@ -164,29 +164,29 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 space-y-5 max-w-3xl mx-auto" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
 
       {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-          <Building2 className="h-4.5 w-4.5 text-gray-600" style={{ width: 18, height: 18 }} />
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+          <Building2 className="text-[#8A8A8E]" style={{ width: 20, height: 20 }} />
         </div>
         <div>
-          <h1 className="text-[15px] font-bold text-gray-900">{t('title')}</h1>
-          <p className="text-[11px] text-gray-400">{t('subtitle')}</p>
+          <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">{t('title')}</h1>
+          <p className="text-[13px] text-[#8A8A8E] mt-0.5">{t('subtitle')}</p>
         </div>
       </div>
 
       {/* Pill tabs */}
-      <div className="flex gap-1.5 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
+      <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full overflow-x-auto scrollbar-none w-fit max-w-full">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all ${
+            className={`shrink-0 flex items-center gap-1.5 px-4 h-8 rounded-full text-[12px] font-semibold transition-all ${
               activeTab === key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white text-[#0A0A0A] shadow-sm'
+                : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
             }`}
           >
             <Icon className="h-3.5 w-3.5" />
@@ -200,7 +200,7 @@ export function SettingsPage() {
         <div className="space-y-4">
 
           {/* Logo */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
             <SectionHeader icon={ImageIcon} title={t('logo.title')} description={t('logo.description')} />
             <div className="flex items-center gap-4">
               <div
@@ -239,7 +239,7 @@ export function SettingsPage() {
           </div>
 
           {/* Company Info */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
             <SectionHeader icon={Building2} title={t('company.title')} />
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -347,7 +347,7 @@ export function SettingsPage() {
           </div>
 
           {/* Bank Info */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
             <SectionHeader icon={CreditCard} title={t('bank.title')} description={t('bank.description')} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {bankFields.map(({ label, key, val }) => (
@@ -367,13 +367,13 @@ export function SettingsPage() {
           </div>
 
           {/* API Keys */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
             <SectionHeader icon={Key} title={t('api.title')} description={t('api.description')} />
             <ApiKeyList />
           </div>
 
           {/* Language */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
             <SectionHeader icon={Globe} title={t('language.title')} description={t('language.description')} />
             <div className="flex gap-2">
               {SUPPORTED_LANGUAGES.map((lang) => {
@@ -448,7 +448,7 @@ function AppearanceTab() {
   // Super admin without a selected tenant → redirect to full management page
   if (profile?.is_super_admin && !currentTenant) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-8 flex flex-col items-center gap-4 text-center">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-8 flex flex-col items-center gap-4 text-center">
         <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
           <Building2 className="h-5 w-5 text-amber-500" />
         </div>
@@ -469,7 +469,7 @@ function AppearanceTab() {
 
   if (!currentTenant) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-8 flex flex-col items-center gap-3 text-center">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-8 flex flex-col items-center gap-3 text-center">
         <Palette className="h-8 w-8 text-gray-200" />
         <p className="text-[13px] text-gray-400">Firma bilgisi yüklenemedi.</p>
       </div>
@@ -541,7 +541,7 @@ function AppearanceTab() {
   return (
     <div className="space-y-4">
       {/* Tema Rengi */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
         <SectionHeader icon={Palette} title="Tema Rengi" description="Butonlar, vurgular ve aktif menü öğeleri için kullanılır." />
         <div className="flex items-center gap-3 mb-3">
           <input
@@ -639,7 +639,7 @@ function AppearanceTab() {
       </div>
 
       {/* Görseller */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
         <SectionHeader icon={ImageIcon} title="Görseller" description="Logo, login arka planı ve favicon yönetimi." />
         <AssetUploadRow label="Logo" url={currentTenant.logo_url ?? ''} inputRef={logoRef} type="logo" accept="image/*" />
         <AssetUploadRow label="Login Arka Planı" url={currentTenant.login_bg_url ?? ''} inputRef={bgRef} type="login_bg" accept="image/*" />
@@ -720,7 +720,7 @@ function DocumentAuditTab() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
         <SectionHeader icon={ScanSearch} title="Belge Denetimi" description="Tamamlandı statüsündeki tüm dosyaları belgeler açısından tarar" />
         <div className="flex items-center gap-3">
           <div className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold ${auditRows.length === 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -733,7 +733,7 @@ function DocumentAuditTab() {
       </div>
 
       {auditRows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
           <CheckCircle2 className="h-10 w-10 text-green-400 mb-3" />
           <p className="text-[14px] font-semibold text-gray-700">Tüm belgeler eksiksiz</p>
           <p className="text-[12px] text-gray-400 mt-1">Tamamlandı statüsündeki her dosya gerekli belgelere sahip</p>
@@ -1134,7 +1134,7 @@ function UsersTab({ currentUserId }: { currentUserId?: string }) {
       )}
 
       {/* User cards */}
-      <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] divide-y divide-gray-50 overflow-hidden">
         {users.map(u => {
           const color = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444'][(u.full_name ?? '').split('').reduce((a,c) => a + c.charCodeAt(0), 0) % 5];
           const ini = (u.full_name ?? '').split(' ').filter(Boolean).slice(0,2).map(w => w[0]).join('').toUpperCase() || '?';
@@ -1267,7 +1267,7 @@ function BackupEmailCard() {
     : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+    <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
       <SectionHeader icon={Mail} title="E-posta Yedekleme" description="Yedek dosyası otomatik olarak mail ile gönderilsin" />
 
       <div className="space-y-3">
@@ -1427,7 +1427,7 @@ function BackupTab() {
       <BackupEmailCard />
 
       {/* Export */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
         <SectionHeader icon={Download} title={t('backup.exportTitle')} description={t('backup.exportDesc')} />
         <button
           onClick={handleExport}
@@ -1452,7 +1452,7 @@ function BackupTab() {
       </div>
 
       {/* Restore */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-5">
         <SectionHeader icon={RotateCcw} title={t('backup.restoreTitle')} description={t('backup.restoreDesc')} />
         <button
           onClick={() => fileRef.current?.click()}
