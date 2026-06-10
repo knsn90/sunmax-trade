@@ -39,7 +39,7 @@ function DocIcon({ tab, size = 'md' }: { tab: Tab; size?: 'sm' | 'md' }) {
     ? 'w-10 h-10 rounded-xl flex items-center justify-center shrink-0'
     : 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0';
   return (
-    <div className={cls} style={{ background: color + '18' }}>
+    <div className={cls} style={{ background: color + '14' }}>
       <Icon className={size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} style={{ color }} />
     </div>
   );
@@ -47,9 +47,9 @@ function DocIcon({ tab, size = 'md' }: { tab: Tab; size?: 'sm' | 'md' }) {
 
 function EmptyDocs({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+    <div className="flex flex-col items-center justify-center py-16 text-[#A8A8AD]">
       <FileText className="h-10 w-10 mb-3 opacity-20" />
-      <p className="text-sm font-medium">{message}</p>
+      <p className="text-sm font-medium text-[#8A8A8E]">{message}</p>
     </div>
   );
 }
@@ -90,14 +90,14 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
   return (
     <>
       {/* Mobile cards */}
-      <div className="md:hidden mx-0 rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
+      <div className="md:hidden mx-0 rounded-[20px] overflow-hidden border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] bg-white divide-y divide-[#F4F2EE]">
         {filtered.length === 0 ? <EmptyDocs message={t('empty.noInvoices')} /> : filtered.map(inv => (
           <div key={inv.id} className="flex items-start gap-3 px-4 py-3 active:bg-gray-50 transition-colors">
             <DocIcon tab="invoices" />
             <div className="flex-1 min-w-0">
               {/* Satır 1: Fatura no + tutar */}
               <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                <span className="text-[13px] font-bold text-gray-900 truncate">{inv.invoice_no}</span>
+                <span className="text-[13px] font-semibold text-[#0A0A0A] truncate">{inv.invoice_no}</span>
                 <span className="text-[13px] font-bold shrink-0" style={{ color: accent }}>{fCurrency(inv.total)}</span>
               </div>
               {/* Satır 2: Meta + tarih + butonlar */}
@@ -111,13 +111,13 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
                   <span className="text-[10px] text-gray-400 mr-1">{fDate(inv.invoice_date)}</span>
-                  <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                  <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                     <Printer className="h-3 w-3" />
                   </button>
-                  {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-1 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+                  {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                     <Pencil className="h-3 w-3" />
                   </button>}
-                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors">
                     <Trash2 className="h-3 w-3" />
                   </button>}
                 </div>
@@ -142,32 +142,32 @@ function InvoicesTab({ accent, search }: { accent: string; search: string }) {
               <tr><td colSpan={8}><EmptyDocs message={t('empty.noInvoices')} /></td></tr>
             ) : filtered.map(inv => (
               <tr key={inv.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
-                <td className="px-4 py-3">
+                <td className="px-4 py-3.5">
                   <div className="flex items-center gap-2.5">
                     <DocIcon tab="invoices" size="sm" />
-                    <span className="text-[13px] font-bold text-gray-900">{inv.invoice_no}</span>
+                    <span className="text-[13px] font-semibold text-[#0A0A0A]">{inv.invoice_no}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">
+                <td className="px-4 py-3 text-[12px] font-mono text-[#8A8A8E]">
                   {inv.is_orphaned
                     ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
                     : ((inv.trade_file as any)?.file_no ?? '—')
                   }
                 </td>
-                <td className="px-4 py-3 text-[12px] text-gray-700">{(inv.customer as any)?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-[12px] text-gray-600">{fN(inv.quantity_admt, 3)}</td>
-                <td className="px-4 py-3 text-[12px] text-gray-600">{fCurrency(inv.unit_price)}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{(inv.customer as any)?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{fN(inv.quantity_admt, 3)}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{fCurrency(inv.unit_price)}</td>
                 <td className="px-4 py-3 text-[13px] font-bold" style={{ color: accent }}>{fCurrency(inv.total)}</td>
-                <td className="px-4 py-3 text-[12px] text-gray-500">{fDate(inv.invoice_date)}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-[12px] text-[#8A8A8E]">{fDate(inv.invoice_date)}</td>
+                <td className="px-4 py-3.5">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <button onClick={() => handlePrint(inv)} title={tc('btn.print')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                       <Printer className="h-3.5 w-3.5" />
                     </button>
-                    {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    {writable && <button onClick={() => openEdit(inv)} title={tc('btn.edit')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>}
-                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteInvoice'))) deleteInv.mutate(inv.id); }} title={tc('btn.delete')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>}
                   </div>
@@ -218,13 +218,13 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
   return (
     <>
       {/* Mobile */}
-      <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
+      <div className="md:hidden rounded-[20px] overflow-hidden border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] bg-white divide-y divide-[#F4F2EE]">
         {filtered.length === 0 ? <EmptyDocs message={t('empty.noProformas')} /> : filtered.map(pi => (
           <div key={pi.id} className="flex items-start gap-3 px-4 py-3 active:bg-gray-50 transition-colors">
             <DocIcon tab="proformas" />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                <span className="text-[13px] font-bold text-gray-900 truncate">{pi.proforma_no}</span>
+                <span className="text-[13px] font-semibold text-[#0A0A0A] truncate">{pi.proforma_no}</span>
                 <span className="text-[13px] font-bold shrink-0" style={{ color: accent }}>{fCurrency(pi.total)}</span>
               </div>
               <div className="flex items-center justify-between gap-1">
@@ -236,13 +236,13 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
                   {' · '}{fDate(pi.proforma_date)} · {fN(pi.quantity_admt, 3)} MT
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
-                  <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                  <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                     <Printer className="h-3 w-3" />
                   </button>
-                  {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-1 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+                  {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                     <Pencil className="h-3 w-3" />
                   </button>}
-                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors">
                     <Trash2 className="h-3 w-3" />
                   </button>}
                 </div>
@@ -267,31 +267,31 @@ function ProformasTab({ accent, search }: { accent: string; search: string }) {
               <tr><td colSpan={7}><EmptyDocs message={t('empty.noProformas')} /></td></tr>
             ) : filtered.map(pi => (
               <tr key={pi.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
-                <td className="px-4 py-3">
+                <td className="px-4 py-3.5">
                   <div className="flex items-center gap-2.5">
                     <DocIcon tab="proformas" size="sm" />
-                    <span className="text-[13px] font-bold text-gray-900">{pi.proforma_no}</span>
+                    <span className="text-[13px] font-semibold text-[#0A0A0A]">{pi.proforma_no}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">
+                <td className="px-4 py-3 text-[12px] font-mono text-[#8A8A8E]">
                   {pi.is_orphaned
                     ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
                     : ((pi.trade_file as any)?.file_no ?? '—')
                   }
                 </td>
-                <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(pi.proforma_date)}</td>
-                <td className="px-4 py-3 text-[12px] text-gray-600">{fN(pi.quantity_admt, 3)}</td>
-                <td className="px-4 py-3 text-[12px] text-gray-600">{fCurrency(pi.unit_price)}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{fDate(pi.proforma_date)}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{fN(pi.quantity_admt, 3)}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{fCurrency(pi.unit_price)}</td>
                 <td className="px-4 py-3 text-[13px] font-bold" style={{ color: accent }}>{fCurrency(pi.total)}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3.5">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <button onClick={() => handlePrint(pi)} title={tc('btn.print')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                       <Printer className="h-3.5 w-3.5" />
                     </button>
-                    {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    {writable && <button onClick={() => openEdit(pi)} title={tc('btn.edit')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>}
-                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.deleteProforma'))) deletePI.mutate(pi.id); }} title={tc('btn.delete')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>}
                   </div>
@@ -341,13 +341,13 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
   return (
     <>
       {/* Mobile */}
-      <div className="md:hidden rounded-2xl overflow-hidden shadow-sm bg-white divide-y divide-gray-50">
+      <div className="md:hidden rounded-[20px] overflow-hidden border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] bg-white divide-y divide-[#F4F2EE]">
         {filtered.length === 0 ? <EmptyDocs message={t('empty.noPackingLists')} /> : filtered.map(pl => (
           <div key={pl.id} className="flex items-start gap-3 px-4 py-3 active:bg-gray-50 transition-colors">
             <DocIcon tab="packing-lists" />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                <span className="text-[13px] font-bold text-gray-900 truncate">{pl.packing_list_no}</span>
+                <span className="text-[13px] font-semibold text-[#0A0A0A] truncate">{pl.packing_list_no}</span>
                 <span className="text-[12px] font-semibold text-gray-700 shrink-0">{fN(pl.total_admt, 3)} MT</span>
               </div>
               <div className="flex items-center justify-between gap-1">
@@ -360,13 +360,13 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
                   <span className="text-[10px] text-gray-400 mr-1">{pl.packing_list_items?.length ?? 0} {t('table.vehicles').toLowerCase()}</span>
-                  <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-1 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                  <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                     <Printer className="h-3 w-3" />
                   </button>
-                  {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-1 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+                  {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                     <Pencil className="h-3 w-3" />
                   </button>}
-                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                  {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-1.5 rounded-full text-[#C4C4C9] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors">
                     <Trash2 className="h-3 w-3" />
                   </button>}
                 </div>
@@ -391,31 +391,31 @@ function PackingListsTab({ accent: _accent, search }: { accent: string; search: 
               <tr><td colSpan={7}><EmptyDocs message={t('empty.noPackingLists')} /></td></tr>
             ) : filtered.map(pl => (
               <tr key={pl.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
-                <td className="px-4 py-3">
+                <td className="px-4 py-3.5">
                   <div className="flex items-center gap-2.5">
                     <DocIcon tab="packing-lists" size="sm" />
-                    <span className="text-[13px] font-bold text-gray-900">{pl.packing_list_no}</span>
+                    <span className="text-[13px] font-semibold text-[#0A0A0A]">{pl.packing_list_no}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[12px] font-mono text-gray-500">
+                <td className="px-4 py-3 text-[12px] font-mono text-[#8A8A8E]">
                   {pl.is_orphaned
                     ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200">Eşlenmedi</span>
                     : ((pl.trade_file as any)?.file_no ?? '—')
                   }
                 </td>
-                <td className="px-4 py-3 text-[12px] text-gray-700">{(pl.customer as any)?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-[12px] text-gray-600">{pl.packing_list_items?.length ?? 0}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{(pl.customer as any)?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{pl.packing_list_items?.length ?? 0}</td>
                 <td className="px-4 py-3 text-[12px] font-semibold text-gray-700">{fN(pl.total_admt, 3)}</td>
-                <td className="px-4 py-3 text-[12px] text-gray-600">{fN(pl.total_gross_kg, 0)} kg</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-[12px] text-[#6F6F6F]">{fN(pl.total_gross_kg, 0)} kg</td>
+                <td className="px-4 py-3.5">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <button onClick={() => handlePrint(pl)} title={tc('btn.print')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                       <Printer className="h-3.5 w-3.5" />
                     </button>
-                    {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    {writable && <button onClick={() => openEdit(pl)} title={tc('btn.edit')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>}
-                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    {adminRole && <button onClick={() => { if (window.confirm(t('confirm.delete'))) deletePL.mutate(pl.id); }} title={tc('btn.delete')} className="p-2 rounded-full text-[#A8A8AD] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>}
                   </div>
