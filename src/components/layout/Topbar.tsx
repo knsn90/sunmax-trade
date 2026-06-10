@@ -33,22 +33,22 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
   const { t } = useTranslation('nav');
   const { data, isLoading, isError, refetch, isFetching } = useExchangeRates();
 
-  if (isLoading) return <span className={cn('text-[10px] animate-pulse', isDonezo ? 'text-gray-400' : 'text-white/60')}>Loading…</span>;
+  if (isLoading) return <span className={cn('text-[11px] animate-pulse', isDonezo ? 'text-[#8A8A8E]' : 'text-white/60')}>Loading…</span>;
   if (isError || !data) return null;
 
   const eur     = data.rates['EUR'];
   const tryRate = data.rates['TRY'];
 
-  const sep = <span className={isDonezo ? 'text-gray-300' : 'text-white/20'}>|</span>;
-  const lbl = (text: string) => <span className={cn('text-[10px] font-medium', isDonezo ? 'text-gray-400' : 'text-white/60')}>{text}</span>;
+  const sep = <span className={isDonezo ? 'text-[#D8D4CC]' : 'text-white/20'}>·</span>;
+  const lbl = (text: string) => <span className={cn('text-[11px] font-medium', isDonezo ? 'text-[#8A8A8E]' : 'text-white/60')}>{text}</span>;
   const val = (children: React.ReactNode) => (
-    <span className={cn('text-[10px] font-semibold', isDonezo ? 'text-gray-800' : 'text-white')}>{children}</span>
+    <span className={cn('text-[11px] font-semibold tabular-nums', isDonezo ? 'text-[#0A0A0A]' : 'text-white')}>{children}</span>
   );
 
   return (
     <div className={cn(
-      'hidden md:flex items-center gap-2 rounded-lg px-2.5 py-1.5',
-      isDonezo ? 'bg-gray-100' : 'bg-white/15 backdrop-blur-sm',
+      'hidden md:flex items-center gap-2 rounded-full px-3 py-1.5',
+      isDonezo ? 'bg-[#F4F2EE]' : 'bg-white/15 backdrop-blur-sm',
     )}>
       {lbl('EUR')}
       {val(<span className={isDonezo ? 'text-blue-600' : 'text-yellow-300'}>{eur ? (1 / eur).toFixed(4) : '—'}</span>)}
@@ -58,10 +58,10 @@ function ExchangeRateBar({ isDonezo }: { isDonezo: boolean }) {
       <button
         onClick={() => refetch()}
         disabled={isFetching}
-        className={cn('disabled:opacity-40 transition-colors ml-0.5', isDonezo ? 'text-gray-400 hover:text-gray-600' : 'text-white/50 hover:text-white')}
+        className={cn('disabled:opacity-40 transition-colors ml-0.5', isDonezo ? 'text-[#A8A8AD] hover:text-[#0A0A0A]' : 'text-white/50 hover:text-white')}
         title={t('topbar.refreshRates')}
       >
-        <RefreshCw className={`h-2.5 w-2.5 ${isFetching ? 'animate-spin' : ''}`} />
+        <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
       </button>
     </div>
   );
@@ -88,74 +88,74 @@ function TenantSwitcher() {
   const label = currentTenant?.name ?? 'Tüm Firmalar';
 
   return (
-    <div ref={ref} className="relative hidden md:block">
+    <div ref={ref} className="relative hidden md:block" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 h-8 px-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors"
+        className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-[#6B4EE6]/8 text-[#6B4EE6] hover:bg-[#6B4EE6]/14 transition-colors"
       >
-        <ShieldCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-        <span className="text-[11px] font-semibold max-w-[140px] truncate">{label}</span>
-        <ChevronDown className={cn('h-3 w-3 text-amber-400 transition-transform shrink-0', open && 'rotate-180')} />
+        <ShieldCheck className="h-4 w-4 shrink-0" />
+        <span className="text-[12px] font-semibold max-w-[140px] truncate">{label}</span>
+        <ChevronDown className={cn('h-3.5 w-3.5 opacity-60 transition-transform shrink-0', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1.5 left-0 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 min-w-[220px] max-w-[280px]">
+        <div className="absolute top-full mt-2 left-0 bg-white rounded-[16px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-[#ECECEC] overflow-hidden z-50 min-w-[228px] max-w-[280px]">
           {/* Header */}
-          <div className="px-3 py-2.5 border-b border-gray-50 bg-gray-50/70">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Firma Geçişi</p>
+          <div className="px-3.5 py-2.5 border-b border-[#F4F2EE]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#A8A8AD]">Firma Geçişi</p>
           </div>
 
           {/* Tüm firmalar seçeneği */}
           <button
             onClick={() => { resetToSuperAdmin(); setOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-[#F4F2EE] transition-colors text-left"
           >
-            <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-              <LayoutGrid className="h-3.5 w-3.5 text-gray-500" />
+            <div className="w-8 h-8 rounded-xl bg-[#6B4EE6]/10 flex items-center justify-center shrink-0">
+              <LayoutGrid className="h-4 w-4 text-[#6B4EE6]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold text-gray-800 truncate">Tüm Firmalar</p>
-              <p className="text-[10px] text-gray-400">Süper admin görünümü</p>
+              <p className="text-[13px] font-medium text-[#0A0A0A] truncate">Tüm Firmalar</p>
+              <p className="text-[11px] text-[#8A8A8E]">Süper admin görünümü</p>
             </div>
-            {!currentTenant && <Check className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+            {!currentTenant && <Check className="h-4 w-4 text-[#6B4EE6] shrink-0" />}
           </button>
 
           {/* Firma listesi */}
           {allTenants.length > 0 && (
-            <div className="border-t border-gray-50">
+            <div className="border-t border-[#F4F2EE]">
               {allTenants.map(t => (
                 <button
                   key={t.id}
                   onClick={() => { switchTenant(t.id); setOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-[#F4F2EE] transition-colors text-left"
                 >
                   {t.logo_url ? (
-                    <img src={t.logo_url} alt={t.name} className="w-7 h-7 rounded-lg object-contain bg-gray-50 border border-gray-100" />
+                    <img src={t.logo_url} alt={t.name} className="w-8 h-8 rounded-xl object-contain bg-white border border-[#ECECEC]" />
                   ) : (
                     <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white text-[10px] font-black"
-                      style={{ background: t.primary_color || '#dc2626' }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
+                      style={{ background: t.primary_color || '#6B4EE6' }}
                     >
                       {t.name.charAt(0)}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-semibold text-gray-800 truncate">{t.name}</p>
-                    {t.email && <p className="text-[10px] text-gray-400 truncate">{t.email}</p>}
+                    <p className="text-[13px] font-medium text-[#0A0A0A] truncate">{t.name}</p>
+                    {t.email && <p className="text-[11px] text-[#8A8A8E] truncate">{t.email}</p>}
                   </div>
-                  {currentTenant?.id === t.id && <Check className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                  {currentTenant?.id === t.id && <Check className="h-4 w-4 text-[#6B4EE6] shrink-0" />}
                 </button>
               ))}
             </div>
           )}
 
           {/* Firma yönetimi linki */}
-          <div className="border-t border-gray-100 px-3 py-2">
+          <div className="border-t border-[#ECECEC] px-3.5 py-2.5">
             <button
               onClick={() => { navigate('/admin/tenants'); setOpen(false); }}
-              className="w-full flex items-center gap-2 text-[11px] font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+              className="w-full flex items-center gap-2 text-[12px] font-semibold text-[#6B4EE6] hover:opacity-80 transition-opacity"
             >
-              <Building2 className="h-3.5 w-3.5" />
+              <Building2 className="h-4 w-4" />
               Firma Yönetimi
             </button>
           </div>
@@ -187,8 +187,8 @@ export function Topbar() {
   if (isDonezo) {
     return (
       <header
-        className="bg-white border-b border-gray-100 px-5 flex items-center gap-3 flex-shrink-0 shadow-sm"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)', paddingBottom: '10px' }}
+        className="bg-white border-b border-[#ECECEC] px-5 flex items-center gap-3 flex-shrink-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 11px)', paddingBottom: '11px', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
       >
         {/* Mobile logo */}
         <div className="md:hidden flex items-center gap-2 flex-1">
@@ -196,10 +196,10 @@ export function Topbar() {
             <img src={logoUrl} alt="logo" className="h-7 max-w-[120px] object-contain" />
           ) : (
             <>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: accent }}>
-                <span className="font-black text-xs text-white">S</span>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: accent }}>
+                <span className="font-bold text-[13px] text-white">S</span>
               </div>
-              <span className="font-black text-sm tracking-tight text-gray-900">{t('brand.name')}</span>
+              <span className="font-bold text-[15px] tracking-[-0.01em] text-[#0A0A0A]">{t('brand.name')}</span>
             </>
           )}
         </div>
@@ -208,8 +208,8 @@ export function Topbar() {
         <ExchangeRateBar isDonezo={isDonezo} />
         <div className="flex-1 hidden md:block" />
 
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="hidden md:block text-[11px] text-gray-400">
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <span className="hidden md:block text-[12px] text-[#8A8A8E]">
             {fDate(new Date().toISOString().slice(0, 10))}
           </span>
 
@@ -219,23 +219,23 @@ export function Topbar() {
           {profile && (
             <button
               onClick={() => navigate('/profile')}
-              className="hidden md:flex items-center gap-2 pl-3 border-l border-gray-100 hover:opacity-75 transition-opacity cursor-pointer"
+              className="hidden md:flex items-center gap-2.5 pl-3 ml-0.5 border-l border-[#ECECEC] hover:opacity-75 transition-opacity cursor-pointer"
             >
-              <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: accent + '1A' }}>
                 {profile.avatar_url
                   ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                  : <span className="text-[10px] font-bold text-red-600">{profile.full_name?.charAt(0)?.toUpperCase() ?? 'U'}</span>
+                  : <span className="text-[12px] font-bold" style={{ color: accent }}>{profile.full_name?.charAt(0)?.toUpperCase() ?? 'U'}</span>
                 }
               </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-semibold text-gray-800 leading-none">{profile.full_name}</span>
-                <span className="text-[10px] text-gray-400 leading-none mt-0.5 uppercase">{profile.role}</span>
+              <div className="flex flex-col items-start">
+                <span className="text-[12px] font-semibold text-[#0A0A0A] leading-none">{profile.full_name}</span>
+                <span className="text-[10px] text-[#A8A8AD] leading-none mt-0.5 uppercase tracking-wide">{profile.role}</span>
               </div>
             </button>
           )}
 
-          <Button variant="ghost" size="sm" onClick={handleSignOut} title={t('topbar.logout')} className="text-gray-400 hover:text-gray-600">
-            <LogOut className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="sm" onClick={handleSignOut} title={t('topbar.logout')} className="text-[#A8A8AD] hover:text-[#0A0A0A] rounded-full">
+            <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </header>
