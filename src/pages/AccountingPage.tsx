@@ -48,14 +48,14 @@ function KpiCard({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-4 flex items-start gap-3">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: color + '18' }}>
+    <div className="bg-white rounded-[18px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-4 flex items-start gap-3" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: color + '14' }}>
         <span style={{ color }}>{icon}</span>
       </div>
       <div className="min-w-0">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{label}</div>
-        <div className="text-[13px] font-black text-gray-900 leading-tight">{value}</div>
-        {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
+        <div className="text-[11px] font-medium text-[#8A8A8E] mb-1">{label}</div>
+        <div className="text-[15px] font-bold text-[#0A0A0A] leading-tight tabular-nums tracking-[-0.01em]">{value}</div>
+        {sub && <div className="text-[10px] text-[#A8A8AD] mt-0.5">{sub}</div>}
       </div>
     </div>
   );
@@ -488,17 +488,17 @@ export function AccountingPage() {
   const profit = (summary?.totalRevenue ?? 0) - (summary?.totalCost ?? 0);
 
   return (
-    <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8">
+    <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div className="px-3 md:px-0 space-y-4">
 
         {/* Page Header — desktop only */}
-        <div className="hidden md:flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-            <BookCheck style={{ width: 18, height: 18 }} className="text-gray-600" />
+        <div className="hidden md:flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+            <BookCheck style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
           </div>
           <div>
-            <h1 className="text-[15px] font-bold text-gray-900">Muhasebe</h1>
-            <p className="text-[11px] text-gray-400">İşlem ve fatura yönetimi</p>
+            <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Muhasebe</h1>
+            <p className="text-[13px] text-[#8A8A8E] mt-0.5">İşlem ve fatura yönetimi</p>
           </div>
         </div>
 
@@ -523,13 +523,13 @@ export function AccountingPage() {
         {/* ── Toolbar ──────────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           {/* Row 1: Tabs */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
+          <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full overflow-x-auto scrollbar-none">
             {TABS.map(t => (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`shrink-0 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
-                  activeTab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                className={`shrink-0 px-4 h-8 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap ${
+                  activeTab === t.key ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
                 }`}
               >
                 {t.label}
@@ -565,10 +565,10 @@ export function AccountingPage() {
             {/* Search + New Transaction */}
             {activeTab !== 'ayarlar' && (
               <div className="flex items-center gap-2 flex-1 md:flex-none">
-                <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 md:w-48">
-                  <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                <div className="flex items-center gap-2 bg-white rounded-full px-4 h-9 border border-[#ECECEC] flex-1 md:w-52">
+                  <Search className="h-4 w-4 text-[#A8A8AD] shrink-0" />
                   <input
-                    className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+                    className="flex-1 text-[13px] text-[#0A0A0A] outline-none bg-transparent placeholder:text-[#A8A8AD]"
                     placeholder={t('filters.search')}
                     value={search}
                     onChange={e => setSearch(e.target.value)}
@@ -747,22 +747,22 @@ export function AccountingPage() {
             </div>
 
             {/* Desktop — 5 merged columns, no scroll */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="hidden md:block bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
               <table className="w-full table-fixed">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[22%]">Invoice / File</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[21%]">Customer / Date</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[15%]">ADMT / Unit Price</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Total / Status</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[26%]">Actions</th>
+                  <tr className="border-b border-[#F4F2EE]">
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[22%]">Invoice / File</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[21%]">Customer / Date</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[15%]">ADMT / Unit Price</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[16%]">Total / Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[26%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSaleInvoices.length === 0 ? (
                     <tr><td colSpan={5} className="py-14 text-center text-[13px] text-gray-400">{t('empty.noSaleInvoices')}</td></tr>
                   ) : filteredSaleInvoices.map(inv => (
-                    <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                    <tr key={inv.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
                       <td className="px-4 py-3">
                         <div className="text-[13px] font-bold text-emerald-700 truncate">{inv.invoice_no}</div>
                         <div className="text-[11px] font-mono text-gray-400 truncate">{inv.trade_file?.file_no ?? '—'}</div>
@@ -807,8 +807,8 @@ export function AccountingPage() {
 
             {/* ── Advance receivables from transactions table ── */}
             {saleInvTxns.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+              <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#F4F2EE] flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-blue-500" />
                   <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     Ön Ödeme Alacakları
@@ -817,13 +817,13 @@ export function AccountingPage() {
                 </div>
                 <table className="w-full table-fixed">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[14%]">Tarih</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[18%]">Dosya / Müşteri</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[28%]">Açıklama</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[16%]">Tutar</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[12%]">Durum</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 w-[12%]">Notlar</th>
+                    <tr className="border-b border-[#F4F2EE]">
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[14%]">Tarih</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[18%]">Dosya / Müşteri</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[28%]">Açıklama</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[16%]">Tutar</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[12%]">Durum</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] w-[12%]">Notlar</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -892,7 +892,7 @@ export function AccountingPage() {
             )}
 
             {/* Desktop — responsive register table, no horizontal scroll */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm">
+            <div className="hidden md:block bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
               <table className="w-full table-fixed">
                 <colgroup>
                   <col className="w-[36px]" />
@@ -905,7 +905,7 @@ export function AccountingPage() {
                   <col className="w-[180px]" />
                 </colgroup>
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/60">
+                  <tr className="border-b border-[#F4F2EE] bg-gray-50/60">
                     <th className="px-2 py-2.5 text-center">
                       {admin && (
                         <input
@@ -916,12 +916,12 @@ export function AccountingPage() {
                         />
                       )}
                     </th>
-                    <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Tarih</th>
-                    <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">ID / Dosya</th>
-                    <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Firma</th>
-                    <th className="hidden lg:table-cell px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Açıklama</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Borç</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Alacak</th>
+                    <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Tarih</th>
+                    <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">ID / Dosya</th>
+                    <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Firma</th>
+                    <th className="hidden lg:table-cell px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Açıklama</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Borç</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Alacak</th>
                     <th className="px-2 py-2.5" />
                   </tr>
                 </thead>
