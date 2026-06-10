@@ -13,7 +13,7 @@ import { canWrite, isAdmin } from '@/lib/permissions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 // LoadingSpinner kaldırıldı — inline spinner kullanılıyor
 import { AIFormFill } from '@/components/ui/AIFormFill';
-import { Search, Pencil, Trash2, Plus, Tag, Check, Upload, Link, X } from 'lucide-react';
+import { Search, Pencil, Trash2, Plus, Tag, Check, Upload, Link, X, Box } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const CATEGORY_COLORS = [
@@ -275,25 +275,36 @@ export function ProductsPage() {
   // Tam sayfa spinner KULLANMA — tablo kendi içinde yükleme gösteriyor
 
   return (
-    <div className="-mx-4 md:mx-0">
+    <div className="-mx-4 md:mx-0" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div className="px-4 md:px-0">
+
+        {/* Page Header — desktop only */}
+        <div className="hidden md:flex items-center gap-3 mb-5">
+          <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+            <Box style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
+          </div>
+          <div>
+            <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Ürünler</h1>
+            <p className="text-[13px] text-[#8A8A8E] mt-0.5">Ürün kataloğu ve kategoriler</p>
+          </div>
+        </div>
 
         {/* Toolbar — search + categories + buttons all on one row */}
         <div className="flex items-center gap-2 mb-4">
           {/* Search — fixed small width */}
-          <div className="relative w-36 md:w-48 shrink-0">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+          <div className="relative w-40 md:w-52 shrink-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A8AD]" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('search')}
-              className="w-full pl-7 pr-2 h-8 rounded-xl border border-gray-200 bg-white text-[12px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 transition" />
+              className="w-full pl-10 pr-3 h-9 rounded-full border border-[#ECECEC] bg-white text-[13px] text-[#0A0A0A] placeholder:text-[#A8A8AD] outline-none focus:border-[#D8D4CC] transition" />
           </div>
 
           {/* Category filter pills */}
           {categories.length > 0 && (
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl flex-1 overflow-x-auto scrollbar-none min-w-0">
+            <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full flex-1 overflow-x-auto scrollbar-none min-w-0">
               <button
                 onClick={() => setFilterCatId(null)}
-                className={`shrink-0 px-3 h-6 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
-                  !filterCatId ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                className={`shrink-0 px-3.5 h-7 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap ${
+                  !filterCatId ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
                 }`}
               >
                 {tc('all')}
@@ -301,8 +312,8 @@ export function ProductsPage() {
               {categories.map(cat => (
                 <button key={cat.id}
                   onClick={() => setFilterCatId(filterCatId === cat.id ? null : cat.id)}
-                  className={`shrink-0 px-3 h-6 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
-                    filterCatId === cat.id ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  className={`shrink-0 px-3.5 h-7 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap ${
+                    filterCatId === cat.id ? 'bg-white shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
                   }`}
                   style={filterCatId === cat.id ? { color: cat.color } : {}}
                 >
@@ -314,12 +325,14 @@ export function ProductsPage() {
 
           {/* Icon buttons */}
           <button onClick={() => setCatModalOpen(true)} title={t('manageCategoriesTooltip')}
-            className="w-8 h-8 rounded-xl flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors shrink-0">
-            <Tag className="h-3.5 w-3.5" />
+            className="w-9 h-9 rounded-full flex items-center justify-center border border-[#ECECEC] bg-white text-[#8A8A8E] hover:text-[#0A0A0A] hover:bg-[#FAF9F6] transition-colors shrink-0">
+            <Tag className="h-4 w-4" />
           </button>
           {writable && (
-            <button onClick={openNew} className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ background: accent }}>
-              <Plus className="h-3.5 w-3.5 text-white" />
+            <button onClick={openNew} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: accent }}
+              onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`; }}
+              onMouseLeave={e => { e.currentTarget.style.background = accent; }}>
+              <Plus className="h-4 w-4 text-white" />
             </button>
           )}
         </div>
@@ -358,16 +371,16 @@ export function ProductsPage() {
         </div>
 
         {/* Desktop table */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="hidden md:block bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
           <table className="w-full table-fixed">
             <colgroup>
               <col style={{ width: '7%' }} /><col style={{ width: '22%' }} /><col style={{ width: '12%' }} />
               <col style={{ width: '12%' }} /><col style={{ width: '12%' }} /><col style={{ width: '16%' }} /><col style={{ width: '11%' }} /><col style={{ width: '8%' }} />
             </colgroup>
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-[#F4F2EE]">
                 {tableHeaders.map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                  <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -377,9 +390,9 @@ export function ProductsPage() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="py-14 text-center text-sm text-gray-400">{search ? t('noResults') : t('noProducts')}</td></tr>
               ) : filtered.map(p => (
-                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                  <td className="px-4 py-3 text-xs font-bold text-gray-400">{p.code}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-900 truncate">{p.name}</td>
+                <tr key={p.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
+                  <td className="px-4 py-3.5 text-xs font-bold text-[#A8A8AD]">{p.code}</td>
+                  <td className="px-4 py-3.5 text-sm font-semibold text-[#0A0A0A] truncate">{p.name}</td>
                   <td className="px-4 py-3">
                     {p.category
                       ? <CategoryBadge category={p.category as ProductCategory} />
