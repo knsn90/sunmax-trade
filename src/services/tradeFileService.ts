@@ -30,16 +30,23 @@ const FILE_SELECT = `
 `;
 
 // Used for detail page — includes sub-documents + batches
+// packing_list_items hariç: on-demand yüklenecek (print sırasında ayrıca çekilir)
 const FILE_DETAIL_SELECT = `
-  *,
-  customer:customers!customer_id(*, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
-  product:products!product_id(*),
-  supplier:suppliers!supplier_id(*),
-  suppliers:trade_file_suppliers(*, supplier:suppliers!supplier_id(id, name, logo_url, country)),
-  invoices(*),
-  packing_lists(*, packing_list_items(*)),
-  proformas(*),
-  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, supplier_id, transport_mode, eta, packing_lists(id, packing_list_no, doc_status, total_admt), invoices(id, invoice_no, invoice_date, total, doc_status, invoice_type, currency))
+  id, file_no, file_date, status, tonnage_mt, delivered_admt,
+  selling_price, purchase_price, incoterms, transport_mode,
+  port_of_loading, port_of_discharge, proforma_ref, register_no,
+  insurance_tr, eta, revised_eta, delay_notes, currency,
+  purchase_currency, sale_currency, freight_cost, parent_file_id,
+  batch_no, customer_id, product_id, created_by, created_at,
+  updated_at, deleted_at, cancel_reason, supplier_id,
+  customer:customers!customer_id(id, name, code, country, address, contact_phone, logo_url, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
+  product:products!product_id(id, name, unit, category_id),
+  supplier:suppliers!supplier_id(id, name, logo_url, country),
+  suppliers:trade_file_suppliers(supplier_id, supplier:suppliers!supplier_id(id, name, logo_url, country)),
+  invoices(id, invoice_no, invoice_date, total, doc_status, invoice_type, currency, customer_id, trade_file_id, deleted_at),
+  packing_lists(id, packing_list_no, doc_status, total_admt, created_at, trade_file_id, deleted_at),
+  proformas(id, proforma_no, doc_status, created_at, trade_file_id, deleted_at),
+  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, delivered_admt, supplier_id, transport_mode, eta, packing_lists(id, packing_list_no, doc_status, total_admt), invoices(id, invoice_no, invoice_date, total, doc_status, invoice_type, currency))
 `;
 
 // Minimal select for mutations — no joins, avoids Supabase load
@@ -142,7 +149,7 @@ export const tradeFileService = {
       .single();
 
     if (error) throw new Error(error.message);
-    return data as TradeFile;
+    return data as unknown as TradeFile;
   },
 
   async create(

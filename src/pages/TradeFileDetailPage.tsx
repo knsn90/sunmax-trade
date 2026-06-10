@@ -380,11 +380,11 @@ export function TradeFileDetailPage() {
   const deletePL = useDeletePackingList();
   const deletePI = useDeleteProforma();
   const defaultBank = bankAccounts?.find(b => b.is_default) ?? bankAccounts?.[0] ?? null;
+  // İlk render'da sadece bu dosyanın ID'si ile işlemleri hemen başlat (waterfall önleme)
+  // Parti ID'leri gelince query key değişir → React Query otomatik genişletir
   const batchIds = (file?.batches ?? []).map(b => b.id).filter((x): x is string => !!x);
-  const allFileIds = batchIds.length > 0 ? [id, ...batchIds].filter((x): x is string => !!x) : undefined;
-  const { data: fileTxns = [] } = useTransactions(
-    allFileIds ? { tradeFileIds: allFileIds } : { tradeFileId: id }
-  );
+  const allFileIds = batchIds.length > 0 ? [id!, ...batchIds] : [id!];
+  const { data: fileTxns = [] } = useTransactions({ tradeFileIds: allFileIds });
   const { accent } = useTheme();
 
   const [saleOpen, setSaleOpen] = useState(false);
