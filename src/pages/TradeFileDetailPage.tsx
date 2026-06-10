@@ -86,7 +86,7 @@ function Section({
       accent ? 'ring-1 ring-brand-200' : '',
     )}>
       <div
-        className={cn('flex items-center justify-between px-4 py-3 border-b border-gray-50', collapsible ? 'cursor-pointer select-none' : '')}
+        className={cn('flex items-center justify-between px-4 py-3 border-b border-[#F4F2EE]', collapsible ? 'cursor-pointer select-none' : '')}
         onClick={collapsible ? onToggle : undefined}
       >
         <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ function Section({
 // ── Key/Value row ─────────────────────────────────────────────────────────────
 function KV({ label, value, bold }: { label: string; value: React.ReactNode; bold?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between py-1.5 border-b border-gray-50 last:border-0">
+    <div className="flex items-baseline justify-between py-1.5 border-b border-[#F4F2EE] last:border-0">
       <span className="text-[11px] text-gray-400 shrink-0 mr-3">{label}</span>
       <span className={cn('text-[12px] text-right', bold ? 'font-bold text-gray-900' : 'text-gray-700')}>
         {value}
@@ -139,7 +139,7 @@ function DocRow({
   }
 
   return (
-    <div className="border-b border-gray-50 last:border-0 group">
+    <div className="border-b border-[#F4F2EE] last:border-0 group">
       <div
         className="flex items-center gap-3 py-3 cursor-pointer active:bg-gray-50"
         onClick={() => { if (!editing) setOpen(o => !o); }}
@@ -229,15 +229,15 @@ function PartilerCard({
 
   return (
     <>
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
       {/* Header */}
       <div
-        className={cn('px-6 py-4 border-b border-gray-50 flex items-center justify-between', onToggle ? 'cursor-pointer select-none' : '')}
+        className={cn('px-6 py-4 border-b border-[#F4F2EE] flex items-center justify-between', onToggle ? 'cursor-pointer select-none' : '')}
         onClick={onToggle}
       >
         <div className="flex items-center gap-2.5">
           <Layers className="h-4 w-4 text-gray-400" />
-          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Partiler</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A8A8E]">Partiler</span>
           {batches.length > 0 && (
             <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
               {batches.length}
@@ -266,7 +266,7 @@ function PartilerCard({
         <>
           {/* Progress bar */}
           {totalTon > 0 && (
-            <div className="px-6 py-3 border-b border-gray-50 bg-gray-50/40">
+            <div className="px-6 py-3 border-b border-[#F4F2EE] bg-gray-50/40">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[11px] font-semibold text-gray-500">
                   Yüklenen: <strong className="text-gray-900">{usedTon.toLocaleString('tr-TR')} {tUnit}</strong>
@@ -670,9 +670,9 @@ export function TradeFileDetailPage() {
   ] as const;
 
   const docWarningBanner = completedWithMissingDocs && completionChecks ? (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between gap-3">
+      <div className="px-5 py-3 border-b border-[#F4F2EE] flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
           <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Eksik Belgeler Tespit Edildi</span>
@@ -780,7 +780,7 @@ export function TradeFileDetailPage() {
 
 
   const statusStepper = (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
+    <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] px-4 py-3">
       {isCancelled ? (
         <div className="flex items-center gap-2 text-red-500">
           <X className="h-3.5 w-3.5" />
@@ -922,21 +922,21 @@ export function TradeFileDetailPage() {
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       {/* 2-col grid: key stats */}
       <div className="grid grid-cols-2 divide-x divide-gray-50">
-        <div className="px-4 py-3 border-b border-gray-50">
+        <div className="px-4 py-3 border-b border-[#F4F2EE]">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.date')}</div>
           <div className="text-[13px] font-bold text-gray-900">{fDate(file.file_date)}</div>
         </div>
-        <div className="px-4 py-3 border-b border-gray-50">
+        <div className="px-4 py-3 border-b border-[#F4F2EE]">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.tonnage')}</div>
           <div className="text-[13px] font-bold text-gray-900">{fN(file.tonnage_mt, 3)} {tUnit}</div>
         </div>
-        <div className="px-4 py-3 border-b border-gray-50">
+        <div className="px-4 py-3 border-b border-[#F4F2EE]">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.salePrice')}</div>
           <div className="text-[13px] font-bold text-gray-900">
             {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
           </div>
         </div>
-        <div className="px-4 py-3 border-b border-gray-50">
+        <div className="px-4 py-3 border-b border-[#F4F2EE]">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.delivered')}</div>
           <div className="text-[13px] font-bold text-gray-900">
             {deliveredTonnage ? fN(deliveredTonnage, 3) + ' ADMT' : '—'}
@@ -969,7 +969,7 @@ export function TradeFileDetailPage() {
 
   const actionsPanel = (isMobile: boolean) => (
     <div className={cn('bg-white rounded-2xl shadow-sm overflow-hidden', isMobile ? '' : '')}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#F4F2EE]">
         <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{t('detail.actions.title')}</span>
       </div>
       <div className="px-3 py-2">
@@ -1140,7 +1140,7 @@ export function TradeFileDetailPage() {
         {/* Header card */}
         <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm overflow-hidden">
           {/* Üst çubuk: geri + durum */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-50">
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-[#F4F2EE]">
             <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-400 active:opacity-60">
               <ArrowLeft className="h-3.5 w-3.5" /> Geri
             </button>
@@ -1178,7 +1178,7 @@ export function TradeFileDetailPage() {
           {isBatch && (
             <button
               onClick={() => navigate(`/files/${file.parent_file_id}`)}
-              className="w-full flex items-center gap-2 px-4 py-2 border-b border-gray-50 active:bg-gray-50 transition-colors"
+              className="w-full flex items-center gap-2 px-4 py-2 border-b border-[#F4F2EE] active:bg-gray-50 transition-colors"
             >
               <Layers className="h-3 w-3 text-gray-400 shrink-0" />
               <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Alt Parti</span>
@@ -1539,7 +1539,7 @@ export function TradeFileDetailPage() {
             <div className="text-[12px] text-gray-400 py-2 text-center">{t('detail.expenses.noRecords')}</div>
           ) : (
             expenses.map(txn => (
-              <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div key={txn.id} className="flex items-center justify-between py-2 border-b border-[#F4F2EE] last:border-0">
                 <div className="min-w-0">
                   <div className="text-[12px] font-medium text-gray-800 truncate">{txn.description || '—'}</div>
                   <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
@@ -1661,13 +1661,13 @@ export function TradeFileDetailPage() {
             </div>
 
             {/* Quick info 2×2 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
               <div className="grid grid-cols-2 divide-x divide-gray-50">
-                <div className="px-5 py-4 border-b border-gray-50">
+                <div className="px-5 py-4 border-b border-[#F4F2EE]">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.date')}</div>
                   <div className="text-[15px] font-extrabold text-gray-900">{fDate(file.file_date)}</div>
                 </div>
-                <div className="px-5 py-4 border-b border-gray-50">
+                <div className="px-5 py-4 border-b border-[#F4F2EE]">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.tonnage')}</div>
                   <div className="text-[15px] font-extrabold text-gray-900">{fN(file.tonnage_mt, 3)} {tUnit}</div>
                 </div>
@@ -1709,8 +1709,8 @@ export function TradeFileDetailPage() {
             </div>
 
             {/* Operations list */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/60">
+            <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#F4F2EE] bg-gray-50/60">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t('detail.actions.title')}</span>
               </div>
               <div className="divide-y divide-gray-50">
@@ -1853,14 +1853,14 @@ export function TradeFileDetailPage() {
             </div>
 
             {/* ── Sale Details — always first ────────────────────────────── */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
               <div
-                className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none"
+                className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none"
                 onClick={() => toggleCard('saleDetails')}
               >
                 <div className="flex items-center gap-2.5">
                   <TrendingUp className="h-4 w-4 text-gray-400" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.saleDetails.title')}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A8A8E]">{t('detail.saleDetails.title')}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   {writable && file.selling_price && file.eta && !['completed','cancelled'].includes(file.status) && (
@@ -1879,16 +1879,16 @@ export function TradeFileDetailPage() {
               {!collapsed.saleDetails && (
                 hasSaleDetails ? (
                   <div className="px-6 py-2">
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.salePrice')}</span>
                       <span className="text-[13px] font-bold text-gray-900">{file.selling_price ? `${fCurrency(file.selling_price)}/MT` : '—'}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
                       <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.purchase_price)}/MT</span>
                     </div>
                     {(file.suppliers?.length ?? 0) > 1 ? (
-                      <div className="py-2 border-b border-dashed border-gray-100">
+                      <div className="py-2 border-b border-dashed border-[#ECECEC]">
                         <div className="flex justify-between items-center mb-1.5">
                           <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
                           <span className="text-[10px] font-semibold text-gray-400">{file.suppliers!.length} tedarikçi</span>
@@ -1917,7 +1917,7 @@ export function TradeFileDetailPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                         <span className="text-[12px] text-gray-500">{t('detail.saleDetails.supplier')}</span>
                         {file.supplier ? (
                           <div className="flex items-center gap-2">
@@ -1927,18 +1927,18 @@ export function TradeFileDetailPage() {
                         ) : <span className="text-[13px] font-bold text-gray-900">—</span>}
                       </div>
                     )}
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.incoterms')}</span>
                       <span className="text-[13px] font-bold text-gray-900">{`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'}</span>
                     </div>
                     {file.eta && (
-                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                         <span className="text-[12px] text-gray-500">{t('detail.saleDetails.eta')}</span>
                         <span className="text-[13px] font-bold text-gray-900">{fDate(file.eta)}</span>
                       </div>
                     )}
                     {file.revised_eta && (
-                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                         <span className="text-[12px] text-gray-500">{t('detail.saleDetails.revisedEta')}</span>
                         <span className="flex items-center gap-1.5">
                           <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -1947,13 +1947,13 @@ export function TradeFileDetailPage() {
                       </div>
                     )}
                     {file.delay_notes && (
-                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                         <span className="text-[12px] text-gray-500">{t('detail.saleDetails.delayReason')}</span>
                         <span className="text-[13px] font-bold text-gray-900 text-right max-w-[60%]">{file.delay_notes}</span>
                       </div>
                     )}
                     {file.vessel_name && (
-                      <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-100 last:border-0">
+                      <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC] last:border-0">
                         <span className="text-[12px] text-gray-500">{t('detail.saleDetails.vessel')}</span>
                         <a href={`https://magicport.ai/vessels?search=${encodeURIComponent(file.vessel_name)}`} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1 text-[13px] font-bold hover:underline" style={{ color: accent }}
@@ -2002,11 +2002,11 @@ export function TradeFileDetailPage() {
 
             {/* Delivery */}
             {file.delivered_admt && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none" onClick={() => toggleCard('delivery')}>
+              <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+                <div className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none" onClick={() => toggleCard('delivery')}>
                   <div className="flex items-center gap-2.5">
                     <Truck className="h-4 w-4 text-gray-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.delivery.title')}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A8A8E]">{t('detail.delivery.title')}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     {writable && (
@@ -2032,11 +2032,11 @@ export function TradeFileDetailPage() {
 
             {/* Documents */}
             {((file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0) && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none" onClick={() => toggleCard('documents')}>
+              <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+                <div className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none" onClick={() => toggleCard('documents')}>
                   <div className="flex items-center gap-2.5">
                     <FileText className="h-4 w-4 text-gray-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.documents.title')}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A8A8E]">{t('detail.documents.title')}</span>
                   </div>
                   {collapsed.documents ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
                 </div>
@@ -2081,11 +2081,11 @@ export function TradeFileDetailPage() {
             )}
 
             {/* Expenses */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50 cursor-pointer select-none" onClick={() => toggleCard('expenses')}>
+            <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+              <div className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none" onClick={() => toggleCard('expenses')}>
                 <div className="flex items-center gap-2.5">
                   <Receipt className="h-4 w-4 text-gray-400" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{t('detail.expenses.title')}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A8A8E]">{t('detail.expenses.title')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {writable && (
@@ -2108,7 +2108,7 @@ export function TradeFileDetailPage() {
                   <div className="text-[12px] text-gray-400 py-4 text-center">{t('detail.expenses.noRecords')}</div>
                 ) : (
                   expenses.map(txn => (
-                    <div key={txn.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                    <div key={txn.id} className="flex items-center justify-between py-2.5 border-b border-[#F4F2EE] last:border-0">
                       <div className="min-w-0">
                         <div className="text-[12px] font-medium text-gray-800 truncate">{txn.description || '—'}</div>
                         <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
@@ -2233,7 +2233,7 @@ export function TradeFileDetailPage() {
       <Dialog open={batchDocsOpen} onOpenChange={setBatchDocsOpen}>
         <DialogContent size="lg">
           <DialogTitle className="sr-only">Alt Parti Belgeleri</DialogTitle>
-          <div className="sticky top-0 bg-white z-10 pb-3 border-b border-gray-50">
+          <div className="sticky top-0 bg-white z-10 pb-3 border-b border-[#F4F2EE]">
             <p className="text-[14px] font-bold text-gray-900">
               {batchDocsType === 'invoice' ? 'Commercial Invoice' : 'Ambalaj Listesi'} — Alt Partiler
             </p>
