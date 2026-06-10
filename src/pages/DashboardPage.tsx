@@ -33,13 +33,23 @@ import {
 
 // ─── Widget order & sizes ─────────────────────────────────────────────────────
 // 'kpi' is intentionally excluded — it's always fixed at the top
-const DEFAULT_ORDER = ['pipeline', 'alerts', 'recent_files', 'delivery', 'latest_prices', 'revenue_chart'];
+const DEFAULT_ORDER = [
+  'pipeline', 'alerts',
+  'recent_files', 'delivery',
+  'collection_summary', 'fx_position',
+  'top_customers', 'pending_docs',
+  'monthly_tonnage', 'revenue_chart',
+  'latest_prices',
+];
 
 // Default column span per widget ('full' = col-span-2, 'half' = col-span-1)
 const DEFAULT_SIZES: Record<string, 'full' | 'half'> = {
   recent_files: 'full', delivery: 'full',
   latest_prices: 'full', revenue_chart: 'full',
   pipeline: 'half', alerts: 'half',
+  collection_summary: 'half', fx_position: 'half',
+  top_customers: 'full', pending_docs: 'full',
+  monthly_tonnage: 'full',
 };
 
 function loadOrder(userId: string): string[] {
@@ -658,6 +668,71 @@ export function DashboardPage() {
     ).slice(0, 3),
   [transactions]);
 
+  // ── Yeni widget verileri ─────────────────────────────────────────────────────
+
+  // 1. Tahsilat Özeti
+  const collectionData = useMemo(() => {
+    const invoiced   = transactions.filter(t => t.transaction_type === 'sale_inv').reduce((s, t) => s + (t.amount_usd ?? 0), 0);
+    const collected  = transactions.filter(t => t.transaction_type === 'receipt' && t.payment_status === 'paid').reduce((s, t) => s + (t.amount_usd ?? 0), 0);
+    const outstanding = Math.max(0, invoiced - collected);
+    const pct = invoiced > 0 ? Math.min(100, Math.round((collected / invoiced) * 100)) : 0;
+    return { invoiced, collected, outstanding, pct };
+  }, [transactions]);
+
+  // 2. Top 5 Müşteri (ciro sırası)
+  const topCustomers = useMemo(() => {
+    const map = new Map<string, { name: string; revenue: number; files: number }>();
+    files.forEach(f => {
+      const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
+      const rev = (f.selling_price ?? 0) * qty;
+      const custId = f.customer_id ?? 'unknown';
+      const custName = (f.customer as { name?: string } | null)?.name ?? 'Bilinmeyen';
+      if (!map.has(custId)) map.set(custId, { name: custName, revenue: 0, files: 0 });
+      const d = map.get(custId)!;
+      d.revenue += rev;
+      d.files++;
+    });
+    const all = [...map.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+    const maxRev = all[0]?.revenue ?? 1;
+    return all.map(c => ({ ...c, pct: Math.round((c.revenue / maxRev) * 100) }));
+  }, [files]);
+
+  // 3. Bekleyen Belgeler (satış/teslimat statüsünde faturası olmayan dosyalar)
+  const pendingDocs = useMemo(() => {
+    const withInvoice = new Set(
+      transactions.filter(t => t.transaction_type === 'sale_inv' && t.trade_file_id).map(t => t.trade_file_id as string)
+    );
+    return files.filter(f => ['sale', 'delivery'].includes(f.status) && !withInvoice.has(f.id)).slice(0, 6);
+  }, [files, transactions]);
+
+  // 4. Aylık Tonaj (son 6 ay)
+  const monthlyTonnage = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const mf = files.filter(f => getMonthKey(f.created_at ?? '') === key);
+      const admt = mf.reduce((s, f) => s + (f.delivered_admt ?? f.tonnage_mt ?? 0), 0);
+      return { label: formatMonthLabel(key, i18n.language), admt, count: mf.length };
+    });
+  }, [files, i18n.language]);
+
+  // 5. Döviz Pozisyonu
+  const fxPosition = useMemo(() => {
+    const pos: Record<string, { receivable: number; payable: number }> = {};
+    transactions.forEach(t => {
+      const cur = (t.currency as string | null) ?? 'USD';
+      if (!pos[cur]) pos[cur] = { receivable: 0, payable: 0 };
+      if (t.transaction_type === 'sale_inv' && t.payment_status !== 'paid')
+        pos[cur].receivable += t.amount ?? 0;
+      if (t.transaction_type === 'purchase_inv' && t.payment_status !== 'paid')
+        pos[cur].payable += t.amount ?? 0;
+    });
+    return Object.entries(pos)
+      .filter(([, v]) => v.receivable > 0 || v.payable > 0)
+      .sort(([a], [b]) => ['USD','EUR','TRY'].indexOf(a) - ['USD','EUR','TRY'].indexOf(b));
+  }, [transactions]);
+
   // Timeout geçtiyse veya veri geldiyse spinner gösterme
   const isFirstLoad = !loadTimeout && ((filesLoading && files.length === 0) || (summaryLoading && !summary));
   if (isFirstLoad) return <LoadingSpinner />;
@@ -854,6 +929,172 @@ export function DashboardPage() {
                     ))}
                   </div>
                 </>
+              )}
+            </div>
+          </Card>
+        );
+
+      // ── 1. Tahsilat Özeti ─────────────────────────────────────────────────
+      case 'collection_summary':
+        return (
+          <Card title="TAHSİLAT ÖZETİ" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            <div className="px-5 py-4 space-y-3">
+              {/* Progress bar */}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tahsilat Oranı</span>
+                  <span className="text-[12px] font-bold" style={{ color: accent }}>{collectionData.pct}%</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${collectionData.pct}%`, background: accent }} />
+                </div>
+              </div>
+              {/* 3 KPI */}
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                {[
+                  { label: 'Faturalanan', value: collectionData.invoiced, color: 'text-gray-900' },
+                  { label: 'Tahsil Edilen', value: collectionData.collected, color: 'text-green-600' },
+                  { label: 'Bekleyen', value: collectionData.outstanding, color: 'text-red-500' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</div>
+                    <div className={`text-[14px] font-extrabold ${color}`}>${(value / 1000).toFixed(0)}K</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        );
+
+      // ── 2. Top Müşteriler ──────────────────────────────────────────────────
+      case 'top_customers':
+        return (
+          <Card title="TOP 5 MÜŞTERİ · CİRO" action={() => navigate('/contacts')} actionLabel="Tüm Müşteriler" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            <div className="px-5 py-3 space-y-2.5">
+              {topCustomers.length === 0 ? (
+                <p className="text-[12px] text-gray-400 py-4 text-center">Henüz veri yok</p>
+              ) : topCustomers.map((c, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold text-gray-300 w-4 text-right shrink-0">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[12px] font-semibold text-gray-800 truncate max-w-[160px]">{c.name}</span>
+                      <span className="text-[11px] font-bold text-gray-700 shrink-0 ml-2">${(c.revenue / 1000).toFixed(0)}K</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${c.pct}%`, background: accent, opacity: 0.7 + i * 0.05 }} />
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-gray-400 shrink-0">{c.files} dos.</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+
+      // ── 3. Bekleyen Belgeler ───────────────────────────────────────────────
+      case 'pending_docs':
+        return (
+          <Card title={`FATURA EKSİK DOSYALAR${pendingDocs.length > 0 ? ` · ${pendingDocs.length}` : ''}`} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            <div className="divide-y divide-gray-50">
+              {pendingDocs.length === 0 ? (
+                <div className="flex flex-col items-center py-8 gap-1 text-gray-400">
+                  <span className="text-2xl">✓</span>
+                  <p className="text-[12px] font-medium text-gray-500">Tüm aktif dosyalarda fatura mevcut</p>
+                </div>
+              ) : pendingDocs.map(f => {
+                const custName = (f.customer as { name?: string } | null)?.name ?? '—';
+                const statusCfg = STATUS_CFG[f.status] ?? STATUS_CFG.sale;
+                return (
+                  <button key={f.id} onClick={() => navigate(`/files/${f.id}`)} className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusCfg.dot}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-semibold text-gray-900">{f.file_no}</div>
+                      <div className="text-[10px] text-gray-400 truncate">{custName}</div>
+                    </div>
+                    <span className="text-[10px] text-red-400 font-semibold shrink-0">Fatura Eksik</span>
+                    <ChevronRight className="h-3 w-3 text-gray-300 shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        );
+
+      // ── 4. Aylık Tonaj ─────────────────────────────────────────────────────
+      case 'monthly_tonnage': {
+        const maxAdmt = Math.max(...monthlyTonnage.map(d => d.admt), 1);
+        const hasTonnage = monthlyTonnage.some(d => d.admt > 0);
+        return (
+          <Card title="AYLIK HACİM · ADMT" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            {!hasTonnage ? (
+              <div className="flex flex-col items-center py-10 text-gray-400">
+                <BarChart2 className="h-8 w-8 mb-2 opacity-20" />
+                <p className="text-[12px] font-medium text-gray-400">Henüz veri yok</p>
+              </div>
+            ) : (
+              <div className="px-5 py-4">
+                <ResponsiveContainer width="100%" height={140}>
+                  <BarChart data={monthlyTonnage} barCategoryGap="35%">
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} width={36} />
+                    <Tooltip
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      formatter={(v: any) => [`${Number(v).toLocaleString('tr-TR')} ADMT`, 'Hacim']}
+                      contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                    />
+                    <Bar dataKey="admt" radius={[4, 4, 0, 0]}>
+                      {monthlyTonnage.map((d, i) => (
+                        <Cell key={i} fill={d.admt === maxAdmt ? accent : `${accent}66`} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
+                  <span>Toplam: <strong className="text-gray-700">{monthlyTonnage.reduce((s, d) => s + d.admt, 0).toLocaleString('tr-TR')} ADMT</strong></span>
+                  <span>{monthlyTonnage.reduce((s, d) => s + d.count, 0)} dosya</span>
+                </div>
+              </div>
+            )}
+          </Card>
+        );
+      }
+
+      // ── 5. Döviz Pozisyonu ─────────────────────────────────────────────────
+      case 'fx_position':
+        return (
+          <Card title="DÖVİZ POZİSYONU · AÇIK" dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
+            <div className="px-5 py-4">
+              {fxPosition.length === 0 ? (
+                <p className="text-[12px] text-gray-400 py-4 text-center">Açık işlem yok</p>
+              ) : (
+                <div className="space-y-3">
+                  {fxPosition.map(([cur, v]) => {
+                    const net = v.receivable - v.payable;
+                    const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
+                    const fmtK = (n: number) => `${sym}${(Math.abs(n) >= 1000 ? (Math.abs(n)/1000).toFixed(0)+'K' : Math.abs(n).toFixed(0))}`;
+                    return (
+                      <div key={cur} className="bg-gray-50 rounded-xl px-4 py-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-gray-500">{cur}</span>
+                          <span className={`text-[13px] font-extrabold ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {net >= 0 ? '+' : ''}{fmtK(net)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                          <div>
+                            <span className="text-gray-400">Alacak </span>
+                            <span className="font-semibold text-green-600">{fmtK(v.receivable)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Borç </span>
+                            <span className="font-semibold text-red-500">{fmtK(v.payable)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </Card>
