@@ -365,9 +365,6 @@ export function LoginPage() {
             <h1 className="text-[21px] font-extrabold text-gray-900 tracking-tight leading-snug"
               style={{ fontFamily: 'Manrope, sans-serif' }}>
               {t('login.title')}
-              <span className="inline-block ml-2 align-middle">
-                {branding.logo_url && <img src={branding.logo_url} alt="" className="h-6 object-contain inline-block" />}
-              </span>
             </h1>
             <p className="text-[13px] text-gray-400 mt-1 mb-8">
               {branding.name} hesabınızla devam edin
