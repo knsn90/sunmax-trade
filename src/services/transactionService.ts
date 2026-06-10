@@ -174,52 +174,47 @@ export const transactionService = {
     const txnColumn = entityType === 'customer' ? 'customer_id' : 'supplier_id';
     const partyType = entityType; // 'customer' | 'supplier'
 
-    // Step 1: entity name — for party_name fallback (covers manually typed entries without FK link)
     const entityTable = entityType === 'customer' ? 'customers' : 'suppliers';
-    const { data: entityRow } = await supabase
-      .from(entityTable)
-      .select('name')
-      .eq('id', entityId)
-      .single();
-    const entityName = (entityRow as { name?: string } | null)?.name ?? null;
 
-    // Step 2: get trade file IDs for this entity
-    const { data: files } = await supabase
-      .from('trade_files')
-      .select('id')
-      .eq(txnColumn, entityId);
-    const fileIds = (files ?? []).map((f: { id: string }) => f.id);
+    // Step 1 + 2 paralel: entity adı ve dosya ID'leri aynı anda çek
+    const [entityResult, filesResult] = await Promise.all([
+      supabase.from(entityTable).select('name').eq('id', entityId).single(),
+      supabase.from('trade_files').select('id').eq(txnColumn, entityId).is('deleted_at', null),
+    ]);
+    const entityName = (entityResult.data as { name?: string } | null)?.name ?? null;
+    const fileIds = ((filesResult.data ?? []) as { id: string }[]).map(f => f.id);
 
-    // Step 3a: FK-based query — direct match OR trade-file match
-    // Always filter by party_type on file matches so customer/supplier don't bleed into each other.
-    let query = supabase.from('transactions').select(TXN_SELECT);
+    // Step 3a ve 3b paralel: FK sorgusu + isim fallback aynı anda
+    let mainQueryBuilder = supabase.from('transactions').select(TXN_SELECT);
     if (fileIds.length > 0) {
-      query = query.or(
+      mainQueryBuilder = mainQueryBuilder.or(
         `${txnColumn}.eq.${entityId},` +
         `and(trade_file_id.in.(${fileIds.join(',')}),party_type.eq.${partyType})`,
       );
     } else {
-      query = query.eq(txnColumn, entityId);
+      mainQueryBuilder = mainQueryBuilder.eq(txnColumn, entityId);
     }
-    if (approvedOnly) query = query.eq('doc_status', 'approved');
-    const { data: mainData, error } = await query.order('transaction_date', { ascending: true });
-    if (error) throw new Error(error.message);
+    if (approvedOnly) mainQueryBuilder = mainQueryBuilder.eq('doc_status', 'approved');
 
-    // Step 3b: party_name fallback — finds transactions entered without a customer FK
-    // (user typed the name instead of selecting from the entity dropdown).
-    // Uses ilike for case-insensitive matching. Only requires customer_id IS NULL.
-    let nameData: typeof mainData = [];
-    if (entityName) {
-      let nameQuery = supabase
-        .from('transactions')
-        .select(TXN_SELECT)
-        .ilike('party_name', entityName)
-        .is('customer_id', null)
-        .order('transaction_date', { ascending: true });
-      if (approvedOnly) nameQuery = nameQuery.eq('doc_status', 'approved');
-      const { data: nd } = await nameQuery;
-      nameData = (nd ?? []) as typeof mainData;
-    }
+    let nameQueryBuilder = entityName
+      ? supabase
+          .from('transactions')
+          .select(TXN_SELECT)
+          .ilike('party_name', entityName)
+          .is('customer_id', null)
+      : null;
+    if (nameQueryBuilder && approvedOnly) nameQueryBuilder = nameQueryBuilder.eq('doc_status', 'approved');
+
+    const [mainResult, nameResult] = await Promise.all([
+      mainQueryBuilder.order('transaction_date', { ascending: true }),
+      nameQueryBuilder
+        ? nameQueryBuilder.order('transaction_date', { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (mainResult.error) throw new Error(mainResult.error.message);
+    const mainData = mainResult.data ?? [];
+    const nameData = (nameResult.data ?? []) as typeof mainData;
 
     // Merge and dedup by id
     const combined = [...(mainData ?? []), ...nameData];
