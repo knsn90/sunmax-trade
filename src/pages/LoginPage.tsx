@@ -7,7 +7,7 @@ import { loginSchema, type LoginFormData } from '@/types/forms';
 import { useAuth } from '@/hooks/useAuth';
 import { tenantService } from '@/services/tenantService';
 import { supabase } from '@/services/supabase';
-import { Eye, EyeOff, ArrowRight, Mail, Lock, Building2, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Building2, ChevronRight } from 'lucide-react';
 
 const REMEMBER_EMAIL_KEY = 'sunmax_remember_email';
 const REMEMBER_FLAG_KEY  = 'sunmax_remember_me';
@@ -93,59 +93,54 @@ function TenantSelector() {
       .finally(() => setLoading(false));
   }, []);
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-10 bg-gray-400" />
-        <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full opacity-5 bg-gray-400" />
-      </div>
+  const fontUi = 'Inter, -apple-system, BlinkMacSystemFont, sans-serif';
 
-      <div className="relative w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-center mx-auto mb-4">
-            <Building2 className="h-7 w-7 text-gray-400" />
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#F9F9F9', fontFamily: fontUi }}>
+      <div className="w-full max-w-[400px]">
+        <div className="text-center mb-7">
+          <div className="w-11 h-11 rounded-lg bg-white border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] flex items-center justify-center mx-auto mb-4">
+            <Building2 className="h-5 w-5 text-[#6F6F6F]" />
           </div>
-          <h1 className="text-[22px] font-extrabold text-gray-900 tracking-tight">Giriş Yapın</h1>
-          <p className="text-[13px] text-gray-400 mt-1">Hangi firma hesabına giriş yapacaksınız?</p>
+          <h1 className="text-[26px] font-bold text-[#1A1A1A] tracking-[-0.02em] leading-[1.15]">Giriş Yapın</h1>
+          <p className="text-[14px] text-[#6F6F6F] mt-1.5">Hangi firma hesabına giriş yapacaksınız?</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+            <div className="flex items-center justify-center py-14">
+              <div className="w-5 h-5 border-2 border-[#E5E5E5] border-t-[#6F6F6F] rounded-full animate-spin" />
             </div>
           ) : tenants.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-[13px] text-gray-400">Aktif firma bulunamadı</p>
+            <div className="py-14 text-center">
+              <p className="text-[14px] text-[#6F6F6F]">Aktif firma bulunamadı</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-[#F2F2F2]">
               {tenants.map(t => (
                 <button
                   key={t.id}
                   onClick={() => navigate(`/login/${nameToSlug(t.name)}`)}
-                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors group text-left"
+                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-[#F9F9F9] transition-colors group text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden bg-white border border-gray-100">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-white border border-[#E5E5E5]">
                     {t.logo_url
                       ? <img src={t.logo_url} alt={t.name} className="w-full h-full object-contain" />
-                      : <span className="text-[14px] font-black" style={{ color: t.primary_color || '#dc2626' }}>{t.name.charAt(0)}</span>
+                      : <span className="text-[15px] font-bold" style={{ color: t.primary_color || '#FF5151' }}>{t.name.charAt(0)}</span>
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-gray-900 truncate">{t.name}</p>
-                    <p className="text-[10px] text-gray-400 font-mono">
-                      /login/{nameToSlug(t.name)}
-                    </p>
+                    <p className="text-[14px] font-medium text-[#1A1A1A] truncate">{t.name}</p>
+                    <p className="text-[12px] text-[#9CA3AF] font-mono">/login/{nameToSlug(t.name)}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-[#D1D5DB] group-hover:text-[#6F6F6F] transition-colors shrink-0" />
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <p className="text-center text-[10px] text-gray-300 mt-6">Trade Management Platform</p>
+        <p className="text-center text-[12px] text-[#9CA3AF] mt-5">Trade Management Platform</p>
       </div>
     </div>
   );
@@ -282,24 +277,24 @@ export function LoginPage() {
 
   if (!brandingLoaded) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#f1f5f9' }}>
-        <div className="w-8 h-8 rounded-full border-4 border-gray-200 border-t-gray-500 animate-spin" />
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#F9F9F9' }}>
+        <div className="w-7 h-7 rounded-full border-[3px] border-[#E5E5E5] border-t-[#6F6F6F] animate-spin" />
       </div>
     );
   }
 
   if (notFound) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-sm w-full text-center">
-          <Building2 className="h-10 w-10 text-gray-200 mx-auto mb-4" />
-          <p className="text-[15px] font-bold text-gray-700">Firma bulunamadı</p>
-          <p className="text-[12px] text-gray-400 mt-1 mb-5">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#F9F9F9', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+        <div className="bg-white rounded-xl border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] p-8 max-w-[400px] w-full text-center">
+          <Building2 className="h-9 w-9 text-[#D1D5DB] mx-auto mb-4" />
+          <p className="text-[16px] font-bold text-[#1A1A1A]">Firma bulunamadı</p>
+          <p className="text-[13px] text-[#6F6F6F] mt-1.5 mb-5">
             "<span className="font-mono">{tenantSlug}</span>" adresine ait aktif bir firma yok.
           </p>
           <button
             onClick={() => navigate('/login')}
-            className="h-9 px-4 rounded-xl bg-gray-100 text-[12px] font-semibold text-gray-600 hover:bg-gray-200 transition-colors"
+            className="h-9 px-4 rounded-lg bg-[#F2F2F2] text-[13px] font-medium text-[#1A1A1A] hover:bg-[#E5E5E5] transition-colors"
           >
             ← Firma listesine dön
           </button>
@@ -313,179 +308,136 @@ export function LoginPage() {
     return <TenantSelector />;
   }
 
-  const accent = branding.primary_color || '#dc2626';
-  // Koyu panel: marka renginin çok koyu tonu (Kickflow tarzı)
-  const panelBg = `linear-gradient(165deg, color-mix(in srgb, ${accent} 30%, #0d0a16) 0%, #0d0a16 70%)`;
+  const accent = branding.primary_color || '#FF5151';
+  const fontUi = 'Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+  // Coda input: minimal chrome — ince kenarlık; focus aksan rengiyle (style bloğu)
+  const inputBase =
+    'coda-input w-full h-11 rounded-lg text-[14px] text-[#1A1A1A] placeholder-[#9CA3AF] bg-white outline-none transition-colors border border-[#E5E5E5]';
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 md:p-10 relative overflow-hidden"
-      style={{ background: `linear-gradient(135deg, ${accent} 0%, color-mix(in srgb, ${accent} 75%, #7c3aed) 100%)` }}>
+    <div
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{ background: '#F9F9F9', fontFamily: fontUi, ['--accent' as string]: accent, ['--accent-ring' as string]: accent + '26' }}
+    >
+      <style>{`
+        .coda-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+      `}</style>
+      <div className="w-full max-w-[400px]">
 
-      {/* ── Yüzen geometrik şekiller ── */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {/* büyük çember konturları */}
-        <div className="absolute -left-40 top-1/2 -translate-y-1/2 w-[560px] h-[560px] rounded-full border border-white/15" />
-        <div className="absolute -right-48 -bottom-48 w-[640px] h-[640px] rounded-full border border-white/10" />
-        <div className="absolute right-[12%] top-[8%] w-40 h-40 rounded-full border border-white/10" />
-        {/* küçük şekiller */}
-        <div className="absolute left-[6%] top-[18%] w-4 h-4 bg-white/25 rounded-[3px]" />
-        <div className="absolute left-[12%] bottom-[14%] w-5 h-5 bg-white/15 rounded-md rotate-45" />
-        <div className="absolute right-[8%] top-[12%] w-5 h-5 bg-white/20 rounded-md rotate-45" />
-        <div className="absolute right-[5%] bottom-[28%] w-4 h-4 rounded-[3px] bg-emerald-400/70" />
-        <div className="absolute left-[45%] bottom-[6%] w-3 h-3 rounded-full bg-white/20" />
-        <div className="absolute right-[30%] top-[5%] w-2.5 h-2.5 rounded-full bg-white/25" />
-      </div>
-
-      {/* ── Koyu ana panel ── */}
-      <div className="relative w-full max-w-5xl rounded-[2rem] px-5 pt-9 pb-7 md:px-14 md:pt-12 md:pb-12 shadow-2xl overflow-hidden"
-        style={{ background: panelBg }}>
-
-        {/* panel içi hafif parıltı */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden
-          style={{ background: `radial-gradient(ellipse 60% 50% at 50% -10%, color-mix(in srgb, ${accent} 35%, transparent), transparent)` }} />
-
-        {/* Marka adı */}
-        <div className="relative flex items-center justify-center mb-7 md:mb-9">
+        {/* ── Marka — Coda doc-icon tarzı ── */}
+        <div className="flex flex-col items-center mb-7">
           {branding.logo_url ? (
-            <img src={branding.logo_url} alt={branding.name} className="h-9 md:h-10 object-contain"
-              style={{ filter: 'brightness(0) invert(1)' }} />
+            <img src={branding.logo_url} alt={branding.name} className="h-10 object-contain" />
           ) : (
-            <span className="text-white text-[24px] md:text-[26px] tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              <strong className="font-black">{branding.name.split(' ')[0]}</strong>
-              <span className="font-light opacity-80">{branding.name.split(' ').slice(1).join(' ') && ' ' + branding.name.split(' ').slice(1).join(' ')}</span>
-            </span>
+            <div
+              className="w-11 h-11 rounded-lg flex items-center justify-center text-white text-[20px] font-bold shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
+              style={{ background: accent }}
+            >
+              {branding.name.charAt(0)}
+            </div>
           )}
         </div>
 
-        {/* ── Beyaz kart: sol form + sağ illüstrasyon ── */}
-        <div className="relative bg-white rounded-3xl shadow-xl flex overflow-hidden" style={{ minHeight: 480 }}>
+        {/* ── Kart ── */}
+        <div className="bg-white rounded-xl border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] px-8 py-9">
+          <h1 className="text-[26px] font-bold text-[#1A1A1A] tracking-[-0.02em] leading-[1.15]">
+            {t('login.title')}
+          </h1>
+          <p className="text-[14px] text-[#6F6F6F] mt-1.5 mb-7 leading-[1.5]">
+            {branding.name} hesabınızla devam edin
+          </p>
 
-          {/* SOL — Form */}
-          <div className="w-full md:w-[46%] md:border-r border-gray-100 px-7 py-9 md:px-10 md:py-11 flex flex-col justify-center">
-            <h1 className="text-[21px] font-extrabold text-gray-900 tracking-tight leading-snug"
-              style={{ fontFamily: 'Manrope, sans-serif' }}>
-              {t('login.title')}
-            </h1>
-            <p className="text-[13px] text-gray-400 mt-1 mb-8">
-              {branding.name} hesabınızla devam edin
-            </p>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* E-posta */}
+            <div>
+              <label className="block text-[13px] font-medium text-[#1A1A1A] mb-1.5">
+                {t('login.usernamePlaceholder')}
+              </label>
+              <input
+                type="email"
+                autoComplete="email"
+                placeholder="ornek@firma.com"
+                className={`${inputBase} px-3.5`}
+                {...register('email')}
+              />
+              {errors.email && <p className="text-[12px] mt-1.5 text-[#FF5151]">{errors.email.message}</p>}
+            </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
-              <div>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <input type="email" autoComplete="email" placeholder={t('login.usernamePlaceholder')}
-                    className="w-full h-12 pl-11 pr-4 rounded-full text-[13px] text-gray-700 placeholder-gray-400 outline-none transition-all bg-gray-100/80 border border-transparent focus:bg-white focus:border-gray-200 focus:shadow-sm"
-                    {...register('email')} />
-                </div>
-                {errors.email && <p className="text-[11px] mt-1 pl-3 text-red-500">{errors.email.message}</p>}
-              </div>
-
-              <div>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                    <Lock className="h-4 w-4" />
-                  </div>
-                  <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder={t('login.passwordPlaceholder', { defaultValue: 'Şifre' })}
-                    className="w-full h-12 pl-11 pr-12 rounded-full text-[13px] text-gray-700 placeholder-gray-400 outline-none transition-all bg-gray-100/80 border border-transparent focus:bg-white focus:border-gray-200 focus:shadow-sm"
-                    {...register('password')} />
-                  <button type="button" onClick={() => setShowPassword(v => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.password && <p className="text-[11px] mt-1 pl-3 text-red-500">{errors.password.message}</p>}
-              </div>
-
-              <div className="flex items-center justify-between pt-1 px-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded cursor-pointer" style={{ accentColor: accent }} />
-                  <span className="text-[11px] text-gray-500">{t('login.rememberMe')}</span>
+            {/* Şifre */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[13px] font-medium text-[#1A1A1A]">
+                  {t('login.passwordPlaceholder', { defaultValue: 'Şifre' })}
                 </label>
-                <span className="text-[11px] cursor-pointer text-gray-400 hover:text-gray-600 transition-colors">
+                <button
+                  type="button"
+                  className="text-[12px] text-[#6F6F6F] hover:text-[#1A1A1A] transition-colors"
+                >
                   {t('login.forgotPassword')}
-                </span>
+                </button>
               </div>
-
-              {error && (
-                <div className="text-[11px] rounded-xl px-4 py-3 text-red-600 bg-red-50 border border-red-100">{error}</div>
-              )}
-
-              <button type="submit" disabled={isSubmitting}
-                className="w-full h-12 mt-2 rounded-xl text-[14px] font-bold tracking-wide flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] disabled:opacity-60 transition-all shadow-lg text-white"
-                style={{ background: accent, boxShadow: `0 8px 24px -6px ${accent}80` }}>
-                {isSubmitting ? t('login.submitting') : <>{t('login.submit')} <ArrowRight className="h-4 w-4" /></>}
-              </button>
-            </form>
-
-            <div className="border-t border-gray-100 mt-8 pt-5 text-center">
-              <span className="text-[12px] text-gray-500 font-medium">Başka bir firma mı arıyorsunuz? </span>
-              <button onClick={() => navigate('/login')} className="text-[12px] font-bold hover:underline" style={{ color: accent }}>
-                Firma Seç
-              </button>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className={`${inputBase} pl-3.5 pr-11`}
+                  {...register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1A1A1A] transition-colors"
+                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                >
+                  {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-[12px] mt-1.5 text-[#FF5151]">{errors.password.message}</p>}
             </div>
-          </div>
 
-          {/* SAĞ — İllüstrasyon (Kickflow tarzı) */}
-          <div className="hidden md:flex flex-1 items-center justify-center relative p-10">
-            {branding.login_bg_url && (
-              <img src={branding.login_bg_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-[0.06]" />
+            {/* Beni hatırla */}
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-0.5">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded-[4px] cursor-pointer"
+                style={{ accentColor: accent }}
+              />
+              <span className="text-[13px] text-[#6F6F6F]">{t('login.rememberMe')}</span>
+            </label>
+
+            {error && (
+              <div className="text-[13px] rounded-lg px-3.5 py-2.5 text-[#1A1A1A] bg-[#FFF1F1] border border-[#FFD4D4]">
+                {error}
+              </div>
             )}
-            <div className="relative w-[340px] h-[340px] flex items-center justify-center">
-              {/* dış kesikli halka */}
-              <div className="absolute inset-0 rounded-full border-2 border-dashed border-gray-200" style={{ animation: 'spin 60s linear infinite' }} />
-              {/* iç dolgu daire */}
-              <div className="absolute inset-10 rounded-full bg-gray-50" />
 
-              {/* dönüş okları */}
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 340 340" fill="none" aria-hidden>
-                <path d="M 96 52 A 150 150 0 0 1 254 58" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M 96 52 l 12 -8 m -12 8 l 14 4" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M 244 288 A 150 150 0 0 1 86 282" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M 244 288 l -12 8 m 12 -8 l -14 -4" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-
-              {/* merkez rozet — logo */}
-              <div className="relative z-10 w-36 h-36 rounded-full flex items-center justify-center shadow-xl"
-                style={{ background: `linear-gradient(145deg, color-mix(in srgb, ${accent} 18%, #ffffff), #ffffff)` , boxShadow: `0 16px 40px -8px ${accent}40, inset 0 0 0 8px color-mix(in srgb, ${accent} 10%, #ffffff)` }}>
-                <div className="w-24 h-24 rounded-full bg-white shadow-inner flex items-center justify-center overflow-hidden border border-gray-100">
-                  {branding.logo_url
-                    ? <img src={branding.logo_url} alt={branding.name} className="w-16 h-16 object-contain" />
-                    : <span className="text-[32px] font-black" style={{ color: accent }}>{branding.name.charAt(0)}</span>
-                  }
-                </div>
-              </div>
-
-              {/* yan avatar daireleri */}
-              <div className="absolute left-[-14px] top-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-gray-100 border-4 border-white shadow-lg flex items-end justify-center overflow-hidden">
-                <svg viewBox="0 0 64 64" className="w-16 h-16" aria-hidden>
-                  <circle cx="32" cy="22" r="11" fill="#1f2937" />
-                  <path d="M 10 64 Q 12 42 32 42 Q 52 42 54 64 Z" fill="#ec4899" />
-                  <circle cx="32" cy="24" r="9" fill="#fcd9c4" />
-                  <path d="M 22 20 Q 24 10 34 12 Q 44 13 42 24 Q 41 15 33 15 Q 25 15 24 24 Z" fill="#1f2937" />
-                </svg>
-              </div>
-              <div className="absolute right-[-14px] top-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-gray-100 border-4 border-white shadow-lg flex items-end justify-center overflow-hidden">
-                <svg viewBox="0 0 64 64" className="w-16 h-16" aria-hidden>
-                  <path d="M 10 64 Q 12 42 32 42 Q 52 42 54 64 Z" fill="#34d399" />
-                  <circle cx="32" cy="24" r="9" fill="#fcd9c4" />
-                  <path d="M 22 22 Q 21 12 32 12 Q 43 12 42 22 Q 40 16 32 16 Q 24 16 22 22 Z" fill="#374151" />
-                </svg>
-              </div>
-
-              {/* dekoratif noktalar */}
-              <span className="absolute left-[10%] top-[6%] w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span className="absolute right-[4%] bottom-[18%] w-2 h-2 rounded-full bg-pink-500" />
-              <span className="absolute left-[2%] bottom-[10%] w-2 h-2 rounded-full" style={{ background: accent }} />
-              <span className="absolute right-[16%] top-[2%] w-1.5 h-1.5 rounded-full bg-gray-300" />
-            </div>
-          </div>
+            {/* CTA — tek aksan rengi */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full h-11 mt-1 rounded-lg text-[14px] font-semibold text-white flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+              style={{ background: accent }}
+              onMouseEnter={e => { (e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`); }}
+              onMouseLeave={e => { (e.currentTarget.style.background = accent); }}
+            >
+              {isSubmitting ? t('login.submitting') : <>{t('login.submit')} <ArrowRight className="h-4 w-4" /></>}
+            </button>
+          </form>
         </div>
 
-        <p className="relative text-center text-[10px] text-white/40 mt-6">© {new Date().getFullYear()} {branding.name} · Trade Management Platform</p>
+        {/* ── Kart altı ── */}
+        <div className="text-center mt-5">
+          <span className="text-[13px] text-[#6F6F6F]">Başka bir firma mı arıyorsunuz? </span>
+          <button onClick={() => navigate('/login')} className="text-[13px] font-semibold hover:underline" style={{ color: accent }}>
+            Firma Seç
+          </button>
+        </div>
+        <p className="text-center text-[12px] text-[#9CA3AF] mt-3">
+          © {new Date().getFullYear()} {branding.name}
+        </p>
       </div>
     </div>
   );
