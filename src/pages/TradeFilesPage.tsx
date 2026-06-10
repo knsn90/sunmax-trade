@@ -125,8 +125,8 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
 
 // ─── Desktop table row ─────────────────────────────────────────────────────────
 const ROW_BG: Record<string, string> = {
-  completed: 'bg-emerald-50/60 hover:bg-emerald-50',
-  delivery:  'bg-amber-50/50  hover:bg-amber-50',
+  completed: 'bg-[#16A34A]/[0.04] hover:bg-[#16A34A]/[0.07]',
+  delivery:  'bg-[#B45309]/[0.04] hover:bg-[#B45309]/[0.07]',
 };
 
 function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
@@ -136,28 +136,28 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
   const { t: tc } = useTranslation('common');
   const custName = file.customer?.name ?? t('unknown');
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
-  const rowBg = ROW_BG[file.status] ?? 'hover:bg-gray-50/60';
+  const rowBg = ROW_BG[file.status] ?? 'hover:bg-[#FAF9F6]';
   return (
     <tr
-      className={`border-b border-gray-50 cursor-pointer transition-colors ${rowBg}`}
+      className={`border-b border-[#F4F2EE] cursor-pointer transition-colors ${rowBg}`}
       onClick={onClick}
     >
-      <td className="px-4 py-3">
+      <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
           <EntityAvatar name={custName} logoUrl={file.customer?.logo_url} size="sm" />
           <div className="min-w-0">
-            <div className="text-[13px] font-semibold text-gray-900 truncate">{custName}</div>
-            <div className="text-[10px] font-mono text-gray-400 truncate">{file.file_no}</div>
+            <div className="text-[13px] font-semibold text-[#0A0A0A] truncate">{custName}</div>
+            <div className="text-[10px] font-mono text-[#A8A8AD] truncate">{file.file_no}</div>
             {file.creator?.full_name && (
-              <div className="text-[10px] text-gray-400 truncate">↳ {file.creator.full_name}</div>
+              <div className="text-[10px] text-[#A8A8AD] truncate">↳ {file.creator.full_name}</div>
             )}
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 text-[12px] text-gray-600 whitespace-nowrap">{file.product?.name ?? '—'}</td>
-      <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 whitespace-nowrap">{fN(file.tonnage_mt, 0)} {file.product?.unit ?? 'MT'}</td>
-      <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{fDate(file.file_date)}</td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3.5 text-[12px] text-[#6F6F6F] whitespace-nowrap">{file.product?.name ?? '—'}</td>
+      <td className="px-4 py-3.5 text-[12px] font-semibold text-[#0A0A0A] whitespace-nowrap">{fN(file.tonnage_mt, 0)} {file.product?.unit ?? 'MT'}</td>
+      <td className="px-4 py-3.5 text-[12px] text-[#8A8A8E] whitespace-nowrap">{fDate(file.file_date)}</td>
+      <td className="px-4 py-3.5">
         <div className="flex items-center gap-1.5">
           <span className={cn('w-2 h-2 rounded-full shrink-0', meta.dot)} />
           <span className={cn('text-[11px] font-semibold', meta.text)}>
@@ -165,7 +165,7 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
           </span>
         </div>
       </td>
-      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+      <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-1">
           {/* Activity info icon — always visible */}
           <FileActivityPopover file={file} />
@@ -174,13 +174,13 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
             <>
               <button
                 onClick={onEdit}
-                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
+                className="flex items-center gap-1 text-[11px] font-medium text-[#8A8A8E] hover:text-[#0A0A0A] transition-colors px-2.5 py-1.5 rounded-full hover:bg-[#F4F2EE]"
               >
                 <Pencil className="h-3 w-3" /> Düzenle
               </button>
               <button
                 onClick={onDelete}
-                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+                className="flex items-center gap-1 text-[11px] font-medium text-[#8A8A8E] hover:text-[#EF4444] transition-colors px-2.5 py-1.5 rounded-full hover:bg-[#EF4444]/8"
               >
                 <Trash2 className="h-3 w-3" /> Sil
               </button>
@@ -386,25 +386,26 @@ export function TradeFilesPage() {
       {/* ══════════════════════════════════════════════════════════════
           DESKTOP
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block">
+      <div className="hidden md:block md:-mt-6 md:-mx-6 min-h-screen" style={{ background: '#EFEDE8', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+       <div className="px-8 pt-7 pb-8">
 
         {/* Page Header */}
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-            <FolderOpen style={{ width: 18, height: 18 }} className="text-gray-600" />
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+            <FolderOpen style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
           </div>
           <div>
-            <h1 className="text-[15px] font-bold text-gray-900">Ticaret Dosyaları</h1>
-            <p className="text-[11px] text-gray-400">Tüm ithalat ve ihracat dosyaları</p>
+            <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Ticaret Dosyaları</h1>
+            <p className="text-[13px] text-[#8A8A8E] mt-0.5">Tüm ithalat ve ihracat dosyaları</p>
           </div>
         </div>
 
         {/* Toolbar: search + new */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">
-            <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-2 bg-white rounded-full px-4 h-10 border border-[#ECECEC] flex-1 max-w-xs">
+            <Search className="h-4 w-4 text-[#A8A8AD] shrink-0" />
             <input
-              className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+              className="flex-1 text-[13px] text-[#0A0A0A] outline-none bg-transparent placeholder:text-[#A8A8AD]"
               placeholder={t('filters.search')}
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -414,8 +415,10 @@ export function TradeFilesPage() {
           {writable && (
             <button
               onClick={() => setNewFileOpen(true)}
-              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap"
+              className="h-10 px-5 rounded-full text-white text-[13px] font-semibold transition-colors whitespace-nowrap shadow-[0_8px_24px_rgba(0,0,0,0.04)]"
               style={{ background: accent }}
+              onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`; }}
+              onMouseLeave={e => { e.currentTarget.style.background = accent; }}
             >
               {t('buttons.newFile')}
             </button>
@@ -423,7 +426,7 @@ export function TradeFilesPage() {
         </div>
 
         {/* Filter pills (segment) */}
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mb-4 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full mb-5 w-fit max-w-full overflow-x-auto scrollbar-none">
           {STATUS_FILTERS.map(s => {
             const active = filter === s.key;
             return (
@@ -431,25 +434,25 @@ export function TradeFilesPage() {
                 key={s.key}
                 onClick={() => { setFilter(s.key); setPage(1); }}
                 className={cn(
-                  'shrink-0 px-3.5 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
-                  active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                  'shrink-0 px-4 h-8 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap',
+                  active ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]',
                 )}
               >
                 {s.label}
                 {active && totalCount > 0 && (
-                  <span className="ml-1 text-gray-400">{totalCount}</span>
+                  <span className="ml-1 text-[#A8A8AD]">{totalCount}</span>
                 )}
               </button>
             );
           })}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-[#F4F2EE]">
                 {[t('table.customerFileNo'), t('table.product'), t('table.tonnage'), tc('table.date'), tc('table.status'), ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">
                     {h}
                   </th>
                 ))}
@@ -457,10 +460,10 @@ export function TradeFilesPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={6} className="py-16 text-center"><div className="inline-block w-5 h-5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" /></td></tr>
+                <tr><td colSpan={6} className="py-16 text-center"><div className="inline-block w-5 h-5 border-2 border-[#ECECEC] rounded-full animate-spin" style={{ borderTopColor: accent }} /></td></tr>
               ) : paged.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center text-[13px] text-gray-400">
+                  <td colSpan={6} className="py-16 text-center text-[13px] text-[#A8A8AD]">
                     {t('empty.noRecords')}
                   </td>
                 </tr>
@@ -480,14 +483,14 @@ export function TradeFilesPage() {
           </table>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1.5 py-4 border-t border-gray-50">
+            <div className="flex items-center justify-center gap-1.5 py-4 border-t border-[#F4F2EE]">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                 <button
                   key={p}
                   onClick={() => setPage(p)}
                   className={cn(
-                    'w-7 h-7 rounded-full text-[11px] font-bold transition-all',
-                    p === currentPage ? 'text-white shadow-sm' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                    'w-8 h-8 rounded-full text-[11px] font-bold transition-all',
+                    p === currentPage ? 'text-white' : 'bg-[#F4F2EE] text-[#8A8A8E] hover:bg-[#EAE7E0]'
                   )}
                   style={p === currentPage ? { background: accent } : {}}
                 >
@@ -497,6 +500,7 @@ export function TradeFilesPage() {
             </div>
           )}
         </div>
+       </div>
       </div>
 
       {/* Modals */}
