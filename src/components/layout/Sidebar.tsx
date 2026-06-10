@@ -81,22 +81,22 @@ export function Sidebar() {
   // Süper admin bölümü — sadece is_super_admin için göster
   const superAdminSection = isSuperAdmin ? (
     <div className="pt-3 mt-1">
-      <div className="text-[10px] font-medium uppercase tracking-[0.08em] px-3 py-1.5 text-[#9B59B6]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.1em] px-3.5 py-1.5 text-[#6B4EE6]">
         Süper Admin
       </div>
       <NavLink
         to="/admin/tenants"
         className={({ isActive }) =>
           cn(
-            'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg transition-colors mb-0.5 text-[13px]',
-            isActive ? 'font-medium bg-[#9B59B6]/10 text-[#9B59B6]' : 'text-[#6F6F6F] hover:text-[#1A1A1A] hover:bg-[#F9F9F9]',
+            'flex items-center gap-2.5 w-full px-3.5 h-9 rounded-full transition-colors mb-0.5 text-[13px]',
+            isActive ? 'font-semibold bg-[#6B4EE6]/10 text-[#6B4EE6]' : 'text-[#8A8A8E] hover:text-[#0A0A0A] hover:bg-[#F4F2EE]',
           )
         }
       >
         <Building2 className="flex-shrink-0 h-4 w-4" />
         <span>Firma Yönetimi</span>
         {allTenants.length > 0 && (
-          <span className="ml-auto text-[10px] font-semibold bg-[#9B59B6]/12 text-[#9B59B6] rounded-full px-1.5 py-0.5">
+          <span className="ml-auto text-[10px] font-bold bg-[#6B4EE6] text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
             {allTenants.length}
           </span>
         )}
@@ -106,30 +106,30 @@ export function Sidebar() {
 
   return (
     <aside
-      className="hidden md:flex w-[220px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin bg-white border-r border-[#E5E5E5]"
+      className="hidden md:flex w-[224px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin bg-white border-r border-[#ECECEC]"
       style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
     >
       {/* Logo */}
-      <div className="flex items-center justify-center px-4 py-3 flex-shrink-0 border-b border-[#E5E5E5] min-h-[56px]">
+      <div className="flex items-center justify-center px-4 py-3.5 flex-shrink-0 border-b border-[#ECECEC] min-h-[60px]">
         {logoUrl ? (
           <img
             src={logoUrl}
             alt={currentTenant?.name ?? ''}
-            className="max-h-7 max-w-[156px] w-full object-contain"
+            className="max-h-7 max-w-[160px] w-full object-contain"
           />
         ) : currentTenant ? (
           /* Tenant yüklendi ama logo yok — firma adı ve baş harfi göster */
           <div className="flex items-center gap-2.5 w-full">
             <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 shrink-0"
+              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shrink-0"
               style={{ background: barBg }}
             >
-              <span className="font-bold text-[13px] text-white">
+              <span className="font-bold text-[14px] text-white">
                 {currentTenant.name.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="min-w-0">
-              <div className="font-semibold text-[13px] tracking-[-0.01em] text-[#1A1A1A] leading-tight truncate">
+              <div className="font-bold text-[14px] tracking-[-0.01em] text-[#0A0A0A] leading-tight truncate">
                 {currentTenant.name}
               </div>
             </div>
@@ -137,21 +137,21 @@ export function Sidebar() {
         ) : (
           /* Henüz yüklenmedi — skeleton */
           <div className="flex items-center gap-2.5 w-full">
-            <div className="w-7 h-7 rounded-lg bg-[#F2F2F2] animate-pulse shrink-0" />
+            <div className="w-8 h-8 rounded-xl bg-[#EFEDE8] animate-pulse shrink-0" />
             <div className="flex-1 space-y-1.5">
-              <div className="h-2.5 bg-[#F2F2F2] rounded animate-pulse w-3/4" />
-              <div className="h-2 bg-[#F9F9F9] rounded animate-pulse w-1/2" />
+              <div className="h-2.5 bg-[#EFEDE8] rounded animate-pulse w-3/4" />
+              <div className="h-2 bg-[#F4F2EE] rounded animate-pulse w-1/2" />
             </div>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-3 px-3 space-y-0.5">
+      <nav className="flex-1 py-3.5 px-3 space-y-0.5">
         {sections.map((section, si) => (
           <div key={si} className={si > 0 ? 'pt-3' : ''}>
             {section.labelKey && (
-              <div className="text-[10px] font-medium uppercase tracking-[0.08em] px-3 py-1.5 text-[#9CA3AF]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.1em] px-3.5 py-1.5 text-[#A8A8AD]">
                 {t(section.labelKey)}
               </div>
             )}
@@ -161,8 +161,8 @@ export function Sidebar() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg transition-colors mb-0.5 text-[13px]',
-                    isActive ? 'font-medium' : 'text-[#6F6F6F] hover:text-[#1A1A1A] hover:bg-[#F9F9F9]',
+                    'flex items-center gap-2.5 w-full px-3.5 h-9 rounded-full transition-colors mb-0.5 text-[13px]',
+                    isActive ? 'font-semibold' : 'text-[#8A8A8E] hover:text-[#0A0A0A] hover:bg-[#F4F2EE]',
                   )
                 }
                 style={({ isActive }) => isActive ? { background: `${barBg}14`, color: barBg } : {}}
@@ -171,7 +171,7 @@ export function Sidebar() {
                   <>
                     <span
                       className="flex-shrink-0 h-4 w-4"
-                      style={{ color: isActive ? barBg : '#9CA3AF' }}
+                      style={{ color: isActive ? barBg : '#A8A8AD' }}
                     >
                       {item.icon}
                     </span>

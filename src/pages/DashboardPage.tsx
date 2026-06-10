@@ -125,43 +125,49 @@ function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
     <div
       onClick={onClick}
       style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
-      className={`bg-white rounded-xl px-4 py-4 md:px-5 md:py-4 border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden${onClick ? ' cursor-pointer hover:border-[#D1D5DB] active:scale-[0.99] transition-all' : ''}`}
+      className={`bg-white rounded-[18px] px-4 py-4 md:px-5 md:py-5 border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden${onClick ? ' cursor-pointer hover:shadow-[0_12px_32px_rgba(0,0,0,0.07)] active:scale-[0.99] transition-all' : ''}`}
     >
       {/* Mobile */}
       <div className="flex items-center gap-3 md:hidden">
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: accent + '14' }}>
           <span style={{ color: accent }}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] mb-0.5">{label}</div>
-          <div className="text-[16px] font-bold text-[#1A1A1A] leading-tight tabular-nums tracking-[-0.01em]">{value}</div>
+          <div className="text-[12px] font-medium text-[#8A8A8E] mb-0.5">{label}</div>
+          <div className="text-[18px] font-bold text-[#0A0A0A] leading-tight tabular-nums tracking-[-0.01em]">{value}</div>
           {sub && (
             <div className="flex items-center gap-1 mt-0.5">
-              {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-[#27AE60] shrink-0" />}
-              {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-[#FF5151] shrink-0" />}
-              <span className="text-[11px] text-[#9CA3AF] truncate">{sub}</span>
+              {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-[#16A34A] shrink-0" />}
+              {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-[#EF4444] shrink-0" />}
+              <span className="text-[11px] text-[#8A8A8E] truncate">{sub}</span>
             </div>
           )}
         </div>
       </div>
       {/* Desktop */}
-      <div className="hidden md:flex items-start gap-3.5">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: accent + '12' }}>
-          <span style={{ color: accent }}>{icon}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] mb-1">{label}</div>
-          <div className="text-[24px] font-bold text-[#1A1A1A] leading-none tracking-[-0.02em]">{value}</div>
-          {sub && (
-            <div className="flex items-center gap-1 mt-1.5">
-              {trend === 'up'   && <TrendingUp  className="h-3 w-3 text-[#27AE60] shrink-0" />}
-              {trend === 'down' && <TrendingDown className="h-3 w-3 text-[#FF5151] shrink-0" />}
-              <span className="text-[11px] text-[#6F6F6F]">{sub}</span>
-            </div>
+      <div className="hidden md:block">
+        <div className="flex items-center justify-between mb-3">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+            style={{ background: accent + '14' }}>
+            <span style={{ color: accent }}>{icon}</span>
+          </div>
+          {sub && trend && (
+            <span
+              className={cn(
+                'inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-1 rounded-full',
+                trend === 'up' ? 'bg-[#16A34A]/10 text-[#16A34A]' : 'bg-[#EF4444]/10 text-[#EF4444]',
+              )}
+            >
+              {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            </span>
           )}
         </div>
+        <div className="text-[13px] font-medium text-[#8A8A8E] mb-1.5">{label}</div>
+        <div className="text-[28px] font-bold text-[#0A0A0A] leading-none tracking-[-0.02em] tabular-nums">{value}</div>
+        {sub && (
+          <div className="text-[12px] text-[#8A8A8E] mt-2">{sub}</div>
+        )}
       </div>
     </div>
   );
@@ -175,16 +181,16 @@ function Card({ title, icon, children, action, actionLabel, className, dragHandl
   isFull?: boolean; onToggleSize?: () => void;
 }) {
   return (
-    <div className={cn('bg-white rounded-xl border border-[#E5E5E5] shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col h-[340px]', className)}
+    <div className={cn('bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-[340px]', className)}
       style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#F2F2F2] shrink-0">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#F4F2EE] shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          {icon && <span className="text-[#9CA3AF] shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6F6F6F] truncate">{title}</span>
+          {icon && <span className="text-[#8A8A8E] shrink-0 [&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>}
+          <span className="text-[15px] font-semibold tracking-[-0.01em] text-[#0A0A0A] truncate">{title}</span>
         </div>
         <div className="flex items-center gap-1">
           {action && (
-            <button onClick={action} className="text-[12px] font-medium text-[#6F6F6F] hover:text-[#1A1A1A] flex items-center gap-0.5 transition-colors mr-1">
+            <button onClick={action} className="text-[12px] font-medium text-[#8A8A8E] hover:text-[#0A0A0A] flex items-center gap-0.5 transition-colors mr-1">
               {actionLabel} <ChevronRight className="h-3.5 w-3.5" />
             </button>
           )}
@@ -192,7 +198,7 @@ function Card({ title, icon, children, action, actionLabel, className, dragHandl
           {onToggleSize && (
             <button
               onClick={onToggleSize}
-              className="hidden md:flex items-center justify-center w-6 h-6 rounded-md text-[#D1D5DB] hover:text-[#6F6F6F] hover:bg-[#F2F2F2] transition-colors"
+              className="hidden md:flex items-center justify-center w-7 h-7 rounded-full text-[#C4C4C9] hover:text-[#8A8A8E] hover:bg-[#F4F2EE] transition-colors"
               title={isFull ? 'Shrink to half width' : 'Expand to full width'}
             >
               {isFull ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
@@ -201,7 +207,7 @@ function Card({ title, icon, children, action, actionLabel, className, dragHandl
           {dragHandleProps && (
             <div
               {...dragHandleProps}
-              className="cursor-grab active:cursor-grabbing text-[#D1D5DB] hover:text-[#6F6F6F] touch-none flex items-center justify-center w-6 h-6 rounded-md hover:bg-[#F2F2F2] transition-colors"
+              className="cursor-grab active:cursor-grabbing text-[#C4C4C9] hover:text-[#8A8A8E] touch-none flex items-center justify-center w-7 h-7 rounded-full hover:bg-[#F4F2EE] transition-colors"
               title="Drag to reorder"
             >
               <GripVertical className="h-4 w-4" />
@@ -1566,20 +1572,20 @@ export function DashboardPage() {
       {/* ═══════════════════════════════════════════════════════════════════
           DESKTOP — Existing layout (unchanged)
       ════════════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block min-h-screen pb-8" style={{ background: '#F9F9F9', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
-        <div className="px-6 pt-6 space-y-4">
+      <div className="hidden md:block md:-mt-6 md:-mx-6 min-h-screen pb-8" style={{ background: '#EFEDE8', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+        <div className="px-8 pt-7 space-y-5">
 
           {/* Desktop greeting */}
-          <div className="flex items-center justify-between px-1 py-1">
+          <div className="flex items-center justify-between px-0.5">
             <div>
-              <div className="text-[12px] font-medium text-[#9CA3AF] mb-0.5">{greeting}</div>
-              <div className="text-[28px] font-bold text-[#1A1A1A] leading-tight tracking-[-0.02em]">{profile?.full_name ?? 'Dashboard'}</div>
+              <div className="text-[13px] font-medium text-[#8A8A8E] mb-1">{greeting}</div>
+              <div className="text-[34px] font-bold text-[#0A0A0A] leading-[1.05] tracking-[-0.02em]">{profile?.full_name ?? 'Dashboard'}</div>
             </div>
             <div className="flex items-center gap-4">
               {writable && (
                 <button
                   onClick={() => setFabOpen(v => !v)}
-                  className="h-10 px-4 rounded-lg flex items-center gap-2 text-white text-[14px] font-semibold transition-colors"
+                  className="h-11 px-5 rounded-full flex items-center gap-2 text-white text-[14px] font-semibold transition-colors shadow-[0_8px_24px_rgba(0,0,0,0.04)]"
                   style={{ background: accent }}
                   onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`; }}
                   onMouseLeave={e => { e.currentTarget.style.background = accent; }}
@@ -1592,7 +1598,7 @@ export function DashboardPage() {
           </div>
 
           {/* KPI Row */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-5">
             <KpiCard label={t('kpi.activeFiles')} value={String(activeFiles)} sub={t('kpi.newThisMonth', { count: thisMonth })}
               icon={<Package className="h-5 w-5" />} accent={accent}
               onClick={() => navigate('/pipeline')} />
@@ -1615,7 +1621,7 @@ export function DashboardPage() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={widgetOrder} strategy={verticalListSortingStrategy}>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 {widgetOrder.map(id => (
                   <SortableWidget key={id} id={id} isFull={widgetSizes[id] === 'full'}>
                     {(dragHandleProps) => {
