@@ -125,7 +125,7 @@ export const tradeFileService = {
 
     let query = supabase
       .from('trade_files')
-      .select(FILE_SELECT_PAGINATED, { count: 'exact' })
+      .select(FILE_SELECT_PAGINATED, { count: 'estimated' })  // exact → full table scan; estimated uses pg_stats
       .is('deleted_at', null)
       .is('parent_file_id', null)
       .order('created_at', { ascending: false })
