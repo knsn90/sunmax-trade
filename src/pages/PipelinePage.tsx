@@ -445,25 +445,26 @@ export function PipelinePage() {
       {/* ══════════════════════════════════════════════════════════════
           DESKTOP  (≥ md) — Kanban
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block">
+      <div className="hidden md:block md:-mt-6 md:-mx-6 min-h-screen" style={{ background: '#EFEDE8', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+       <div className="px-8 pt-7 pb-8">
 
         {/* Page Header */}
-        <div className="flex items-center gap-2.5 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-            <Workflow style={{ width: 18, height: 18 }} className="text-gray-600" />
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+            <Workflow style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
           </div>
           <div>
-            <h1 className="text-[15px] font-bold text-gray-900">Pipeline</h1>
-            <p className="text-[11px] text-gray-400">Aktif ticaret dosyalarının kanban görünümü</p>
+            <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Süreç Takibi</h1>
+            <p className="text-[13px] text-[#8A8A8E] mt-0.5">Aktif ticaret dosyalarının kanban görünümü</p>
           </div>
         </div>
 
         {/* Toolbar */}
         <div className="flex items-center gap-3 mb-5">
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 flex-1 max-w-xs">
-            <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2 bg-white rounded-full px-4 h-10 border border-[#ECECEC] flex-1 max-w-xs">
+            <Search className="h-4 w-4 text-[#A8A8AD] shrink-0" />
             <input
-              className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+              className="flex-1 text-[13px] text-[#0A0A0A] outline-none bg-transparent placeholder:text-[#A8A8AD]"
               placeholder={t('filters.search')}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -473,14 +474,14 @@ export function PipelinePage() {
           {/* Desktop KPI pills */}
           <div className="flex gap-2 flex-1">
             {([
-              { key: 'request',  label: tc('status.request'),  color: '#f59e0b', bg: '#fffbeb' },
-              { key: 'sale',     label: tc('status.sale'),     color: '#3b82f6', bg: '#eff6ff' },
-              { key: 'delivery', label: tc('status.delivery'), color: '#8b5cf6', bg: '#f5f3ff' },
+              { key: 'request',  label: tc('status.request'),  color: '#B45309', bg: '#FEF3E2' },
+              { key: 'sale',     label: tc('status.sale'),     color: '#1D4ED8', bg: '#E8EEFE' },
+              { key: 'delivery', label: tc('status.delivery'), color: '#6D28D9', bg: '#F0EBFE' },
             ] as const).map(s => (
-              <div key={s.key} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold"
+              <div key={s.key} className="flex items-center gap-1.5 px-3.5 h-10 rounded-full text-[12px] font-semibold"
                 style={{ background: s.bg, color: s.color }}>
-                <span className="font-black text-[15px]">{files.filter(f => f.status === s.key).length}</span>
-                <span className="opacity-70">{s.label}</span>
+                <span className="font-bold text-[15px] tabular-nums">{files.filter(f => f.status === s.key).length}</span>
+                <span className="opacity-80">{s.label}</span>
               </div>
             ))}
           </div>
@@ -488,10 +489,12 @@ export function PipelinePage() {
           {writable && (
             <button
               onClick={() => setNewFileOpen(true)}
-              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap flex items-center gap-1.5"
-              style={{ background: 'linear-gradient(135deg, #b70011, #dc2626)' }}
+              className="h-10 px-5 rounded-full text-white text-[13px] font-semibold transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.04)]"
+              style={{ background: accent }}
+              onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`; }}
+              onMouseLeave={e => { e.currentTarget.style.background = accent; }}
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
               {t('buttons.newFile')}
             </button>
           )}
@@ -508,22 +511,22 @@ export function PipelinePage() {
             ));
             const meta = STATUS_META[stage.key];
             return (
-              <div key={stage.key} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div key={stage.key} className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
                 {/* Column header */}
-                <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-50">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-[#F4F2EE]">
                   <div className="flex items-center gap-2">
                     <span className={cn('w-2 h-2 rounded-full shrink-0', stage.dot)} />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{stage.label}</span>
+                    <span className="text-[14px] font-semibold tracking-[-0.01em] text-[#0A0A0A]">{stage.label}</span>
                   </div>
-                  <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', meta.pill)}>
+                  <span className={cn('text-[11px] font-bold px-2.5 py-0.5 rounded-full', meta.pill)}>
                     {stageFiles.length}
                   </span>
                 </div>
 
                 {/* Cards */}
-                <div className="divide-y divide-gray-50 max-h-[calc(100vh-220px)] overflow-y-auto scrollbar-thin">
+                <div className="divide-y divide-[#F4F2EE] max-h-[calc(100vh-220px)] overflow-y-auto scrollbar-thin">
                   {stageFiles.length === 0 ? (
-                    <div className="py-10 text-center text-[12px] text-gray-400">{t('empty.noFiles')}</div>
+                    <div className="py-12 text-center text-[12px] text-[#A8A8AD]">{t('empty.noFiles')}</div>
                   ) : (
                     stageFiles.map(f => {
                       const custName = f.customer?.name ?? t('unknown');
@@ -531,19 +534,19 @@ export function PipelinePage() {
                       return (
                         <div
                           key={f.id}
-                          className="px-4 py-3 hover:bg-[#f7f9fc] cursor-pointer transition-colors group"
+                          className="px-4 py-3.5 hover:bg-[#FAF9F6] cursor-pointer transition-colors group"
                           onClick={() => navigate(`/files/${f.id}`)}
                         >
                           <div className="flex items-start gap-2.5">
                             <EntityAvatar name={custName} logoUrl={f.customer?.logo_url} size="sm" shape="square" className="mt-0.5" />
                             <div className="flex-1 min-w-0">
-                              <div className="text-[13px] font-bold text-gray-900 truncate" style={{ fontFamily: 'Manrope, sans-serif' }}>{custName}</div>
-                              <div className="text-[10px] font-mono text-gray-400">{f.file_no}</div>
-                              <div className="text-[11px] text-gray-500 truncate mt-0.5">{f.product?.name ?? '—'}</div>
+                              <div className="text-[13px] font-semibold text-[#0A0A0A] truncate">{custName}</div>
+                              <div className="text-[10px] font-mono text-[#A8A8AD]">{f.file_no}</div>
+                              <div className="text-[11px] text-[#8A8A8E] truncate mt-0.5">{f.product?.name ?? '—'}</div>
                               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                                <span className="text-[11px] font-semibold text-gray-700">{fN(f.tonnage_mt, 0)} {f.product?.unit ?? 'MT'}</span>
-                                <span className="text-gray-300">·</span>
-                                <span className="text-[10px] text-gray-400">{fDate(f.file_date)}</span>
+                                <span className="text-[11px] font-semibold text-[#0A0A0A]">{fN(f.tonnage_mt, 0)} {f.product?.unit ?? 'MT'}</span>
+                                <span className="text-[#D8D4CC]">·</span>
+                                <span className="text-[10px] text-[#8A8A8E]">{fDate(f.file_date)}</span>
                                 {f.eta && (
                                   <span className={cn('text-[10px] font-medium',
                                     delay === 'overdue' ? 'text-red-500' :
@@ -573,14 +576,14 @@ export function PipelinePage() {
                                 <>
                                   <button
                                     onClick={() => setSaleFile(findFile(f.id))}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white shadow-sm hover:opacity-90"
-                                    style={{ background: 'linear-gradient(135deg, #b70011, #dc2626)' }}
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white hover:opacity-90 transition-opacity"
+                                    style={{ background: accent }}
                                   >
                                     <TrendingUp className="h-3 w-3" /> {t('buttons.toSale')}
                                   </button>
                                   <button
                                     onClick={() => handleDelete(f.id)}
-                                    className="px-2 py-1 rounded-lg text-[11px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#A8A8AD] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors"
                                   >
                                     {tc('btn.delete')}
                                   </button>
@@ -590,14 +593,14 @@ export function PipelinePage() {
                                 <>
                                   <button
                                     onClick={() => setDeliveryFile(findFile(f.id))}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white shadow-sm hover:opacity-90"
-                                    style={{ background: 'linear-gradient(135deg, #b70011, #dc2626)' }}
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white hover:opacity-90 transition-opacity"
+                                    style={{ background: accent }}
                                   >
                                     <Truck className="h-3 w-3" /> {t(f.delivered_admt ? 'buttons.deliveryUpdate' : 'buttons.delivery')}
                                   </button>
                                   <button
                                     onClick={() => setInvoiceFile(findFile(f.id))}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#0A0A0A] bg-[#F4F2EE] hover:bg-[#EAE7E0] transition-colors"
                                   >
                                     <FileText className="h-3 w-3" /> {t('buttons.invoice')}
                                   </button>
@@ -606,14 +609,14 @@ export function PipelinePage() {
                               {f.status === 'delivery' && (
                                 <button
                                   onClick={() => setInvoiceFile(findFile(f.id))}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200"
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#0A0A0A] bg-[#F4F2EE] hover:bg-[#EAE7E0] transition-colors"
                                 >
                                   <FileText className="h-3 w-3" /> {t('buttons.invoice')}
                                 </button>
                               )}
                               <button
                                 onClick={() => setPnlFileId(f.id)}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200"
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#0A0A0A] bg-[#F4F2EE] hover:bg-[#EAE7E0] transition-colors"
                               >
                                 <BarChart2 className="h-3 w-3" /> {t('buttons.pnl')}
                               </button>
@@ -628,6 +631,7 @@ export function PipelinePage() {
             );
           })}
         </div>
+       </div>
       </div>
 
       {/* Modals */}
