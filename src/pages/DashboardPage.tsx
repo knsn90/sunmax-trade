@@ -789,9 +789,10 @@ export function DashboardPage() {
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} width={96} />
                       <Tooltip
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        formatter={(v: any) => [`${v > 0 ? '+' : ''}${v} gün`, 'ETA\'ya göre']}
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        labelFormatter={(_: any, payload: any[]) => payload?.[0]?.payload?.fullName ?? ''}
+                        formatter={(v: any, _name: any, props: any) => [
+                          `${v > 0 ? '+' : ''}${v} gün`,
+                          props?.payload?.fullName ?? props?.payload?.name,
+                        ]}
                         contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                       />
                       <Bar dataKey="days" radius={[0, 4, 4, 0]}>
