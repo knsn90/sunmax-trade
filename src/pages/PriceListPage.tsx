@@ -711,27 +711,30 @@ export function PriceListPage() {
       {/* ══════════════════════════════════════════════════════════════
           DESKTOP
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:flex flex-col h-full">
+      <div className="hidden md:block md:-mt-6 md:-mx-6 min-h-screen" style={{ background: '#EFEDE8', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+       <div className="px-8 pt-7 pb-8 flex flex-col h-full">
 
         {/* Satır 1: Başlık + Ana Aksiyon */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-              <Tag style={{ width: 18, height: 18 }} className="text-gray-600" />
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+              <Tag style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
             </div>
             <div>
-              <h1 className="text-[15px] font-bold text-gray-900">Fiyat Listesi</h1>
-              <p className="text-[11px] text-gray-400">Ürün ve tedarikçi fiyat geçmişi</p>
+              <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Fiyat Listesi</h1>
+              <p className="text-[13px] text-[#8A8A8E] mt-0.5">Ürün ve tedarikçi fiyat geçmişi</p>
             </div>
           </div>
           <div className="flex-1" />
           {canWrite && (
             <button
               onClick={openNew}
-              className="h-9 px-4 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 whitespace-nowrap"
+              className="h-10 px-5 rounded-full text-white text-[13px] font-semibold transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-[0_8px_24px_rgba(0,0,0,0.04)]"
               style={{ background: accent }}
+              onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`; }}
+              onMouseLeave={e => { e.currentTarget.style.background = accent; }}
             >
-              <Plus className="h-3.5 w-3.5 shrink-0" />
+              <Plus className="h-4 w-4 shrink-0" />
               {t('btnNew')}
             </button>
           )}
@@ -740,13 +743,13 @@ export function PriceListPage() {
         {/* Satır 2: Arama + Filtreler + Diğer Butonlar */}
         <div className="flex items-center gap-2 mb-5">
           {/* Arama */}
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 h-9 shadow-sm border border-gray-100 w-48">
-            <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2 bg-white rounded-full px-4 h-10 border border-[#ECECEC] w-52">
+            <Search className="h-4 w-4 text-[#A8A8AD] shrink-0" />
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); resetPricePage(); }}
               placeholder={t('search')}
-              className="flex-1 text-[13px] outline-none bg-transparent placeholder:text-gray-400"
+              className="flex-1 text-[13px] text-[#0A0A0A] outline-none bg-transparent placeholder:text-[#A8A8AD]"
             />
           </div>
 
@@ -754,8 +757,8 @@ export function PriceListPage() {
           <select
             value={filterProductId}
             onChange={e => { setFilterProductId(e.target.value); resetPricePage(); }}
-            className="h-9 px-3 pr-8 text-[12px] bg-white border border-gray-100 rounded-xl shadow-sm text-gray-600 focus:outline-none appearance-none cursor-pointer"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+            className="h-10 px-4 pr-9 text-[12px] bg-white border border-[#ECECEC] rounded-full text-[#6F6F6F] focus:outline-none appearance-none cursor-pointer"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A8A8AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
           >
             <option value="">{t('allProducts')}</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -765,8 +768,8 @@ export function PriceListPage() {
           <select
             value={filterSupplierId}
             onChange={e => { setFilterSupplierId(e.target.value); resetPricePage(); }}
-            className="h-9 px-3 pr-8 text-[12px] bg-white border border-gray-100 rounded-xl shadow-sm text-gray-600 focus:outline-none appearance-none cursor-pointer"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+            className="h-10 px-4 pr-9 text-[12px] bg-white border border-[#ECECEC] rounded-full text-[#6F6F6F] focus:outline-none appearance-none cursor-pointer"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A8A8AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
           >
             <option value="">{t('allSuppliers')}</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -777,9 +780,9 @@ export function PriceListPage() {
           {/* Fiyat Geçmişi butonu */}
           <button
             onClick={() => openHistory()}
-            className="h-9 px-4 rounded-xl text-[13px] font-semibold text-gray-600 bg-white border border-gray-200 shadow-sm flex items-center gap-1.5 hover:bg-gray-50 transition-colors shrink-0 whitespace-nowrap"
+            className="h-10 px-4 rounded-full text-[13px] font-semibold text-[#0A0A0A] bg-white border border-[#ECECEC] flex items-center gap-1.5 hover:bg-[#FAF9F6] transition-colors shrink-0 whitespace-nowrap"
           >
-            <TrendingUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            <TrendingUp className="h-4 w-4 text-[#A8A8AD] shrink-0" />
             {t('btnPriceHistory')}
           </button>
 
@@ -787,15 +790,15 @@ export function PriceListPage() {
           <button
             onClick={handleAiAnalysis}
             disabled={isLoading}
-            className="h-9 px-4 rounded-xl text-[13px] font-semibold flex items-center gap-1.5 shrink-0 whitespace-nowrap border transition-all"
+            className="h-10 px-4 rounded-full text-[13px] font-semibold flex items-center gap-1.5 shrink-0 whitespace-nowrap border transition-all"
             style={aiOpen
-              ? { background: accent, color: '#fff', borderColor: accent }
-              : { background: '#fff', color: '#6b21a8', borderColor: '#e9d5ff' }
+              ? { background: '#6B4EE6', color: '#fff', borderColor: '#6B4EE6' }
+              : { background: '#fff', color: '#6B4EE6', borderColor: '#6B4EE6' + '33' }
             }
           >
             {aiLoading
-              ? <><div className="w-3.5 h-3.5 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin shrink-0" />Analiz ediliyor…</>
-              : <><Sparkles className="h-3.5 w-3.5 shrink-0" />AI Analizi</>
+              ? <><div className="w-3.5 h-3.5 border-2 border-[#6B4EE6]/30 border-t-[#6B4EE6] rounded-full animate-spin shrink-0" />Analiz ediliyor…</>
+              : <><Sparkles className="h-4 w-4 shrink-0" />AI Analizi</>
             }
           </button>
         </div>
@@ -806,23 +809,23 @@ export function PriceListPage() {
             <div className="w-5 h-5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: accent }} />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-20 text-[#A8A8AD]">
             <Tag className="h-8 w-8 mb-2 opacity-30" />
-            <p className="text-sm font-medium text-gray-500">{t('empty.title')}</p>
+            <p className="text-sm font-medium text-[#8A8A8E]">{t('empty.title')}</p>
             <p className="text-xs mt-1">{entries.length > 0 ? t('empty.adjustFilters') : t('empty.addFirst')}</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('table.product')}</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('table.supplier')}</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('table.price')}</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('table.priceDate')}</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('table.validUntil')}</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('table.notes')}</th>
-                  {canWrite && <th className="w-20 px-4 py-3" />}
+                <tr className="border-b border-[#F4F2EE]">
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{t('table.product')}</th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{t('table.supplier')}</th>
+                  <th className="px-4 py-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{t('table.price')}</th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{t('table.priceDate')}</th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{t('table.validUntil')}</th>
+                  <th className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{t('table.notes')}</th>
+                  {canWrite && <th className="w-20 px-4 py-3.5" />}
                 </tr>
               </thead>
               <tbody>
@@ -832,20 +835,20 @@ export function PriceListPage() {
                   return (
                     <tr
                       key={entry.id}
-                      className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors ${i % 2 === 1 ? 'bg-gray-50/40' : ''}`}
+                      className={`border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors ${i % 2 === 1 ? 'bg-[#FBFAF8]' : ''}`}
                     >
                       {/* Product */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <button
                           onClick={() => openHistory(entry.product_id)}
-                          className="text-[13px] font-semibold text-gray-900 hover:underline text-left flex items-center gap-1.5"
+                          className="text-[13px] font-semibold text-[#0A0A0A] hover:underline text-left flex items-center gap-1.5"
                         >
                           {entry.product?.name ?? '—'}
                         </button>
                       </td>
 
                       {/* Supplier with avatar */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
                           <EntityAvatar
                             name={supplierAny?.name ?? '?'}
@@ -853,54 +856,54 @@ export function PriceListPage() {
                             size="xs"
                             shape="square"
                           />
-                          <span className="text-[12px] text-gray-600 truncate max-w-[200px]">
+                          <span className="text-[12px] text-[#6F6F6F] truncate max-w-[200px]">
                             {supplierAny?.name ?? '—'}
                           </span>
                         </div>
                       </td>
 
                       {/* Price */}
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <span className="text-[13px] font-bold text-gray-900">
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                        <span className="text-[13px] font-bold text-[#0A0A0A] tabular-nums">
                           {CURRENCY_SYMBOLS[entry.currency] ?? ''}{entry.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                         </span>
-                        <span className="text-[10px] text-gray-400 ml-1">{entry.currency}</span>
+                        <span className="text-[10px] text-[#A8A8AD] ml-1">{entry.currency}</span>
                       </td>
 
                       {/* Price date */}
-                      <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{fDate(entry.price_date)}</td>
+                      <td className="px-4 py-3.5 text-[12px] text-[#8A8A8E] whitespace-nowrap">{fDate(entry.price_date)}</td>
 
                       {/* Valid until */}
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         {entry.valid_until ? (
-                          <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg ${
-                            expired ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'
+                          <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
+                            expired ? 'bg-[#EF4444]/10 text-[#EF4444]' : 'bg-[#16A34A]/10 text-[#16A34A]'
                           }`}>
                             {fDate(entry.valid_until)}
                           </span>
                         ) : (
-                          <span className="text-[12px] text-gray-300">—</span>
+                          <span className="text-[12px] text-[#D8D4CC]">—</span>
                         )}
                       </td>
 
                       {/* Notes */}
-                      <td className="px-4 py-3 text-[11px] text-gray-400 max-w-[180px] truncate">
+                      <td className="px-4 py-3.5 text-[11px] text-[#A8A8AD] max-w-[180px] truncate">
                         {entry.notes || '—'}
                       </td>
 
                       {/* Actions */}
                       {canWrite && (
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3.5">
                           <div className="flex items-center gap-1 justify-end">
                             <button
                               onClick={() => openEdit(entry)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                              className="w-8 h-8 flex items-center justify-center rounded-full text-[#A8A8AD] hover:text-[#0A0A0A] hover:bg-[#F4F2EE] transition-colors"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => handleDelete(entry)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              className="w-8 h-8 flex items-center justify-center rounded-full text-[#A8A8AD] hover:text-[#EF4444] hover:bg-[#EF4444]/8 transition-colors"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -914,13 +917,13 @@ export function PriceListPage() {
             </table>
 
             {priceTotalPages > 1 && (
-              <div className="flex items-center justify-center gap-1.5 py-3 border-t border-gray-50">
+              <div className="flex items-center justify-center gap-1.5 py-4 border-t border-[#F4F2EE]">
                 {Array.from({ length: priceTotalPages }, (_, i) => i + 1).map(p => (
                   <button
                     key={p}
                     onClick={() => setPricePage(p)}
-                    className={`w-7 h-7 rounded-full text-[11px] font-bold transition-all ${
-                      p === priceCurrentPage ? 'text-white shadow-sm' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                    className={`w-8 h-8 rounded-full text-[11px] font-bold transition-all ${
+                      p === priceCurrentPage ? 'text-white' : 'bg-[#F4F2EE] text-[#8A8A8E] hover:bg-[#EAE7E0]'
                     }`}
                     style={p === priceCurrentPage ? { background: accent } : {}}
                   >
@@ -931,6 +934,7 @@ export function PriceListPage() {
             )}
           </div>
         )}
+       </div>
       </div>
 
       {/* Modals */}
