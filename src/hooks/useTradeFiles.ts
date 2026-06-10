@@ -20,10 +20,11 @@ export function useTradeFiles(filters?: {
   status?: TradeFileStatus;
   customerId?: string;
   search?: string;
-}) {
+}, enabled = true) {
   return useQuery({
     queryKey: tradeFileKeys.list(filters),
     queryFn: () => tradeFileService.list(filters),
+    enabled,
     staleTime: 1000 * 60 * 2,
   });
 }

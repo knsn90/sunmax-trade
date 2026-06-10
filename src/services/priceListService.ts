@@ -7,7 +7,8 @@ export const priceListService = {
     const { data, error } = await supabase
       .from('price_list')
       .select('*, product:products(id, name, logo_url), supplier:suppliers(id, name, logo_url)')
-      .order('price_date', { ascending: false });
+      .order('price_date', { ascending: false })
+      .limit(500);
 
     if (error) throw new Error(error.message);
     if (data === null) throw new Error('Request aborted or timed out — please refresh');

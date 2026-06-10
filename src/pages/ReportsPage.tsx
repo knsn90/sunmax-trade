@@ -74,15 +74,16 @@ const ALL_PRINT_COLS: PrintColDef[] = [
 function SalesReportTab() {
   const { t } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const { data: files = [] } = useTradeFiles();
-  const { data: customers = [] } = useCustomers();
   const { accent } = useTheme();
+  // files sadece rapor çalıştırılınca yüklensin; customers filtre için her zaman hazır
+  const [ran, setRan] = useState(false);
+  const { data: files = [] } = useTradeFiles(undefined, ran);
+  const { data: customers = [] } = useCustomers();
 
   const [custFilter, setCustFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [ran, setRan] = useState(false);
   const [statusTab, setStatusTab] = useState('all');
 
   type SortCol = 'file_no' | 'file_date' | 'eta' | 'customer' | 'admt' | 'selling_price' | 'status';
@@ -775,10 +776,10 @@ export function PnlReportTab() {
     return [selectedFileId, ...batchIds];
   }, [selectedFileId, allFiles]);
 
+  // Dosya seçilmeden tüm işlemleri çekme — enabled sadece dosya seçildiğinde
   const { data: txns = [] } = useTransactions(
-    selectedFileIds
-      ? { tradeFileIds: selectedFileIds, approvedOnly: true }
-      : { approvedOnly: true },
+    selectedFileIds ? { tradeFileIds: selectedFileIds, approvedOnly: true } : undefined,
+    !!selectedFileIds,
   );
 
   // ── Tek dosya P&L ───────────────────────────────────────────────────────
