@@ -281,7 +281,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="hidden md:block bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
         <table className="w-full table-fixed">
           <colgroup>
             <col style={{ width: '8%' }} />
@@ -292,9 +292,9 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
             <col style={{ width: '12%' }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-[#F4F2EE]">
               {[tc('table.code'), tc('table.name'), t('table.countryCity'), t('table.contact'), t('table.paymentTerms'), tc('table.actions')].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{h}</th>
               ))}
             </tr>
           </thead>
@@ -302,7 +302,7 @@ function CustomersTab({ accent, search, openNewRef }: { accent: string; search: 
             {filtered.length === 0 ? (
               <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noCustomers')}</td></tr>
             ) : filtered.map(c => (
-              <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+              <tr key={c.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
                 <td className="px-4 py-3 text-xs font-bold text-gray-400">{c.code}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
@@ -563,7 +563,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="hidden md:block bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
         <table className="w-full table-fixed">
           <colgroup>
             <col style={{ width: '8%' }} />
@@ -574,9 +574,9 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
             <col style={{ width: '18%' }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-[#F4F2EE]">
               {[tc('table.code'), tc('table.name'), t('table.countryCity'), t('table.contact'), t('table.emailPhone'), tc('table.actions')].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{h}</th>
               ))}
             </tr>
           </thead>
@@ -584,7 +584,7 @@ function SuppliersTab({ accent, search, openNewRef }: { accent: string; search: 
             {filtered.length === 0 ? (
               <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noSuppliers')}</td></tr>
             ) : filtered.map(s => (
-              <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+              <tr key={s.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
                 <td className="px-4 py-3 text-xs font-bold text-gray-400">{s.code}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
@@ -766,11 +766,11 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
   return (
     <>
       {/* Type filter pills */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit mb-4 overflow-x-auto scrollbar-none">
+      <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full w-fit mb-4 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setTypeFilter(undefined)}
-          className={`shrink-0 px-3 h-6 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
-            !typeFilter ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          className={`shrink-0 px-3.5 h-7 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap ${
+            !typeFilter ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
           }`}
         >
           {tc('all')}
@@ -779,8 +779,8 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
           <button
             key={k}
             onClick={() => setTypeFilter(typeFilter === k ? undefined : k)}
-            className={`shrink-0 px-3 h-6 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
-              typeFilter === k ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            className={`shrink-0 px-3.5 h-7 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap ${
+              typeFilter === k ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
             }`}
           >
             {l}
@@ -822,7 +822,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="hidden md:block bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
         <table className="w-full table-fixed">
           <colgroup>
             <col style={{ width: '24%' }} />
@@ -833,9 +833,9 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
             <col style={{ width: '12%' }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-[#F4F2EE]">
               {[tc('table.name'), tc('table.type'), t('table.countryCity'), t('table.contact'), t('table.phoneEmail'), tc('table.actions')].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{h}</th>
               ))}
             </tr>
           </thead>
@@ -843,7 +843,7 @@ function ServiceProvidersTab({ accent, search, openNewRef }: { accent: string; s
             {filtered.length === 0 ? (
               <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-400">{search ? tc('empty.no_results') : t('empty.noServiceProviders')}</td></tr>
             ) : filtered.map(sp => (
-              <tr key={sp.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+              <tr key={sp.id} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     <ContactAvatar name={sp.name} color={color} logoUrl={sp.logo_url} />
@@ -976,29 +976,29 @@ export function ContactsPage() {
   function handleTabChange(key: Tab) { setActiveTab(key); setSearch(''); }
 
   return (
-    <div className="-mx-4 md:mx-0">
+    <div className="-mx-4 md:mx-0" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       {/* Page Header — desktop only */}
-      <div className="hidden md:flex items-center gap-2.5 mb-4">
-        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-          <Users style={{ width: 18, height: 18 }} className="text-gray-600" />
+      <div className="hidden md:flex items-center gap-3 mb-5">
+        <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+          <Users style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
         </div>
         <div>
-          <h1 className="text-[15px] font-bold text-gray-900">Kişiler</h1>
-          <p className="text-[11px] text-gray-400">Müşteriler, tedarikçiler ve hizmet sağlayıcılar</p>
+          <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Kişiler</h1>
+          <p className="text-[13px] text-[#8A8A8E] mt-0.5">Müşteriler, tedarikçiler ve hizmet sağlayıcılar</p>
         </div>
       </div>
 
       {/* Header row: tabs + search + new */}
       <div className="px-4 md:px-0 mb-4 flex items-center gap-2">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none shrink-0">
+        <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full overflow-x-auto scrollbar-none shrink-0">
           {TABS.map(tab => {
             const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
-                className={`shrink-0 px-4 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
-                  isActive ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                className={`shrink-0 px-4 h-8 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap ${
+                  isActive ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
                 }`}
               >
                 {tab.label}
@@ -1007,30 +1007,32 @@ export function ContactsPage() {
           })}
         </div>
         <div className="flex-1" />
-        <div className="relative w-40 shrink-0">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+        <div className="relative w-44 shrink-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A8AD] pointer-events-none" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={`${tc('btn.search')}…`}
-            className="w-full pl-8 pr-2 h-8 rounded-xl border border-gray-200 bg-white text-[12px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-300 transition"
+            className="w-full pl-10 pr-3 h-9 rounded-full border border-[#ECECEC] bg-white text-[13px] text-[#0A0A0A] placeholder:text-[#A8A8AD] outline-none focus:border-[#D8D4CC] transition"
           />
         </div>
         <button
           onClick={handleBatchFetch}
           disabled={batchRunning}
           title="Logo olmayan tüm firmalar için internetten logo çek"
-          className="w-8 h-8 rounded-xl flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-colors disabled:opacity-50 shrink-0"
+          className="w-9 h-9 rounded-full flex items-center justify-center bg-white border border-[#ECECEC] text-[#8A8A8E] hover:bg-[#FAF9F6] hover:text-[#0A0A0A] transition-colors disabled:opacity-50 shrink-0"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${batchRunning ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${batchRunning ? 'animate-spin' : ''}`} />
         </button>
         {writable && (
           <button
             onClick={() => openNewRef.current?.()}
-            className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm shrink-0"
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors"
             style={{ background: accent }}
+            onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${accent} 88%, #000)`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = accent; }}
           >
-            <Plus className="h-3.5 w-3.5 text-white" />
+            <Plus className="h-4 w-4 text-white" />
           </button>
         )}
       </div>
