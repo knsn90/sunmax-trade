@@ -560,9 +560,9 @@ function SalesReportTab() {
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
             {/* Status tab bar */}
-            <div className="flex border-b border-gray-100">
+            <div className="flex border-b border-[#F4F2EE]">
               {STATUS_TABS.map(tab => {
                 const count = tab.key === 'all' ? results.length : results.filter(f => f.status === tab.key).length;
                 const active = statusTab === tab.key;
@@ -587,7 +587,7 @@ function SalesReportTab() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1400px]">
                 <thead>
-                  <tr className="border-b border-gray-100">
+                  <tr className="border-b border-[#F4F2EE]">
                     {([
                       { label: t('sales.col_no'),             col: 'file_no'       as SortCol },
                       { label: t('sales.col_customer'),       col: 'customer'      as SortCol },
@@ -621,7 +621,7 @@ function SalesReportTab() {
                           </span>
                         </th>
                       ) : (
-                        <th key={label} className={cn('px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400', right ? 'text-right' : 'text-left')}>{label}</th>
+                        <th key={label} className={cn('px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]', right ? 'text-right' : 'text-left')}>{label}</th>
                       )
                     )}
                   </tr>
@@ -687,7 +687,7 @@ function SalesReportTab() {
       {/* AI Analiz Popup */}
       <Dialog open={aiOpen} onOpenChange={open => { if (!open) { aiAbortRef.current = true; setAiOpen(false); } }}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-white shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#F4F2EE] bg-gradient-to-r from-purple-50 to-white shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center">
                 <Sparkles className="h-4 w-4 text-purple-600" />
@@ -964,7 +964,7 @@ export function PnlReportTab() {
     <div className="space-y-4">
 
       {/* ── Görünüm seçici ──────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-full md:w-fit">
+      <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full w-full md:w-fit">
         {([
           { key: 'ozet', label: 'Tüm Dosyalar Özeti' },
           { key: 'tek',  label: 'Dosya Detayı' },
@@ -992,7 +992,7 @@ export function PnlReportTab() {
               { label: 'Ort. Kar Marjı', value: avgMargin.toFixed(1) + '%', profit: true },
             ].map(card => (
               <div key={card.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 px-2 py-3 md:p-4 text-center overflow-hidden">
-                <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 leading-tight">{card.label}</div>
+                <div className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] mb-1.5 leading-tight">{card.label}</div>
                 <div className="text-[11px] md:text-xl font-black leading-tight tabular-nums text-gray-900"
                   style={card.profit ? { color: col(totalProfit) } : undefined}>{card.value}</div>
               </div>
@@ -1094,14 +1094,14 @@ export function PnlReportTab() {
                 <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[640px]">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Dosya / Müşteri</th>
-                      <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">Ürün</th>
-                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Hasılat</th>
-                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Maliyet</th>
-                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Net Kar</th>
-                      <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Marj %</th>
-                      <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400">Durum</th>
+                    <tr className="border-b border-[#F4F2EE]">
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Dosya / Müşteri</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Ürün</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Hasılat</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Maliyet</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Net Kar</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Marj %</th>
+                      <th className="px-4 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">Durum</th>
                       <th className="px-4 py-2.5 w-20" />
                     </tr>
                   </thead>
@@ -1236,7 +1236,7 @@ export function PnlReportTab() {
 
                 {/* SATIŞ FATURALARI — sale_inv transaction'ları varsa göster */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                  <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
+                  <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-[#F4F2EE]">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Satış Faturaları</span>
                       <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{saleRows.length}</span>
@@ -1278,7 +1278,7 @@ export function PnlReportTab() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* SATIN ALMA FATURALARI */}
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
+                    <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-[#F4F2EE]">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Satın Alma Faturaları</span>
                         <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{purchaseRows.length}</span>
@@ -1315,7 +1315,7 @@ export function PnlReportTab() {
 
                   {/* HİZMET FATURALARI */}
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
+                    <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-[#F4F2EE]">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Hizmet Faturaları</span>
                         <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{svcRows.length}</span>
@@ -1779,7 +1779,7 @@ export function AccountStatementTab() {
 
         {/* Kişi türü tab bar */}
         <div className="px-3 pt-3 pb-1">
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto scrollbar-none">
+          <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full overflow-x-auto scrollbar-none">
             {(['customer', 'supplier', 'service_provider'] as const).map((type) => (
               <button
                 key={type}
@@ -1834,7 +1834,7 @@ export function AccountStatementTab() {
                 style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: Math.max(dropdownPos.width, 240), zIndex: 9999 }}
                 className="bg-white border border-gray-200 rounded-xl shadow-xl"
               >
-                <div className="p-2 border-b border-gray-100">
+                <div className="p-2 border-b border-[#F4F2EE]">
                   <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5">
                     <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                     <input autoFocus type="text" value={entitySearch}
@@ -1906,7 +1906,7 @@ export function AccountStatementTab() {
                 className="w-72 bg-white border border-gray-200 rounded-2xl shadow-xl"
               >
                 {/* Header */}
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-[#F4F2EE] flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Filtreler</span>
                   <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
                     <X className="h-3.5 w-3.5 text-gray-400" />
@@ -2039,7 +2039,7 @@ export function AccountStatementTab() {
           {/* ── İşlem tablosu ── */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {/* Section header */}
-            <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-gray-100">
+            <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80 border-b border-[#F4F2EE]">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Hesap Ekstresi</span>
                 {(dateFrom || dateTo) && (
@@ -2054,7 +2054,7 @@ export function AccountStatementTab() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100">
+                  <tr className="border-b border-[#F4F2EE]">
                     {[
                       { label: 'Tarih', right: false },
                       { label: 'İşlem Türü', right: false },
@@ -2066,7 +2066,7 @@ export function AccountStatementTab() {
                       { label: 'Bakiye (USD)', right: true },
                     ].map((h) => (
                       <th key={h.label} className={cn(
-                        'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap',
+                        'px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] whitespace-nowrap',
                         h.right ? 'text-right' : 'text-left',
                       )}>
                         {h.label}
@@ -2077,7 +2077,7 @@ export function AccountStatementTab() {
                 <tbody>
                   {txnsWithBalance.map((txn, i) => (
                     <tr key={txn.id} className={cn(
-                      'border-b border-gray-50 hover:bg-gray-50/60 transition-colors',
+                      'border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors',
                       i % 2 === 1 && 'bg-gray-50/40',
                     )}>
                       <td className="px-4 py-2.5 text-[11px] text-gray-500 whitespace-nowrap tabular-nums">{fDate(txn.transaction_date)}</td>
@@ -2290,7 +2290,7 @@ function AnalyticsTab() {
           { label: t('analytics.kpi_net_profit_margin'), value: `${fUSD(totalProfit)} / ${avgMargin.toFixed(1)}%`, color: totalProfit >= 0 ? 'text-green-700' : 'text-red-600' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white rounded-xl md:rounded-2xl shadow-sm px-2 py-3 md:p-3 overflow-hidden">
-            <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 leading-tight">{kpi.label}</div>
+            <div className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] mb-1 leading-tight">{kpi.label}</div>
             <div className={`text-[12px] md:text-sm font-black break-all leading-tight ${kpi.color}`}>{kpi.value}</div>
           </div>
         ))}
@@ -2386,14 +2386,14 @@ function AnalyticsTab() {
           </div>
 
           {/* Customer detail table */}
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
+          <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#F4F2EE]">
               <div className="text-sm font-bold text-gray-800">{t('analytics.table_customer_perf')}</div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100">
+                  <tr className="border-b border-[#F4F2EE]">
                     {[
                       t('analytics.col_customer'),
                       t('analytics.col_files'),
@@ -2403,7 +2403,7 @@ function AnalyticsTab() {
                       t('analytics.col_net_profit'),
                       t('analytics.col_margin'),
                     ].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD]">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -2411,7 +2411,7 @@ function AnalyticsTab() {
                   {customerData.map((c, i) => {
                     const margin = c.revenue > 0 ? (c.profit / c.revenue * 100) : 0;
                     return (
-                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                      <tr key={i} className="border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors">
                         <td className="px-4 py-3 text-[12px] font-semibold">{c.name}</td>
                         <td className="px-4 py-3 text-[12px] text-center">{c.files}</td>
                         <td className="px-4 py-3 text-[12px] text-right">{fN(c.admt, 3)}</td>
@@ -2519,7 +2519,7 @@ function EtaReportTab() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-[#F4F2EE]">
                 {[
                   t('eta.col_file_no'),
                   t('eta.col_customer'),
@@ -2530,7 +2530,7 @@ function EtaReportTab() {
                   t('eta.col_delay'),
                   t('eta.col_status'),
                 ].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -2988,7 +2988,7 @@ export function CustomerReportTab() {
                 style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: Math.max(dropdownPos.width, 240), zIndex: 9999 }}
                 className="bg-white border border-gray-200 rounded-xl shadow-xl"
               >
-                <div className="p-2 border-b border-gray-100">
+                <div className="p-2 border-b border-[#F4F2EE]">
                   <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5">
                     <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                     <input autoFocus type="text" value={custSearch} onChange={(e) => setCustSearch(e.target.value)}
@@ -3052,7 +3052,7 @@ export function CustomerReportTab() {
                 style={{ position: 'fixed', top: filterPos.top, left: filterPos.left, zIndex: 9999 }}
                 className="w-72 bg-white border border-gray-200 rounded-2xl shadow-xl"
               >
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-[#F4F2EE] flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Rapor Seçenekleri</span>
                   <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
                     <X className="h-3.5 w-3.5 text-gray-400" />
@@ -3215,9 +3215,9 @@ export function CustomerReportTab() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-100">
+                    <tr className="border-b border-[#F4F2EE]">
                       {L.payHdr.map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -3262,9 +3262,9 @@ export function CustomerReportTab() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-100">
+                    <tr className="border-b border-[#F4F2EE]">
                       {['#', 'Tarih', 'Açıklama', 'Tutar', 'Döviz', 'USD Karşılığı', 'Dosya / Ref'].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -3310,9 +3310,9 @@ export function CustomerReportTab() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-100">
+                    <tr className="border-b border-[#F4F2EE]">
                       {L.advHdr.map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#A8A8AD] whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -3398,7 +3398,6 @@ export function CustomerReportTab() {
 
 export function ReportsPage() {
   const { t } = useTranslation('reports');
-  const { accent } = useTheme();
   const [activeTab, setActiveTab] = useState<RepTab>('sales');
 
   const TAB_LABELS: [RepTab, string][] = [
@@ -3408,29 +3407,28 @@ export function ReportsPage() {
   ];
 
   return (
-    <>
+    <div style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       {/* Page Header */}
-      <div className="flex items-center gap-2.5 mb-5">
-        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-          <ClipboardList style={{ width: 18, height: 18 }} className="text-gray-600" />
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-11 h-11 rounded-2xl bg-white border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] flex items-center justify-center">
+          <ClipboardList style={{ width: 20, height: 20 }} className="text-[#8A8A8E]" />
         </div>
         <div>
-          <h1 className="text-[15px] font-bold text-gray-900">Raporlar</h1>
-          <p className="text-[11px] text-gray-400">Satış, analitik ve teslimat raporları</p>
+          <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">Raporlar</h1>
+          <p className="text-[13px] text-[#8A8A8E] mt-0.5">Satış, analitik ve teslimat raporları</p>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-gray-100 mb-6 overflow-x-auto scrollbar-none">
+      <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full mb-6 w-fit max-w-full overflow-x-auto scrollbar-none">
         {TAB_LABELS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
             className={cn(
-              'shrink-0 px-4 py-2.5 text-[12px] font-semibold transition-all border-b-2 -mb-px whitespace-nowrap',
-              activeTab === key ? 'text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50',
+              'shrink-0 px-4 h-8 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap',
+              activeTab === key ? 'bg-white text-[#0A0A0A] shadow-sm' : 'text-[#8A8A8E] hover:text-[#0A0A0A]',
             )}
-            style={activeTab === key ? { borderBottomColor: accent, color: accent } : {}}
           >
             {label}
           </button>
@@ -3440,6 +3438,6 @@ export function ReportsPage() {
       {activeTab === 'sales'     && <SalesReportTab />}
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'eta'       && <EtaReportTab />}
-    </>
+    </div>
   );
 }
