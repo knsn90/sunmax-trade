@@ -174,25 +174,25 @@ export function ActivityPage() {
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
-            <Activity className="h-4.5 w-4.5 text-violet-600" style={{ width: 18, height: 18 }} />
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-[#6B4EE6]/10 flex items-center justify-center">
+            <Activity className="text-[#6B4EE6]" style={{ width: 20, height: 20 }} />
           </div>
           <div>
-            <h1 className="text-[15px] font-bold text-gray-900">{t('title')}</h1>
-            <p className="text-[11px] text-gray-400">{filtered.length} {tc('entries')}</p>
+            <h1 className="text-[22px] font-bold text-[#0A0A0A] tracking-[-0.02em] leading-tight">{t('title')}</h1>
+            <p className="text-[13px] text-[#8A8A8E] mt-0.5">{filtered.length} {tc('entries')}</p>
           </div>
         </div>
         <button
           onClick={fetchLogs}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 h-8 rounded-full border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 h-9 rounded-full border border-[#ECECEC] text-[12px] font-medium text-[#6F6F6F] hover:bg-[#FAF9F6] hover:text-[#0A0A0A] transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           {t('buttons.refresh')}
         </button>
       </div>
@@ -200,9 +200,9 @@ export function ActivityPage() {
       {/* Search + user filter */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A8AD]" />
           <Input
-            className="pl-9 h-9 text-[13px] rounded-xl border-gray-200 bg-white"
+            className="pl-10 h-10 text-[13px] rounded-full border-[#ECECEC] bg-white"
             placeholder={t('search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -211,7 +211,7 @@ export function ActivityPage() {
         <select
           value={filterUser}
           onChange={e => setFilterUser(e.target.value)}
-          className="h-9 px-3 rounded-xl border border-gray-200 text-[12px] text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+          className="h-10 px-4 rounded-full border border-[#ECECEC] text-[12px] text-[#6F6F6F] bg-white focus:outline-none focus:ring-2 focus:ring-[#6B4EE6]/20"
         >
           <option value="all">{t('allUsers')}</option>
           {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
@@ -219,15 +219,15 @@ export function ActivityPage() {
       </div>
 
       {/* Action filter pills */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit overflow-x-auto scrollbar-none">
+      <div className="flex gap-1 bg-[#EAE7E0] p-1 rounded-full w-fit overflow-x-auto scrollbar-none">
         {ACTION_PILLS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setFilterAction(key)}
-            className={`shrink-0 px-3.5 h-8 rounded-xl text-[12px] font-semibold transition-all whitespace-nowrap ${
+            className={`shrink-0 px-4 h-8 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap ${
               filterAction === key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white text-[#0A0A0A] shadow-sm'
+                : 'text-[#8A8A8E] hover:text-[#0A0A0A]'
             }`}
           >
             {label}
@@ -237,19 +237,19 @@ export function ActivityPage() {
 
       {/* Log list */}
       {fetchError && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-[12px] text-red-600 font-medium">
+        <div className="bg-[#EF4444]/8 border border-[#EF4444]/20 rounded-2xl px-4 py-3 text-[12px] text-[#EF4444] font-medium">
           ⚠️ {fetchError}
         </div>
       )}
       {loading ? (
         <div className="flex justify-center py-16"><LoadingSpinner /></div>
       ) : paged.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 py-16 text-center">
+        <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] py-16 text-center">
           <div className="text-3xl mb-2">📋</div>
-          <p className="text-sm text-gray-400">{t('empty.noEntries')}</p>
+          <p className="text-sm text-[#A8A8AD]">{t('empty.noEntries')}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+        <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] divide-y divide-[#F4F2EE] overflow-hidden">
           {paged.map(entry => (
             entry.kind === 'audit'
               ? <AuditRow key={entry.data.id} log={entry.data} />
@@ -276,8 +276,8 @@ export function ActivityPage() {
                 onClick={() => setPage(p)}
                 className={`w-8 h-8 rounded-full text-[12px] font-semibold transition-all ${
                   p === page
-                    ? 'bg-violet-600 text-white shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-100'
+                    ? 'bg-[#6B4EE6] text-white'
+                    : 'text-[#8A8A8E] hover:bg-[#F4F2EE]'
                 }`}
               >
                 {p + 1}
