@@ -424,6 +424,14 @@ export function TransactionModal({
   async function onSubmit(data: TransactionFormData) {
     setSaving(true);
     try {
+      // Kur konvansiyonu normalize et:
+      // Depolama her zaman "1 USD = exchange_rate yerel" (inverse) varsayar →
+      // toUSD/servis amount/rate hesaplar. Kullanıcı "direct" (1 yerel = X USD)
+      // girdiyse kuru tersine çevir ki amount_usd = amount * X doğru kaydedilsin.
+      if (data.currency !== 'USD' && kurYon === 'direct' && data.exchange_rate > 0) {
+        data.exchange_rate = parseFloat((1 / data.exchange_rate).toFixed(6));
+      }
+
       // ── İç Transfer branch ──────────────────────────────────────────────
       if (data.transaction_type === 'ic_transfer') {
         if (!itFromId || !itToId) return;
