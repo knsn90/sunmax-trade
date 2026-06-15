@@ -30,7 +30,8 @@ const FILE_SELECT = `
 `;
 
 // Used for detail page — includes sub-documents + batches
-// packing_list_items hariç: on-demand yüklenecek (print sırasında ayrıca çekilir)
+// Belge alt-kayıtları TAM çekilir: print (Packing List / Invoice / Proforma)
+// bu objeleri doğrudan kullanır — eksik alan → boş PDF.
 const FILE_DETAIL_SELECT = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt,
   selling_price, purchase_price, incoterms, transport_mode,
@@ -43,10 +44,10 @@ const FILE_DETAIL_SELECT = `
   product:products!product_id(id, name, unit, category_id),
   supplier:suppliers!supplier_id(id, name, logo_url, country),
   suppliers:trade_file_suppliers(supplier_id, supplier:suppliers!supplier_id(id, name, logo_url, country)),
-  invoices(id, invoice_no, invoice_date, total, doc_status, invoice_type, currency, customer_id, trade_file_id, deleted_at),
-  packing_lists(id, packing_list_no, doc_status, total_admt, created_at, trade_file_id, deleted_at),
-  proformas(id, proforma_no, doc_status, created_at, trade_file_id, deleted_at),
-  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, delivered_admt, supplier_id, transport_mode, eta, packing_lists(id, packing_list_no, doc_status, total_admt), invoices(id, invoice_no, invoice_date, total, doc_status, invoice_type, currency))
+  invoices(*),
+  packing_lists(*, packing_list_items(*)),
+  proformas(*),
+  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, delivered_admt, supplier_id, transport_mode, eta, packing_lists(*, packing_list_items(*)), invoices(*))
 `;
 
 // Minimal select for mutations — no joins, avoids Supabase load
