@@ -227,7 +227,7 @@ export function MonoDatePicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={className ?? 'w-full h-[46px] bg-[#f2f4f7] rounded-xl px-4 text-[13px] font-medium border border-transparent focus:outline-none hover:bg-gray-200 transition-colors flex items-center justify-between overflow-hidden'}
+          className={`flex items-center justify-between overflow-hidden ${className ?? 'w-full h-[46px] bg-[#f2f4f7] rounded-xl px-4 text-[13px] font-medium border border-transparent focus:outline-none hover:bg-gray-200 transition-colors'}`}
         >
           <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${displayShort ? 'text-gray-900' : 'text-gray-400'}`}>
             {displayShort || placeholder}
