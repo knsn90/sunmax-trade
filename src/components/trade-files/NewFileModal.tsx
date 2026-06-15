@@ -154,7 +154,14 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
     const customer     = customers.find(c => c.id === selectedCustomerId);
     const product      = products.find(p => p.id === selectedProductId);
     const customerCode = customer?.code || 'XX';
-    const count        = allFiles.filter(f => f.customer_id === selectedCustomerId).length;
+    // Sıra no = müşterinin mevcut dosyalarındaki en yüksek sıra + 1.
+    // (count yerine max: silinen/boşluk olan numaralar yeni dosyayla çakışmasın)
+    const maxSeq = allFiles
+      .filter(f => f.customer_id === selectedCustomerId)
+      .reduce((mx, f) => {
+        const m = /^[A-Za-z0-9]+-(\d+)/.exec((f.file_no ?? '').trim());
+        return Math.max(mx, m ? parseInt(m[1], 10) : 0);
+      }, 0);
     let year: number, month: number;
     if (selectedEta) {
       const d = new Date(selectedEta);
@@ -163,7 +170,7 @@ export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit 
       const now = new Date();
       year = now.getFullYear(); month = now.getMonth() + 1;
     }
-    setValue('file_no', generateTradeFileNo(customerCode, count + 1, year, month, product?.name ?? ''));
+    setValue('file_no', generateTradeFileNo(customerCode, maxSeq + 1, year, month, product?.name ?? ''));
   }, [selectedCustomerId, selectedProductId, selectedEta, customers, products, allFiles, editMode, setValue]);
 
   async function addCust() {
