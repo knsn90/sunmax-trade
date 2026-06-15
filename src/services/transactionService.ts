@@ -243,8 +243,9 @@ export const transactionService = {
   },
 
   async create(input: TransactionFormData): Promise<Transaction> {
-    const amountUsd = toUSD(input.amount, input.currency, input.exchange_rate);
-    const paidAmountUsd = toUSD(input.paid_amount, input.currency, input.exchange_rate);
+    // Modal yöne göre amount_usd geçtiyse onu kullan (toUSD yön bilmez), yoksa hesapla
+    const amountUsd = input.amount_usd ?? toUSD(input.amount, input.currency, input.exchange_rate);
+    const paidAmountUsd = input.paid_amount_usd ?? toUSD(input.paid_amount, input.currency, input.exchange_rate);
 
     // Derive party_type from transaction_type
     let partyType = input.party_type;
@@ -317,8 +318,8 @@ export const transactionService = {
   },
 
   async update(id: string, input: TransactionFormData): Promise<Transaction> {
-    const amountUsd = toUSD(input.amount, input.currency, input.exchange_rate);
-    const paidAmountUsd = toUSD(input.paid_amount, input.currency, input.exchange_rate);
+    const amountUsd = input.amount_usd ?? toUSD(input.amount, input.currency, input.exchange_rate);
+    const paidAmountUsd = input.paid_amount_usd ?? toUSD(input.paid_amount, input.currency, input.exchange_rate);
 
     const { data, error } = await supabase
       .from('transactions')

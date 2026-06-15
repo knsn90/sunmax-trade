@@ -279,6 +279,17 @@ export function TransactionModal({
         bank_account_id: transaction.bank_account_id ?? '',
       });
       setSelectedParty(partyFromTransaction(transaction));
+      // Kaydedilen amount_usd'den kur yönünü geri çıkar: hangi formül stored
+      // değeri üretiyorsa o yönü seç (direct: amount*rate, inverse: amount/rate)
+      const r = transaction.exchange_rate ?? 1;
+      const au = (transaction as { amount_usd?: number }).amount_usd;
+      if (transaction.currency !== 'USD' && r > 0 && au != null && transaction.amount > 0) {
+        const directErr  = Math.abs(transaction.amount * r - au);
+        const inverseErr = Math.abs(transaction.amount / r - au);
+        setKurYon(directErr <= inverseErr ? 'direct' : 'inverse');
+      } else {
+        setKurYon('inverse');
+      }
     } else {
       reset({
         transaction_date: today(),
@@ -308,6 +319,7 @@ export function TransactionModal({
         bank_account_id: '',
       });
       setSelectedParty(null);
+      setKurYon('inverse');
     }
   }, [open, transaction, defaultType, defaultTradeFileId, reset]);
 
@@ -424,13 +436,15 @@ export function TransactionModal({
   async function onSubmit(data: TransactionFormData) {
     setSaving(true);
     try {
-      // Kur konvansiyonu normalize et:
-      // Depolama her zaman "1 USD = exchange_rate yerel" (inverse) varsayar →
-      // toUSD/servis amount/rate hesaplar. Kullanıcı "direct" (1 yerel = X USD)
-      // girdiyse kuru tersine çevir ki amount_usd = amount * X doğru kaydedilsin.
-      if (data.currency !== 'USD' && kurYon === 'direct' && data.exchange_rate > 0) {
-        data.exchange_rate = parseFloat((1 / data.exchange_rate).toFixed(6));
-      }
+      // USD karşılığını yöne (kurYon) göre hesapla — kur kullanıcının girdiği gibi
+      // saklanır, depo için doğru amount_usd ayrıca geçilir (toUSD yön bilmez).
+      // direct: 1 yerel = rate USD → usd = amount * rate
+      // inverse: 1 USD = rate yerel → usd = amount / rate
+      const usdOf = (amt: number) => {
+        if (data.currency === 'USD' || !(data.exchange_rate > 0)) return amt;
+        return parseFloat((kurYon === 'direct' ? amt * data.exchange_rate : amt / data.exchange_rate).toFixed(2));
+      };
+      data.amount_usd = usdOf(data.amount);
 
       // ── İç Transfer branch ──────────────────────────────────────────────
       if (data.transaction_type === 'ic_transfer') {
@@ -441,7 +455,7 @@ export function TransactionModal({
           amount: data.amount,
           currency: data.currency,
           exchange_rate: data.exchange_rate,
-          amount_usd: toUSD(data.amount, data.currency as 'USD', data.exchange_rate),
+          amount_usd: data.amount_usd,
           from_type: itFromType,
           from_id: itFromId,
           to_type: itToType,
@@ -455,6 +469,7 @@ export function TransactionModal({
 
       // ── Normal transaction branch ────────────────────────────────────────
       data.paid_amount = data.amount;
+      data.paid_amount_usd = usdOf(data.paid_amount);
       data.payment_status = 'paid';
 
       const typeToParty: Record<string, TransactionFormData['party_type']> = {

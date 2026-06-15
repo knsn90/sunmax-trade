@@ -239,7 +239,11 @@ export const transactionSchema = z.object({
   currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
   amount: z.coerce.number().positive('Amount required'),
   exchange_rate: z.coerce.number().positive().default(1),
+  // Modal'ın yöne (kurYon) göre hesapladığı USD karşılığı — verilirse servis
+  // bunu kullanır (toUSD yön bilmediği için). Verilmezse toUSD'e düşer.
+  amount_usd: z.coerce.number().optional(),
   paid_amount: z.coerce.number().min(0).catch(0),
+  paid_amount_usd: z.coerce.number().optional(),
   payment_status: z.enum(['open', 'partial', 'paid']).default('open'),
   payment_method: z.enum(['nakit', 'banka_havalesi', 'kredi_karti', '']).default(''),
   bank_name: z.string().default(''),
