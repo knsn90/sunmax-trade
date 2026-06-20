@@ -43,7 +43,7 @@ const FILE_DETAIL_SELECT = `
   customer:customers!customer_id(id, name, code, country, address, contact_phone, logo_url, parent:customers!parent_customer_id(id, name, code, country, address, contact_phone)),
   product:products!product_id(id, name, unit, category_id),
   supplier:suppliers!supplier_id(id, name, logo_url, country),
-  suppliers:trade_file_suppliers(supplier_id, supplier:suppliers!supplier_id(id, name, logo_url, country)),
+  suppliers:trade_file_suppliers(id, position, quantity_mt, purchase_price, currency, supplier_id, supplier:suppliers!supplier_id(id, name, logo_url, country)),
   invoices(*),
   packing_lists(*, packing_list_items(*)),
   proformas(*),

@@ -584,6 +584,16 @@ export function TradeFileDetailPage() {
     ? (file.batches ?? []).filter(b => b.status === 'completed').reduce((s, b) => s + (b.tonnage_mt ?? 0), 0)
     : (file.delivered_admt ?? null);
 
+  // Çoklu tedarikçi → tonaj ağırlıklı ortalama alış fiyatı; tekli → file.purchase_price
+  const supplierLines = file.suppliers ?? [];
+  const weightedPurchase = (() => {
+    if (supplierLines.length <= 1) return file.purchase_price ?? 0;
+    const totalQty = supplierLines.reduce((s, x) => s + (x.quantity_mt ?? 0), 0);
+    if (totalQty <= 0) return file.purchase_price ?? 0;
+    const sum = supplierLines.reduce((s, x) => s + (x.quantity_mt ?? 0) * (x.purchase_price ?? 0), 0);
+    return sum / totalQty;
+  })();
+
   async function handleSyncFromParent() {
     if (!parentFile || !file) { toast.error('Ana dosya yüklenemedi'); return; }
     try {
@@ -1297,7 +1307,7 @@ export function TradeFileDetailPage() {
           {hasSaleDetails ? (
             <>
               <KV label={t('detail.saleDetails.salePrice')} value={file.selling_price ? `${fCurrency(file.selling_price)}/MT` : '—'} bold />
-              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(file.purchase_price)}/MT`} />
+              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(weightedPurchase)}/MT`} />
               <KV
                 label={t('detail.saleDetails.supplier')}
                 value={
@@ -1885,7 +1895,7 @@ export function TradeFileDetailPage() {
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(file.purchase_price)}/MT</span>
+                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(weightedPurchase)}/MT</span>
                     </div>
                     {(file.suppliers?.length ?? 0) > 1 ? (
                       <div className="py-2 border-b border-dashed border-[#ECECEC]">

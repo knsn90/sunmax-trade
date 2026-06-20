@@ -162,14 +162,27 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
     setRows((prev) => prev.map((r) => (r.uid === uid ? { ...r, ...patch } : r)));
   }
 
-  // İlk satırı forma yansıt — backend entegrasyonu gelene kadar tek kayıt olarak gider
+  // Forma yansıt: tek tedarikçi → kendi fiyatı; çoklu → tonaj ağırlıklı ortalama
+  // (file.purchase_price tüm P&L/rapor hesaplarının temeli — ortalama olmalı)
   useEffect(() => {
     const first = rows[0];
     if (!first) return;
     setValue('supplier_id', first.supplier_id);
-    if (first.purchase_price !== '') setValue('purchase_price', Number(first.purchase_price));
-    setValue('purchase_currency', first.currency as SaleConversionFormData['purchase_currency']);
-  }, [rows, setValue]);
+    if (rows.length > 1) {
+      let totalMt = 0, totalCost = 0;
+      for (const r of rows) {
+        const mt = Number(r.quantity_mt) || 0;
+        const price = Number(r.purchase_price) || 0;
+        const fx = r.currency === baseCurrency ? 1 : Number(r.fx_rate) || 0;
+        totalMt += mt; totalCost += mt * price * fx;
+      }
+      if (totalMt > 0) setValue('purchase_price', Math.round((totalCost / totalMt) * 10000) / 10000);
+      setValue('purchase_currency', baseCurrency as SaleConversionFormData['purchase_currency']);
+    } else {
+      if (first.purchase_price !== '') setValue('purchase_price', Number(first.purchase_price));
+      setValue('purchase_currency', first.currency as SaleConversionFormData['purchase_currency']);
+    }
+  }, [rows, baseCurrency, setValue]);
 
   // Toplam & özet
   const supplierTotals = useMemo(() => {
