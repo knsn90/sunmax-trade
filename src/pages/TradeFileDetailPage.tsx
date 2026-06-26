@@ -2225,7 +2225,7 @@ export function TradeFileDetailPage() {
       {batchOpen && (
         <BatchModal
           parent={file}
-          nextBatchNo={(file.batches?.length ?? 0) + 1}
+          nextBatchNo={(file.batches ?? []).reduce((mx, b) => Math.max(mx, b.batch_no ?? 0), 0) + 1}
           open={batchOpen}
           onClose={() => setBatchOpen(false)}
         />
