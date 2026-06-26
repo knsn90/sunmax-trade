@@ -7,6 +7,20 @@ import type {
   DeliveryFormData,
 } from '@/types/forms';
 
+// file_no çakışmasında sıra numarasını bir artırır.
+// Parti:  "ANA/P2"            → "ANA/P3"
+// Kök:    "CODE-07 25-11 ..." → "CODE-08 25-11 ..."
+function bumpFileNo(fileNo: string): string {
+  const batch = /^(.*\/P)(\d+)$/.exec(fileNo);
+  if (batch) return `${batch[1]}${parseInt(batch[2], 10) + 1}`;
+  const root = /^([A-Za-z0-9]+-)(\d+)(.*)$/.exec(fileNo);
+  if (root) {
+    const n = parseInt(root[2], 10) + 1;
+    return `${root[1]}${String(n).padStart(2, '0')}${root[3]}`;
+  }
+  return `${fileNo}-2`;
+}
+
 // Minimal select for paginated list page (TradeFilesPage) — sadece gösterilen alanlar
 const FILE_SELECT_PAGINATED = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt, selling_price,
@@ -165,27 +179,43 @@ export const tradeFileService = {
     // tenant_id is passed from the hook (useAuth profile) — no extra network calls needed
     const tenantId = input.tenantId ?? null;
 
-    const { data, error } = await supabase
-      .from('trade_files')
-      .insert({
-        tenant_id: tenantId,
-        file_no: input.file_no,
-        file_date: input.file_date,
-        customer_id: input.customer_id,
-        product_id: input.product_id,
-        tonnage_mt: input.tonnage_mt,
-        customer_ref: input.customer_ref,
-        notes: input.notes,
-        eta: input.eta || null,
-        status: (input.initialStatus ?? 'request') as TradeFileStatus,
-        parent_file_id: input.parent_file_id ?? null,
-        batch_no: input.batch_no ?? null,
-      })
-      .select(MUTATION_SELECT)
-      .single();
+    const basePayload = {
+      tenant_id: tenantId,
+      file_date: input.file_date,
+      customer_id: input.customer_id,
+      product_id: input.product_id,
+      tonnage_mt: input.tonnage_mt,
+      customer_ref: input.customer_ref,
+      notes: input.notes,
+      eta: input.eta || null,
+      status: (input.initialStatus ?? 'request') as TradeFileStatus,
+      parent_file_id: input.parent_file_id ?? null,
+      batch_no: input.batch_no ?? null,
+    };
 
-    if (error) throw new Error(error.message);
-    return data as TradeFile;
+    // file_no çakışmasına dayanıklı: unique violation (23505) olursa
+    // sıra numarasını artırıp yeniden dene (stale count / yarış durumu backstop).
+    let fileNo = input.file_no;
+    let batchNo = input.batch_no ?? null;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const { data, error } = await supabase
+        .from('trade_files')
+        .insert({ ...basePayload, file_no: fileNo, batch_no: batchNo })
+        .select(MUTATION_SELECT)
+        .single();
+
+      if (!error) return data as TradeFile;
+
+      const isDup =
+        (error as { code?: string }).code === '23505' &&
+        /file_no/.test(error.message ?? '');
+      if (!isDup) throw new Error(error.message);
+
+      // Sonraki numarayı dene
+      fileNo = bumpFileNo(fileNo);
+      if (batchNo != null) batchNo = batchNo + 1;
+    }
+    throw new Error('Benzersiz dosya numarası üretilemedi — lütfen dosya numarasını elle değiştirin.');
   },
 
   async convertToSale(
