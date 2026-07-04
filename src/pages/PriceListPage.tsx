@@ -757,7 +757,7 @@ export function PriceListPage() {
           <select
             value={filterProductId}
             onChange={e => { setFilterProductId(e.target.value); resetPricePage(); }}
-            className="h-10 px-4 pr-9 text-[12px] bg-white border border-[#ECECEC] rounded-full text-[#6F6F6F] focus:outline-none appearance-none cursor-pointer"
+            className="h-10 w-44 shrink-0 px-4 pr-9 text-[12px] bg-white border border-[#ECECEC] rounded-full text-[#6F6F6F] focus:outline-none appearance-none cursor-pointer truncate"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A8A8AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
           >
             <option value="">{t('allProducts')}</option>
@@ -768,7 +768,7 @@ export function PriceListPage() {
           <select
             value={filterSupplierId}
             onChange={e => { setFilterSupplierId(e.target.value); resetPricePage(); }}
-            className="h-10 px-4 pr-9 text-[12px] bg-white border border-[#ECECEC] rounded-full text-[#6F6F6F] focus:outline-none appearance-none cursor-pointer"
+            className="h-10 w-44 shrink-0 px-4 pr-9 text-[12px] bg-white border border-[#ECECEC] rounded-full text-[#6F6F6F] focus:outline-none appearance-none cursor-pointer truncate"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A8A8AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
           >
             <option value="">{t('allSuppliers')}</option>

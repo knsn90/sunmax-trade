@@ -20,13 +20,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fUSD, fDate } from '@/lib/formatters';
 import { LoadingSpinner, EntityAvatar } from '@/components/ui/shared';
+import { KpiCard } from '@/components/ui/KpiCard';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { usePriceList } from '@/hooks/useEntities';
 import { saveDashboardPrefs } from '@/services/userService';
 import { NewFileModal } from '@/components/trade-files/NewFileModal';
 import {
-  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
+  TrendingUp, AlertTriangle, CheckCircle2,
   ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet, Tag,
   GripVertical, Maximize2, Minimize2, Plus,
   Layers, Bell, Truck, Banknote, Trophy, FileWarning, Scale, LineChart as LineChartIcon,
@@ -116,63 +117,6 @@ const TXN_TYPE_LABELS: Record<string, string> = {
 };
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, trend, icon, accent, onClick }: {
-  label: string; value: string; sub?: string;
-  trend?: 'up' | 'down'; icon: React.ReactNode; accent: string;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
-      className={`bg-white rounded-[18px] px-4 py-4 md:px-5 md:py-5 border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden${onClick ? ' cursor-pointer hover:shadow-[0_12px_32px_rgba(0,0,0,0.07)] active:scale-[0.99] transition-all' : ''}`}
-    >
-      {/* Mobile */}
-      <div className="flex items-center gap-3 md:hidden">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: accent + '14' }}>
-          <span style={{ color: accent }}>{icon}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[12px] font-medium text-[#8A8A8E] mb-0.5">{label}</div>
-          <div className="text-[18px] font-bold text-[#0A0A0A] leading-tight tabular-nums tracking-[-0.01em]">{value}</div>
-          {sub && (
-            <div className="flex items-center gap-1 mt-0.5">
-              {trend === 'up'   && <TrendingUp  className="h-2.5 w-2.5 text-[#16A34A] shrink-0" />}
-              {trend === 'down' && <TrendingDown className="h-2.5 w-2.5 text-[#EF4444] shrink-0" />}
-              <span className="text-[11px] text-[#8A8A8E] truncate">{sub}</span>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* Desktop */}
-      <div className="hidden md:block">
-        <div className="flex items-center justify-between mb-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: accent + '14' }}>
-            <span style={{ color: accent }}>{icon}</span>
-          </div>
-          {sub && trend && (
-            <span
-              className={cn(
-                'inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-1 rounded-full',
-                trend === 'up' ? 'bg-[#16A34A]/10 text-[#16A34A]' : 'bg-[#EF4444]/10 text-[#EF4444]',
-              )}
-            >
-              {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            </span>
-          )}
-        </div>
-        <div className="text-[13px] font-medium text-[#8A8A8E] mb-1.5">{label}</div>
-        <div className="text-[28px] font-bold text-[#0A0A0A] leading-none tracking-[-0.02em] tabular-nums">{value}</div>
-        {sub && (
-          <div className="text-[12px] text-[#8A8A8E] mt-2">{sub}</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Card wrapper ─────────────────────────────────────────────────────────────
 function Card({ title, icon, children, action, actionLabel, className, dragHandleProps, isFull, onToggleSize }: {
   title: string; icon?: React.ReactNode; children: React.ReactNode;
@@ -1600,16 +1544,16 @@ export function DashboardPage() {
           {/* KPI Row */}
           <div className="grid grid-cols-4 gap-5">
             <KpiCard label={t('kpi.activeFiles')} value={String(activeFiles)} sub={t('kpi.newThisMonth', { count: thisMonth })}
-              icon={<Package className="h-5 w-5" />} accent={accent}
+              icon={<Package className="h-5 w-5" />} color={accent} size="lg"
               onClick={() => navigate('/pipeline')} />
             <KpiCard label={t('kpi.totalProfit')} value={fUSD(totalProfit)} sub={t('kpi.completed', { count: byStatus.completed })}
-              trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} accent="#10b981"
+              trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} color="#10b981" size="lg"
               onClick={() => navigate('/fin-reports')} />
             <KpiCard label={t('kpi.receivable')} value={fUSD(summary?.totalReceivable ?? 0)} sub={t('kpi.fromCustomers')}
-              icon={<DollarSign className="h-5 w-5" />} accent="#2563eb"
+              icon={<DollarSign className="h-5 w-5" />} color="#2563eb" size="lg"
               onClick={() => navigate('/accounting', { state: { tab: 'sale' } })} />
             <KpiCard label={t('kpi.payable')} value={fUSD(summary?.totalPayable ?? 0)} sub={t('kpi.toSuppliers')}
-              icon={<Wallet className="h-5 w-5" />} accent="#f59e0b"
+              icon={<Wallet className="h-5 w-5" />} color="#f59e0b" size="lg"
               onClick={() => navigate('/accounting', { state: { tab: 'buy' } })} />
           </div>
 

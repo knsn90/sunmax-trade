@@ -24,6 +24,7 @@ import { FlagButton } from '@/components/accounting/FlagButton';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { Badge } from '@/components/ui/form-elements';
 import { LoadingSpinner, EntityAvatar } from '@/components/ui/shared';
+import { KpiCard } from '@/components/ui/KpiCard';
 import { DocStatusBadge } from '@/components/ui/DocStatusBadge';
 import { ApprovalActions } from '@/components/ui/ApprovalActions';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -43,23 +44,6 @@ const TYPE_COLORS: Record<string, string> = {
   payment:      '#ef4444',
   expense:      '#f97316',
 };
-
-function KpiCard({ label, value, icon, color, sub }: {
-  label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
-}) {
-  return (
-    <div className="bg-white rounded-[18px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-4 flex items-start gap-3" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: color + '14' }}>
-        <span style={{ color }}>{icon}</span>
-      </div>
-      <div className="min-w-0">
-        <div className="text-[11px] font-medium text-[#8A8A8E] mb-1">{label}</div>
-        <div className="text-[15px] font-bold text-[#0A0A0A] leading-tight tabular-nums tracking-[-0.01em]">{value}</div>
-        {sub && <div className="text-[10px] text-[#A8A8AD] mt-0.5">{sub}</div>}
-      </div>
-    </div>
-  );
-}
 
 // ─── Mobile transaction card ───────────────────────────────────────────────────
 function TxnCard({ t, writable, admin, settings, onEdit, onDelete, onPrint, selected, onSelect }: {
@@ -488,7 +472,7 @@ export function AccountingPage() {
   const profit = (summary?.totalRevenue ?? 0) - (summary?.totalCost ?? 0);
 
   return (
-    <div className="-mx-4 md:mx-0 min-h-screen bg-gray-50 pb-28 md:pb-8" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+    <div className="-mx-4 md:mx-0 min-h-screen bg-[#f7f9fc] md:bg-transparent pb-28 md:pb-8" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div className="px-3 md:px-0 space-y-4">
 
         {/* Page Header — desktop only */}

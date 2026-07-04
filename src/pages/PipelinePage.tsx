@@ -22,6 +22,7 @@ import {
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 import { EntityAvatar } from '@/components/ui/shared';
+import { lightenHex } from '@/components/ui/KpiCard';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 type FilterKey = 'all' | 'request' | 'sale' | 'delivery';
@@ -215,16 +216,19 @@ function KpiStrip({ files }: { files: TradeFile[] }) {
         return (
           <div
             key={s.key}
-            className="flex-none flex flex-col items-center justify-center rounded-2xl px-4 py-2.5 min-w-[72px]"
-            style={{ background: s.bg }}
+            className="relative overflow-hidden flex-none flex flex-col items-center justify-center rounded-2xl px-4 py-2.5 min-w-[72px]"
+            style={{
+              background: `linear-gradient(135deg, ${lightenHex(s.color, 0.24)} 0%, ${s.color} 100%)`,
+              boxShadow: `0 8px 20px -10px ${s.color}80, inset 0 1px 0 0 rgba(255,255,255,0.30)`,
+            }}
           >
             <span
-              className="text-[22px] font-black leading-tight"
-              style={{ color: s.color, fontFamily: 'Manrope, sans-serif' }}
+              className="text-[22px] font-black leading-tight text-white drop-shadow-sm"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
             >
               {count}
             </span>
-            <span className="text-[9px] font-bold uppercase tracking-widest mt-0.5" style={{ color: s.color + 'bb' }}>
+            <span className="text-[9px] font-bold uppercase tracking-widest mt-0.5 text-white/85">
               {s.label}
             </span>
           </div>

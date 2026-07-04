@@ -126,7 +126,8 @@ function LayoutInner() {
         <ImpersonationBanner />
         <MobilePageHeader />
         <main
-          className="flex-1 overflow-y-auto overflow-x-hidden px-4 [padding-bottom:calc(env(safe-area-inset-bottom)+4rem+8px)] md:p-6 md:bg-gray-50 scrollbar-thin"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-4 [padding-bottom:calc(env(safe-area-inset-bottom)+4rem+8px)] md:p-6 md:bg-[#EFEDE8] scrollbar-thin"
+          style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
         >
           <PageTransition pageKey={location.pathname.split('/')[1] ?? 'home'}>
             <Outlet />

@@ -1446,8 +1446,9 @@ function isBorç(
 
   if (entityType === 'customer') {
     // BORÇ: sale_inv → müşteri bize borçlu
-    // ALACAK: receipt → müşteri ödedi
-    return txnType === 'sale_inv';
+    //       payment  → müşteriye ödeme/iade yaptık (bizdeki kredisini azaltır)
+    // ALACAK: receipt / advance → müşteri bize ödedi
+    return txnType === 'sale_inv' || txnType === 'payment';
   }
 
   if (entityType === 'supplier') {
