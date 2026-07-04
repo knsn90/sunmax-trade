@@ -35,7 +35,7 @@ const FILE_SELECT_PAGINATED = `
 const FILE_SELECT = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt, selling_price, purchase_price,
   incoterms, transport_mode, port_of_loading, port_of_discharge,
-  proforma_ref, register_no, insurance_tr, eta, currency,
+  proforma_ref, register_no, insurance_tr, eta, vessel_name, currency,
   purchase_currency, sale_currency, freight_cost, parent_file_id, batch_no,
   customer_id, product_id, created_at, updated_at,
   customer:customers!customer_id(id, name, code, country, logo_url),
@@ -50,7 +50,7 @@ const FILE_DETAIL_SELECT = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt,
   selling_price, purchase_price, incoterms, transport_mode,
   port_of_loading, port_of_discharge, proforma_ref, register_no,
-  insurance_tr, eta, revised_eta, delay_notes, currency,
+  insurance_tr, eta, vessel_name, revised_eta, delay_notes, currency,
   purchase_currency, sale_currency, freight_cost, parent_file_id,
   batch_no, customer_id, product_id, created_by, created_at,
   updated_at, deleted_at, cancel_reason, supplier_id,

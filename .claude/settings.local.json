@@ -170,7 +170,11 @@
       "Bash(sed -n '125,150p' /Users/saber/Downloads/sunmax-trade/src/pages/DocumentsPage.tsx)",
       "Bash(sed -n '567,600p' /Users/saber/Downloads/sunmax-trade/src/pages/PriceListPage.tsx)",
       "Bash(sed -n '484,510p' /Users/saber/Downloads/sunmax-trade/src/pages/FinancialReportsPage.tsx)",
-      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(git cherry-pick *)",
+      "Bash(sed -n '155,175p' /Users/saber/Downloads/sunmax-trade/src/types/database.ts)",
+      "Bash(sed -n '205,240p' /Users/saber/Downloads/sunmax-trade/src/types/database.ts)",
+      "Bash(grep -rn '} MT\\\\|\" MT\\\\|`MT' /Users/saber/Downloads/sunmax-trade/src/pages --include=\"*.tsx\")"
     ]
   }
 }
