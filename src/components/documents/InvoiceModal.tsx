@@ -77,6 +77,28 @@ function injectPreviewCss(html: string): string {
   );
 }
 
+// Trade file'a bağlı en güncel packing list'ten fatura alanlarını türetir.
+// Packing list'te girilmiş bilgiler (brüt ağırlık, ambalaj/rulo, CB no, sigorta,
+// miktar) faturada otomatik dolsun diye kullanılır.
+function packingPrefill(f: TradeFile | null | undefined) {
+  const lists = f?.packing_lists ?? [];
+  if (!lists.length) return null;
+  // En güncel (pl_date, sonra created_at) packing list
+  const pl = [...lists].sort((a, b) =>
+    (b.pl_date ?? '').localeCompare(a.pl_date ?? '') ||
+    (b.created_at ?? '').localeCompare(a.created_at ?? ''),
+  )[0];
+  if (!pl) return null;
+  return {
+    gross_weight_kg: pl.total_gross_kg && pl.total_gross_kg > 0 ? pl.total_gross_kg : undefined,
+    packing_info:    pl.total_reels && pl.total_reels > 0 ? `${pl.total_reels} ${pl.unit_label || 'Reels'}` : '',
+    quantity_admt:   pl.total_admt && pl.total_admt > 0 ? pl.total_admt : undefined,
+    qty_unit:        (pl.qty_unit === 'MT' ? 'MT' : 'ADMT') as 'ADMT' | 'MT',
+    cb_no:           pl.cb_no ?? '',
+    insurance_no:    pl.insurance_no ?? '',
+  };
+}
+
 interface InvoiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -166,16 +188,20 @@ export function InvoiceModal({
     } else if (file) {
       const customer = customers.find(c => c.id === file.customer_id);
       const addr = buildAddress(customer ?? file.customer);
+      const pl = packingPrefill(file);
       reset({
         invoice_date: today(),
         currency: file.currency ?? settings?.default_currency ?? 'USD',
         incoterms: file.incoterms ?? settings?.default_incoterms ?? 'CPT',
-        proforma_no: file.proforma_ref ?? '', cb_no: '', insurance_no: file.insurance_tr ?? '',
-        quantity_admt: file.delivered_admt ?? file.tonnage_mt ?? 0,
+        proforma_no: file.proforma_ref ?? '',
+        cb_no: pl?.cb_no || '',
+        insurance_no: pl?.insurance_no || file.insurance_tr || '',
+        quantity_admt: pl?.quantity_admt ?? file.delivered_admt ?? file.tonnage_mt ?? 0,
         unit_price: file.selling_price ?? 0, freight: file.freight_cost ?? 0,
-        gross_weight_kg: file.gross_weight_kg ?? undefined, packing_info: '',
+        gross_weight_kg: pl?.gross_weight_kg ?? file.gross_weight_kg ?? undefined,
+        packing_info: pl?.packing_info || '',
         payment_terms: file.payment_terms ?? settings?.payment_terms ?? '',
-        bill_to: addr, ship_to: addr, qty_unit: 'ADMT' as const,
+        bill_to: addr, ship_to: addr, qty_unit: pl?.qty_unit ?? 'ADMT',
       });
     }
   }, [open, file, invoice, settings, reset]);
@@ -184,16 +210,20 @@ export function InvoiceModal({
     if (!open || !pickedFile || invoice) return;
     const customer = customers.find(c => c.id === pickedFile.customer_id);
     const addr = buildAddress(customer ?? pickedFile.customer);
+    const pl = packingPrefill(pickedFile);
     reset({
       invoice_date: today(),
       currency: pickedFile.currency ?? settings?.default_currency ?? 'USD',
       incoterms: pickedFile.incoterms ?? settings?.default_incoterms ?? 'CPT',
-      proforma_no: pickedFile.proforma_ref ?? '', cb_no: '', insurance_no: pickedFile.insurance_tr ?? '',
-      quantity_admt: pickedFile.delivered_admt ?? pickedFile.tonnage_mt ?? 0,
+      proforma_no: pickedFile.proforma_ref ?? '',
+      cb_no: pl?.cb_no || '',
+      insurance_no: pl?.insurance_no || pickedFile.insurance_tr || '',
+      quantity_admt: pl?.quantity_admt ?? pickedFile.delivered_admt ?? pickedFile.tonnage_mt ?? 0,
       unit_price: pickedFile.selling_price ?? 0, freight: pickedFile.freight_cost ?? 0,
-      gross_weight_kg: pickedFile.gross_weight_kg ?? undefined, packing_info: '',
+      gross_weight_kg: pl?.gross_weight_kg ?? pickedFile.gross_weight_kg ?? undefined,
+      packing_info: pl?.packing_info || '',
       payment_terms: pickedFile.payment_terms ?? settings?.payment_terms ?? '',
-      bill_to: addr, ship_to: addr, qty_unit: 'ADMT' as const,
+      bill_to: addr, ship_to: addr, qty_unit: pl?.qty_unit ?? 'ADMT',
     });
   }, [pickedFile, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
