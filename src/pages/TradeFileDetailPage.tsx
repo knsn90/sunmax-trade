@@ -579,9 +579,12 @@ export function TradeFileDetailPage() {
     && (file.batches ?? []).every(b => b.status === 'completed');
   // Batch file_no = "ANA/P1" → ana dosya no = "ANA"
   const parentFileNo = isBatch ? file.file_no.split('/').slice(0, -1).join('/') : null;
-  // Teslim edilen: partili dosyada tamamlanan partilerin tonnage toplamı, değilse delivered_admt
+  // Teslim edilen: partili dosyada teslimatı yapılmış (delivery/completed) partilerin
+  // tonnage toplamı — her teslimatta artar; değilse dosyanın delivered_admt'i
   const deliveredTonnage = isPartial
-    ? (file.batches ?? []).filter(b => b.status === 'completed').reduce((s, b) => s + (b.tonnage_mt ?? 0), 0)
+    ? (file.batches ?? [])
+        .filter(b => b.status === 'delivery' || b.status === 'completed')
+        .reduce((s, b) => s + (b.tonnage_mt ?? 0), 0)
     : (file.delivered_admt ?? null);
 
   // Teslimat bloğunda gösterilecek ADMT: partili dosyada TÜM partilerin toplam
