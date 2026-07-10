@@ -1022,7 +1022,7 @@ export function TradeFileDetailPage() {
   );
 
   return (
-    <div className="-mx-4 md:mx-0 bg-gray-50 min-h-screen pb-8 md:h-full md:min-h-0 md:pb-0">
+    <div className="-mx-4 md:mx-0 bg-[#f7f9fc] md:bg-transparent min-h-screen pb-8 md:h-full md:min-h-0 md:pb-0">
 
       {/* ── Completion Blocker Modal ─────────────────────────────────────── */}
       <Dialog open={completionBlockerOpen} onOpenChange={setCompletionBlockerOpen}>
