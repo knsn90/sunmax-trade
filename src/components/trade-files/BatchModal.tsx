@@ -39,10 +39,18 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
   const multiSuppliers = (parent.suppliers ?? []).length > 1;
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
 
-  // Her tedarikçi için mevcut partilerde kullanılan tonaj
+  // Her tedarikçi için mevcut partilerde kullanılan tonaj (supplier_id bazında)
   const usedTonBySupplier = (parent.batches ?? []).reduce<Record<string, number>>((acc, b) => {
     const sid = (b as unknown as { supplier_id?: string }).supplier_id;
     if (sid) acc[sid] = (acc[sid] ?? 0) + (b.tonnage_mt ?? 0);
+    return acc;
+  }, {});
+
+  // Aynı tedarikçi (supplier_id) birden fazla satırda olabilir (farklı lot/fiyat).
+  // Kalan tonaj tedarikçinin TÜM satırlarının toplamı üzerinden hesaplanmalı —
+  // aksi halde toplam kullanım her satırdan ayrı düşülüp yanlışlıkla "Doldu" görünür.
+  const totalQtyBySupplier = (parent.suppliers ?? []).reduce<Record<string, number>>((acc, s) => {
+    acc[s.supplier_id] = (acc[s.supplier_id] ?? 0) + (s.quantity_mt ?? 0);
     return acc;
   }, {});
 
@@ -172,9 +180,10 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
               <div className="space-y-1.5">
                 {(parent.suppliers ?? []).map(s => {
                   const isSelected  = selectedSupplierId === s.supplier_id;
+                  const poolQty     = totalQtyBySupplier[s.supplier_id] ?? 0;
                   const usedTon     = usedTonBySupplier[s.supplier_id] ?? 0;
-                  const remaining   = Math.max(0, (s.quantity_mt ?? 0) - usedTon);
-                  const isFull      = s.quantity_mt > 0 && remaining <= 0;
+                  const remaining   = Math.max(0, poolQty - usedTon);
+                  const isFull      = poolQty > 0 && remaining <= 0;
                   return (
                     <button
                       key={s.supplier_id}
@@ -199,7 +208,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
                         </p>
                         <p className={`text-[10px] ${isSelected && !isFull ? 'text-white/70' : isFull ? 'text-red-400' : 'text-gray-400'}`}>
                           {isFull
-                            ? `Doldu — ${s.quantity_mt} MT tamamı kullanıldı`
+                            ? `Doldu — ${poolQty} MT tamamı kullanıldı`
                             : `${remaining.toLocaleString('tr-TR')} MT kalan · $${s.purchase_price?.toLocaleString('tr-TR') ?? 0}/${s.currency ?? 'USD'}`
                           }
                         </p>
