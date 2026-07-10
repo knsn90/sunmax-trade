@@ -584,6 +584,13 @@ export function TradeFileDetailPage() {
     ? (file.batches ?? []).filter(b => b.status === 'completed').reduce((s, b) => s + (b.tonnage_mt ?? 0), 0)
     : (file.delivered_admt ?? null);
 
+  // Teslimat bloğunda gösterilecek ADMT: partili dosyada TÜM partilerin toplam
+  // tonajı (gerçek teslim edilen), değilse dosyanın delivered_admt / tonaj değeri
+  const batchesTonnage = (file.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const deliveryAdmt = isPartial && batchesTonnage > 0
+    ? batchesTonnage
+    : (file.delivered_admt ?? file.tonnage_mt ?? 0);
+
   // Çoklu tedarikçi → tonaj ağırlıklı ortalama alış fiyatı; tekli → file.purchase_price
   const supplierLines = file.suppliers ?? [];
   const weightedPurchase = (() => {
@@ -1362,7 +1369,7 @@ export function TradeFileDetailPage() {
         </Section>
 
         {/* ── Delivery ─────────────────────────────────────────────────── */}
-        {file.delivered_admt && (
+        {(file.delivered_admt || (isPartial && batchesTonnage > 0)) && (
           <Section
             title={t('detail.delivery.title')}
             icon={<Truck className="h-3.5 w-3.5" />}
@@ -1376,7 +1383,7 @@ export function TradeFileDetailPage() {
             ) : undefined}
           >
             <div className="grid grid-cols-2 gap-x-4">
-              <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
+              <KV label={t('detail.delivery.admt')} value={fN(deliveryAdmt, 3)} bold />
               <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
               <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
               <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
@@ -2011,7 +2018,7 @@ export function TradeFileDetailPage() {
             )}
 
             {/* Delivery */}
-            {file.delivered_admt && (
+            {(file.delivered_admt || (isPartial && batchesTonnage > 0)) && (
               <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
                 <div className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none" onClick={() => toggleCard('delivery')}>
                   <div className="flex items-center gap-2.5">
@@ -2029,7 +2036,7 @@ export function TradeFileDetailPage() {
                 </div>
                 {!collapsed.delivery && (
                   <div className="px-6 py-3 grid grid-cols-2 gap-x-6">
-                    <KV label={t('detail.delivery.admt')} value={fN(file.delivered_admt, 3)} bold />
+                    <KV label={t('detail.delivery.admt')} value={fN(deliveryAdmt, 3)} bold />
                     <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
                     <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
                     <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
