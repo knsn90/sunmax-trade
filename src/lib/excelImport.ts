@@ -1,5 +1,19 @@
 import * as XLSX from 'xlsx';
 
+/**
+ * Sayısal hücreyi güvenle çöz. Virgüllü ondalık ("23,5") ve binlik ayraç
+ * içeren metinleri de doğru okur; geçersizse 0 döner (eskiden NaN→0 sessizce 0'lıyordu).
+ */
+function parseNum(v: unknown): number {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const s = String(v ?? '').trim();
+  if (!s) return 0;
+  // Binlik ayraçları at, virgülü ondalık noktasına çevir
+  const norm = s.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const n = Number(norm);
+  return Number.isFinite(n) ? n : 0;
+}
+
 // ─── Packing List ────────────────────────────────────────────────────────────
 
 export interface PLImportRow {
@@ -23,8 +37,9 @@ export async function parsePLExcel(file: File): Promise<PLImportRow[]> {
   if (!raw.length) return [];
 
   const headers = Object.keys(raw[0]);
-  const find = (patterns: RegExp) =>
-    headers.find((h) => patterns.test(h)) ?? headers[0];
+  // Eşleşme yoksa undefined dön — eskiden headers[0]'a düşüp yanlış kolonu okuyordu
+  const find = (patterns: RegExp): string | undefined =>
+    headers.find((h) => patterns.test(h));
 
   const plateKey = find(/plate|tir|araç|plaka/i);
   const reelsKey = find(/reel|bobbin/i);
@@ -33,10 +48,10 @@ export async function parsePLExcel(file: File): Promise<PLImportRow[]> {
 
   return raw
     .map((row) => ({
-      vehicle_plate: String(row[plateKey] ?? '').trim(),
-      reels:         Number(row[reelsKey]) || 0,
-      admt:          Number(row[admtKey])  || 0,
-      gross_weight_kg: Number(row[grossKey]) || 0,
+      vehicle_plate:   plateKey ? String(row[plateKey] ?? '').trim() : '',
+      reels:           reelsKey ? parseNum(row[reelsKey]) : 0,
+      admt:            admtKey  ? parseNum(row[admtKey])  : 0,
+      gross_weight_kg: grossKey ? parseNum(row[grossKey]) : 0,
     }))
     .filter((r) => r.vehicle_plate !== '' || r.admt > 0);
 }
@@ -86,10 +101,10 @@ export async function parseInvoiceExcel(file: File): Promise<InvoiceImportData> 
 
   headers.forEach((h, i) => {
     const v = values[i];
-    if (/qty|quantity|admt/.test(h))    result.quantity_admt   = Number(v) || undefined;
-    else if (/unit.*price|price/.test(h)) result.unit_price     = Number(v) || undefined;
-    else if (/freight/.test(h))           result.freight         = Number(v) || undefined;
-    else if (/gross/.test(h))             result.gross_weight_kg = Number(v) || undefined;
+    if (/qty|quantity|admt/.test(h))    result.quantity_admt   = parseNum(v) || undefined;
+    else if (/unit.*price|price/.test(h)) result.unit_price     = parseNum(v) || undefined;
+    else if (/freight/.test(h))           result.freight         = parseNum(v) || undefined;
+    else if (/gross/.test(h))             result.gross_weight_kg = parseNum(v) || undefined;
     else if (/proforma/.test(h))          result.proforma_no     = String(v || '');
     else if (/cb/.test(h))                result.cb_no           = String(v || '');
     else if (/insurance/.test(h))         result.insurance_no    = String(v || '');
@@ -147,11 +162,11 @@ export async function parseProformaExcel(file: File): Promise<ProformaImportData
 
   headers.forEach((h, i) => {
     const v = values[i];
-    if (/qty|quantity|admt/.test(h))      result.quantity_admt       = Number(v) || undefined;
-    else if (/unit.*price|price/.test(h)) result.unit_price           = Number(v) || undefined;
-    else if (/freight/.test(h))           result.freight               = Number(v) || undefined;
-    else if (/net.*weight|net/.test(h))   result.net_weight_kg         = Number(v) || undefined;
-    else if (/gross/.test(h))             result.gross_weight_kg       = Number(v) || undefined;
+    if (/qty|quantity|admt/.test(h))      result.quantity_admt       = parseNum(v) || undefined;
+    else if (/unit.*price|price/.test(h)) result.unit_price           = parseNum(v) || undefined;
+    else if (/freight/.test(h))           result.freight               = parseNum(v) || undefined;
+    else if (/net.*weight|net/.test(h))   result.net_weight_kg         = parseNum(v) || undefined;
+    else if (/gross/.test(h))             result.gross_weight_kg       = parseNum(v) || undefined;
     else if (/buyer|commercial/.test(h))  result.buyer_commercial_id   = String(v || '');
     else if (/discharge|pod/.test(h))     result.port_of_discharge     = String(v || '');
     else if (/payment/.test(h))           result.payment_terms         = String(v || '');

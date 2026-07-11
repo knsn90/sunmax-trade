@@ -424,8 +424,10 @@ export function DashboardPage() {
   const { profile } = useAuth();
   const { data: files = [], isLoading: filesLoading } = useTradeFiles();
   const { data: summary, isLoading: summaryLoading } = useTransactionSummary();
-  // Dashboard'da tüm işlemlere gerek yok — uyarılar ve son 3 işlem için 300 yeterli
-  const { data: transactions = [] } = useTransactions({ limit: 300 });
+  // Finansal widget'lar (tahsilat özeti, FX pozisyonu, ödendi seti) TÜM işlemleri
+  // gerektirir — 300 cap'i >300 işlemli tenant'ta bu toplamları eksik gösteriyordu.
+  // (list varsayılan 10000; recent-3 listesi zaten sort+slice yapıyor.)
+  const { data: transactions = [] } = useTransactions();
   const { data: priceEntries = [] } = usePriceList();
   const { accent } = useTheme();
   const writable = canWrite(profile?.role);

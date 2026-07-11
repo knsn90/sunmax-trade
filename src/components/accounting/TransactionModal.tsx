@@ -440,10 +440,16 @@ export function TransactionModal({
       // saklanır, depo için doğru amount_usd ayrıca geçilir (toUSD yön bilmez).
       // direct: 1 yerel = rate USD → usd = amount * rate
       // inverse: 1 USD = rate yerel → usd = amount / rate
+      const enteredRate = data.exchange_rate;   // kullanıcının girdiği kur (kurYon'a göre)
       const usdOf = (amt: number) => {
-        if (data.currency === 'USD' || !(data.exchange_rate > 0)) return amt;
-        return parseFloat((kurYon === 'direct' ? amt * data.exchange_rate : amt / data.exchange_rate).toFixed(2));
+        if (data.currency === 'USD' || !(enteredRate > 0)) return amt;
+        return parseFloat((kurYon === 'direct' ? amt * enteredRate : amt / enteredRate).toFixed(2));
       };
+      // exchange_rate'i standart konvansiyona normalize et: "1 USD = kaç yerel" (local per USD).
+      // direct modda kullanıcı "1 yerel = X USD" girer → tersini sakla (FxReportTab & toUSD ile tutarlı).
+      if (data.currency !== 'USD' && enteredRate > 0 && kurYon === 'direct') {
+        data.exchange_rate = parseFloat((1 / enteredRate).toFixed(6));
+      }
       data.amount_usd = usdOf(data.amount);
 
       // ── İç Transfer branch ──────────────────────────────────────────────

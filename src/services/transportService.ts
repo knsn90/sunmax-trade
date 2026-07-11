@@ -121,16 +121,16 @@ export const transportService = {
       .maybeSingle();
 
     const send_status = existing?.send_status === 'sent' ? 'resent' : 'sent';
+    // upsert yerine update — notification_text'i ezmemek için (aksi halde metin silinir)
     const { error } = await supabase
       .from('transport_notifications')
-      .upsert({
-        transport_plan_id: planId,
-        target_group: targetGroup,
-        notification_text: '',
+      .update({
         send_status,
         sent_at: new Date().toISOString(),
         sent_by: userId,
-      }, { onConflict: 'transport_plan_id,target_group' });
+      })
+      .eq('transport_plan_id', planId)
+      .eq('target_group', targetGroup);
     if (error) throw new Error(error.message);
   },
 };

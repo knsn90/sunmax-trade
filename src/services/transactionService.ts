@@ -450,18 +450,20 @@ export const transactionService = {
     const sum = (pred: (t: typeof all[0]) => boolean) =>
       all.filter(pred).reduce((s, t) => s + (t.amount_usd ?? 0), 0);
 
-    // ALACAK: Müşteri net bakiyesi = satış faturası + müşteri avansı − tahsilat
+    // ALACAK: Müşteri net bakiyesi = satış faturası − müşteri avansı − tahsilat
+    // (avans = ön ödeme → ALACAK, cari ekstredeki isBorç konvansiyonuyla tutarlı)
     const saleInv     = sum(t => t.transaction_type === 'sale_inv');
     const custAdvance = sum(t => t.transaction_type === 'advance' && t.party_type === 'customer');
     const receipts    = sum(t => t.transaction_type === 'receipt');
-    const totalReceivable = Math.max(0, saleInv + custAdvance - receipts);
+    const totalReceivable = Math.max(0, saleInv - custAdvance - receipts);
 
-    // BORÇ: Tedarikçi net bakiyesi = satın alma + hizmet + tedarikçi avansı − ödeme
+    // BORÇ: Tedarikçi net bakiyesi = satın alma + hizmet − tedarikçi avansı − ödeme
+    // (tedarikçiye verdiğimiz avans borcumuzu azaltır → ekstreyle tutarlı)
     const purchInv    = sum(t => t.transaction_type === 'purchase_inv');
     const svcInv      = sum(t => t.transaction_type === 'svc_inv');
     const suppAdvance = sum(t => t.transaction_type === 'advance' && t.party_type === 'supplier');
     const payments    = sum(t => t.transaction_type === 'payment');
-    const totalPayable = Math.max(0, purchInv + svcInv + suppAdvance - payments);
+    const totalPayable = Math.max(0, purchInv + svcInv - suppAdvance - payments);
 
     // GELİR = Toplam satış fatura tutarı (tahakkuk esaslı)
     const totalRevenue = saleInv;

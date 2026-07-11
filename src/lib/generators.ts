@@ -1,4 +1,30 @@
 /**
+ * Bir belge numarası tabanı (baseNo) ve mevcut numaraların listesinden
+ * çakışmayan bir sonraki numarayı üretir.
+ *
+ * `count+1` yaklaşımının aksine EN YÜKSEK mevcut ekten türetir — böylece
+ * ortadaki bir kayıt silinince çakışma olmaz. Yalnızca `baseNo` veya
+ * `baseNo-NN` kalıbına tam uyanlar dikkate alınır (LIKE'ın yanlış eşleşmeleri hariç).
+ *
+ * Örn: ["SUN INV", "SUN INV-02", "SUN INV-03"] + "SUN INV" → "SUN INV-04"
+ */
+export function nextAvailableDocNo(existingNos: string[], baseNo: string): string {
+  const esc = baseNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const suffixRe = new RegExp(`^${esc}-(\\d+)$`);
+  let maxSuffix = 0;
+  let baseTaken = false;
+  for (const no of existingNos) {
+    if (no === baseNo) { baseTaken = true; continue; }
+    const m = no.match(suffixRe);
+    if (m) maxSuffix = Math.max(maxSuffix, parseInt(m[1], 10));
+  }
+  if (!baseTaken && maxSuffix === 0) return baseNo;
+  // baseNo eki olmadan "01" sayılır; bir sonraki, mevcut maksimumun +1'i
+  const next = Math.max(maxSuffix, baseTaken ? 1 : 0) + 1;
+  return `${baseNo}-${String(next).padStart(2, '0')}`;
+}
+
+/**
  * Generate a trade file number.
  * Format: ESN-250317-MARIN-01
  */

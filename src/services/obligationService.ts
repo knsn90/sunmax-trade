@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { toUSD } from '@/lib/formatters';
+import type { CurrencyCode } from '@/types/enums';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +45,8 @@ export interface RecordPaymentInput {
   supplier_id?: string | null;
   amount: number;
   currency: string;
+  /** 1 USD = kaç currency — ödeme anındaki kur (USD dışı para birimleri için). Yoksa 1. */
+  exchange_rate?: number;
   payment_date: string;
   reference_no?: string;
   notes?: string;
@@ -72,7 +76,9 @@ export const obligationService = {
    */
   async recordPayment(input: RecordPaymentInput): Promise<void> {
     const direction = input.party === 'customer' ? 'inbound' : 'outbound';
-    const amount_usd = input.amount; // assume 1:1 for now (same currency)
+    // USD dışı ödemeyi gerçek kurla çevir (eskiden 1:1 varsayılıyordu → yerel tutar USD sanılıyordu)
+    const rate = input.exchange_rate ?? 1;
+    const amount_usd = toUSD(input.amount, input.currency as CurrencyCode, rate);
 
     // Step 1: create payment
     const { data: pay, error: payErr } = await supabase
@@ -84,7 +90,7 @@ export const obligationService = {
         supplier_id: input.supplier_id ?? null,
         amount: input.amount,
         currency: input.currency,
-        exchange_rate: 1,
+        exchange_rate: rate,
         amount_usd,
         unallocated_amount: input.amount,
         reference_no: input.reference_no ?? '',

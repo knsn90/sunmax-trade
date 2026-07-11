@@ -40,11 +40,13 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
 
   // Her tedarikçi için mevcut partilerde kullanılan tonaj (supplier_id bazında)
-  const usedTonBySupplier = (parent.batches ?? []).reduce<Record<string, number>>((acc, b) => {
-    const sid = (b as unknown as { supplier_id?: string }).supplier_id;
-    if (sid) acc[sid] = (acc[sid] ?? 0) + (b.tonnage_mt ?? 0);
-    return acc;
-  }, {});
+  const usedTonBySupplier = (parent.batches ?? [])
+    .filter(b => b.status !== 'cancelled')   // iptal edilen parti tonajı serbest kalmalı
+    .reduce<Record<string, number>>((acc, b) => {
+      const sid = (b as unknown as { supplier_id?: string }).supplier_id;
+      if (sid) acc[sid] = (acc[sid] ?? 0) + (b.tonnage_mt ?? 0);
+      return acc;
+    }, {});
 
   // Aynı tedarikçi (supplier_id) birden fazla satırda olabilir (farklı lot/fiyat).
   // Kalan tonaj tedarikçinin TÜM satırlarının toplamı üzerinden hesaplanmalı —
@@ -138,7 +140,9 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
     }
   }
 
-  const usedTon      = (parent.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const usedTon      = (parent.batches ?? [])
+    .filter(b => b.status !== 'cancelled')
+    .reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
   const remainingTon = Math.max(0, parent.tonnage_mt - usedTon);
 
   return (

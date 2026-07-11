@@ -127,9 +127,21 @@ export const legacyImportService = {
         .insert(chunk, { count: 'exact' });
 
       if (error) {
-        // On conflict (duplicate external_ref in batch) — skip silently
+        // Chunk INSERT atomik — tek 23505 çakışması tüm chunk'ı düşürür.
+        // Geçerli satırları kaybetmemek için satır-satır tekrar dene; sadece
+        // gerçekten çakışan satırları skip et.
         if (error.code === '23505') {
-          result.skipped += chunk.length;
+          for (const one of chunk) {
+            const { error: rowErr } = await supabase
+              .from('legacy_transactions')
+              .insert(one);
+            if (rowErr) {
+              if (rowErr.code === '23505') result.skipped += 1;
+              else result.errors.push({ row: i, message: rowErr.message });
+            } else {
+              result.inserted += 1;
+            }
+          }
         } else {
           result.errors.push({ row: i, message: error.message });
         }

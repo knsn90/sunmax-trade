@@ -517,8 +517,9 @@ export const tradeFileService = {
         .eq('parent_file_id', parentId);
 
       if (siblings) {
+        // Detay sayfasıyla tutarlı: iptal edilmemiş TÜM partiler sayılır (sadece completed değil)
         const delivered = siblings
-          .filter((b) => b.status === 'completed')
+          .filter((b) => b.status !== 'cancelled')
           .reduce((s: number, b: { tonnage_mt: number | null }) => s + (b.tonnage_mt ?? 0), 0);
 
         await supabase

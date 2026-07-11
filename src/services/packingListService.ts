@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { PackingList, PackingListItem } from '@/types/database';
 import type { PackingListFormData } from '@/types/forms';
+import { nextAvailableDocNo } from '@/lib/generators';
 
 const PL_SELECT = `
   *,
@@ -200,14 +201,12 @@ export const packingListService = {
 
   /** Generate a unique PL number — checks globally by LIKE pattern to avoid collisions on batch files */
   async generateUniquePLNo(_tradeFileId: string, baseNo: string): Promise<string> {
-    const { count } = await supabase
+    const { data } = await supabase
       .from('packing_lists')
-      .select('id', { count: 'exact', head: true })
-      .like('packing_list_no', `${baseNo}%`);
-
-    const existing = count ?? 0;
-    if (existing === 0) return baseNo;
-    return `${baseNo}-${String(existing + 1).padStart(2, '0')}`;
+      .select('packing_list_no')
+      .like('packing_list_no', `${baseNo}%`)
+      .is('deleted_at', null);
+    return nextAvailableDocNo((data ?? []).map(r => r.packing_list_no as string), baseNo);
   },
 
   /** Update only the packing list number */

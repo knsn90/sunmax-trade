@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type { Invoice } from '@/types/database';
 import type { InvoiceFormData } from '@/types/forms';
 import { today, toUSD } from '@/lib/formatters';
+import { nextAvailableDocNo } from '@/lib/generators';
 
 const INVOICE_SELECT = `
   *,
@@ -248,14 +249,13 @@ export const invoiceService = {
    * e.g. "SUN PB-04 25-10 INV" already taken → returns "SUN PB-04 25-10 INV-02"
    */
   async generateUniqueCommercialInvoiceNo(_tradeFileId: string, baseNo: string): Promise<string> {
-    const { count } = await supabase
+    // Silinmişleri hariç tut + en yüksek ekten türet (count+1 ortadaki silmede çakışır)
+    const { data } = await supabase
       .from('invoices')
-      .select('id', { count: 'exact', head: true })
-      .like('invoice_no', `${baseNo}%`);
-
-    const existing = count ?? 0;
-    if (existing === 0) return baseNo;
-    return `${baseNo}-${String(existing + 1).padStart(2, '0')}`;
+      .select('invoice_no')
+      .like('invoice_no', `${baseNo}%`)
+      .is('deleted_at', null);
+    return nextAvailableDocNo((data ?? []).map(r => r.invoice_no as string), baseNo);
   },
 
   async delete(id: string): Promise<void> {

@@ -217,7 +217,7 @@ function PartilerCard({
   }
   if (batches.length === 0 && !writable) return null;
 
-  const usedTon   = batches.reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const usedTon   = batches.filter(b => b.status !== 'cancelled').reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
   const totalTon  = file.tonnage_mt ?? 0;
   const pct       = totalTon > 0 ? Math.min(100, Math.round((usedTon / totalTon) * 100)) : 0;
   const remaining = Math.max(0, totalTon - usedTon);
@@ -429,8 +429,8 @@ export function TradeFileDetailPage() {
     if (!fileNoInput.trim() || !file) return;
     try {
       await tradeFileService.updateFileNo(file.id, fileNoInput.trim());
-      queryClient.invalidateQueries({ queryKey: ['tradeFile', file.id] });
-      queryClient.invalidateQueries({ queryKey: ['tradeFiles'] });
+      queryClient.invalidateQueries({ queryKey: tradeFileKeys.detail(file.id) });
+      queryClient.invalidateQueries({ queryKey: tradeFileKeys.all });
       setEditingFileNo(false);
       toast.success('Dosya numarası güncellendi');
     } catch {
@@ -442,21 +442,21 @@ export function TradeFileDetailPage() {
   function makeInvoiceRename(id: string) {
     return async (newNo: string) => {
       await invoiceService.updateNo(id, newNo);
-      queryClient.invalidateQueries({ queryKey: ['tradeFile', file?.id] });
+      queryClient.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success('Fatura numarası güncellendi');
     };
   }
   function makePLRename(id: string) {
     return async (newNo: string) => {
       await packingListService.updateNo(id, newNo);
-      queryClient.invalidateQueries({ queryKey: ['tradeFile', file?.id] });
+      queryClient.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success('Çeki listesi numarası güncellendi');
     };
   }
   function makeProformaRename(id: string) {
     return async (newNo: string) => {
       await proformaService.updateNo(id, newNo);
-      queryClient.invalidateQueries({ queryKey: ['tradeFile', file?.id] });
+      queryClient.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success('Proforma numarası güncellendi');
     };
   }
@@ -600,7 +600,12 @@ export function TradeFileDetailPage() {
     if (supplierLines.length <= 1) return file.purchase_price ?? 0;
     const totalQty = supplierLines.reduce((s, x) => s + (x.quantity_mt ?? 0), 0);
     if (totalQty <= 0) return file.purchase_price ?? 0;
-    const sum = supplierLines.reduce((s, x) => s + (x.quantity_mt ?? 0) * (x.purchase_price ?? 0), 0);
+    // Karışık kurlu tedarikçilerde fx_rate ile temel para birimine çevir (ToSaleModal ile tutarlı)
+    const base = file.purchase_currency ?? file.currency ?? 'USD';
+    const sum = supplierLines.reduce((s, x) => {
+      const fx = x.currency === base ? 1 : (x.fx_rate ?? 0);
+      return s + (x.quantity_mt ?? 0) * (x.purchase_price ?? 0) * fx;
+    }, 0);
     return sum / totalQty;
   })();
 

@@ -9,10 +9,12 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
-  const { user, profile, isLoading } = useAuth();
+  const { user, profile, isLoading, profileLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading) {
+  // Profil (rol/izin) henüz yüklenirken korumalı içeriği GÖSTERME — spinner beklet.
+  // Aksi halde user var ama profile null penceresinde rol/izin kontrolleri atlanır.
+  if (isLoading || (user && profileLoading)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <LoadingSpinner />
@@ -24,8 +26,9 @@ export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
 
   const isAdmin = profile?.role === 'admin';
 
-  // Role-based check (e.g. settings page admin-only)
-  if (requiredRoles && profile && !requiredRoles.includes(profile.role)) {
+  // Role-based check (e.g. settings page admin-only).
+  // Profil yüklenemediyse (null) doğrulayamayız → erişimi reddet.
+  if (requiredRoles && (!profile || !requiredRoles.includes(profile.role))) {
     return <AccessDenied />;
   }
 

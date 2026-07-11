@@ -8,6 +8,7 @@ import { useTradeObligations, useRecordObligationPayment } from '@/hooks/useObli
 import type { TradeObligation } from '@/services/obligationService';
 import type { TradeFile } from '@/types/database';
 import { fCurrency } from '@/lib/formatters';
+import { useRateFor } from '@/hooks/useExchangeRate';
 import type { CurrencyCode } from '@/types/enums';
 import { cn } from '@/lib/utils';
 import { journalService } from '@/services/journalService';
@@ -39,14 +40,20 @@ function PaymentForm({ obligation, onClose }: { obligation: TradeObligation; onC
   const { accent } = useTheme();
   const record = useRecordObligationPayment();
 
+  const isNonUsd = obligation.currency !== 'USD';
+  const { rate: liveRate } = useRateFor(obligation.currency);   // 1 USD = kaç currency
+
   const [amount, setAmount] = useState(obligation.balance.toFixed(2));
   const [date, setDate]     = useState(new Date().toISOString().slice(0, 10));
   const [ref, setRef]       = useState('');
+  const [rate, setRate]     = useState('');   // USD dışı için kullanıcı override (boşsa canlı kur)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const val = parseFloat(amount);
     if (!val || val <= 0) return;
+    // USD dışı ödemeyi gerçek kurla çevir: kullanıcı girdiyse onu, yoksa canlı kuru kullan
+    const effRate = !isNonUsd ? 1 : (parseFloat(rate) || liveRate || 1);
     record.mutate(
       {
         obligation_id: obligation.id,
@@ -55,6 +62,7 @@ function PaymentForm({ obligation, onClose }: { obligation: TradeObligation; onC
         supplier_id:   obligation.supplier_id,
         amount:        val,
         currency:      obligation.currency,
+        exchange_rate: effRate,
         payment_date:  date,
         reference_no:  ref,
       },
@@ -93,6 +101,20 @@ function PaymentForm({ obligation, onClose }: { obligation: TradeObligation; onC
           className="w-full px-3 py-2 text-[12px] rounded-xl border border-gray-200 bg-white outline-none focus:border-blue-400"
         />
       </div>
+      {isNonUsd && (
+        <div>
+          <label className="text-[10px] text-gray-400 font-medium block mb-1">
+            USD Kuru (1 USD = ? {obligation.currency})
+            {liveRate ? <span className="ml-1 text-gray-300">· canlı {liveRate.toFixed(4)}</span> : null}
+          </label>
+          <input
+            type="number" step="0.0001" min="0"
+            placeholder={liveRate ? liveRate.toFixed(4) : '0.0000'}
+            value={rate} onChange={e => setRate(e.target.value)}
+            className="w-full px-3 py-2 text-[12px] rounded-xl border border-gray-200 bg-white outline-none focus:border-blue-400"
+          />
+        </div>
+      )}
       <div className="flex gap-2 pt-1">
         <button type="button" onClick={onClose}
           className="flex-1 h-9 rounded-xl text-[12px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">

@@ -8,6 +8,8 @@ interface AuthState {
   profile: Profile | null;
   session: Session | null;
   isLoading: boolean;
+  /** true while the profile (rol/izin) arka planda yükleniyor — user var ama profile henüz yok */
+  profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -20,8 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
+    setProfileLoading(true);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -46,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('Profile fetch error:', err);
       setProfile(null);
+    } finally {
+      setProfileLoading(false);
     }
   }, []);
 
@@ -135,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, isLoading, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, session, isLoading, profileLoading, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

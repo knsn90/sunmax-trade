@@ -160,7 +160,7 @@ export function TrashPage() {
   };
 
   const INVALIDATE_MAP: Record<TrashCategory, string[][]> = {
-    files:         [['tradeFiles'], ['trash', 'files']],
+    files:         [['trade-files'], ['trash', 'files']],
     invoices:      [['invoices'], ['trash', 'invoices']],
     packing_lists: [['packingLists'], ['trash', 'packing_lists']],
     proformas:     [['proformas'], ['trash', 'proformas']],
