@@ -17,7 +17,8 @@ export const packingListService = {
       .from('packing_lists')
       .select(PL_SELECT)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .order('item_order', { referencedTable: 'packing_list_items', ascending: true });
 
     if (error) throw new Error(error.message);
     return (data ?? []) as PackingList[];
@@ -29,7 +30,8 @@ export const packingListService = {
       .select(PL_SELECT)
       .eq('trade_file_id', tradeFileId)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .order('item_order', { referencedTable: 'packing_list_items', ascending: true });
 
     if (error) throw new Error(error.message);
     return (data ?? []) as PackingList[];
@@ -40,6 +42,7 @@ export const packingListService = {
       .from('packing_lists')
       .select(PL_SELECT)
       .eq('id', id)
+      .order('item_order', { referencedTable: 'packing_list_items', ascending: true })
       .single();
 
     if (error) throw new Error(error.message);

@@ -936,7 +936,7 @@ function _buildProformaBody(
         <td colspan="4" style="${vS};text-align:center;font-weight:700">${esc(pi.description || (file?.product as Record<string,unknown> | null | undefined)?.['name'] as string || '')}</td>
         <td colspan="2" style="${vS};text-align:center">${pi.net_weight_kg ? fN(pi.net_weight_kg, 0) : ''}</td>
         <td colspan="2" style="${vS};text-align:center">${pi.gross_weight_kg ? fN(pi.gross_weight_kg, 0) : ''}</td>
-        <td colspan="2" style="${vS};text-align:center">${fN(pi.quantity_admt, 0)}</td>
+        <td colspan="2" style="${vS};text-align:center">${fN3(pi.quantity_admt)}</td>
         <td colspan="1" style="${vS};text-align:center">${tF(pi.unit_price)}</td>
         <td colspan="2" style="${vS};text-align:center">${tF(pi.subtotal)}</td>
       </tr>

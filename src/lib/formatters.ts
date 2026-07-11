@@ -7,7 +7,9 @@ import { CURRENCY_SYMBOLS } from '@/types/enums';
  */
 export function fN(value: number | null | undefined, decimals = 3): string {
   if (value == null) return '—';
-  return Number(value).toLocaleString('en-US', {
+  const v = Number(value);
+  if (isNaN(v)) return '—';   // "NaN" yazmasını engelle
+  return v.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -69,7 +71,12 @@ export function fDate(dateStr: string | null | undefined): string {
  * Get today's date as ISO string (YYYY-MM-DD).
  */
 export function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Yerel tarih — toISOString() UTC verir, UTC+3'te 03:00 öncesi dünü döndürürdü
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 /**

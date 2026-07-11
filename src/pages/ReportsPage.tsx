@@ -791,7 +791,8 @@ export function PnlReportTab() {
       .filter((t) => ['purchase_inv', 'svc_inv'].includes(t.transaction_type))
       .reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
     const freight = selectedFile.freight_cost ?? 0;
-    const costs   = txnCosts + freight;
+    // Maliyet faturası yoksa purchase_price'a düş (özet tabloyla tutarlı) — aksi halde kâr ≈ tüm ciro
+    const costs   = txnCosts > 0 ? txnCosts + freight : (selectedFile.purchase_price ?? 0) * qty + freight;
     const profit  = revenue - costs;
     const margin  = revenue > 0 ? (profit / revenue) * 100 : 0;
     return { revenue, txnCosts, freight, costs, profit, margin };
@@ -2490,7 +2491,7 @@ function EtaReportTab() {
   const etaFiles = useMemo(() =>
     files
       .filter(f => f.eta || f.revised_eta)
-      .sort((a, b) => (a.eta ?? '') < (b.eta ?? '') ? -1 : 1),
+      .sort((a, b) => (a.eta ?? '').localeCompare(b.eta ?? '')),
     [files]
   );
 

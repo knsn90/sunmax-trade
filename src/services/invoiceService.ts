@@ -138,7 +138,20 @@ export const invoiceService = {
       invoice = data as Invoice;
     } else {
       // Create new sale invoice
-      const invNo = `SINV-${new Date().getFullYear()}-${String(Date.now() % 100000).padStart(5, '0')}`;
+      // Date.now()%100000 ~100 sn'de bir tekrarlar → çakışabilir. Mevcut SINV'lerin
+      // en yüksek sırasından türet (silinmişler hariç).
+      const invBase = `SINV-${new Date().getFullYear()}-`;
+      const { data: existingSinv } = await supabase
+        .from('invoices')
+        .select('invoice_no')
+        .like('invoice_no', `${invBase}%`)
+        .is('deleted_at', null);
+      let maxSeq = 0;
+      for (const r of existingSinv ?? []) {
+        const m = String(r.invoice_no).match(/-(\d+)$/);
+        if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+      }
+      const invNo = `${invBase}${String(maxSeq + 1).padStart(5, '0')}`;
       invoice = await this.create(tradeFileId, customerId, productName, invNo, input, 'sale');
     }
 
