@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { Invoice } from '@/types/database';
 import type { InvoiceFormData } from '@/types/forms';
-import { today } from '@/lib/formatters';
+import { today, toUSD } from '@/lib/formatters';
 
 const INVOICE_SELECT = `
   *,
@@ -66,6 +66,7 @@ export const invoiceService = {
         product_name: productName,
         invoice_date: input.invoice_date,
         currency: input.currency,
+        usd_exchange_rate: input.usd_exchange_rate ?? 1,
         incoterms: input.incoterms,
         proforma_no: input.proforma_no || null,
         cb_no: input.cb_no || null,
@@ -116,6 +117,7 @@ export const invoiceService = {
         .update({
           invoice_date: input.invoice_date,
           currency: input.currency,
+          usd_exchange_rate: input.usd_exchange_rate ?? 1,
           incoterms: input.incoterms || null,
           quantity_admt: input.quantity_admt,
           unit_price: input.unit_price,
@@ -147,6 +149,9 @@ export const invoiceService = {
   async syncSaleInvoiceTransaction(invoice: Invoice, customerId: string, tradeFileId: string): Promise<void> {
     // Use the already-calculated total from the invoice record directly
     const total = invoice.total;
+    // Faturanın dondurulmuş USD kuruyla çevir — EUR/TRY/AED faturada 1:1 sayma
+    const rate = invoice.usd_exchange_rate ?? 1;         // 1 USD = kaç currency
+    const amountUsd = toUSD(total, invoice.currency, rate);
 
     // Find existing sale_inv transaction for this trade file
     const { data: existingTxn } = await supabase
@@ -165,7 +170,8 @@ export const invoiceService = {
           reference_no: invoice.invoice_no,
           currency: invoice.currency,
           amount: total,
-          amount_usd: total,
+          exchange_rate: rate,
+          amount_usd: amountUsd,
         })
         .eq('id', existingTxn.id);
     } else {
@@ -181,8 +187,8 @@ export const invoiceService = {
           reference_no: invoice.invoice_no,
           currency: invoice.currency,
           amount: total,
-          exchange_rate: 1,
-          amount_usd: total,
+          exchange_rate: rate,
+          amount_usd: amountUsd,
           paid_amount: 0,
           paid_amount_usd: 0,
           payment_status: 'open',
@@ -210,6 +216,7 @@ export const invoiceService = {
       .update({
         invoice_date: input.invoice_date,
         currency: input.currency,
+        usd_exchange_rate: input.usd_exchange_rate ?? 1,
         incoterms: input.incoterms,
         proforma_no: input.proforma_no || null,
         cb_no: input.cb_no || null,

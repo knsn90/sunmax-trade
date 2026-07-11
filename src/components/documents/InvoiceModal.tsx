@@ -10,6 +10,7 @@ import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useCurrencies } from '@/hooks/useCurrencies';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers } from '@/hooks/useEntities';
+import { useRateFor } from '@/hooks/useExchangeRate';
 import { today, fCurrency } from '@/lib/formatters';
 import { formatInvoiceNo } from '@/lib/generators';
 import { parseInvoiceExcel, downloadInvoiceTemplate } from '@/lib/excelImport';
@@ -155,6 +156,7 @@ export function InvoiceModal({
     defaultValues: {
       invoice_date: today(),
       currency: settings?.default_currency ?? 'USD',
+      usd_exchange_rate: 1,
       incoterms: settings?.default_incoterms ?? 'CPT',
       proforma_no: '', cb_no: '', insurance_no: '',
       quantity_admt: 0, unit_price: 0, freight: 0,
@@ -176,6 +178,7 @@ export function InvoiceModal({
       const invAny = invoice as unknown as Record<string, unknown>;
       reset({
         invoice_date: invoice.invoice_date, currency: invoice.currency,
+        usd_exchange_rate: invoice.usd_exchange_rate ?? 1,
         incoterms: invoice.incoterms ?? 'CPT', proforma_no: invoice.proforma_no ?? '',
         cb_no: invoice.cb_no ?? '', insurance_no: invoice.insurance_no ?? '',
         quantity_admt: invoice.quantity_admt, unit_price: invoice.unit_price,
@@ -192,6 +195,7 @@ export function InvoiceModal({
       reset({
         invoice_date: today(),
         currency: file.currency ?? settings?.default_currency ?? 'USD',
+        usd_exchange_rate: 1,
         incoterms: file.incoterms ?? settings?.default_incoterms ?? 'CPT',
         proforma_no: file.proforma_ref ?? '',
         cb_no: pl?.cb_no || '',
@@ -214,6 +218,7 @@ export function InvoiceModal({
     reset({
       invoice_date: today(),
       currency: pickedFile.currency ?? settings?.default_currency ?? 'USD',
+      usd_exchange_rate: 1,
       incoterms: pickedFile.incoterms ?? settings?.default_incoterms ?? 'CPT',
       proforma_no: pickedFile.proforma_ref ?? '',
       cb_no: pl?.cb_no || '',
@@ -234,8 +239,23 @@ export function InvoiceModal({
   const freight  = useWatch({ control, name: 'freight' }) ?? 0;
   const currency = useWatch({ control, name: 'currency' }) ?? 'USD';
   const qtyUnit  = useWatch({ control, name: 'qty_unit' }) ?? 'ADMT';
+  const usdRate  = useWatch({ control, name: 'usd_exchange_rate' }) ?? 1;
   const subtotal = qty * price;
   const total    = subtotal + freight;
+  const isNonUsd = currency !== 'USD';
+
+  // Canlı USD kuru (1 USD = kaç currency) — non-USD faturada alanı ön-doldurmak için
+  const { rate: liveUsdRate } = useRateFor(currency);
+  useEffect(() => {
+    if (!isNonUsd) { setValue('usd_exchange_rate', 1); return; }
+    // Yeni fatura oluştururken canlı kurdan ön-doldur (mevcut faturanın kurunu ezme)
+    if (!invoice && liveUsdRate && liveUsdRate > 0) {
+      setValue('usd_exchange_rate', Number(liveUsdRate.toFixed(4)));
+    }
+  }, [currency, isNonUsd, liveUsdRate, invoice, setValue]);
+
+  // USD karşılığı (amount_usd ile aynı formül: toUSD)
+  const totalUsd = !isNonUsd ? total : usdRate > 0 ? total / usdRate : 0;
 
   // ── Watch all form values for live preview ───────────────────────────────
   const allValues = useWatch({ control });
@@ -459,6 +479,20 @@ export function InvoiceModal({
                   </Field>
                 </div>
 
+                {isNonUsd && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <Field label={`USD Kuru (1 USD = ? ${currency})`}>
+                      <input type="number" step="0.0001" className={inp} {...register('usd_exchange_rate')} placeholder="0.0000" />
+                      {errors.usd_exchange_rate && <p className="text-[11px] text-red-500 mt-0.5">{errors.usd_exchange_rate.message}</p>}
+                    </Field>
+                    <div className="col-span-2 flex items-end pb-2">
+                      {liveUsdRate ? (
+                        <span className="text-[11px] text-gray-400">Canlı kur: 1 USD = {liveUsdRate.toFixed(4)} {currency}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+
                 <Divider />
 
                 {/* ── Miktar / Fiyat ── */}
@@ -481,6 +515,9 @@ export function InvoiceModal({
                   <span className="text-gray-500">{t('invoice.modal.subtotal')} <strong className="text-gray-900">{fCurrency(subtotal, currency as 'USD')}</strong></span>
                   <span className="text-gray-500">{t('invoice.modal.freightLabel')} <strong className="text-gray-900">{fCurrency(freight, currency as 'USD')}</strong></span>
                   <span className="text-gray-500">{t('invoice.modal.total')} <strong className="text-gray-900 text-[13px]">{fCurrency(total, currency as 'USD')}</strong></span>
+                  {isNonUsd && (
+                    <span className="text-gray-500">USD Karşılığı <strong className="text-gray-900 text-[13px]">{fCurrency(totalUsd, 'USD')}</strong></span>
+                  )}
                 </div>
 
                 <Divider />

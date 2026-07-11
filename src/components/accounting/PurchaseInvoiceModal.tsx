@@ -266,6 +266,10 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
     const clampedPaid = Math.min(transaction?.paid_amount ?? 0, toplamYerel);
     const derivedStatus: 'open' | 'partial' | 'paid' =
       clampedPaid <= 0 ? 'open' : clampedPaid >= toplamYerel ? 'paid' : 'partial';
+    // amount_usd'yi yön-bilinçli hesapla (servisin toUSD fallback'i yönü bilmez → rate² hatası)
+    const paidUsd = !isNonUsd ? clampedPaid
+      : kurYon === 'direct' ? clampedPaid * dovizKuru
+      : dovizKuru > 0 ? clampedPaid / dovizKuru : 0;
     const payload = {
       transaction_date: faturaTarihi, transaction_type: 'purchase_inv' as const,
       trade_file_id: fileId || undefined, party_type: 'supplier' as const,
@@ -273,6 +277,7 @@ export function PurchaseInvoiceModal({ open, onOpenChange, transaction, onSwitch
       party_name: selectedSupplier?.name ?? '', description, reference_no: faturaNo,
       currency: currency as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
       amount: toplamYerel, exchange_rate: isNonUsd ? dovizKuru : 1,
+      amount_usd: toplamUsd, paid_amount_usd: paidUsd,
       paid_amount: clampedPaid,
       payment_status: derivedStatus,
       payment_method: paymentMethod, bank_name: '', bank_account_no: '', swift_bic: '',

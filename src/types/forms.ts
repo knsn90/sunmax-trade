@@ -152,6 +152,8 @@ export type DeliveryFormData = z.infer<typeof deliverySchema>;
 export const invoiceSchema = z.object({
   invoice_date: z.string().min(1, 'Date required'),
   currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
+  // 1 USD = kaç invoice.currency — fatura anında dondurulur (amount_usd için)
+  usd_exchange_rate: z.coerce.number().positive('Kur > 0 olmalı').default(1),
   incoterms: z.string().default('CPT'),
   proforma_no: z.string().default(''),
   cb_no: z.string().default(''),

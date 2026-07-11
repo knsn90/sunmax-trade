@@ -360,6 +360,8 @@ export interface Invoice extends Timestamps {
   customer_id: string;
   invoice_date: string;
   currency: CurrencyCode;
+  /** 1 USD = kaç currency — fatura anında dondurulur (amount_usd hesabı için) */
+  usd_exchange_rate: number;
   incoterms: string | null;
   proforma_no: string | null;
   cb_no: string | null;

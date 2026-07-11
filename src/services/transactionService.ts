@@ -143,6 +143,7 @@ export const transactionService = {
       .from('transactions')
       .select(TXN_SELECT)
       .eq(column, entityId)
+      .is('deleted_at', null)
       .order('transaction_date', { ascending: true });
 
     if (approvedOnly) query = query.eq('doc_status', 'approved');
@@ -164,6 +165,7 @@ export const transactionService = {
         .from('transactions')
         .select(TXN_SELECT)
         .eq('service_provider_id', entityId)
+        .is('deleted_at', null)
         .order('transaction_date', { ascending: true });
       if (approvedOnly) query = query.eq('doc_status', 'approved');
       const { data, error } = await query;
@@ -185,7 +187,7 @@ export const transactionService = {
     const fileIds = ((filesResult.data ?? []) as { id: string }[]).map(f => f.id);
 
     // Step 3a ve 3b paralel: FK sorgusu + isim fallback aynı anda
-    let mainQueryBuilder = supabase.from('transactions').select(TXN_SELECT);
+    let mainQueryBuilder = supabase.from('transactions').select(TXN_SELECT).is('deleted_at', null);
     if (fileIds.length > 0) {
       mainQueryBuilder = mainQueryBuilder.or(
         `${txnColumn}.eq.${entityId},` +
@@ -201,7 +203,8 @@ export const transactionService = {
           .from('transactions')
           .select(TXN_SELECT)
           .ilike('party_name', entityName)
-          .is('customer_id', null)
+          .is(txnColumn, null)
+          .is('deleted_at', null)
       : null;
     if (nameQueryBuilder && approvedOnly) nameQueryBuilder = nameQueryBuilder.eq('doc_status', 'approved');
 
@@ -439,7 +442,8 @@ export const transactionService = {
     const { data: txns } = await supabase
       .from('transactions')
       .select('transaction_type, party_type, amount_usd, doc_status')
-      .neq('doc_status', 'rejected');
+      .neq('doc_status', 'rejected')
+      .is('deleted_at', null);
 
     const all = txns ?? [];
 

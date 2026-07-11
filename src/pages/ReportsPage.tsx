@@ -1574,16 +1574,34 @@ export function AccountStatementTab() {
       .sort((a, b) => a.transaction_date.localeCompare(b.transaction_date));
   }, [rawTxns, dateFrom, dateTo, txnTypeFilter, statusFilter]);
 
+  // Açılış (devir) bakiyesi: dateFrom'dan önceki işlemlerin işaretli toplamı.
+  // Tarih aralığı verildiğinde running balance 0'dan değil, devirden başlamalı.
+  const openingBalance = useMemo(() => {
+    if (!dateFrom) return 0;
+    return rawTxns
+      .filter((txn) => {
+        if (txn.transaction_date >= dateFrom) return false;
+        if (txnTypeFilter && txn.transaction_type !== txnTypeFilter) return false;
+        if (statusFilter  && txn.payment_status  !== statusFilter)   return false;
+        return true;
+      })
+      .reduce((bal, txn) => {
+        const debit = isBorç(txn.transaction_type, entityType);
+        const amt   = txn.amount_usd ?? txn.amount ?? 0;
+        return debit ? bal + amt : bal - amt;
+      }, 0);
+  }, [rawTxns, dateFrom, txnTypeFilter, statusFilter, entityType]);
+
   // Running balance: positive = they owe us (customer) / we owe them (supplier)
   const txnsWithBalance = useMemo(() => {
-    let balance = 0;
+    let balance = openingBalance;
     return txns.map((txn) => {
       const debit = isBorç(txn.transaction_type, entityType);
       const amt   = txn.amount_usd ?? txn.amount ?? 0;   // her zaman USD bazlı
       balance     = debit ? balance + amt : balance - amt;
       return { ...txn, isDebit: debit, amt, balance };
     });
-  }, [txns, entityType]);
+  }, [txns, entityType, openingBalance]);
 
   const totalBorç   = txnsWithBalance.reduce((s, t) =>  s + ( t.isDebit ? t.amt : 0), 0);
   const totalAlacak = txnsWithBalance.reduce((s, t) =>  s + (!t.isDebit ? t.amt : 0), 0);
@@ -1649,6 +1667,14 @@ export function AccountStatementTab() {
         <td style="padding:3px 6px;text-align:right;font-weight:700;font-size:8.5px;color:${txn.balance > 0 ? '#92400e' : txn.balance < 0 ? '#065f46' : '#94a3b8'}">${fUSD(Math.abs(txn.balance))}${balSuffix(txn.balance)}</td>
       </tr>`;
     }).join('');
+
+    // Rapor öncesi (devir) bakiye satırı — tarih aralığı verildiyse listenin başına eklenir
+    const openingRow = dateFrom ? `
+      <tr style="border-bottom:1px solid #e2e8f0;background:#f1f5f9">
+        <td style="padding:3px 6px;white-space:nowrap;color:#475569;font-size:8.5px">${fDate(dateFrom)}</td>
+        <td colspan="6" style="padding:3px 6px;color:#334155;font-size:8.5px;font-weight:700;font-style:italic">${L.openingBalance}</td>
+        <td style="padding:3px 6px;text-align:right;font-weight:700;font-size:8.5px;color:${openingBalance > 0 ? '#92400e' : openingBalance < 0 ? '#065f46' : '#94a3b8'}">${fUSD(Math.abs(openingBalance))}${balSuffix(openingBalance)}</td>
+      </tr>` : '';
 
     const netColor = netBakiye > 0 ? '#92400e' : netBakiye < 0 ? '#065f46' : '#64748b';
 
@@ -1729,7 +1755,7 @@ export function AccountStatementTab() {
             <th class="th-r">${L.balance} (USD)</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>${openingRow}${rows}</tbody>
         <tfoot>
           <tr>
             <td colspan="4" style="color:#64748b;font-size:9.5px">${L.recordCount}: ${txnsWithBalance.length}</td>
@@ -2076,6 +2102,24 @@ export function AccountStatementTab() {
                   </tr>
                 </thead>
                 <tbody>
+                  {dateFrom && (
+                    <tr className="border-b border-[#F4F2EE] bg-gray-50/60">
+                      <td className="px-4 py-2.5 text-[11px] text-gray-500 whitespace-nowrap tabular-nums">{fDate(dateFrom)}</td>
+                      <td colSpan={6} className="px-4 py-2.5 text-[12px] font-semibold italic text-gray-500">Rapor Öncesi Bakiye</td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <span className="text-[12px] font-bold tabular-nums"
+                          style={{ color: openingBalance > 0 ? '#b45309' : openingBalance < 0 ? '#16a34a' : '#9ca3af' }}>
+                          {fUSD(Math.abs(openingBalance))}
+                        </span>
+                        {openingBalance !== 0 && (
+                          <span className="ml-1 text-[9px] font-extrabold"
+                            style={{ color: openingBalance > 0 ? '#b45309' : '#16a34a' }}>
+                            {openingBalance > 0 ? 'B' : 'A'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
                   {txnsWithBalance.map((txn, i) => (
                     <tr key={txn.id} className={cn(
                       'border-b border-[#F4F2EE] hover:bg-[#FAF9F6] transition-colors',
