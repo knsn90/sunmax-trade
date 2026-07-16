@@ -13,6 +13,48 @@ function esc(s: string | null | undefined): string {
   return (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Değer HTML işaretlemesi içeriyor mu? (zengin metin editörü HTML üretir) */
+function looksLikeHtml(value: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(value);
+}
+
+/**
+ * Notes zengin metnini güvenli bir alt kümeye indirger — yalnızca biçimlendirme
+ * etiketleri kalır, tüm öznitelikler (onclick, style, href…) ve script/style atılır.
+ * Metin düğümleri kaçırılır. Tarayıcıda DOMParser ile çalışır (print client-side).
+ */
+function sanitizeNotesHtml(html: string): string {
+  const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'UL', 'OL', 'LI', 'BR', 'P', 'DIV', 'SPAN']);
+  const walk = (node: Node): string => {
+    let out = '';
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === 3) {
+        out += esc(child.textContent || '');
+      } else if (child.nodeType === 1) {
+        const el = child as Element;
+        const tag = el.tagName;
+        const inner = walk(el);
+        if (!ALLOWED.has(tag)) { out += inner; return; }   // izinsiz etiket → sadece içeriği
+        if (tag === 'BR') { out += '<br>'; return; }
+        const lower = tag.toLowerCase();
+        // Print'te `* {padding:0}` reset'i liste işaretlerini siler → inline stil ile geri ver
+        const style =
+          lower === 'ul' ? ' style="list-style:disc;padding-left:18px;margin:2px 0"' :
+          lower === 'ol' ? ' style="list-style:decimal;padding-left:18px;margin:2px 0"' :
+          lower === 'li' ? ' style="margin:1px 0"' : '';
+        out += `<${lower}${style}>${inner}</${lower}>`;
+      }
+    });
+    return out;
+  };
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return walk(doc.body);
+  } catch {
+    return esc(html);   // DOMParser yoksa güvenli tarafta kal
+  }
+}
+
 // ─── Shared CSS ───────────────────────────────────────────────────────────────
 
 const BASE_CSS = `
@@ -766,10 +808,19 @@ function _buildProformaBody(
     : '';
 
   const admt = fN3(pi.quantity_admt).replace(/\.000$/, '');
-  const notes = (pi.notes || '').split('\n').filter((l: string) => l.trim()).map((l: string) =>
-    l.match(/^1-\s*Total Quantity\s*:/i) ? l.replace(/:.*/, `: ${admt} ADMT`) : l
-  );
-  const notesHTML = notes.map((l: string) => `<div style="margin-bottom:2px">${esc(l)}</div>`).join('');
+  const rawNotes = pi.notes || '';
+  let notesHTML: string;
+  if (looksLikeHtml(rawNotes)) {
+    // Zengin metin (editörden gelen HTML) → güvenli alt kümeye indir + "Total Quantity" değerini senkronla
+    notesHTML = sanitizeNotesHtml(rawNotes)
+      .replace(/(1-\s*Total Quantity\s*:)[^<]*/i, `$1 ${admt} ADMT`);
+  } else {
+    // Düz metin (varsayılan şablon / eski kayıtlar) → satır satır
+    const notes = rawNotes.split('\n').filter((l: string) => l.trim()).map((l: string) =>
+      l.match(/^1-\s*Total Quantity\s*:/i) ? l.replace(/:.*/, `: ${admt} ADMT`) : l
+    );
+    notesHTML = notes.map((l: string) => `<div style="margin-bottom:2px">${esc(l)}</div>`).join('');
+  }
 
   /* reusable style strings */
   const G  = 'background:#d9d9d9'; // gray label bg

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { useTheme } from '@/contexts/ThemeContext';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { proformaSchema, type ProformaFormData } from '@/types/forms';
@@ -24,11 +24,11 @@ import { SmartFill } from '@/components/ui/SmartFill';
 import { WeekPicker } from '@/components/ui/WeekPicker';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { MonoNumberInput } from '@/components/ui/MonoNumberInput';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { FileText } from 'lucide-react';
 
 // ── Mono stil sabitleri ────────────────────────────────────────────────────────
 const inp = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full';
-const ta  = 'bg-gray-100 rounded-lg px-3 py-2 text-[12px] text-gray-900 placeholder:text-gray-400 border-0 shadow-none focus:outline-none focus:ring-0 w-full resize-none';
 const sel = 'bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 shadow-none focus:outline-none w-full appearance-none cursor-pointer';
 
 const Lbl = ({ children }: { children: React.ReactNode }) => (
@@ -527,7 +527,17 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
 
               {/* ── Notlar ── */}
               <Fld label="Notes" className="mb-3">
-                <textarea className={ta} rows={6} {...register('notes')} />
+                <Controller
+                  name="notes"
+                  control={control}
+                  render={({ field }) => (
+                    <RichTextEditor
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      placeholder="Notlar…"
+                    />
+                  )}
+                />
               </Fld>
 
               {/* ── Footer ── */}
