@@ -66,6 +66,35 @@ function parseWeeks(value: string): number[] {
   return [...new Set(nums)];
 }
 
+/** Bir tarihin ISO hafta numarası + yılı. */
+function isoWeekOf(date: Date): { week: number; year: number } {
+  const jan4  = new Date(date.getFullYear(), 0, 4);
+  const dow   = (jan4.getDay() + 6) % 7;
+  const w1mon = new Date(jan4.getTime() - dow * 86_400_000);
+  const week  = Math.floor((date.getTime() - w1mon.getTime()) / (7 * 86_400_000)) + 1;
+  return { week, year: date.getFullYear() };
+}
+
+/**
+ * ETA tarihinden teslim süresi etiketi üretir: ETA'nın ISO haftası + izleyen hafta(lar).
+ * Örn: "2026-09-30" → "Weeks 40,41 (Sep 28 to Oct 11)". Tarih yoksa/geçersizse boş döner.
+ * WeekPicker'a ham tarih verilirse "09-30" gibi yanlış hafta aralığı olarak yorumlanır —
+ * bu yüzden ETA hep bu yardımcıyla etikete çevrilmeli.
+ */
+export function weekRangeLabelFromDate(dateStr: string | null | undefined, span = 2): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr.includes('T') || dateStr.includes('Z') ? dateStr : dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  const { week, year } = isoWeekOf(d);
+  const total = weeksInYear(year);
+  const weeks: number[] = [];
+  for (let i = 0; i < span; i++) {
+    const w = week + i;
+    if (w >= 1 && w <= total) weeks.push(w);   // yıl sonunu taşan haftaları sessizce kırp
+  }
+  return buildLabel(weeks, year);
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface WeekPickerProps {

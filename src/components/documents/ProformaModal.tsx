@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { OcrButton } from '@/components/ui/OcrButton';
 import { SmartFill } from '@/components/ui/SmartFill';
-import { WeekPicker } from '@/components/ui/WeekPicker';
+import { WeekPicker, weekRangeLabelFromDate } from '@/components/ui/WeekPicker';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { MonoNumberInput } from '@/components/ui/MonoNumberInput';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
@@ -159,7 +159,9 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         shipment_method: '',
         currency: file.currency ?? settings?.default_currency ?? 'USD',
         place_of_payment: 'ISTANBUL - TURKEY',
-        delivery_time: file.eta ?? '',
+        // Ham ETA tarihi WeekPicker'da yanlış hafta aralığı olarak yorumlanıyordu →
+        // ETA'nın 2 haftalık aralığına çevir (ETA yoksa boş kalır)
+        delivery_time: weekRangeLabelFromDate(file.eta),
         vessel_details_confirmation: '',
         description: file.product?.name ?? '',
         hs_code: file.product?.hs_code ?? '470321',
@@ -404,7 +406,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
                     <option value="container">Container</option>
                   </select>
                 </Fld>
-                <Fld label="Time of Delivery">
+                <Fld label="Time of delivery to loading port">
                   <WeekPicker
                     value={form.watch('delivery_time') ?? ''}
                     onChange={v => setValue('delivery_time', v)}

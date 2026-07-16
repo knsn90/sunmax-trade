@@ -948,7 +948,7 @@ function _buildProformaBody(
         <td colspan="3" style="${vS}">${esc(pi.vessel_details_confirmation || '—')}</td>
       </tr>
       <tr>
-        <td colspan="4" style="${lS}">Time of Delivery:</td>
+        <td colspan="4" style="${lS}">Time of delivery to loading port:</td>
         <td colspan="3" style="${vS}">${esc(pi.delivery_time || '—')}</td>
       </tr>
       <tr>
