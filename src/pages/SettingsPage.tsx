@@ -801,6 +801,11 @@ function DocumentAuditTab() {
 function ApiKeyList() {
   return (
     <div className="space-y-2.5">
+      <div className="text-[11px] leading-relaxed text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+        AI (Anthropic) anahtarı artık <strong>sunucu tarafında</strong> güvenli
+        şekilde yönetiliyor (edge function · Supabase secret) ve tarayıcıya
+        inmiyor. Buradan anahtar girmenize gerek yoktur.
+      </div>
       {API_SERVICE_IDS.map((svc) => (
         <ApiKeyRow key={svc.id} service={svc} />
       ))}

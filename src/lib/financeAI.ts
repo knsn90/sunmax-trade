@@ -1,4 +1,4 @@
-import { getApiKey } from './openai';
+import { anthropicMessages } from './anthropic';
 import type { Transaction, Kasa, BankAccount } from '@/types/database';
 
 // ─── Input tip tanımları ──────────────────────────────────────────────────────
@@ -139,29 +139,15 @@ Kısa ve pratik ol. 300-400 kelime.`;
 // ─── Streaming API çağrısı ────────────────────────────────────────────────────
 
 export async function* streamFinanceAnalysis(input: FinanceAIInput): AsyncGenerator<string> {
-  const apiKey = getApiKey('anthropic');
-  if (!apiKey) {
-    throw new Error('Claude API anahtarı ayarlanmamış. Ayarlar → API Anahtarları bölümüne gidin.');
-  }
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      stream: true,
-      system: `Sen deneyimli bir ticaret finansı uzmanısın. Kullanıcının şirketi ithalat/ihracat yapıyor;
+  const response = await anthropicMessages({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    stream: true,
+    system: `Sen deneyimli bir ticaret finansı uzmanısın. Kullanıcının şirketi ithalat/ihracat yapıyor;
 USD, AED, EUR ve TRY ile işlem yapıyor. Analizini TÜRKÇE yaz.
 Markdown kullan: ## başlıklar, - maddeler, **kalın** önemli rakamlar.
 Gereksiz giriş cümlesi yazma — direkt analize geç.`,
-      messages: [{ role: 'user', content: buildPrompt(input) }],
-    }),
+    messages: [{ role: 'user', content: buildPrompt(input) }],
   });
 
   if (!response.ok) {

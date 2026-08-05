@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ScanLine } from 'lucide-react';
 import { Button } from './button';
-import { ocrDocument, getApiKey, type OcrResult, type OcrMode } from '@/lib/openai';
+import { ocrDocument, type OcrResult, type OcrMode } from '@/lib/openai';
 import { toast } from 'sonner';
 
 interface OcrButtonProps {
@@ -19,11 +19,6 @@ export function OcrButton({ onResult, mode, label = 'Belgeden Oku', iconOnly = t
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-
-    if (!getApiKey('anthropic')) {
-      toast.error('Claude API anahtarı yapılandırılmamış. Ayarlar → API Anahtarları bölümünden ekleyin.');
-      return;
-    }
 
     setLoading(true);
     try {

@@ -1,4 +1,4 @@
-import { getApiKey } from './openai';
+import { anthropicMessages } from './anthropic';
 import type { PriceList } from '@/types/database';
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
@@ -81,31 +81,17 @@ Kısa, pratik ve Türkçe yaz. 350-450 kelime.`;
 // ─── Streaming API çağrısı ────────────────────────────────────────────────────
 
 export async function* streamPriceListAnalysis(entries: PriceList[]): AsyncGenerator<string> {
-  const apiKey = getApiKey('anthropic');
-  if (!apiKey) {
-    throw new Error('Claude API anahtarı ayarlanmamış. Ayarlar → API Anahtarları bölümüne gidin.');
-  }
-
   const today = new Date().toISOString().slice(0, 10);
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      stream: true,
-      system: `Sen deneyimli bir tedarik zinciri ve satın alma uzmanısın.
+  const response = await anthropicMessages({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    stream: true,
+    system: `Sen deneyimli bir tedarik zinciri ve satın alma uzmanısın.
 Kullanıcının şirketi uluslararası ticaret yapıyor; hammadde/ürün alımı için birden fazla tedarikçiyle çalışıyor.
 Analizini TÜRKÇE yaz. Markdown kullan: ## başlıklar, - maddeler, **kalın** önemli noktalar.
 Gereksiz giriş cümlesi yazma — direkt analize geç.`,
-      messages: [{ role: 'user', content: buildPrompt(entries, today) }],
-    }),
+    messages: [{ role: 'user', content: buildPrompt(entries, today) }],
   });
 
   if (!response.ok) {

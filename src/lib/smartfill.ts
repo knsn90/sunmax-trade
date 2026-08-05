@@ -1,4 +1,4 @@
-import { getApiKey } from './openai';
+import { anthropicMessages } from './anthropic';
 import { today } from './formatters';
 import type { OcrMode, OcrResult } from './openai';
 
@@ -138,33 +138,17 @@ export async function smartFillForm(
   history: ChatMessage[] = [],
   context: Record<string, unknown> = {},
 ): Promise<OcrResult> {
-  const apiKey = getApiKey('anthropic');
-  if (!apiKey) {
-    throw new Error(
-      'Anthropic API key not found. Please add it in Settings → API Keys.',
-    );
-  }
-
   // Build conversation: history + new user message
   const messages: ChatMessage[] = [
     ...history,
     { role: 'user', content: text },
   ];
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: buildSystemPrompt(mode, currentValues, context),
-      messages,
-    }),
+  const response = await anthropicMessages({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    system: buildSystemPrompt(mode, currentValues, context),
+    messages,
   });
 
   if (!response.ok) {

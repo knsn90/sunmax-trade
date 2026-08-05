@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { anthropicMessages } from './anthropic';
 import {
   getApiKeyFromCache,
   saveApiKeyToDb,
@@ -187,11 +188,6 @@ async function pdfToBase64Image(file: File): Promise<string> {
 }
 
 export async function ocrDocument(file: File, mode: OcrMode): Promise<OcrResult> {
-  const apiKey = getApiKey('anthropic');
-  if (!apiKey) {
-    throw new Error('Claude API key not set. Please add it in Settings → API Keys.');
-  }
-
   const prompt = PROMPTS[mode];
   const isExcel = /\.(xlsx|xls|csv)$/i.test(file.name);
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -226,19 +222,10 @@ export async function ocrDocument(file: File, mode: OcrMode): Promise<OcrResult>
     ];
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: messageContent }],
-    }),
+  const response = await anthropicMessages({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: messageContent }],
   });
 
   if (!response.ok) {
