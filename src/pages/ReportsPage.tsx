@@ -2673,7 +2673,7 @@ export function CustomerReportTab() {
       noPayment: 'Ödeme yok', noProduct: 'Kayıt yok', noAdvance: 'Ön ödeme yok',
       dateLabel: 'Tarih', clientLabel: 'MÜŞTERİ', printBtn: 'Yazdır / PDF',
       dateFilter: 'Tarih:', advLabel: 'Ön ödemeler:', fullList: 'Tam liste', totalOnly: 'Sadece toplam',
-      records: 'kayıt',
+      records: 'kayıt', refundTag: 'İade',
     },
     en: {
       payments: 'Payments', products: 'Products Purchased', advances: 'Advance Payments',
@@ -2690,7 +2690,7 @@ export function CustomerReportTab() {
       noPayment: 'No payments', noProduct: 'No records', noAdvance: 'No advances',
       dateLabel: 'Date', clientLabel: 'CLIENT', printBtn: 'Print / PDF',
       dateFilter: 'Date:', advLabel: 'Advances:', fullList: 'Full list', totalOnly: 'Total only',
-      records: 'records',
+      records: 'records', refundTag: 'Refund',
     },
     fa: {
       payments: 'پرداخت‌ها', products: 'محصولات خریداری‌شده', advances: 'پیش‌پرداخت‌ها',
@@ -2707,7 +2707,7 @@ export function CustomerReportTab() {
       noPayment: 'پرداختی موجود نیست', noProduct: 'رکوردی موجود نیست', noAdvance: 'پیش‌پرداختی موجود نیست',
       dateLabel: 'تاریخ', clientLabel: 'مشتری', printBtn: 'چاپ / PDF',
       dateFilter: 'تاریخ:', advLabel: 'پیش‌پرداخت‌ها:', fullList: 'لیست کامل', totalOnly: 'فقط جمع',
-      records: 'رکورد',
+      records: 'رکورد', refundTag: 'بازپرداخت',
     },
   };
   // UI always in Turkish; print output uses reportLang (see printReport below)
@@ -2732,11 +2732,15 @@ export function CustomerReportTab() {
     return true;
   }), [rawTxns, dateFrom, dateTo]);
 
-  // Table 1: Regular payments (receipts only, no advances)
+  // Table 1: Ödemeler — müşteriden gelen tahsilatlar (receipt) + müşteriye yapılan
+  // ödemeler/iadeler (payment). İade, tahsilatın tersidir → tabloda ve toplamda eksi işaretli.
   const payments = useMemo(
-    () => filteredTxns.filter((t) => t.transaction_type === 'receipt'),
+    () => filteredTxns.filter((t) => t.transaction_type === 'receipt' || t.transaction_type === 'payment'),
     [filteredTxns],
   );
+  /** Ödemeler tablosunda işaretli USD tutarı: iade (payment) eksi, tahsilat (receipt) artı. */
+  const signedPaidUsd = (t: typeof payments[number]) =>
+    (t.transaction_type === 'payment' ? -1 : 1) * (t.amount_usd ?? 0);
 
   // Table 2 — sale_inv işlemleri (muhasebe kayıtları)
   const saleInvoices = useMemo(
@@ -2756,7 +2760,7 @@ export function CustomerReportTab() {
     [filteredTxns],
   );
 
-  const totalPayments = payments.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
+  const totalPayments = payments.reduce((s, t) => s + signedPaidUsd(t), 0);
   // Satış faturalarından topla
   const totalProducts = saleInvoices.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
   const totalAdvances = advances.reduce((s, t) => s + (t.amount_usd ?? 0), 0);
@@ -2866,9 +2870,14 @@ export function CustomerReportTab() {
         ${badge ? `<div style="font-size:${fsHead};font-weight:600;color:${color};border:1px solid ${color}30;background:${color}10;padding:2px 7px;border-radius:12px">${badge}</div>` : ''}
       </div>`;
 
-    const payRows = payments.map((t, i) =>
-      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${translateDesc(t.description ?? '')}</td></tr>`
-    ).join('');
+    const payRows = payments.map((t, i) => {
+      const isRefund = t.transaction_type === 'payment';   // müşteriye ödeme/iade → eksi
+      const sign     = isRefund ? -1 : 1;
+      const usdColor = isRefund ? '#b91c1c' : '#111827';
+      const desc     = translateDesc(t.description ?? '');
+      const descCell = isRefund ? `${desc ? desc + ' · ' : ''}<strong style="color:#b91c1c">${L.refundTag}</strong>` : desc;
+      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(sign * t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:${usdColor}">${fUSD(sign * (t.amount_usd ?? 0))}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${descCell}</td></tr>`;
+    }).join('');
 
     const prdRows = saleInvoices.map((t, i) =>
       `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};color:#374151">${translateDesc(t.description ?? '') || (t.trade_file as any)?.product?.name || '—'}</td><td style="${i%2?TDZ:TD};color:#64748b">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)} ${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${(t.trade_file as any)?.file_no ?? t.reference_no ?? '—'}</td></tr>`
@@ -3268,16 +3277,23 @@ export function CustomerReportTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {payments.map((t, i) => (
+                    {payments.map((t, i) => {
+                      const isRefund = t.transaction_type === 'payment';   // müşteriye ödeme/iade → eksi
+                      const sign = isRefund ? -1 : 1;
+                      return (
                       <tr key={t.id} className={cn('border-b border-gray-50 transition-colors', i % 2 === 1 ? 'bg-gray-50/40' : 'hover:bg-gray-50/60')}>
                         <td className="px-4 py-3 text-[11px] text-gray-400 text-center font-mono">{i + 1}</td>
                         <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(t.transaction_date)}</td>
-                        <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
+                        <td className={cn('px-4 py-3 text-[12px] font-semibold text-right', isRefund ? 'text-red-600' : 'text-gray-900')}>{fCurrency(sign * t.amount, t.currency)}</td>
                         <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
-                        <td className="px-4 py-3 text-[13px] font-bold text-gray-900 text-right">{fUSD(t.amount_usd ?? 0)}</td>
-                        <td className="px-4 py-3 text-[11px] text-gray-400">{t.description ?? '—'}</td>
+                        <td className={cn('px-4 py-3 text-[13px] font-bold text-right', isRefund ? 'text-red-600' : 'text-gray-900')}>{fUSD(sign * (t.amount_usd ?? 0))}</td>
+                        <td className="px-4 py-3 text-[11px] text-gray-400">
+                          {t.description ?? '—'}
+                          {isRefund && <span className="ml-1 font-bold text-red-600">· {L.refundTag}</span>}
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr className="bg-gray-50 border-t-2 border-gray-100">
