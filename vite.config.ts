@@ -28,6 +28,8 @@ export default defineConfig({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MiB
+        // Yeni SW aktifleşince eski precache'leri temizle → stale-chunk birikmesini önler
+        cleanupOutdatedCaches: true,
         // Cache app shell (exclude legacy large stamp/signature files)
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2}', 'icons/*.png', 'apple-touch-icon.png'],
         globIgnores: ['stamp.png', 'signature.png'],
