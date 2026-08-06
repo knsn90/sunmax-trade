@@ -66,7 +66,9 @@ export function useCreateTransaction() {
   return useMutation({
     mutationFn: (data: TransactionFormData) => transactionService.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['transactions'] });
+      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
+      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
+      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
       toast.success('Transaction saved');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -79,7 +81,9 @@ export function useUpdateTransaction() {
     mutationFn: ({ id, data }: { id: string; data: TransactionFormData }) =>
       transactionService.update(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['transactions'] });
+      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
+      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
+      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
       toast.success('Transaction updated');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -92,7 +96,9 @@ export function useRecordPayment() {
     mutationFn: (params: { id: string; amount: number; date: string }) =>
       transactionService.recordPayment(params.id, params.amount, params.date),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['transactions'] });
+      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
+      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
+      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
       toast.success('Payment recorded');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -104,7 +110,9 @@ export function useDeleteTransaction() {
   return useMutation({
     mutationFn: (id: string) => transactionService.delete(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['transactions'] });
+      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
+      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
+      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
       toast.success('Transaction deleted');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -122,7 +130,9 @@ export function useFlagTransaction() {
       if (error) throw new Error(error.message);
     },
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ['transactions'] });
+      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
+      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
+      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
       toast.success(vars.flagged ? 'Sorunlu olarak işaretlendi' : 'İşaret kaldırıldı');
     },
     onError: (err: Error) => toast.error(err.message),
