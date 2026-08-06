@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { PartyCombobox, type SelectedParty, type EntityKind } from './PartyCombobox';
 import { NumericInput } from '@/components/ui/form-elements';
+import { toast } from 'sonner';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
 import { Banknote, Landmark, CreditCard, HelpCircle, ArrowLeftRight, Plus, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -350,6 +351,13 @@ export function TransactionModal({
   const masrafCurrency = useWatch({ control, name: 'masraf_currency' });
   const masrafRate    = useWatch({ control, name: 'masraf_rate' }) ?? 1;
 
+  // paid_amount bu modalda kullanıcıya gösterilmez; submit'te her zaman = amount olur.
+  // Form değerini de amount'a senkronla ki refine(paid_amount <= amount) düzenlemede
+  // (tutar düşürülünce eski/stale paid_amount yüzünden) yanlışlıkla patlamasın.
+  useEffect(() => {
+    setValue('paid_amount', amount, { shouldValidate: false });
+  }, [amount, setValue]);
+
   // Show exchange rate for all non-USD currencies
   const isNonUSD = currency !== 'USD';
   const isMasrafNonUSD = masrafCurrency !== 'USD';
@@ -432,6 +440,12 @@ export function TransactionModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txnType]);
+
+  // Validasyon başarısız olunca sessizce kalmasın — hangi alanın hatalı olduğunu göster
+  function onInvalid(errs: Record<string, { message?: string }>) {
+    const first = Object.values(errs).find((e) => e && e.message);
+    toast.error(first?.message ?? 'Lütfen zorunlu alanları kontrol edin');
+  }
 
   async function onSubmit(data: TransactionFormData) {
     setSaving(true);
@@ -574,7 +588,7 @@ export function TransactionModal({
           )}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-1">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-3 py-1">
 
           {/* ── GİDER FORMU ───────────────────────────────────────────────── */}
           {txnType === 'expense' ? (
