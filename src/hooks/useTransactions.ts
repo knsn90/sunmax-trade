@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionService, type TransactionFilters, PAGE_SIZE } from '@/services/transactionService';
+import type { Transaction } from '@/types/database';
 import { supabase } from '@/services/supabase';
 import type { TransactionFormData } from '@/types/forms';
 import { toast } from 'sonner';
@@ -66,9 +67,7 @@ export function useCreateTransaction() {
   return useMutation({
     mutationFn: (data: TransactionFormData) => transactionService.create(data),
     onSuccess: () => {
-      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
-      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
-      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction saved');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -80,13 +79,31 @@ export function useUpdateTransaction() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: TransactionFormData }) =>
       transactionService.update(id, data),
-    onSuccess: () => {
-      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
-      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
-      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+    onSuccess: (updated) => {
+      // Anında UI: güncellenen satırı tüm ['transactions'] cache'lerine yama
+      // (infinite {pages:[{data}]} ve düz dizi şekli) — refetch beklemeden değişir.
+      patchTransactionCaches(qc, updated);
+      // Arka planda tutarlılık için (blokla değil)
+      qc.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction updated');
     },
     onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+/** Güncellenen bir işlemi tüm ['transactions'] sorgu cache'lerinde yerinde günceller. */
+function patchTransactionCaches(qc: ReturnType<typeof useQueryClient>, updated: Transaction) {
+  const patch = (t: Transaction) => (t && t.id === updated.id ? updated : t);
+  qc.setQueriesData<unknown>({ queryKey: ['transactions'] }, (old: unknown) => {
+    if (!old) return old;
+    // infinite query: { pages: [{ data: Transaction[], count }], pageParams }
+    if (typeof old === 'object' && old !== null && 'pages' in old) {
+      const o = old as { pages: { data: Transaction[] }[] };
+      return { ...o, pages: o.pages.map((p) => ({ ...p, data: (p.data ?? []).map(patch) })) };
+    }
+    // düz liste
+    if (Array.isArray(old)) return (old as Transaction[]).map(patch);
+    return old;
   });
 }
 
@@ -96,9 +113,7 @@ export function useRecordPayment() {
     mutationFn: (params: { id: string; amount: number; date: string }) =>
       transactionService.recordPayment(params.id, params.amount, params.date),
     onSuccess: () => {
-      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
-      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
-      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Payment recorded');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -110,9 +125,7 @@ export function useDeleteTransaction() {
   return useMutation({
     mutationFn: (id: string) => transactionService.delete(id),
     onSuccess: () => {
-      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
-      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
-      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction deleted');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -130,9 +143,7 @@ export function useFlagTransaction() {
       if (error) throw new Error(error.message);
     },
     onSuccess: (_data, vars) => {
-      // refetchType:'all' → modal açıkken inaktif olan liste sorguları da (infinite dahil)
-      // hemen yenilenir; aksi halde güncelleme ekrana yansımıyordu.
-      qc.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
       toast.success(vars.flagged ? 'Sorunlu olarak işaretlendi' : 'İşaret kaldırıldı');
     },
     onError: (err: Error) => toast.error(err.message),
