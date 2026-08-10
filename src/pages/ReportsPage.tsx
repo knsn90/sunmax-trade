@@ -1507,7 +1507,7 @@ export function AccountStatementTab() {
   const { data: rawTxns = [], isLoading } = useTransactionsByEntityEnhanced(entityType, entityId || undefined, true);
 
   const entityOptions = entityType === 'customer'
-    ? customers
+    ? customers.filter(c => !c.parent_customer_id)   // alt firmalar (sub-customer) rapor listesinde çıkmasın
     : entityType === 'supplier'
       ? suppliers
       : serviceProviders;
@@ -2717,7 +2717,9 @@ export function CustomerReportTab() {
   const customerName = selectedCustomer?.name ?? '';
 
   const filteredCustomers = useMemo(
-    () => customers.filter((c) => c.name.toLowerCase().includes(custSearch.toLowerCase())),
+    () => customers.filter((c) =>
+      !c.parent_customer_id &&   // alt firmalar (sub-customer) rapor listesinde çıkmasın
+      c.name.toLowerCase().includes(custSearch.toLowerCase())),
     [customers, custSearch],
   );
 
