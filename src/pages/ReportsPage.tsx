@@ -2754,9 +2754,14 @@ export function CustomerReportTab() {
   }), [rawTxns, dateFrom, dateTo]);
 
   // Table 1: Ödemeler — müşteriden gelen tahsilatlar (receipt) + müşteriye yapılan
-  // ödemeler/iadeler (payment). İade, tahsilatın tersidir → tabloda ve toplamda eksi işaretli.
+  // ödemeler/iadeler (payment) + KAPANMIŞ satış dosyasına bağlı ön ödemeler.
+  // Dosya kapandığında (status='completed') ön ödeme realize olmuş sayılır ve
+  // "Ön Ödemeler"den çıkıp buraya (Ödemeler) geçer. İade eksi işaretli.
   const payments = useMemo(
-    () => filteredTxns.filter((t) => t.transaction_type === 'receipt' || t.transaction_type === 'payment'),
+    () => filteredTxns.filter((t) =>
+      t.transaction_type === 'receipt' ||
+      t.transaction_type === 'payment' ||
+      (t.transaction_type === 'advance' && t.party_type !== 'supplier' && t.trade_file?.status === 'completed')),
     [filteredTxns],
   );
   /** Ödemeler tablosunda işaretli USD tutarı: iade (payment) eksi, tahsilat (receipt) artı. */
@@ -2770,13 +2775,14 @@ export function CustomerReportTab() {
   );
 
 
-  // Table 3: Ön ödemeler — tedarikçi avansları hariç, TÜM müşteri ön ödemeleri gösterilir
-  // (faturası kesilmiş dosyalara ait olanlar da dahil — müşterinin borcunu azaltır)
+  // Table 3: Ön ödemeler — tedarikçi avansları hariç, yalnızca dosyası HENÜZ
+  // KAPANMAMIŞ müşteri ön ödemeleri. Dosya kapanınca ön ödeme Ödemeler'e geçer.
   // party_type NULL olabiliyor (advance tipi typeToParty haritasında yoktu)
   const advances = useMemo(
     () => filteredTxns.filter(
       (t) => t.transaction_type === 'advance' &&
-             t.party_type !== 'supplier',
+             t.party_type !== 'supplier' &&
+             t.trade_file?.status !== 'completed',
     ),
     [filteredTxns],
   );

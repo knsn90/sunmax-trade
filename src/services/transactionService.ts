@@ -6,7 +6,7 @@ import { toUSD } from '@/lib/formatters';
 
 const TXN_SELECT = `
   *,
-  trade_file:trade_files!trade_file_id(file_no,tonnage_mt,delivered_admt,parent_file_id,product:products!product_id(name)),
+  trade_file:trade_files!trade_file_id(file_no,status,tonnage_mt,delivered_admt,parent_file_id,product:products!product_id(name)),
   customer:customers!customer_id(name,logo_url),
   supplier:suppliers!supplier_id(name,logo_url),
   service_provider:service_providers!service_provider_id(name,logo_url),
