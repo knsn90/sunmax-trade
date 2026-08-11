@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PnlReportTab, AccountStatementTab, CustomerReportTab } from '@/pages/ReportsPage';
@@ -16,7 +16,13 @@ const TABS: { key: FinTab; label: string }[] = [
 ];
 
 export function FinancialReportsPage() {
-  const [activeTab, setActiveTab] = useState<FinTab>('trade_pnl');
+  // Aktif sekmeyi URL'de tut (?tab=...) → refresh'te ilk sekmeye dönmez, paylaşılabilir
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab: FinTab = TABS.some((t) => t.key === tabParam) ? (tabParam as FinTab) : 'trade_pnl';
+  const setActiveTab = (key: FinTab) => {
+    setSearchParams((prev) => { prev.set('tab', key); return prev; }, { replace: true });
+  };
 
   return (
     <div className="space-y-5" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>

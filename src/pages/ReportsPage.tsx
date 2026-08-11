@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Search, FileText, ChevronDown, ChevronUp, X, Printer, SlidersHorizontal, ClipboardList, Eye, Sparkles } from 'lucide-react';
 import { streamSalesReportAnalysis } from '@/lib/salesReportAI';
@@ -3503,7 +3504,14 @@ export function CustomerReportTab() {
 
 export function ReportsPage() {
   const { t } = useTranslation('reports');
-  const [activeTab, setActiveTab] = useState<RepTab>('sales');
+  // Aktif sekmeyi URL'de tut (?tab=...) → refresh'te ilk sekmeye dönmez
+  const [searchParams, setSearchParams] = useSearchParams();
+  const repTabParam = searchParams.get('tab');
+  const activeTab: RepTab = (['sales', 'analytics', 'eta'] as const).includes(repTabParam as RepTab)
+    ? (repTabParam as RepTab) : 'sales';
+  const setActiveTab = (key: RepTab) => {
+    setSearchParams((prev) => { prev.set('tab', key); return prev; }, { replace: true });
+  };
 
   const TAB_LABELS: [RepTab, string][] = [
     ['sales',     t('tabs.sales')],
