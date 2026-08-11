@@ -178,31 +178,42 @@ export const transactionService = {
 
     const entityTable = entityType === 'customer' ? 'customers' : 'suppliers';
 
-    // Step 1 + 2 paralel: entity adı ve dosya ID'leri aynı anda çek
-    const [entityResult, filesResult] = await Promise.all([
-      supabase.from(entityTable).select('name').eq('id', entityId).single(),
-      supabase.from('trade_files').select('id').eq(txnColumn, entityId).is('deleted_at', null),
+    // Konsolidasyon: müşteride ana firma + tüm alt firmaları (parent_customer_id)
+    // tek grup olarak ele al. Ödeme ana firmadan, fatura alt firmaya olsa bile
+    // ana firmanın ekstresi/raporu hepsini birleştirir.
+    let groupIds = [entityId];
+    if (entityType === 'customer') {
+      const { data: children } = await supabase
+        .from('customers').select('id').eq('parent_customer_id', entityId);
+      groupIds = [entityId, ...((children ?? []) as { id: string }[]).map(c => c.id)];
+    }
+
+    // Grup adları (isim fallback için) + grup dosyaları paralel
+    const [namesResult, filesResult] = await Promise.all([
+      supabase.from(entityTable).select('name').in('id', groupIds),
+      supabase.from('trade_files').select('id').in(txnColumn, groupIds).is('deleted_at', null),
     ]);
-    const entityName = (entityResult.data as { name?: string } | null)?.name ?? null;
+    const groupNames = ((namesResult.data ?? []) as { name: string | null }[])
+      .map(r => r.name).filter((n): n is string => !!n);
     const fileIds = ((filesResult.data ?? []) as { id: string }[]).map(f => f.id);
 
     // Step 3a ve 3b paralel: FK sorgusu + isim fallback aynı anda
     let mainQueryBuilder = supabase.from('transactions').select(TXN_SELECT).is('deleted_at', null);
     if (fileIds.length > 0) {
       mainQueryBuilder = mainQueryBuilder.or(
-        `${txnColumn}.eq.${entityId},` +
+        `${txnColumn}.in.(${groupIds.join(',')}),` +
         `and(trade_file_id.in.(${fileIds.join(',')}),party_type.eq.${partyType})`,
       );
     } else {
-      mainQueryBuilder = mainQueryBuilder.eq(txnColumn, entityId);
+      mainQueryBuilder = mainQueryBuilder.in(txnColumn, groupIds);
     }
     if (approvedOnly) mainQueryBuilder = mainQueryBuilder.eq('doc_status', 'approved');
 
-    let nameQueryBuilder = entityName
+    let nameQueryBuilder = groupNames.length > 0
       ? supabase
           .from('transactions')
           .select(TXN_SELECT)
-          .ilike('party_name', entityName)
+          .in('party_name', groupNames)
           .is(txnColumn, null)
           .is('deleted_at', null)
       : null;
