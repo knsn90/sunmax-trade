@@ -1658,7 +1658,7 @@ export function AccountStatementTab() {
         <td style="padding:3px 6px;white-space:nowrap;color:#475569;font-size:8.5px">${fDate(txn.transaction_date)}</td>
         <td style="padding:3px 6px;color:#334155;font-size:8.5px">${TYPE_LABEL[txn.transaction_type] ?? txn.transaction_type}</td>
         <td style="padding:3px 6px;font-family:monospace;color:#64748b;font-size:8px">${txn.reference_no || '—'}</td>
-        <td style="padding:3px 6px;color:#334155;font-size:8.5px;max-width:140px">${txn.description || '—'}</td>
+        <td style="padding:3px 6px;color:#334155;font-size:8.5px;max-width:140px">${txn.description || '—'}${txn.customer?.name && txn.customer.name !== entityName ? `<div style="font-size:7px;color:#94a3b8">↳ ${txn.customer.name}</div>` : ''}</td>
         <td style="padding:3px 6px;text-align:center">
           <span style="font-size:8.5px;font-weight:700;color:#1e293b">${txn.currency}</span>
           ${origAmt}
@@ -2129,7 +2129,12 @@ export function AccountStatementTab() {
                       <td className="px-4 py-2.5 text-[11px] text-gray-500 whitespace-nowrap tabular-nums">{fDate(txn.transaction_date)}</td>
                       <td className="px-4 py-2.5 text-[12px] font-semibold text-gray-700">{tc(`txType.${txn.transaction_type}`)}</td>
                       <td className="px-4 py-2.5 text-[10px] font-mono text-gray-400">{txn.reference_no || '—'}</td>
-                      <td className="px-4 py-2.5 text-[12px] text-gray-500 max-w-[180px] truncate">{txn.description || '—'}</td>
+                      <td className="px-4 py-2.5 max-w-[180px]">
+                        <div className="text-[12px] text-gray-500 truncate">{txn.description || '—'}</div>
+                        {txn.customer?.name && txn.customer.name !== entityName && (
+                          <div className="text-[10px] font-semibold text-gray-400 truncate">↳ {txn.customer.name}</div>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5">
                         <div className="text-[11px] font-bold text-gray-700 tabular-nums">{txn.currency}</div>
                         {txn.currency !== 'USD' && (
@@ -2197,8 +2202,20 @@ const CHART_COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4
 function AnalyticsTab() {
   const { t, i18n } = useTranslation('reports');
   const { data: files = [] } = useTradeFiles();
+  const { data: customers = [] } = useCustomers();
   const { accent } = useTheme();
   const [period, setPeriod] = useState<'6m' | '12m' | 'all'>('12m');
+
+  // Alt firmaları ana firmaya toplamak için: customer_id → { ana firma id, ad }
+  const parentOf = useMemo(() => {
+    const byId = new Map(customers.map(c => [c.id, c]));
+    const m: Record<string, { id: string; name: string }> = {};
+    for (const c of customers) {
+      const parent = c.parent_customer_id ? (byId.get(c.parent_customer_id) ?? c) : c;
+      m[c.id] = { id: parent.id, name: parent.name };
+    }
+    return m;
+  }, [customers]);
 
   const filteredFiles = useMemo(() => {
     // Sadece tamamlanmış dosyalar K/Z raporuna işlenir
@@ -2233,8 +2250,10 @@ function AnalyticsTab() {
   const customerData = useMemo(() => {
     const map: Record<string, { name: string; revenue: number; profit: number; files: number; admt: number }> = {};
     filteredFiles.filter(f => f.customer_id).forEach(f => {
-      const id = f.customer_id!;
-      const name = f.customer?.name ?? id;
+      // Alt firma → ana firma altında birleştir (konsolidasyon)
+      const p = parentOf[f.customer_id!] ?? { id: f.customer_id!, name: f.customer?.name ?? f.customer_id! };
+      const id = p.id;
+      const name = p.name;
       if (!map[id]) map[id] = { name, revenue: 0, profit: 0, files: 0, admt: 0 };
       const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
       const rev = (f.selling_price ?? 0) * qty;
@@ -2245,7 +2264,7 @@ function AnalyticsTab() {
       map[id].admt += qty;
     });
     return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 8);
-  }, [filteredFiles]);
+  }, [filteredFiles, parentOf]);
 
   // Status distribution
   const statusData = useMemo(() => {
@@ -3292,6 +3311,9 @@ export function CustomerReportTab() {
                         <td className="px-4 py-3 text-[11px] text-gray-400">
                           {t.description ?? '—'}
                           {isRefund && <span className="ml-1 font-bold text-red-600">· {L.refundTag}</span>}
+                          {t.customer?.name && t.customer.name !== customerName && (
+                            <span className="ml-1 font-semibold text-gray-400">· ↳ {t.customer.name}</span>
+                          )}
                         </td>
                       </tr>
                       );
