@@ -2891,17 +2891,22 @@ export function CustomerReportTab() {
         ${badge ? `<div style="font-size:${fsHead};font-weight:600;color:${color};border:1px solid ${color}30;background:${color}10;padding:2px 7px;border-radius:12px">${badge}</div>` : ''}
       </div>`;
 
+    // Alt firma etiketi (hareket seçili ana firmadan farklı bir alt firmaya aitse)
+    const firmTag = (t: { customer?: { name?: string } | null }) =>
+      (t.customer?.name && t.customer.name !== customerName)
+        ? `<div style="font-size:7px;color:#94a3b8">↳ ${t.customer.name}</div>` : '';
+
     const payRows = payments.map((t, i) => {
       const isRefund = t.transaction_type === 'payment';   // müşteriye ödeme/iade → eksi
       const sign     = isRefund ? -1 : 1;
       const usdColor = isRefund ? '#b91c1c' : '#111827';
       const desc     = translateDesc(t.description ?? '');
       const descCell = isRefund ? `${desc ? desc + ' · ' : ''}<strong style="color:#b91c1c">${L.refundTag}</strong>` : desc;
-      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(sign * t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:${usdColor}">${fUSD(sign * (t.amount_usd ?? 0))}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${descCell}</td></tr>`;
+      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(sign * t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:${usdColor}">${fUSD(sign * (t.amount_usd ?? 0))}</td><td style="${i%2?TDZ:TD};color:#64748b;font-size:${fsDesc}">${descCell}${firmTag(t)}</td></tr>`;
     }).join('');
 
     const prdRows = saleInvoices.map((t, i) =>
-      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};color:#374151">${translateDesc(t.description ?? '') || (t.trade_file as any)?.product?.name || '—'}</td><td style="${i%2?TDZ:TD};color:#64748b">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)} ${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${(t.trade_file as any)?.file_no ?? t.reference_no ?? '—'}</td></tr>`
+      `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD};color:#374151">${translateDesc(t.description ?? '') || (t.trade_file as any)?.product?.name || '—'}${firmTag(t)}</td><td style="${i%2?TDZ:TD};color:#64748b">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)} ${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};font-family:monospace;font-size:${fsDesc};color:#94a3b8">${(t.trade_file as any)?.file_no ?? t.reference_no ?? '—'}</td></tr>`
     ).join('');
 
     const advRows = advances.map((t, i) => {
@@ -2909,7 +2914,7 @@ export function CustomerReportTab() {
       const product = t.trade_file?.product?.name;
       const fileInfo = [product, admt != null ? `${fN(admt, 3)} MT` : null].filter(Boolean).join(' — ');
       const desc = [fileInfo, t.description].filter(Boolean).join(' · ');
-      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#374151;font-size:${fsDesc}">${translateDesc(desc) || '—'}</td></tr>`;
+      return `<tr><td style="${i%2?TDZ:TD};color:#94a3b8;text-align:center;width:28px">${i+1}</td><td style="${i%2?TDZ:TD}">${fDate(t.transaction_date)}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:600">${fCurrency(t.amount, t.currency)}</td><td style="${i%2?TDZ:TD};color:#64748b">${t.currency}</td><td style="${i%2?TDZ:TD};text-align:right;font-weight:700;color:#111827">${fUSD(t.amount_usd ?? 0)}</td><td style="${i%2?TDZ:TD};color:#374151;font-size:${fsDesc}">${translateDesc(desc) || '—'}${firmTag(t)}</td></tr>`;
     }).join('');
 
     const tfootRow = (label: string, value: string, color: string, colspan = 4) =>
@@ -3359,7 +3364,12 @@ export function CustomerReportTab() {
                       <tr key={t.id} className={cn('border-b border-gray-50 transition-colors', i % 2 === 1 ? 'bg-gray-50/40' : 'hover:bg-gray-50/60')}>
                         <td className="px-4 py-3 text-[11px] text-gray-400 text-center font-mono">{i + 1}</td>
                         <td className="px-4 py-3 text-[12px] text-gray-600">{fDate(t.transaction_date)}</td>
-                        <td className="px-4 py-3 text-[12px] text-gray-700">{t.description || '—'}</td>
+                        <td className="px-4 py-3 text-[12px] text-gray-700">
+                          {t.description || '—'}
+                          {t.customer?.name && t.customer.name !== customerName && (
+                            <span className="ml-1 text-[10px] font-semibold text-gray-400">· ↳ {t.customer.name}</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-[12px] font-semibold text-gray-900 text-right">{fCurrency(t.amount, t.currency)}</td>
                         <td className="px-4 py-3 text-[11px] text-gray-400">{t.currency}</td>
                         <td className="px-4 py-3 text-[13px] font-bold text-gray-900 text-right">{fUSD(t.amount_usd ?? 0)}</td>
@@ -3418,6 +3428,9 @@ export function CustomerReportTab() {
                             {fileInfo && <span className="font-medium">{fileInfo}</span>}
                             {fileInfo && t.description ? <span className="text-gray-400"> · </span> : null}
                             {t.description || (!fileInfo ? '—' : null)}
+                            {t.customer?.name && t.customer.name !== customerName && (
+                              <span className="ml-1 text-[10px] font-semibold text-gray-400">· ↳ {t.customer.name}</span>
+                            )}
                           </td>
                         </tr>
                       );
