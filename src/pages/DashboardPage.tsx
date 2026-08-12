@@ -15,7 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useTradeFiles } from '@/hooks/useTradeFiles';
-import { useTransactions, useTransactionSummary } from '@/hooks/useTransactions';
+import { useTransactions, useTransactionSummary, useCostByFile } from '@/hooks/useTransactions';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fUSD, fDate } from '@/lib/formatters';
@@ -428,6 +428,14 @@ export function DashboardPage() {
   // gerektirir — 300 cap'i >300 işlemli tenant'ta bu toplamları eksik gösteriyordu.
   // (list varsayılan 10000; recent-3 listesi zaten sort+slice yapıyor.)
   const { data: transactions = [] } = useTransactions();
+  // Dosya bazında gerçek maliyet (purchase_inv + svc_inv) — KPI ve grafikte masrafları saymak için
+  const { data: costByFile = {} } = useCostByFile(true);
+  // Bir dosyanın gerçek maliyeti: işlem maliyeti varsa onu (+ freight_cost), yoksa alış×tonaj'a düş
+  const fileCost = (f: typeof files[number]) => {
+    const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
+    const txnCost = costByFile[f.id] ?? 0;
+    return txnCost > 0 ? txnCost + (f.freight_cost ?? 0) : ((f.purchase_price ?? 0) + (f.freight_cost ?? 0)) * qty;
+  };
   const { data: priceEntries = [] } = usePriceList();
   const { accent } = useTheme();
   const writable = canWrite(profile?.role);
@@ -515,10 +523,10 @@ export function DashboardPage() {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const mf = files.filter(f => getMonthKey(f.created_at ?? '') === key);
       const revenue = mf.reduce((s, f) => s + (f.selling_price ?? 0) * (f.delivered_admt ?? f.tonnage_mt ?? 0), 0);
-      const cost    = mf.reduce((s, f) => s + ((f.purchase_price ?? 0) + (f.freight_cost ?? 0)) * (f.delivered_admt ?? f.tonnage_mt ?? 0), 0);
+      const cost    = mf.reduce((s, f) => s + fileCost(f), 0);
       return { label: formatMonthLabel(key, i18n.language), revenue, cost, profit: revenue - cost };
     });
-  }, [files, i18n.language]);
+  }, [files, costByFile, i18n.language]);
 
   const alerts = useMemo(() => {
     const list: { label: string; sub: string; href: string; type: 'danger' | 'warning' }[] = [];
@@ -564,8 +572,8 @@ export function DashboardPage() {
   const totalProfit = useMemo(() =>
     files.filter(f => f.status === 'completed').reduce((s, f) => {
       const qty = f.delivered_admt ?? f.tonnage_mt ?? 0;
-      return s + (f.selling_price ?? 0) * qty - ((f.purchase_price ?? 0) + (f.freight_cost ?? 0)) * qty;
-    }, 0), [files]);
+      return s + (f.selling_price ?? 0) * qty - fileCost(f);
+    }, 0), [files, costByFile]);
 
   const hasChart = chartData.some(d => d.revenue > 0 || d.cost > 0);
 
