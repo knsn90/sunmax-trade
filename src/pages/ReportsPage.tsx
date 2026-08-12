@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useTradeFiles, useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEntities';
-import { useTransactions, useTransactionsByEntityEnhanced } from '@/hooks/useTransactions';
+import { useTransactions, useTransactionsByEntityEnhanced, useCostByFile } from '@/hooks/useTransactions';
 import { useSettings } from '@/hooks/useSettings';
 import { fDate, fCurrency, fN, fUSD } from '@/lib/formatters';
 import { NativeSelect } from '@/components/ui/form-elements';
@@ -783,6 +783,9 @@ export function PnlReportTab() {
     !!selectedFileIds,
   );
 
+  // Tüm dosyalar özeti için dosya bazında maliyet (dosya seçilmese de yüklenir)
+  const { data: costByFile = {} } = useCostByFile(true);
+
   // ── Tek dosya P&L ───────────────────────────────────────────────────────
   const pnl = useMemo(() => {
     if (!selectedFile) return null;
@@ -802,26 +805,14 @@ export function PnlReportTab() {
   const costRows = txns.filter((t) => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
 
   // ── Tüm dosyalar özeti — gerçek işlemlerden hesapla ────────────────────
-  // txns, selectedFileId=null olduğunda tüm onaylı işlemleri içerir.
-  // Detay görünümüyle tutarlı olması için aynı yöntemi kullan:
-  // maliyet = purchase_inv + svc_inv işlemlerinin toplamı + freight_cost
+  // costByFile: TÜM dosyalar için (dosya seçili olmasa da) maliyet toplamı.
+  // Detay görünümüyle tutarlı: maliyet = purchase_inv + svc_inv + freight_cost.
   const allFilesRows = useMemo(() => {
-    // Tüm onaylı maliyet işlemlerini dosya bazında grupla
-    const costByFile = new Map<string, number>();
-    for (const t of txns) {
-      if (!['purchase_inv', 'svc_inv'].includes(t.transaction_type)) continue;
-      const tf = t.trade_file as any;
-      // Batch transaction → attribute cost to parent file instead
-      const fid = tf?.parent_file_id ?? t.trade_file_id ?? tf?.id;
-      if (!fid) continue;
-      costByFile.set(fid, (costByFile.get(fid) ?? 0) + (t.amount_usd ?? t.amount ?? 0));
-    }
-
     return files
       .map(f => {
         const qty     = f.delivered_admt ?? f.tonnage_mt ?? 0;
         const revenue = (f.selling_price ?? 0) * qty;
-        const txnCost = costByFile.get(f.id) ?? 0;
+        const txnCost = costByFile[f.id] ?? 0;
         const freight = f.freight_cost ?? 0;
         const costs   = txnCost > 0 ? txnCost + freight : (f.purchase_price ?? 0) * qty + freight;
         const profit  = revenue - costs;
@@ -839,7 +830,7 @@ export function PnlReportTab() {
         if (sortBy === 'revenue') return b.revenue - a.revenue;
         return b.profit - a.profit;
       });
-  }, [files, txns, sortBy]);
+  }, [files, costByFile, sortBy]);
 
   // ── Ürün bazında özet ───────────────────────────────────────────────────
   const byProduct = useMemo(() => {

@@ -83,6 +83,35 @@ export const transactionService = {
     return data as Transaction[];
   },
 
+  /**
+   * Rapor özeti için hafif maliyet sorgusu: dosya bazında (purchase_inv + svc_inv)
+   * toplamı. Tam satır (join) çekmez — sadece gerekli kolonlar. Batch işlemleri
+   * parent dosyaya yazılır. Kar/Zarar "Tüm Dosyalar Özeti" bununla hesaplanır.
+   */
+  async costByFile(approvedOnly = true): Promise<Record<string, number>> {
+    let query = supabase
+      .from('transactions')
+      .select('trade_file_id, amount, amount_usd, trade_file:trade_files!trade_file_id(parent_file_id)')
+      .is('deleted_at', null)
+      .in('transaction_type', ['purchase_inv', 'svc_inv'])
+      .limit(20000);
+    if (approvedOnly) query = query.eq('doc_status', 'approved');
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    if (data === null) throw new Error('Request aborted or timed out — please refresh');
+
+    const map: Record<string, number> = {};
+    for (const t of (data ?? []) as any[]) {
+      // Supabase embed'i dizi olarak tipleyebilir → normalize et
+      const tf = Array.isArray(t.trade_file) ? t.trade_file[0] : t.trade_file;
+      const fid: string | null = tf?.parent_file_id ?? t.trade_file_id;
+      if (!fid) continue;
+      map[fid] = (map[fid] ?? 0) + (t.amount_usd ?? t.amount ?? 0);
+    }
+    return map;
+  },
+
   /** Paginated list — returns one page + total count */
   async listPage(
     filters: TransactionFilters,

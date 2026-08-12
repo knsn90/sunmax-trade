@@ -54,6 +54,15 @@ export function useTransactionsByEntityEnhanced(
   });
 }
 
+/** Dosya bazında maliyet (purchase_inv + svc_inv) — Kar/Zarar "Tüm Dosyalar Özeti" için. */
+export function useCostByFile(approvedOnly = true) {
+  return useQuery({
+    queryKey: ['transactions', 'cost-by-file', approvedOnly],
+    queryFn: () => transactionService.costByFile(approvedOnly),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
 export function useTransactionSummary() {
   return useQuery({
     queryKey: ['transactions', 'summary'],
