@@ -76,11 +76,15 @@ function TenantSwitcher() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: Event) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, []);
 
   if (!profile?.is_super_admin) return null;
@@ -88,13 +92,13 @@ function TenantSwitcher() {
   const label = currentTenant?.name ?? 'Tüm Firmalar';
 
   return (
-    <div ref={ref} className="relative hidden md:block" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
+    <div ref={ref} className="relative shrink-0" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <button
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-[#6B4EE6]/8 text-[#6B4EE6] hover:bg-[#6B4EE6]/14 transition-colors"
       >
         <ShieldCheck className="h-4 w-4 shrink-0" />
-        <span className="text-[12px] font-semibold max-w-[140px] truncate">{label}</span>
+        <span className="text-[12px] font-semibold max-w-[110px] md:max-w-[160px] truncate">{label}</span>
         <ChevronDown className={cn('h-3.5 w-3.5 opacity-60 transition-transform shrink-0', open && 'rotate-180')} />
       </button>
 
@@ -174,6 +178,7 @@ export function Topbar() {
   const isDonezo = theme === 'donezo';
   const { data: settings } = useSettings();
   const logoUrl = settings?.logo_url;
+  const isSuperAdmin = !!profile?.is_super_admin;
 
   const basePath = '/' + location.pathname.split('/').filter(Boolean)[0];
   const titleKey = PATH_TITLE_KEYS[basePath];
@@ -190,8 +195,8 @@ export function Topbar() {
         className="bg-white border-b border-[#ECECEC] px-5 flex items-center gap-3 flex-shrink-0"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 11px)', paddingBottom: '11px', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
       >
-        {/* Mobile logo */}
-        <div className="md:hidden flex items-center gap-2 flex-1">
+        {/* Mobile logo — süper admin'de gizle, yerini firma switcher alsın */}
+        <div className={cn('md:hidden items-center gap-2 min-w-0', isSuperAdmin ? 'hidden' : 'flex flex-1')}>
           {logoUrl ? (
             <img src={logoUrl} alt="logo" className="h-7 max-w-[120px] object-contain" />
           ) : (
@@ -206,7 +211,7 @@ export function Topbar() {
 
         <TenantSwitcher />
         <ExchangeRateBar isDonezo={isDonezo} />
-        <div className="flex-1 hidden md:block" />
+        <div className={cn('flex-1', isSuperAdmin ? '' : 'hidden md:block')} />
 
         <div className="flex items-center gap-2.5 flex-shrink-0">
           <span className="hidden md:block text-[12px] text-[#8A8A8E]">
