@@ -1,14 +1,15 @@
 import { useSearchParams } from 'react-router-dom';
 import { BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PnlReportTab, AccountStatementTab, CustomerReportTab } from '@/pages/ReportsPage';
+import { PnlReportTab, PeriodPnlTab, AccountStatementTab, CustomerReportTab } from '@/pages/ReportsPage';
 import { FinancialReportsTab } from '@/components/accounting/FinancialReportsTab';
 import { FxReportTab } from '@/components/accounting/FxReportTab';
 
-type FinTab = 'trade_pnl' | 'cari' | 'customer_report' | 'kasa_banka' | 'kur_farki';
+type FinTab = 'trade_pnl' | 'donem_pnl' | 'cari' | 'customer_report' | 'kasa_banka' | 'kur_farki';
 
 const TABS: { key: FinTab; label: string }[] = [
   { key: 'trade_pnl',       label: 'Kar/Zarar Raporu' },
+  { key: 'donem_pnl',       label: 'Dönem Kâr/Zarar' },
   { key: 'cari',            label: 'Hesap Ekstresi' },
   { key: 'customer_report', label: 'Müşteri Raporu' },
   { key: 'kasa_banka',      label: 'Kasa ve Banka' },
@@ -59,6 +60,7 @@ export function FinancialReportsPage() {
       {/* Content */}
       <div>
         {activeTab === 'trade_pnl'       && <PnlReportTab />}
+        {activeTab === 'donem_pnl'       && <PeriodPnlTab />}
         {activeTab === 'cari'            && <AccountStatementTab />}
         {activeTab === 'customer_report' && <CustomerReportTab />}
         {activeTab === 'kasa_banka'      && <FinancialReportsTab />}

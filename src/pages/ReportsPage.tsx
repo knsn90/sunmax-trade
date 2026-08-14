@@ -33,7 +33,7 @@ function openPrint(html: string, title: string, companyName?: string) {
   win.document.close();
 }
 
-type RepTab = 'sales' | 'analytics' | 'eta' | 'pnl';
+type RepTab = 'sales' | 'analytics' | 'eta';
 
 // ─── Sales Report — sütun şeması ─────────────────────────────────────────
 
@@ -3716,7 +3716,7 @@ export function ReportsPage() {
   // Aktif sekmeyi URL'de tut (?tab=...) → refresh'te ilk sekmeye dönmez
   const [searchParams, setSearchParams] = useSearchParams();
   const repTabParam = searchParams.get('tab');
-  const activeTab: RepTab = (['sales', 'analytics', 'eta', 'pnl'] as const).includes(repTabParam as RepTab)
+  const activeTab: RepTab = (['sales', 'analytics', 'eta'] as const).includes(repTabParam as RepTab)
     ? (repTabParam as RepTab) : 'sales';
   const setActiveTab = (key: RepTab) => {
     setSearchParams((prev) => { prev.set('tab', key); return prev; }, { replace: true });
@@ -3726,7 +3726,6 @@ export function ReportsPage() {
     ['sales',     t('tabs.sales')],
     ['analytics', t('tabs.analytics')],
     ['eta',       t('tabs.eta')],
-    ['pnl',       'Kâr / Zarar'],
   ];
 
   return (
@@ -3761,7 +3760,6 @@ export function ReportsPage() {
       {activeTab === 'sales'     && <SalesReportTab />}
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'eta'       && <EtaReportTab />}
-      {activeTab === 'pnl'       && <PeriodPnlTab />}
     </div>
   );
 }
