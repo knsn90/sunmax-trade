@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Search, FileText, ChevronDown, ChevronUp, X, Printer, SlidersHorizontal, ClipboardList, Eye, Sparkles } from 'lucide-react';
@@ -13,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { useTradeFiles, useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers, useSuppliers, useServiceProviders } from '@/hooks/useEntities';
 import { useTransactions, useTransactionsByEntityEnhanced, useCostByFile } from '@/hooks/useTransactions';
+import { useQuery } from '@tanstack/react-query';
+import { invoiceService } from '@/services/invoiceService';
 import { useSettings } from '@/hooks/useSettings';
 import { fDate, fCurrency, fN, fUSD } from '@/lib/formatters';
 import { NativeSelect } from '@/components/ui/form-elements';
@@ -31,7 +33,7 @@ function openPrint(html: string, title: string, companyName?: string) {
   win.document.close();
 }
 
-type RepTab = 'sales' | 'analytics' | 'eta';
+type RepTab = 'sales' | 'analytics' | 'eta' | 'pnl';
 
 // ─── Sales Report — sütun şeması ─────────────────────────────────────────
 
@@ -749,6 +751,222 @@ function SalesReportTab() {
 }
 
 // ─── P&L Report ────────────────────────────────────────────────────────────
+
+// ─── Dönem × Ürün Kâr/Zarar (ağırlıklı ortalama maliyet) ────────────────────
+// Stok havuzu modeli: kâr parça-parça değil, DÖNEM ve ÜRÜN bazında hesaplanır.
+// Ciro + satılan tonaj → satış faturalarından (invoice_date'e göre dönem).
+// SMM (satılan malın maliyeti) = satılan ton × ürünün ağırlıklı ort. maliyeti/ton.
+type PnlGran = 'month' | 'quarter' | 'half' | 'year';
+
+function periodKey(dateStr: string, gran: PnlGran): string {
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = d.getMonth(); // 0-11
+  if (gran === 'year')    return `${y}`;
+  if (gran === 'half')    return `${y} · H${m < 6 ? 1 : 2}`;
+  if (gran === 'quarter') return `${y} · Ç${Math.floor(m / 3) + 1}`;
+  return `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+
+export function PeriodPnlTab() {
+  const { data: files = [] } = useTradeFiles();
+  const { data: costByFile = {} } = useCostByFile(true);
+  const { data: saleInvoices = [] } = useQuery({
+    queryKey: ['saleInvoices', 'period-pnl'],
+    queryFn: () => invoiceService.listSaleInvoices(),
+    staleTime: 60_000,
+  });
+
+  const [gran, setGran] = useState<PnlGran>('quarter');
+  const [productFilter, setProductFilter] = useState<string>('all');
+
+  // ── Ürün bazında ağırlıklı ortalama maliyet/ton ──────────────────────────
+  const avgCostByProduct = useMemo(() => {
+    const agg: Record<string, { cost: number; tons: number }> = {};
+    for (const f of files) {
+      const prod = f.product?.name ?? 'Diğer';
+      const tons = f.tonnage_mt ?? f.delivered_admt ?? 0;
+      if (tons <= 0) continue;
+      const txnCost = costByFile[f.id] ?? 0;
+      // Maliyet faturası yoksa purchase_price'a düş (Kar/Zarar özetiyle tutarlı)
+      const cost = txnCost > 0
+        ? txnCost + (f.freight_cost ?? 0)
+        : (f.purchase_price ?? 0) * tons + (f.freight_cost ?? 0);
+      if (!agg[prod]) agg[prod] = { cost: 0, tons: 0 };
+      agg[prod].cost += cost;
+      agg[prod].tons += tons;
+    }
+    const out: Record<string, number> = {};
+    for (const [p, v] of Object.entries(agg)) out[p] = v.tons > 0 ? v.cost / v.tons : 0;
+    return out;
+  }, [files, costByFile]);
+
+  const productNames = useMemo(
+    () => Array.from(new Set(saleInvoices.map((i) => i.product_name).filter(Boolean))).sort() as string[],
+    [saleInvoices],
+  );
+
+  // ── Dönem × ürün satırları ───────────────────────────────────────────────
+  const { rows, periodTotals, grand } = useMemo(() => {
+    const map: Record<string, Record<string, { revenue: number; tons: number }>> = {};
+    for (const inv of saleInvoices) {
+      if (inv.doc_status && inv.doc_status !== 'approved') continue;
+      if (!inv.invoice_date) continue;
+      const prod = inv.product_name ?? 'Diğer';
+      if (productFilter !== 'all' && prod !== productFilter) continue;
+      const per = periodKey(inv.invoice_date, gran);
+      map[per] ??= {};
+      map[per][prod] ??= { revenue: 0, tons: 0 };
+      map[per][prod].revenue += inv.total ?? 0;
+      map[per][prod].tons += inv.quantity_admt ?? 0;
+    }
+    const rows: {
+      per: string; prod: string; tons: number; revenue: number;
+      avg: number; cogs: number; profit: number; margin: number;
+    }[] = [];
+    const periodTotals: Record<string, { revenue: number; cogs: number; profit: number; tons: number }> = {};
+    const grand = { revenue: 0, cogs: 0, profit: 0, tons: 0 };
+    for (const per of Object.keys(map).sort().reverse()) {
+      for (const prod of Object.keys(map[per]).sort()) {
+        const { revenue, tons } = map[per][prod];
+        const avg = avgCostByProduct[prod] ?? 0;
+        const cogs = tons * avg;
+        const profit = revenue - cogs;
+        rows.push({ per, prod, tons, revenue, avg, cogs, profit, margin: revenue > 0 ? (profit / revenue) * 100 : 0 });
+        periodTotals[per] ??= { revenue: 0, cogs: 0, profit: 0, tons: 0 };
+        periodTotals[per].revenue += revenue; periodTotals[per].cogs += cogs;
+        periodTotals[per].profit += profit;  periodTotals[per].tons += tons;
+        grand.revenue += revenue; grand.cogs += cogs; grand.profit += profit; grand.tons += tons;
+      }
+    }
+    return { rows, periodTotals, grand };
+  }, [saleInvoices, gran, avgCostByProduct, productFilter]);
+
+  const grandMargin = grand.revenue > 0 ? (grand.profit / grand.revenue) * 100 : 0;
+  const pc = (v: number) => (v >= 0 ? 'text-green-700' : 'text-red-600');
+
+  const GRAN_LABELS: [PnlGran, string][] = [
+    ['month', 'Aylık'], ['quarter', 'Çeyrek'], ['half', 'Yarıyıl'], ['year', 'Yıllık'],
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Kontroller */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl">
+          {GRAN_LABELS.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setGran(key)}
+              className={cn(
+                'shrink-0 px-3 h-8 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap',
+                gran === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <NativeSelect
+          value={productFilter}
+          onChange={(e) => setProductFilter(e.target.value)}
+          className="h-9 text-[13px] max-w-[220px]"
+        >
+          <option value="all">Tüm ürünler</option>
+          {productNames.map((p) => <option key={p} value={p}>{p}</option>)}
+        </NativeSelect>
+        <span className="text-[11px] text-gray-400">
+          SMM = satılan ton × ürün ağırlıklı ort. maliyet/ton
+        </span>
+      </div>
+
+      {/* KPI'lar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Toplam Ciro', val: fUSD(grand.revenue), cls: 'text-gray-900' },
+          { label: 'Toplam SMM',  val: fUSD(grand.cogs),    cls: 'text-gray-900' },
+          { label: 'Toplam Kâr',  val: fUSD(grand.profit),  cls: pc(grand.profit) },
+          { label: 'Marj',        val: `%${grandMargin.toFixed(1)}`, cls: pc(grand.profit) },
+        ].map((k) => (
+          <div key={k.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
+            <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{k.label}</div>
+            <div className={cn('text-xl font-black tabular-nums', k.cls)}>{k.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tablo */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              {['Dönem', 'Ürün', 'Ton', 'Ciro', 'Ort. Mal./ton', 'SMM', 'Kâr', 'Marj'].map((h, i) => (
+                <th
+                  key={h}
+                  className={cn(
+                    'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400',
+                    i < 2 ? 'text-left' : 'text-right',
+                  )}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr><td colSpan={8} className="px-4 py-16 text-center text-sm text-gray-400">Satış faturası bulunamadı</td></tr>
+            )}
+            {rows.map((r, i) => {
+              const prevPer = i > 0 ? rows[i - 1].per : null;
+              const firstOfPeriod = r.per !== prevPer;
+              const pt = periodTotals[r.per];
+              const lastOfPeriod = i === rows.length - 1 || rows[i + 1].per !== r.per;
+              return (
+                <Fragment key={`${r.per}-${r.prod}`}>
+                  {firstOfPeriod && (
+                    <tr key={`${r.per}-hdr`} className="bg-gray-50/60">
+                      <td colSpan={8} className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                        {r.per}
+                      </td>
+                    </tr>
+                  )}
+                  <tr key={`${r.per}-${r.prod}`} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                    <td className="px-4 py-2.5" />
+                    <td className="px-4 py-2.5 text-[12px] font-semibold text-gray-800">{r.prod}</td>
+                    <td className="px-4 py-2.5 text-right text-[12px] text-gray-500 tabular-nums">{fN(r.tons, 3)}</td>
+                    <td className="px-4 py-2.5 text-right text-[12px] text-gray-700 tabular-nums">{fUSD(r.revenue)}</td>
+                    <td className="px-4 py-2.5 text-right text-[11px] text-gray-400 tabular-nums">{fUSD(r.avg)}</td>
+                    <td className="px-4 py-2.5 text-right text-[12px] text-gray-500 tabular-nums">{fUSD(r.cogs)}</td>
+                    <td className={cn('px-4 py-2.5 text-right text-[12px] font-semibold tabular-nums', pc(r.profit))}>{fUSD(r.profit)}</td>
+                    <td className={cn('px-4 py-2.5 text-right text-[11px] font-semibold tabular-nums', pc(r.profit))}>%{r.margin.toFixed(1)}</td>
+                  </tr>
+                  {lastOfPeriod && (
+                    <tr key={`${r.per}-tot`} className="border-b border-gray-100 bg-gray-50/30">
+                      <td className="px-4 py-2 text-[11px] font-bold text-gray-600" colSpan={2}>{r.per} toplam</td>
+                      <td className="px-4 py-2 text-right text-[11px] font-bold text-gray-600 tabular-nums">{fN(pt.tons, 3)}</td>
+                      <td className="px-4 py-2 text-right text-[11px] font-bold text-gray-700 tabular-nums">{fUSD(pt.revenue)}</td>
+                      <td />
+                      <td className="px-4 py-2 text-right text-[11px] font-bold text-gray-600 tabular-nums">{fUSD(pt.cogs)}</td>
+                      <td className={cn('px-4 py-2 text-right text-[11px] font-black tabular-nums', pc(pt.profit))}>{fUSD(pt.profit)}</td>
+                      <td className={cn('px-4 py-2 text-right text-[11px] font-bold tabular-nums', pc(pt.profit))}>
+                        %{(pt.revenue > 0 ? (pt.profit / pt.revenue) * 100 : 0).toFixed(1)}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[11px] text-gray-400 px-1">
+        Not: Ağırlıklı ortalama maliyet tüm dönemler için ürün geneli hesaplanır (stok havuzu). Ciro/tonaj satış
+        faturalarının tarihine göre dönemlenir. Tutarlar USD.
+      </p>
+    </div>
+  );
+}
 
 export function PnlReportTab() {
   const { t } = useTranslation('reports');
@@ -3498,7 +3716,7 @@ export function ReportsPage() {
   // Aktif sekmeyi URL'de tut (?tab=...) → refresh'te ilk sekmeye dönmez
   const [searchParams, setSearchParams] = useSearchParams();
   const repTabParam = searchParams.get('tab');
-  const activeTab: RepTab = (['sales', 'analytics', 'eta'] as const).includes(repTabParam as RepTab)
+  const activeTab: RepTab = (['sales', 'analytics', 'eta', 'pnl'] as const).includes(repTabParam as RepTab)
     ? (repTabParam as RepTab) : 'sales';
   const setActiveTab = (key: RepTab) => {
     setSearchParams((prev) => { prev.set('tab', key); return prev; }, { replace: true });
@@ -3508,6 +3726,7 @@ export function ReportsPage() {
     ['sales',     t('tabs.sales')],
     ['analytics', t('tabs.analytics')],
     ['eta',       t('tabs.eta')],
+    ['pnl',       'Kâr / Zarar'],
   ];
 
   return (
@@ -3542,6 +3761,7 @@ export function ReportsPage() {
       {activeTab === 'sales'     && <SalesReportTab />}
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'eta'       && <EtaReportTab />}
+      {activeTab === 'pnl'       && <PeriodPnlTab />}
     </div>
   );
 }
