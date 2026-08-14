@@ -1339,7 +1339,7 @@ export function PnlReportTab() {
           <div style="font-size:11px;font-weight:700;color:#374151">Net Kâr</div>
           <div style="font-size:9px;color:#9ca3af;margin-top:2px">Toplam Maliyet: ${fUSD(pnl.costs)}</div>
         </div>
-        <div style="font-size:20px;font-weight:900;color:${col(pnl.profit)}">${fUSD(pnl.profit)}</div>
+        <div style="font-size:20px;font-weight:900;color:${col(printProfit)}">${fUSD(printProfit)}</div>
       </div>`;
 
     openPrint(html, `Kar/Zarar — ${selectedFile.file_no}`);
@@ -1749,7 +1749,7 @@ export function PnlReportTab() {
                       <div className="text-[13px] font-bold text-gray-700">Net Kâr</div>
                       <div className="text-[10px] text-gray-400 mt-0.5">Toplam Maliyet: {fUSD(pnl.costs)}</div>
                     </div>
-                    <div className="text-[22px] font-black tabular-nums" style={{ color: col(pnl.profit) }}>{fUSD(pnl.profit)}</div>
+                    <div className="text-[22px] font-black tabular-nums" style={{ color: col(displayProfit) }}>{fUSD(displayProfit)}</div>
                   </div>
                 </div>
               </>
