@@ -968,6 +968,180 @@ export function PeriodPnlTab() {
   );
 }
 
+// ─── Stok (envanter) — ürün bazında eldeki stok + ağırlıklı ort. değer ──────
+// "Al-stokla-sat" modeli: alış partileri stoğa girer, satışlar stoktan çıkar.
+// Eldeki stok = Σ alınan ton − Σ satılan ton. Değer = eldeki ton × ürün ağır.ort. maliyet/ton.
+// İsteğe bağlı "tarihine göre" → o tarihe kadarki alış/satışlarla stok fotoğrafı.
+export function StockTab() {
+  const { data: files = [] } = useTradeFiles();
+  const { data: costByFile = {} } = useCostByFile(true);
+  const { data: saleInvoices = [] } = useQuery({
+    queryKey: ['saleInvoices', 'stock'],
+    queryFn: () => invoiceService.listSaleInvoices(),
+    staleTime: 60_000,
+  });
+
+  const [asOf, setAsOf] = useState(''); // boş = tümü (bugüne kadar)
+
+  const { rows, totals } = useMemo(() => {
+    type Agg = { boughtTons: number; cost: number; soldTons: number; revenue: number };
+    const agg: Record<string, Agg> = {};
+    const ensure = (p: string) => (agg[p] ??= { boughtTons: 0, cost: 0, soldTons: 0, revenue: 0 });
+
+    // Alışlar → stok girişi + maliyet havuzu
+    for (const f of files) {
+      if (asOf && f.file_date && f.file_date > asOf) continue;
+      const prod = f.product?.name ?? 'Diğer';
+      const tons = f.tonnage_mt ?? f.delivered_admt ?? 0;
+      if (tons <= 0) continue;
+      const txnCost = costByFile[f.id] ?? 0;
+      // Maliyet faturası yoksa purchase_price'a düş (Dönem Kâr/Zarar ile tutarlı)
+      const cost = txnCost > 0
+        ? txnCost + (f.freight_cost ?? 0)
+        : (f.purchase_price ?? 0) * tons + (f.freight_cost ?? 0);
+      const a = ensure(prod);
+      a.boughtTons += tons;
+      a.cost += cost;
+    }
+
+    // Satışlar → stok çıkışı
+    for (const inv of saleInvoices) {
+      if (inv.doc_status && inv.doc_status !== 'approved') continue;
+      if (!inv.invoice_date) continue;
+      if (asOf && inv.invoice_date > asOf) continue;
+      const a = ensure(inv.product_name ?? 'Diğer');
+      a.soldTons += inv.quantity_admt ?? 0;
+      a.revenue += inv.total ?? 0;
+    }
+
+    const rows = Object.entries(agg)
+      .map(([prod, a]) => {
+        const avg = a.boughtTons > 0 ? a.cost / a.boughtTons : 0;
+        const onHand = a.boughtTons - a.soldTons;
+        return {
+          prod,
+          boughtTons: a.boughtTons,
+          soldTons: a.soldTons,
+          onHand,
+          avg,
+          stockValue: onHand * avg,
+        };
+      })
+      .sort((x, y) => y.stockValue - x.stockValue);
+
+    const totals = rows.reduce(
+      (s, r) => {
+        s.boughtTons += r.boughtTons;
+        s.soldTons += r.soldTons;
+        s.onHand += r.onHand;
+        s.stockValue += r.stockValue;
+        return s;
+      },
+      { boughtTons: 0, soldTons: 0, onHand: 0, stockValue: 0 },
+    );
+
+    return { rows, totals };
+  }, [files, costByFile, saleInvoices, asOf]);
+
+  return (
+    <div className="space-y-4">
+      {/* Kontroller */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium text-gray-500">Tarihe göre stok</span>
+          <MonoDatePicker
+            value={asOf}
+            onChange={(v) => setAsOf(v)}
+            className="h-9 w-36 bg-white border border-gray-200 rounded-lg px-2 text-[12px] text-gray-700 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-50 transition-colors"
+          />
+          {asOf && (
+            <button
+              onClick={() => setAsOf('')}
+              className="h-9 px-3 rounded-lg text-[11px] font-semibold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Tümü
+            </button>
+          )}
+        </div>
+        <span className="text-[11px] text-gray-400">
+          Eldeki stok = alınan ton − satılan ton · Değer = eldeki ton × ürün ağırlıklı ort. maliyet
+        </span>
+      </div>
+
+      {/* KPI'lar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Toplam Stok Değeri', val: fUSD(totals.stockValue), cls: 'text-gray-900' },
+          { label: 'Eldeki Toplam Ton', val: fN(totals.onHand, 3), cls: totals.onHand < 0 ? 'text-red-600' : 'text-gray-900' },
+          { label: 'Alınan (kümülatif)', val: fN(totals.boughtTons, 3), cls: 'text-gray-900' },
+          { label: 'Satılan (kümülatif)', val: fN(totals.soldTons, 3), cls: 'text-gray-900' },
+        ].map((k) => (
+          <div key={k.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
+            <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{k.label}</div>
+            <div className={cn('text-xl font-black tabular-nums', k.cls)}>{k.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tablo */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              {['Ürün', 'Alınan Ton', 'Satılan Ton', 'Eldeki Stok', 'Ort. Mal./ton', 'Stok Değeri'].map((h, i) => (
+                <th
+                  key={h}
+                  className={cn(
+                    'px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400',
+                    i === 0 ? 'text-left' : 'text-right',
+                  )}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-16 text-center text-sm text-gray-400">Kayıt bulunamadı</td></tr>
+            )}
+            {rows.map((r) => (
+              <tr key={r.prod} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                <td className="px-4 py-2.5 text-[12px] font-semibold text-gray-800">{r.prod}</td>
+                <td className="px-4 py-2.5 text-right text-[12px] text-gray-500 tabular-nums">{fN(r.boughtTons, 3)}</td>
+                <td className="px-4 py-2.5 text-right text-[12px] text-gray-500 tabular-nums">{fN(r.soldTons, 3)}</td>
+                <td className={cn('px-4 py-2.5 text-right text-[12px] font-semibold tabular-nums', r.onHand < 0 ? 'text-red-600' : 'text-gray-900')}>
+                  {fN(r.onHand, 3)}
+                </td>
+                <td className="px-4 py-2.5 text-right text-[11px] text-gray-400 tabular-nums">{fUSD(r.avg)}</td>
+                <td className={cn('px-4 py-2.5 text-right text-[12px] font-semibold tabular-nums', r.onHand < 0 ? 'text-red-600' : 'text-gray-700')}>
+                  {fUSD(r.stockValue)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          {rows.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 bg-gray-50/80 font-bold">
+                <td className="px-4 py-3 text-[11px] text-gray-400 uppercase tracking-wider">Toplam</td>
+                <td className="px-4 py-3 text-right text-[12px] tabular-nums">{fN(totals.boughtTons, 3)}</td>
+                <td className="px-4 py-3 text-right text-[12px] tabular-nums">{fN(totals.soldTons, 3)}</td>
+                <td className={cn('px-4 py-3 text-right text-[12px] tabular-nums', totals.onHand < 0 ? 'text-red-600' : 'text-gray-900')}>{fN(totals.onHand, 3)}</td>
+                <td />
+                <td className={cn('px-4 py-3 text-right text-[12px] tabular-nums', totals.onHand < 0 ? 'text-red-600' : 'text-gray-700')}>{fUSD(totals.stockValue)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+      <p className="text-[11px] text-gray-400 px-1">
+        Not: Eldeki stok, alınan tonajdan (alış partileri) satılan tonaj (onaylı satış faturaları) düşülerek bulunur.
+        Kırmızı/negatif değer = satış &gt; alış (faturasız alış ya da ürün adı uyuşmazlığı — kontrol edilmeli). Tutarlar USD.
+      </p>
+    </div>
+  );
+}
+
 export function PnlReportTab() {
   const { t } = useTranslation('reports');
   const { accent } = useTheme();
