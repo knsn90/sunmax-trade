@@ -360,6 +360,16 @@ function PartilerCard({
   );
 }
 
+/** Dosya no'yu URL-dostu okunakli slug'a çevirir: "GLZ-11 26-07 DOMTAR/P1" → "glz-11-26-07-domtar-p1" */
+function slugifyFileNo(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // aksanları at
+    .replace(/[^a-z0-9]+/g, '-')                       // harf/rakam dışı → tire
+    .replace(/^-+|-+$/g, '')                            // baş/son tireleri kırp
+    .slice(0, 60);
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export function TradeFileDetailPage() {
   const { t } = useTranslation('tradeFiles');
@@ -369,9 +379,18 @@ export function TradeFileDetailPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const writable = canWrite(profile?.role);
-  const { data: file, isLoading } = useTradeFile(id);
+  // URL okunakli slug taşıyabilir: "glz-11-26-07-domtar-p1--<uuid>" → gerçek id son parça
+  const fileId = id?.split('--').pop() || id;
+  const { data: file, isLoading } = useTradeFile(fileId);
   // Batch dosyalar için ana dosyayı fetch et (satış detaylarını senkronize edebilmek için)
   const { data: parentFile } = useTradeFile(file?.parent_file_id ?? undefined);
+
+  // Adres çubuğunu okunakli yap: /files/<uuid> → /files/<dosya-no-slug>--<uuid>
+  useEffect(() => {
+    if (!file?.file_no || !file.id) return;
+    const pretty = `${slugifyFileNo(file.file_no)}--${file.id}`;
+    if (id !== pretty) navigate(`/files/${pretty}`, { replace: true });
+  }, [file?.id, file?.file_no, id, navigate]);
   const updateSaleDetails = useUpdateSaleDetails();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();

@@ -33,7 +33,9 @@ function openPrint(html: string, title: string, companyName?: string) {
   win.document.close();
 }
 
-type RepTab = 'sales' | 'analytics' | 'eta';
+type RepTab = 'satis' | 'analitik' | 'eta';
+// Eski ?tab= key'leri → yeni okunakli slug (eski linkler çalışsın)
+const LEGACY_REP_TABS: Record<string, RepTab> = { sales: 'satis', analytics: 'analitik' };
 
 // ─── Sales Report — sütun şeması ─────────────────────────────────────────
 
@@ -3890,16 +3892,17 @@ export function ReportsPage() {
   // Aktif sekmeyi URL'de tut (?tab=...) → refresh'te ilk sekmeye dönmez
   const [searchParams, setSearchParams] = useSearchParams();
   const repTabParam = searchParams.get('tab');
-  const activeTab: RepTab = (['sales', 'analytics', 'eta'] as const).includes(repTabParam as RepTab)
-    ? (repTabParam as RepTab) : 'sales';
+  const activeTab: RepTab = (['satis', 'analitik', 'eta'] as const).includes(repTabParam as RepTab)
+    ? (repTabParam as RepTab)
+    : (repTabParam && LEGACY_REP_TABS[repTabParam]) || 'satis';
   const setActiveTab = (key: RepTab) => {
     setSearchParams((prev) => { prev.set('tab', key); return prev; }, { replace: true });
   };
 
   const TAB_LABELS: [RepTab, string][] = [
-    ['sales',     t('tabs.sales')],
-    ['analytics', t('tabs.analytics')],
-    ['eta',       t('tabs.eta')],
+    ['satis',    t('tabs.sales')],
+    ['analitik', t('tabs.analytics')],
+    ['eta',      t('tabs.eta')],
   ];
 
   return (
@@ -3931,9 +3934,9 @@ export function ReportsPage() {
         ))}
       </div>
 
-      {activeTab === 'sales'     && <SalesReportTab />}
-      {activeTab === 'analytics' && <AnalyticsTab />}
-      {activeTab === 'eta'       && <EtaReportTab />}
+      {activeTab === 'satis'    && <SalesReportTab />}
+      {activeTab === 'analitik' && <AnalyticsTab />}
+      {activeTab === 'eta'      && <EtaReportTab />}
     </div>
   );
 }

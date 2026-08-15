@@ -5,23 +5,31 @@ import { PnlReportTab, PeriodPnlTab, StockTab, AccountStatementTab, CustomerRepo
 import { FinancialReportsTab } from '@/components/accounting/FinancialReportsTab';
 import { FxReportTab } from '@/components/accounting/FxReportTab';
 
-type FinTab = 'trade_pnl' | 'donem_pnl' | 'stok' | 'cari' | 'customer_report' | 'kasa_banka' | 'kur_farki';
+type FinTab = 'kar-zarar' | 'donem-kar-zarar' | 'stok' | 'hesap-ekstresi' | 'musteri-raporu' | 'kasa-banka' | 'kur-farki';
 
 const TABS: { key: FinTab; label: string }[] = [
-  { key: 'trade_pnl',       label: 'Kar/Zarar Raporu' },
-  { key: 'donem_pnl',       label: 'Dönem Kâr/Zarar' },
+  { key: 'kar-zarar',       label: 'Kar/Zarar Raporu' },
+  { key: 'donem-kar-zarar', label: 'Dönem Kâr/Zarar' },
   { key: 'stok',            label: 'Stok' },
-  { key: 'cari',            label: 'Hesap Ekstresi' },
-  { key: 'customer_report', label: 'Müşteri Raporu' },
-  { key: 'kasa_banka',      label: 'Kasa ve Banka' },
-  { key: 'kur_farki',       label: 'Kur Farkı' },
+  { key: 'hesap-ekstresi',  label: 'Hesap Ekstresi' },
+  { key: 'musteri-raporu',  label: 'Müşteri Raporu' },
+  { key: 'kasa-banka',      label: 'Kasa ve Banka' },
+  { key: 'kur-farki',       label: 'Kur Farkı' },
 ];
+
+// Eski ?tab= key'lerini yeni okunakli slug'lara eşle (paylaşılmış eski linkler çalışsın)
+const LEGACY_TABS: Record<string, FinTab> = {
+  trade_pnl: 'kar-zarar', donem_pnl: 'donem-kar-zarar', cari: 'hesap-ekstresi',
+  customer_report: 'musteri-raporu', kasa_banka: 'kasa-banka', kur_farki: 'kur-farki',
+};
 
 export function FinancialReportsPage() {
   // Aktif sekmeyi URL'de tut (?tab=...) → refresh'te ilk sekmeye dönmez, paylaşılabilir
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const activeTab: FinTab = TABS.some((t) => t.key === tabParam) ? (tabParam as FinTab) : 'trade_pnl';
+  const activeTab: FinTab = TABS.some((t) => t.key === tabParam)
+    ? (tabParam as FinTab)
+    : (tabParam && LEGACY_TABS[tabParam]) || 'kar-zarar';
   const setActiveTab = (key: FinTab) => {
     setSearchParams((prev) => { prev.set('tab', key); return prev; }, { replace: true });
   };
@@ -60,13 +68,13 @@ export function FinancialReportsPage() {
 
       {/* Content */}
       <div>
-        {activeTab === 'trade_pnl'       && <PnlReportTab />}
-        {activeTab === 'donem_pnl'       && <PeriodPnlTab />}
+        {activeTab === 'kar-zarar'       && <PnlReportTab />}
+        {activeTab === 'donem-kar-zarar' && <PeriodPnlTab />}
         {activeTab === 'stok'            && <StockTab />}
-        {activeTab === 'cari'            && <AccountStatementTab />}
-        {activeTab === 'customer_report' && <CustomerReportTab />}
-        {activeTab === 'kasa_banka'      && <FinancialReportsTab />}
-        {activeTab === 'kur_farki'       && <FxReportTab />}
+        {activeTab === 'hesap-ekstresi'  && <AccountStatementTab />}
+        {activeTab === 'musteri-raporu'  && <CustomerReportTab />}
+        {activeTab === 'kasa-banka'      && <FinancialReportsTab />}
+        {activeTab === 'kur-farki'       && <FxReportTab />}
       </div>
 
     </div>
