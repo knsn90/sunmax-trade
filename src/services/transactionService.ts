@@ -288,7 +288,13 @@ export const transactionService = {
   async create(input: TransactionFormData): Promise<Transaction> {
     // Modal yöne göre amount_usd geçtiyse onu kullan (toUSD yön bilmez), yoksa hesapla
     const amountUsd = input.amount_usd ?? toUSD(input.amount, input.currency, input.exchange_rate);
-    const paidAmountUsd = input.paid_amount_usd ?? toUSD(input.paid_amount, input.currency, input.exchange_rate);
+    // Otomatik kapanış: fatura tipi + auto_close işaretliyse ana fatura open/paid 0
+    // kalır, tutarı kapatan eşleşen ödeme/tahsilat ayrı işlem olarak oluşturulur.
+    const autoClose = input.auto_close === true
+      && ['purchase_inv', 'svc_inv', 'sale_inv'].includes(input.transaction_type);
+    const paidAmountUsd = autoClose
+      ? 0
+      : (input.paid_amount_usd ?? toUSD(input.paid_amount, input.currency, input.exchange_rate));
 
     // Derive party_type from transaction_type
     let partyType = input.party_type;
@@ -334,9 +340,9 @@ export const transactionService = {
         amount: input.amount,
         exchange_rate: input.exchange_rate,
         amount_usd: amountUsd,
-        paid_amount: input.paid_amount,
+        paid_amount: autoClose ? 0 : input.paid_amount,
         paid_amount_usd: paidAmountUsd,
-        payment_status: input.payment_status,
+        payment_status: autoClose ? 'open' : input.payment_status,
         payment_method: input.payment_method || null,
         bank_name: input.bank_name || null,
         bank_account_no: input.bank_account_no || null,
@@ -357,6 +363,25 @@ export const transactionService = {
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Otomatik kapanış kaydı: fatura tutarını tam kapatan eşleşen ödeme/tahsilat.
+    // party_type/party id'leri faturadan devralınır (sale_inv→müşteri tahsilat,
+    // purchase_inv→tedarikçi ödeme, svc_inv→hizmet firması ödeme).
+    if (autoClose) {
+      const isReceipt = input.transaction_type === 'sale_inv';
+      await this.create({
+        ...input,
+        auto_close: false,
+        transaction_type: isReceipt ? 'receipt' : 'payment',
+        payment_status: 'paid',
+        paid_amount: input.amount,
+        amount_usd: amountUsd,
+        paid_amount_usd: amountUsd,
+        description: isReceipt ? 'Tahsilat (otomatik kapanış)' : 'Ödeme (otomatik kapanış)',
+        reference_no: '',
+      });
+    }
+
     return data as Transaction;
   },
 

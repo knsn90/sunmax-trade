@@ -502,7 +502,7 @@ export function InvoiceModal({
                     {errors.quantity_admt && <p className="text-[11px] text-red-500 mt-0.5">{errors.quantity_admt.message}</p>}
                   </Field>
                   <Field label={`${t('invoice.modal.unitPrice')} *`}>
-                    <input type="number" step="0.001" className={inp} {...register('unit_price')} placeholder="0.000" />
+                    <input type="number" step="0.0001" className={inp} {...register('unit_price')} placeholder="0.0000" />
                     {errors.unit_price && <p className="text-[11px] text-red-500 mt-0.5">{errors.unit_price.message}</p>}
                   </Field>
                   <Field label={t('invoice.modal.freight')}>

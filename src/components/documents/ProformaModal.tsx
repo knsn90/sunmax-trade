@@ -471,7 +471,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
                     value={form.watch('unit_price')}
                     onChange={v => setValue('unit_price', v ?? 0)}
                     className={inp}
-                    decimals={3}
+                    decimals={4}
                   />
                 </Fld>
                 <Fld label="Freight (0=N/A)">

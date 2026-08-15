@@ -108,6 +108,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
   const [dovizKuru,    setDovizKuru]    = useState(1);
   const [kurYon,       setKurYon]       = useState<'direct' | 'inverse'>('direct');
   const [paymentMethod, setPaymentMethod] = useState<'' | 'nakit' | 'banka_havalesi' | 'kredi_karti'>('');
+  const [autoClose,    setAutoClose]    = useState(false);
   const [masrafOpen,   setMasrafOpen]   = useState(false);
   const [masrafTuru,   setMasrafTuru]   = useState('');
   const [masrafTutar,  setMasrafTutar]  = useState(0);
@@ -194,6 +195,7 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
       card_type: '' as const, cash_receiver: '', masraf_turu: masrafTuru, masraf_tutar: masrafTutar,
       masraf_currency: masrafCurrency as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP', masraf_rate: masrafRate,
       notes: JSON.stringify(notesObj), kasa_id: '', bank_account_id: '',
+      auto_close: !isEdit && autoClose,
     };
     if (isEdit && transaction) {
       await updateTxn.mutateAsync({ id: transaction.id, data: payload });
@@ -421,6 +423,15 @@ export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTr
                 </button>
               ))}
             </div>
+
+            {!isEdit && (
+              <label className="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-50 rounded-lg cursor-pointer select-none">
+                <input type="checkbox" checked={autoClose} onChange={e => setAutoClose(e.target.checked)}
+                  className="h-4 w-4 rounded accent-emerald-600" />
+                <span className="text-[12px] font-semibold text-emerald-800">Tam ödendi</span>
+                <span className="text-[11px] text-emerald-600">— eşleşen ödeme kaydını otomatik oluştur (cari 0)</span>
+              </label>
+            )}
 
             <button type="button" onClick={() => setMasrafOpen(v => !v)}
               className="w-full flex items-center justify-center gap-2 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[11px] font-semibold text-gray-500 transition-colors">

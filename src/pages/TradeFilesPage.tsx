@@ -8,10 +8,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate } from '@/lib/formatters';
 import { NewFileModal } from '@/components/trade-files/NewFileModal';
+import { QuickFileWizard } from '@/components/trade-files/QuickFileWizard';
 // LoadingSpinner kaldırıldı — inline spinner kullanılıyor
 import { cn } from '@/lib/utils';
 import { fCurrency } from '@/lib/formatters';
-import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2, FolderOpen } from 'lucide-react';
+import { Search, Plus, ChevronRight, MoreVertical, Pencil, Trash2, FolderOpen, Zap } from 'lucide-react';
 import type { TradeFile } from '@/types/database';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FileActivityPopover } from '@/components/trade-files/FileActivityPopover';
@@ -203,6 +204,7 @@ export function TradeFilesPage() {
   const { accent } = useTheme();
 
   const [newFileOpen, setNewFileOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [editFile, setEditFile] = useState<TradeFile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TradeFile | null>(null);
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -414,6 +416,14 @@ export function TradeFilesPage() {
           <div className="flex-1" />
           {writable && (
             <button
+              onClick={() => setQuickOpen(true)}
+              className="h-10 px-4 rounded-full bg-white border border-gray-200 text-gray-700 text-[13px] font-semibold transition-colors whitespace-nowrap hover:bg-gray-50 flex items-center gap-1.5"
+            >
+              <Zap className="h-3.5 w-3.5" style={{ color: accent }} /> Hızlı Dosya
+            </button>
+          )}
+          {writable && (
+            <button
               onClick={() => setNewFileOpen(true)}
               className="h-10 px-5 rounded-full text-white text-[13px] font-semibold transition-colors whitespace-nowrap shadow-[0_8px_24px_rgba(0,0,0,0.04)]"
               style={{ background: accent }}
@@ -504,6 +514,7 @@ export function TradeFilesPage() {
       </div>
 
       {/* Modals */}
+      <QuickFileWizard open={quickOpen} onOpenChange={setQuickOpen} />
       <NewFileModal open={newFileOpen} onOpenChange={setNewFileOpen} />
       <NewFileModal
         open={!!editFile}

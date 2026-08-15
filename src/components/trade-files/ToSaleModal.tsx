@@ -554,7 +554,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
             <div className="text-[9px] font-bold uppercase tracking-widest text-green-600">💰 Satış (Müşteri)</div>
             <div className="grid grid-cols-2 gap-3">
               <Fld label="Satış Fiyatı (MT) *" error={errors.selling_price?.message}>
-                <input type="number" step="0.01" {...register('selling_price')} className={cn(inp, 'bg-green-100/60')} />
+                <input type="number" step="0.0001" {...register('selling_price')} className={cn(inp, 'bg-green-100/60')} />
               </Fld>
               <Fld label="Para Birimi">
                 <select {...register('sale_currency')} className={cn(sel, 'bg-green-100/60')}>

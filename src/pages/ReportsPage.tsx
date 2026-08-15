@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Search, FileText, ChevronDown, ChevronUp, X, Printer, SlidersHorizontal, ClipboardList, Eye, Sparkles } from 'lucide-react';
+import { Search, FileText, ChevronDown, ChevronUp, ChevronRight, X, Printer, SlidersHorizontal, ClipboardList, Eye, Sparkles } from 'lucide-react';
 import { streamSalesReportAnalysis } from '@/lib/salesReportAI';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import * as XLSX from 'xlsx';
@@ -985,7 +985,7 @@ export function StockTab() {
 
   const [asOf, setAsOf] = useState(''); // boş = tümü (bugüne kadar)
 
-  const { rows, totals } = useMemo(() => {
+  const { rows, totals, ledgers } = useMemo(() => {
     type Agg = { boughtTons: number; cost: number; soldTons: number; revenue: number };
     const agg: Record<string, Agg> = {};
     const ensure = (p: string) => (agg[p] ??= { boughtTons: 0, cost: 0, soldTons: 0, revenue: 0 });
@@ -1042,8 +1042,46 @@ export function StockTab() {
       { boughtTons: 0, soldTons: 0, onHand: 0, stockValue: 0 },
     );
 
-    return { rows, totals };
+    // ── Hareket defteri: ürün bazında kronolojik giriş/çıkış + yürüyen
+    //    ağırlıklı ortalama maliyet (moving average) + yürüyen eldeki + değer.
+    type Move = { date: string; kind: 'in' | 'out'; ref: string; inQty: number; outQty: number; unit: number; onHand: number; avg: number; value: number; neg: boolean; margin: number | null };
+    type Raw = { date: string; kind: 'in' | 'out'; ref: string; qty: number; unit: number };
+    const raw: Record<string, Raw[]> = {};
+    const push = (p: string, m: Raw) => (raw[p] ??= []).push(m);
+    for (const f of files) {
+      if (asOf && f.file_date && f.file_date > asOf) continue;
+      const tons = f.tonnage_mt ?? f.delivered_admt ?? 0;
+      if (tons <= 0) continue;
+      const txnCost = costByFile[f.id] ?? 0;
+      const cost = txnCost > 0 ? txnCost + (f.freight_cost ?? 0) : (f.purchase_price ?? 0) * tons + (f.freight_cost ?? 0);
+      push(f.product?.name ?? 'Diğer', { date: f.file_date ?? '', kind: 'in', ref: f.file_no ?? '', qty: tons, unit: tons > 0 ? cost / tons : 0 });
+    }
+    for (const inv of saleInvoices) {
+      if (inv.doc_status && inv.doc_status !== 'approved') continue;
+      if (!inv.invoice_date) continue;
+      if (asOf && inv.invoice_date > asOf) continue;
+      const q = inv.quantity_admt ?? 0;
+      push(inv.product_name ?? 'Diğer', { date: inv.invoice_date, kind: 'out', ref: inv.invoice_no ?? '', qty: q, unit: inv.unit_price ?? (q > 0 ? (inv.total ?? 0) / q : 0) });
+    }
+    const ledgers: Record<string, Move[]> = {};
+    for (const [p, list] of Object.entries(raw)) {
+      list.sort((a, b) => (a.date === b.date ? (a.kind === b.kind ? 0 : a.kind === 'in' ? -1 : 1) : a.date < b.date ? -1 : 1));
+      let qtyBal = 0, valBal = 0;
+      ledgers[p] = list.map((m): Move => {
+        if (m.kind === 'in') {
+          valBal += m.qty * m.unit; qtyBal += m.qty;
+          const avg = qtyBal > 0 ? valBal / qtyBal : 0;
+          return { date: m.date, kind: 'in', ref: m.ref, inQty: m.qty, outQty: 0, unit: m.unit, onHand: qtyBal, avg, value: valBal, neg: qtyBal < 0, margin: null };
+        }
+        const avg = qtyBal > 0 ? valBal / qtyBal : 0;
+        valBal -= m.qty * avg; qtyBal -= m.qty;
+        return { date: m.date, kind: 'out', ref: m.ref, inQty: 0, outQty: m.qty, unit: m.unit, onHand: qtyBal, avg, value: valBal, neg: qtyBal < 0, margin: m.unit - avg };
+      });
+    }
+
+    return { rows, totals, ledgers };
   }, [files, costByFile, saleInvoices, asOf]);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -1107,9 +1145,18 @@ export function StockTab() {
             {rows.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-16 text-center text-sm text-gray-400">Kayıt bulunamadı</td></tr>
             )}
-            {rows.map((r) => (
-              <tr key={r.prod} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                <td className="px-4 py-2.5 text-[12px] font-semibold text-gray-800">{r.prod}</td>
+            {rows.map((r) => {
+              const isOpen = expanded === r.prod;
+              const ledger = ledgers[r.prod] ?? [];
+              return (
+              <Fragment key={r.prod}>
+              <tr onClick={() => setExpanded(isOpen ? null : r.prod)} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors cursor-pointer">
+                <td className="px-4 py-2.5 text-[12px] font-semibold text-gray-800">
+                  <span className="inline-flex items-center gap-1.5">
+                    {isOpen ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-300" />}
+                    {r.prod}
+                  </span>
+                </td>
                 <td className="px-4 py-2.5 text-right text-[12px] text-gray-500 tabular-nums">{fN(r.boughtTons, 3)}</td>
                 <td className="px-4 py-2.5 text-right text-[12px] text-gray-500 tabular-nums">{fN(r.soldTons, 3)}</td>
                 <td className={cn('px-4 py-2.5 text-right text-[12px] font-semibold tabular-nums', r.onHand < 0 ? 'text-red-600' : 'text-gray-900')}>
@@ -1120,7 +1167,47 @@ export function StockTab() {
                   {fUSD(r.stockValue)}
                 </td>
               </tr>
-            ))}
+              {isOpen && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-3 bg-gray-50/50">
+                    <div className="rounded-xl border border-gray-100 bg-white overflow-x-auto">
+                      <table className="w-full min-w-[720px]">
+                        <thead>
+                          <tr className="border-b border-gray-100 bg-gray-50/60">
+                            {['Tarih', 'Hareket', 'Ref', 'Giriş', 'Çıkış', 'Eldeki', 'Ağır.Ort./ton', 'Stok Değeri', 'Satış Fiy.', 'Marj/ton'].map((h, i) => (
+                              <th key={h} className={cn('px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-gray-400', i < 3 ? 'text-left' : 'text-right')}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ledger.length === 0 && <tr><td colSpan={10} className="px-3 py-4 text-center text-[11px] text-gray-400">Hareket yok</td></tr>}
+                          {ledger.map((m, idx) => (
+                            <tr key={idx} className={cn('border-b border-gray-50', m.neg && 'bg-red-50/50')}>
+                              <td className="px-3 py-1.5 text-[11px] text-gray-500 whitespace-nowrap">{m.date}</td>
+                              <td className="px-3 py-1.5">
+                                <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', m.kind === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700')}>
+                                  {m.kind === 'in' ? 'GİRİŞ' : 'ÇIKIŞ'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-1.5 text-[10px] font-mono text-gray-400 whitespace-nowrap">{m.ref}</td>
+                              <td className="px-3 py-1.5 text-right text-[11px] text-emerald-700 tabular-nums">{m.inQty ? fN(m.inQty, 3) : '—'}</td>
+                              <td className="px-3 py-1.5 text-right text-[11px] text-blue-700 tabular-nums">{m.outQty ? fN(m.outQty, 3) : '—'}</td>
+                              <td className={cn('px-3 py-1.5 text-right text-[11px] font-semibold tabular-nums', m.neg ? 'text-red-600' : 'text-gray-900')}>{fN(m.onHand, 3)}</td>
+                              <td className="px-3 py-1.5 text-right text-[11px] text-gray-400 tabular-nums">{fUSD(m.avg)}</td>
+                              <td className={cn('px-3 py-1.5 text-right text-[11px] tabular-nums', m.neg ? 'text-red-600' : 'text-gray-600')}>{fUSD(m.value)}</td>
+                              <td className="px-3 py-1.5 text-right text-[11px] text-gray-500 tabular-nums">{m.kind === 'out' ? fUSD(m.unit) : '—'}</td>
+                              <td className={cn('px-3 py-1.5 text-right text-[11px] tabular-nums', m.margin == null ? 'text-gray-300' : m.margin >= 0 ? 'text-green-700' : 'text-red-600')}>{m.margin == null ? '—' : fUSD(m.margin)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
+              );
+            })}
           </tbody>
           {rows.length > 0 && (
             <tfoot>
@@ -1138,7 +1225,8 @@ export function StockTab() {
       </div>
       <p className="text-[11px] text-gray-400 px-1">
         Not: Eldeki stok, alınan tonajdan (alış partileri) satılan tonaj (onaylı satış faturaları) düşülerek bulunur.
-        Kırmızı/negatif değer = satış &gt; alış (faturasız alış ya da ürün adı uyuşmazlığı — kontrol edilmeli). Tutarlar USD.
+        <b> Ürüne tıkla</b> → hareket defteri (kronolojik giriş/çıkış, yürüyen ağırlıklı ort. maliyet, yürüyen eldeki + değer, satış marjı).
+        Kırmızı/negatif satır = o anda satış &gt; eldeki (faturasız alış ya da ürün adı uyuşmazlığı — kontrol edilmeli). Tutarlar USD.
       </p>
     </div>
   );

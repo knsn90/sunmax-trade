@@ -260,6 +260,9 @@ export const transactionSchema = z.object({
   notes: z.string().default(''),
   kasa_id: z.string().optional().default(''),
   bank_account_id: z.string().optional().default(''),
+  // Fatura tipi (purchase_inv/svc_inv/sale_inv) kaydedilirken eşleşen kapanış
+  // ödemesini/tahsilatını otomatik oluştur — cari tek adımda 0'a getirilir.
+  auto_close: z.boolean().optional().default(false),
 }).refine(
   (d) => d.paid_amount <= d.amount,
   { message: 'Paid amount cannot exceed the total amount', path: ['paid_amount'] },

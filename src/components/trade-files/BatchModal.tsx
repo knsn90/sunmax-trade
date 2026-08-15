@@ -236,7 +236,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
             <Lbl>Tonaj (MT) *</Lbl>
             <input
               type="number"
-              step="0.001"
+              step="0.0001"
               placeholder={`maks. ${remainingTon}`}
               autoFocus
               className={inp}
