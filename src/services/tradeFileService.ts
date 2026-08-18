@@ -513,14 +513,19 @@ export const tradeFileService = {
       // Tüm kardeş partileri çek
       const { data: siblings } = await supabase
         .from('trade_files')
-        .select('id, status, tonnage_mt')
+        .select('id, status, tonnage_mt, delivered_admt')
         .eq('parent_file_id', parentId);
 
       if (siblings) {
-        // Detay sayfasıyla tutarlı: iptal edilmemiş TÜM partiler sayılır (sadece completed değil)
+        // Detay sayfasıyla tutarlı: iptal edilmemiş TÜM partiler sayılır (sadece completed değil).
+        // Gerçek teslim ADMT'si (delivered_admt) varsa onu, yoksa planlanan tonnage_mt'yi kullan.
         const delivered = siblings
           .filter((b) => b.status !== 'cancelled')
-          .reduce((s: number, b: { tonnage_mt: number | null }) => s + (b.tonnage_mt ?? 0), 0);
+          .reduce(
+            (s: number, b: { tonnage_mt: number | null; delivered_admt: number | null }) =>
+              s + (b.delivered_admt && b.delivered_admt > 0 ? b.delivered_admt : (b.tonnage_mt ?? 0)),
+            0,
+          );
 
         await supabase
           .from('trade_files')

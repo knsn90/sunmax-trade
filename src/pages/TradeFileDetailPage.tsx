@@ -217,7 +217,7 @@ function PartilerCard({
   }
   if (batches.length === 0 && !writable) return null;
 
-  const usedTon   = batches.filter(b => b.status !== 'cancelled').reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const usedTon   = batches.filter(b => b.status !== 'cancelled').reduce((s, b) => s + batchDeliveredAdmt(b), 0);
   const totalTon  = file.tonnage_mt ?? 0;
   const pct       = totalTon > 0 ? Math.min(100, Math.round((usedTon / totalTon) * 100)) : 0;
   const remaining = Math.max(0, totalTon - usedTon);
@@ -318,7 +318,7 @@ function PartilerCard({
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold text-gray-800">{b.file_no}</p>
                         <p className="text-[11px] text-gray-400">
-                          {b.tonnage_mt ? `${b.tonnage_mt.toLocaleString('tr-TR')} ${tUnit}` : '—'}
+                          {batchDeliveredAdmt(b) ? `${batchDeliveredAdmt(b).toLocaleString('tr-TR')} ${tUnit}` : '—'}
                           {b.transport_mode ? ` · ${TRANSPORT_LABEL[b.transport_mode] ?? b.transport_mode}` : ''}
                           {b.eta ? ` · ETA ${b.eta}` : ''}
                         </p>
@@ -368,6 +368,12 @@ function slugifyFileNo(s: string): string {
     .replace(/[^a-z0-9]+/g, '-')                       // harf/rakam dışı → tire
     .replace(/^-+|-+$/g, '')                            // baş/son tireleri kırp
     .slice(0, 60);
+}
+
+/** Partinin gerçek teslim ADMT'si: delivered_admt girildiyse onu, yoksa planlanan tonnage_mt.
+ *  (P1 planı 201.000 olsa da gerçek teslim 201.942 ise 201.942 kullanılır.) */
+function batchDeliveredAdmt(b: { delivered_admt?: number | null; tonnage_mt?: number | null }): number {
+  return b.delivered_admt && b.delivered_admt > 0 ? b.delivered_admt : (b.tonnage_mt ?? 0);
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -603,12 +609,12 @@ export function TradeFileDetailPage() {
   const deliveredTonnage = isPartial
     ? (file.batches ?? [])
         .filter(b => b.status !== 'cancelled')
-        .reduce((s, b) => s + (b.tonnage_mt ?? 0), 0)
+        .reduce((s, b) => s + batchDeliveredAdmt(b), 0)
     : (file.delivered_admt ?? null);
 
   // Teslimat bloğunda gösterilecek ADMT: partili dosyada TÜM partilerin toplam
   // tonajı (gerçek teslim edilen), değilse dosyanın delivered_admt / tonaj değeri
-  const batchesTonnage = (file.batches ?? []).reduce((s, b) => s + (b.tonnage_mt ?? 0), 0);
+  const batchesTonnage = (file.batches ?? []).reduce((s, b) => s + batchDeliveredAdmt(b), 0);
   const deliveryAdmt = isPartial && batchesTonnage > 0
     ? batchesTonnage
     : (file.delivered_admt ?? file.tonnage_mt ?? 0);
