@@ -5,7 +5,7 @@ import { nextAvailableDocNo } from '@/lib/generators';
 
 const PL_SELECT = `
   *,
-  trade_file:trade_files!trade_file_id(file_no, status),
+  trade_file:trade_files!trade_file_id(file_no, status, delivered_admt, tonnage_mt),
   customer:customers!customer_id(*),
   consignee:customers!consignee_customer_id(*),
   packing_list_items(*)

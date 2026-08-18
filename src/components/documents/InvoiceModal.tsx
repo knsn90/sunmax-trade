@@ -12,6 +12,7 @@ import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useCustomers } from '@/hooks/useEntities';
 import { useRateFor } from '@/hooks/useExchangeRate';
 import { today, fCurrency } from '@/lib/formatters';
+import { checkAdmt, admtWarningText } from '@/lib/admtCheck';
 import { formatInvoiceNo } from '@/lib/generators';
 import { parseInvoiceExcel, downloadInvoiceTemplate } from '@/lib/excelImport';
 import { generateInvoiceHtml, printInvoice } from '@/lib/printDocument';
@@ -239,6 +240,9 @@ export function InvoiceModal({
   const freight  = useWatch({ control, name: 'freight' }) ?? 0;
   const currency = useWatch({ control, name: 'currency' }) ?? 'USD';
   const qtyUnit  = useWatch({ control, name: 'qty_unit' }) ?? 'ADMT';
+
+  // Fatura ADMT'si teslimat ADMT'siyle (tek doğru kaynak) tutmalı
+  const admtChk = checkAdmt(effectiveFile?.delivered_admt, qty);
   const usdRate  = useWatch({ control, name: 'usd_exchange_rate' }) ?? 1;
   const subtotal = qty * price;
   const total    = subtotal + freight;
@@ -347,6 +351,10 @@ export function InvoiceModal({
   const [saving, setSaving] = useState(false);
 
   async function onSubmit(data: InvoiceFormData) {
+    if (admtChk.diverges) {
+      toast.error(admtWarningText(admtChk, 'Fatura miktarı'));
+      return;
+    }
     setSaving(true);
     try {
       if (isEdit && invoice) {
@@ -520,6 +528,13 @@ export function InvoiceModal({
                   )}
                 </div>
 
+                {/* ── ADMT uyuşmazlık uyarısı ── */}
+                {admtChk.diverges && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-red-700">
+                    <span className="font-bold">⚠ {admtWarningText(admtChk, 'Fatura miktarı')}</span>
+                  </div>
+                )}
+
                 <Divider />
 
                 {/* ── Referans Bilgileri ── */}
@@ -670,7 +685,7 @@ export function InvoiceModal({
                     className="hidden md:flex h-8 px-4 rounded-lg text-[12px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors items-center justify-center">
                     {tc('btn.cancel')}
                   </button>
-                  <button type="submit" disabled={saving}
+                  <button type="submit" disabled={saving || admtChk.diverges}
                     className="w-full md:w-auto h-12 md:h-8 px-4 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all"
                     style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}>
                     {saving ? tc('btn.saving') : isEdit ? t('invoice.modal.btnUpdate') : t('invoice.modal.btnSave')}

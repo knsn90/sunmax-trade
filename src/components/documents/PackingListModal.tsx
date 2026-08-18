@@ -8,6 +8,7 @@ import { packingListService } from '@/services/packingListService';
 import { useCustomers } from '@/hooks/useEntities';
 import { useSettings } from '@/hooks/useSettings';
 import { today, fN } from '@/lib/formatters';
+import { checkAdmt, admtWarningText } from '@/lib/admtCheck';
 import { formatPLNo } from '@/lib/generators';
 import { parsePLExcel, downloadPLTemplate } from '@/lib/excelImport';
 import { generatePackingListHtml, printPackingList } from '@/lib/printDocument';
@@ -208,6 +209,9 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   const totalAdmt  = rows.reduce((s, r) => s + (r.admt || 0), 0);
   const totalGross = rows.reduce((s, r) => s + (r.gross_weight_kg || 0), 0);
 
+  // Packing list toplam ADMT'si teslimat ADMT'siyle (tek doğru kaynak) tutmalı
+  const admtChk = checkAdmt(file?.delivered_admt, totalAdmt);
+
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -267,6 +271,10 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
   }
 
   async function onSubmit(data: PackingListFormData) {
+    if (admtChk.diverges) {
+      toast.error(admtWarningText(admtChk, 'Packing list toplamı'));
+      return;
+    }
     setSaving(true);
     try {
       data.items = rows;
@@ -493,9 +501,16 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
               <div className="bg-brand-50 rounded-lg px-3.5 py-2.5 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div>Vehicles: <strong>{rows.length}</strong></div>
                 <div>{unitLabel}: <strong>{totalReels}</strong></div>
-                <div>{qtyUnit}: <strong className="text-brand-600">{fN(totalAdmt, 3)}</strong></div>
+                <div>{qtyUnit}: <strong className={admtChk.diverges ? 'text-red-600' : 'text-brand-600'}>{fN(totalAdmt, 3)}</strong></div>
                 <div>Gross: <strong>{fN(totalGross, 0)}</strong></div>
               </div>
+
+              {/* ── ADMT uyuşmazlık uyarısı ── */}
+              {admtChk.diverges && (
+                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-red-700">
+                  <span className="font-bold">⚠ {admtWarningText(admtChk, 'Packing list toplamı')}</span>
+                </div>
+              )}
 
               <FormGroup label="Comments" className="mb-2.5">
                 <Textarea rows={3} {...register('comments')} />
@@ -514,7 +529,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
                 </div>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                  <Button type="submit" disabled={saving}>
+                  <Button type="submit" disabled={saving || admtChk.diverges}>
                     {saving ? 'Saving…' : isEdit ? 'Update Packing List' : 'Save Packing List'}
                   </Button>
                 </div>

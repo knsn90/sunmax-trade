@@ -11,6 +11,7 @@ import { useCustomers } from '@/hooks/useEntities';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useCurrencies } from '@/hooks/useCurrencies';
 import { today, fCurrency } from '@/lib/formatters';
+import { checkAdmt, admtWarningText } from '@/lib/admtCheck';
 import { formatProformaNo } from '@/lib/generators';
 import { parseProformaExcel, downloadProformaTemplate } from '@/lib/excelImport';
 import { generateProformaHtml, printProforma } from '@/lib/printDocument';
@@ -190,6 +191,9 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   const subtotal = qty * price;
   const total    = subtotal + freight - discount + otherCharges;
 
+  // Proforma ADMT'si teslimat ADMT'siyle (tek doğru kaynak) tutmalı
+  const admtChk = checkAdmt(file?.delivered_admt, qty);
+
   // ── Watch all form values for live preview ───────────────────────────────
   const allValues = useWatch({ control });
 
@@ -272,6 +276,10 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
   }
 
   async function onSubmit(data: ProformaFormData) {
+    if (admtChk.diverges) {
+      toast.error(admtWarningText(admtChk, 'Proforma miktarı'));
+      return;
+    }
     setSaving(true);
     try {
       const cId = consigneeId || undefined;
@@ -542,6 +550,13 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
                 />
               </Fld>
 
+              {/* ── ADMT uyuşmazlık uyarısı ── */}
+              {admtChk.diverges && (
+                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-red-700">
+                  <span className="font-bold">⚠ {admtWarningText(admtChk, 'Proforma miktarı')}</span>
+                </div>
+              )}
+
               {/* ── Footer ── */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-3 mt-1 border-t border-gray-100">
                 <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
@@ -557,7 +572,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || admtChk.diverges}
                     className="h-9 px-5 rounded-xl text-white text-[13px] font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
                     style={{ background: accent }}
                   >
