@@ -53,11 +53,20 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
       const isBatch    = !!file.parent_file_id;
       const hasBatches = (file.batches?.length ?? 0) > 0;
       setStep(isBatch || hasBatches ? 'form' : 'ask');
+
+      // Boş teslimat alanlarını packing list toplamlarından önceden doldur (kullanıcı üzerine yazabilir).
+      // Brüt (KG) ← Σ total_gross_kg, Paket Sayısı ← Σ total_reels, Varış ← en geç pl_date.
+      const pls = (file.packing_lists ?? []).filter(pl => !pl.is_orphaned);
+      const plGross = pls.reduce((s, pl) => s + (pl.total_gross_kg || 0), 0);
+      const plReels = pls.reduce((s, pl) => s + (pl.total_reels || 0), 0);
+      const plDates = pls.map(pl => pl.pl_date).filter(Boolean).sort();
+      const plDate  = plDates.length ? plDates[plDates.length - 1] : undefined;
+
       reset({
         delivered_admt:  file.delivered_admt ?? file.tonnage_mt ?? 0,
-        gross_weight_kg: file.gross_weight_kg ?? undefined,
-        packages:        file.packages ?? undefined,
-        arrival_date:    file.arrival_date ?? '',
+        gross_weight_kg: file.gross_weight_kg ?? (plGross > 0 ? plGross : undefined),
+        packages:        file.packages ?? (plReels > 0 ? plReels : undefined),
+        arrival_date:    file.arrival_date ?? plDate ?? '',
         bl_number:       file.bl_number ?? '',
         septi_ref:       file.septi_ref ?? file.register_no ?? '',
         insurance_tr:    file.insurance_tr ?? '',
