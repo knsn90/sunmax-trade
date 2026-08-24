@@ -48,6 +48,7 @@ const FILE_SELECT = `
 // bu objeleri doğrudan kullanır — eksik alan → boş PDF.
 const FILE_DETAIL_SELECT = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt,
+  gross_weight_kg, packages, arrival_date, bl_number,
   selling_price, purchase_price, incoterms, transport_mode,
   port_of_loading, port_of_discharge, proforma_ref, register_no, septi_ref,
   insurance_tr, insurance_ir, eta, vessel_name, revised_eta, delay_notes, currency,
