@@ -179,7 +179,8 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
         notes: defaultNotes,
       });
     }
-  }, [open, file, proforma, settings, reset, defaultNotes]);
+    // Stabil id deps: arka plan refetch'i (tab değişimi) formu sıfırlamasın.
+  }, [open, file?.id, proforma?.id, settings, reset, defaultNotes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const qty          = useWatch({ control, name: 'quantity_admt' }) ?? 0;
   const price        = useWatch({ control, name: 'unit_price' }) ?? 0;

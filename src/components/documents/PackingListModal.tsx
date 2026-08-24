@@ -153,7 +153,10 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
         items:          initialRows,
       });
     }
-  }, [open, file, packingList, reset]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Deps stabil id'ler: arka plan refetch'i (tab değişimi vb.) file/packingList'i
+    // yeni referansla döndürse bile form SIFIRLANMAZ — kullanıcının yazdıkları korunur.
+    // Reset yalnızca modal açılınca veya farklı belgeye geçilince çalışır.
+  }, [open, file?.id, packingList?.id, reset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Debounced preview update ─────────────────────────────────────────────
   useEffect(() => {

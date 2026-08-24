@@ -209,7 +209,8 @@ export function InvoiceModal({
         bill_to: addr, ship_to: addr, qty_unit: pl?.qty_unit ?? 'ADMT',
       });
     }
-  }, [open, file, invoice, settings, reset]);
+    // Stabil id deps: arka plan refetch'i (tab değişimi) formu sıfırlamasın.
+  }, [open, file?.id, invoice?.id, settings, reset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open || !pickedFile || invoice) return;
