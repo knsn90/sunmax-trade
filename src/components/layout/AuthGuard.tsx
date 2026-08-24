@@ -12,9 +12,11 @@ export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
   const { user, profile, isLoading, profileLoading } = useAuth();
   const location = useLocation();
 
-  // Profil (rol/izin) henüz yüklenirken korumalı içeriği GÖSTERME — spinner beklet.
+  // Profil (rol/izin) İLK KEZ yüklenirken korumalı içeriği GÖSTERME — spinner beklet.
   // Aksi halde user var ama profile null penceresinde rol/izin kontrolleri atlanır.
-  if (isLoading || (user && profileLoading)) {
+  // ÖNEMLİ: profile zaten yüklüyse (arka plan yenilemesi — ör. tab'a geri dönüş,
+  // TOKEN_REFRESHED) spinner GÖSTERME; yoksa tüm layout + açık modallar unmount olur.
+  if (isLoading || (user && profileLoading && !profile)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <LoadingSpinner />
