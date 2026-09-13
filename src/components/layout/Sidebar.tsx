@@ -5,11 +5,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings } from '@/hooks/useSettings';
 import { useTenant } from '@/contexts/TenantContext';
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  BarChart3, FileText, Receipt, LineChart, Users,
-  Box, Settings, LayoutDashboard, Home, Activity, Tag,
-  TrendingUp, Building2, Trash2,
-} from 'lucide-react';
+  KanbanIcon, Files01Icon, Invoice01Icon, ChartLineData01Icon, UserGroupIcon,
+  PackageIcon, Settings01Icon, DashboardSquare01Icon, Home01Icon, Activity01Icon,
+  Tag01Icon, TradeUpIcon, Building06Icon, Delete02Icon,
+} from '@hugeicons/core-free-icons';
 
 interface NavItem {
   to: string;
@@ -34,46 +35,46 @@ export function Sidebar() {
   const sections: { labelKey?: string; items: NavItem[] }[] = [
     {
       items: [
-        { to: '/dashboard', labelKey: 'items.dashboard', icon: <Home className="h-4 w-4" /> },
+        { to: '/dashboard', labelKey: 'items.dashboard', icon: <HugeiconsIcon icon={Home01Icon} size={16} /> },
       ],
     },
     {
       labelKey: 'sections.trade',
       items: [
-        { to: '/pipeline',   labelKey: 'items.pipeline',   icon: <BarChart3 className="h-4 w-4" /> },
-        { to: '/files',      labelKey: 'items.allFiles',   icon: <FileText className="h-4 w-4" /> },
-        { to: '/price-list', labelKey: 'items.priceList',  icon: <Tag className="h-4 w-4" /> },
+        { to: '/pipeline',   labelKey: 'items.pipeline',   icon: <HugeiconsIcon icon={KanbanIcon} size={16} /> },
+        { to: '/files',      labelKey: 'items.allFiles',   icon: <HugeiconsIcon icon={Files01Icon} size={16} /> },
+        { to: '/price-list', labelKey: 'items.priceList',  icon: <HugeiconsIcon icon={Tag01Icon} size={16} /> },
       ],
     },
     {
       labelKey: 'sections.documents',
       items: [
-        { to: '/documents', labelKey: 'items.documents', icon: <Receipt className="h-4 w-4" /> },
+        { to: '/documents', labelKey: 'items.documents', icon: <HugeiconsIcon icon={Invoice01Icon} size={16} /> },
       ],
     },
     {
       labelKey: 'sections.finance',
       items: [
-        { to: '/accounting',  labelKey: 'items.accounting',    icon: <LayoutDashboard className="h-4 w-4" /> },
-        { to: '/fin-reports', labelKey: 'items.finReports',    icon: <TrendingUp className="h-4 w-4" /> },
+        { to: '/accounting',  labelKey: 'items.accounting',    icon: <HugeiconsIcon icon={DashboardSquare01Icon} size={16} /> },
+        { to: '/fin-reports', labelKey: 'items.finReports',    icon: <HugeiconsIcon icon={TradeUpIcon} size={16} /> },
       ],
     },
     {
       labelKey: 'sections.contacts',
       items: [
-        { to: '/contacts', labelKey: 'items.contacts', icon: <Users className="h-4 w-4" /> },
-        { to: '/products', labelKey: 'items.products', icon: <Box className="h-4 w-4" /> },
+        { to: '/contacts', labelKey: 'items.contacts', icon: <HugeiconsIcon icon={UserGroupIcon} size={16} /> },
+        { to: '/products', labelKey: 'items.products', icon: <HugeiconsIcon icon={PackageIcon} size={16} /> },
       ],
     },
     {
       labelKey: 'sections.general',
       items: [
         ...(isAdmin ? [
-          { to: '/activity', labelKey: 'items.activityLog', icon: <Activity className="h-4 w-4" /> },
+          { to: '/activity', labelKey: 'items.activityLog', icon: <HugeiconsIcon icon={Activity01Icon} size={16} /> },
         ] : []),
-        { to: '/reports',  labelKey: 'items.reports',  icon: <LineChart className="h-4 w-4" /> },
-        { to: '/settings', labelKey: 'items.settings', icon: <Settings className="h-4 w-4" /> },
-        { to: '/trash',    labelKey: 'items.trash',    icon: <Trash2 className="h-4 w-4" /> },
+        { to: '/reports',  labelKey: 'items.reports',  icon: <HugeiconsIcon icon={ChartLineData01Icon} size={16} /> },
+        { to: '/settings', labelKey: 'items.settings', icon: <HugeiconsIcon icon={Settings01Icon} size={16} /> },
+        { to: '/trash',    labelKey: 'items.trash',    icon: <HugeiconsIcon icon={Delete02Icon} size={16} /> },
       ],
     },
   ];
@@ -98,7 +99,7 @@ export function Sidebar() {
             {isActive && (
               <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#6B4EE6]" />
             )}
-            <Building2 className="flex-shrink-0 h-4 w-4" />
+            <HugeiconsIcon icon={Building06Icon} size={16} className="flex-shrink-0" />
             <span>Firma Yönetimi</span>
             {allTenants.length > 0 && (
               <span className="ml-auto text-[10px] font-bold bg-[#6B4EE6] text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">

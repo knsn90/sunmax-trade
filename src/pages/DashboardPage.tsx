@@ -26,12 +26,43 @@ import { cn } from '@/lib/utils';
 import { usePriceList } from '@/hooks/useEntities';
 import { saveDashboardPrefs } from '@/services/userService';
 import { NewFileModal } from '@/components/trade-files/NewFileModal';
+import { HugeiconsIcon, type HugeiconsProps, type IconSvgElement } from '@hugeicons/react';
 import {
-  TrendingUp, AlertTriangle, CheckCircle2,
-  ChevronRight, FileText, BarChart2, Package, DollarSign, Wallet, Tag,
-  GripVertical, Maximize2, Minimize2, Plus,
-  Layers, Bell, Truck, Banknote, Trophy, FileWarning, Scale, LineChart as LineChartIcon,
-} from 'lucide-react';
+  TradeUpIcon, Alert02Icon, CheckmarkCircle02Icon,
+  ArrowRight01Icon, File01Icon, Analytics01Icon, PackageIcon, Dollar01Icon, Wallet01Icon, Tag01Icon,
+  DragDropVerticalIcon, Maximize01Icon, Minimize01Icon, Add01Icon,
+  Layers01Icon, Notification01Icon, DeliveryTruck01Icon, Money01Icon, ChampionIcon, FileValidationIcon,
+  WeightScaleIcon, ChartLineData01Icon,
+} from '@hugeicons/core-free-icons';
+
+// lucide → hugeicons köprü: mevcut <TrendingUp className="h-4 w-4 …"/> kullanımları
+// AYNEN çalışsın diye her ikonu HugeiconsIcon'a saran hafif bileşenler.
+// className'deki h-/w- CSS boyutu, text-* rengi (currentColor) verir; size prop'a gerek yok.
+type IconProps = Omit<HugeiconsProps, 'icon'>;
+const mkIcon = (icon: IconSvgElement) => (props: IconProps) => <HugeiconsIcon icon={icon} {...props} />;
+
+const TrendingUp    = mkIcon(TradeUpIcon);
+const AlertTriangle = mkIcon(Alert02Icon);
+const CheckCircle2  = mkIcon(CheckmarkCircle02Icon);
+const ChevronRight  = mkIcon(ArrowRight01Icon);
+const FileText      = mkIcon(File01Icon);
+const BarChart2     = mkIcon(Analytics01Icon);
+const Package       = mkIcon(PackageIcon);
+const DollarSign    = mkIcon(Dollar01Icon);
+const Wallet        = mkIcon(Wallet01Icon);
+const Tag           = mkIcon(Tag01Icon);
+const GripVertical  = mkIcon(DragDropVerticalIcon);
+const Maximize2     = mkIcon(Maximize01Icon);
+const Minimize2     = mkIcon(Minimize01Icon);
+const Plus          = mkIcon(Add01Icon);
+const Layers        = mkIcon(Layers01Icon);
+const Bell          = mkIcon(Notification01Icon);
+const Truck         = mkIcon(DeliveryTruck01Icon);
+const Banknote      = mkIcon(Money01Icon);
+const Trophy        = mkIcon(ChampionIcon);
+const FileWarning   = mkIcon(FileValidationIcon);
+const Scale         = mkIcon(WeightScaleIcon);
+const LineChartIcon = mkIcon(ChartLineData01Icon);
 
 // ─── Widget order & sizes ─────────────────────────────────────────────────────
 // 'kpi' is intentionally excluded — it's always fixed at the top

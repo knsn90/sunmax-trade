@@ -444,4 +444,19 @@ color: balance < 0 ? '#16a34a' : balance > 0 ? '#b45309' : '#9ca3af'
 - `cn()` → `@/lib/utils` (Tailwind class birleştirme)
 - `fDate`, `fN`, `fCurrency`, `fUSD` → `@/lib/formatters`
 - `toast.success()`, `toast.error()` → `sonner`
-- İkonlar → `lucide-react`
+- **İkonlar → `hugeicons`** (yeni ve düzenlenen bileşenlerde). Mevcut dosyalar hâlâ `lucide-react` kullanıyor (karışık dönem) — bir dosyaya dokunurken o dosyadaki ikonları hugeicons'a çevirmen tercih edilir, ama zorunlu değil. Tek başına ikon değiştirmek için dosyaları tarama.
+
+### hugeicons Kullanımı
+
+```tsx
+import { HugeiconsIcon } from '@hugeicons/react';
+import { PencilEdit01Icon, Add01Icon, Delivery01Icon } from '@hugeicons/core-free-icons';
+
+// Boyut px cinsinden `size` ile (lucide'deki className="h-4 w-4" YERİNE),
+// renk className ile (currentColor → stroke), incelik strokeWidth ile:
+<HugeiconsIcon icon={PencilEdit01Icon} size={14} className="text-gray-400" strokeWidth={1.5} />
+```
+
+- Ücretsiz set: `@hugeicons/core-free-icons` (~14.700 ikon, adlar `...Icon` sonekli: `Home01Icon`, `Calendar01Icon`).
+- Boyut: `size={14}` (≈ lucide `h-3.5 w-3.5`), `size={16}` (≈ `h-4 w-4`), `size={18}` (≈ `h-4.5`).
+- Renk: `className="text-gray-400"` (SVG currentColor'a bağlı) — sabit renk yerine tema accent'i için `style={{ color: accent }}` de kullanılabilir.
