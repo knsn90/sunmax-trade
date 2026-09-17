@@ -182,11 +182,12 @@ export const proformaService = {
 
   /** Generate a unique proforma number — checks globally by LIKE pattern */
   async generateUniqueProformaNo(_tradeFileId: string, baseNo: string): Promise<string> {
+    // Silinmişler DAHİL — unique constraint çöp kutusundaki numaraları da kapsar;
+    // hariç tutarsak silinen numarayı yeniden üretip çakışır.
     const { data } = await supabase
       .from('proformas')
       .select('proforma_no')
-      .like('proforma_no', `${baseNo}%`)
-      .is('deleted_at', null);
+      .like('proforma_no', `${baseNo}%`);
     return nextAvailableDocNo((data ?? []).map(r => r.proforma_no as string), baseNo);
   },
 

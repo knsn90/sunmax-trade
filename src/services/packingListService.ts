@@ -204,11 +204,13 @@ export const packingListService = {
 
   /** Generate a unique PL number — checks globally by LIKE pattern to avoid collisions on batch files */
   async generateUniquePLNo(_tradeFileId: string, baseNo: string): Promise<string> {
+    // deleted_at filtresi YOK: unique constraint çöp kutusundaki PL numaralarını da
+    // kapsar; onları hesaba katmazsak silinen bir numara yeniden üretilip
+    // "duplicate key ... packing_list_no_key" hatası verir.
     const { data } = await supabase
       .from('packing_lists')
       .select('packing_list_no')
-      .like('packing_list_no', `${baseNo}%`)
-      .is('deleted_at', null);
+      .like('packing_list_no', `${baseNo}%`);
     return nextAvailableDocNo((data ?? []).map(r => r.packing_list_no as string), baseNo);
   },
 

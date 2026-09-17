@@ -139,13 +139,14 @@ export const invoiceService = {
     } else {
       // Create new sale invoice
       // Date.now()%100000 ~100 sn'de bir tekrarlar → çakışabilir. Mevcut SINV'lerin
-      // en yüksek sırasından türet (silinmişler hariç).
+      // en yüksek sırasından türet. Silinmişler DAHİL — unique constraint çöp
+      // kutusundaki numaraları da kapsar; hariç tutarsak silinen numara yeniden
+      // üretilip "duplicate key ... invoice_no_key" hatası verir.
       const invBase = `SINV-${new Date().getFullYear()}-`;
       const { data: existingSinv } = await supabase
         .from('invoices')
         .select('invoice_no')
-        .like('invoice_no', `${invBase}%`)
-        .is('deleted_at', null);
+        .like('invoice_no', `${invBase}%`);
       let maxSeq = 0;
       for (const r of existingSinv ?? []) {
         const m = String(r.invoice_no).match(/-(\d+)$/);
@@ -262,12 +263,12 @@ export const invoiceService = {
    * e.g. "SUN PB-04 25-10 INV" already taken → returns "SUN PB-04 25-10 INV-02"
    */
   async generateUniqueCommercialInvoiceNo(_tradeFileId: string, baseNo: string): Promise<string> {
-    // Silinmişleri hariç tut + en yüksek ekten türet (count+1 ortadaki silmede çakışır)
+    // En yüksek ekten türet, silinmişler DAHİL — unique constraint çöp kutusundaki
+    // numaraları da kapsar; hariç tutarsak silinen numarayı yeniden üretip çakışır.
     const { data } = await supabase
       .from('invoices')
       .select('invoice_no')
-      .like('invoice_no', `${baseNo}%`)
-      .is('deleted_at', null);
+      .like('invoice_no', `${baseNo}%`);
     return nextAvailableDocNo((data ?? []).map(r => r.invoice_no as string), baseNo);
   },
 
