@@ -62,7 +62,7 @@ const FILE_DETAIL_SELECT = `
   invoices(*),
   packing_lists(*, packing_list_items(*)),
   proformas(*),
-  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, delivered_admt, supplier_id, transport_mode, eta, packing_lists(*, packing_list_items(*)), invoices(*))
+  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, delivered_admt, supplier_id, transport_mode, eta, deleted_at, packing_lists(*, packing_list_items(*)), invoices(*))
 `;
 
 // Minimal select for mutations — no joins, avoids Supabase load
@@ -165,6 +165,14 @@ export const tradeFileService = {
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Soft-delete edilmiş (çöp kutusuna atılmış) partileri ana dosyanın batch
+    // listesinden çıkar — embed deleted_at'i filtrelemez, aksi halde silinen parti
+    // hâlâ görünür ve toplamlara katılır.
+    const row = data as unknown as { batches?: { deleted_at?: string | null }[] };
+    if (Array.isArray(row.batches)) {
+      row.batches = row.batches.filter((b) => !b.deleted_at);
+    }
     return data as unknown as TradeFile;
   },
 

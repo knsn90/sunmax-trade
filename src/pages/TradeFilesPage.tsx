@@ -155,7 +155,9 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
           </div>
         </div>
       </td>
-      <td className="px-4 py-3.5 text-[12px] text-[#6F6F6F] whitespace-nowrap">{file.product?.name ?? '—'}</td>
+      <td className="px-4 py-3.5">
+        <div className="text-[12px] text-[#6F6F6F] truncate max-w-[240px]">{file.product?.name ?? '—'}</div>
+      </td>
       <td className="px-4 py-3.5 text-[12px] font-semibold text-[#0A0A0A] whitespace-nowrap">{fN(file.tonnage_mt, 0)} {file.product?.unit ?? 'MT'}</td>
       <td className="px-4 py-3.5 text-[12px] text-[#8A8A8E] whitespace-nowrap">{fDate(file.file_date)}</td>
       <td className="px-4 py-3.5">
@@ -166,8 +168,8 @@ function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {
           </span>
         </div>
       </td>
-      <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-1">
+      <td className="px-4 py-3.5 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1">
           {/* Activity info icon — always visible */}
           <FileActivityPopover file={file} />
 
@@ -458,7 +460,8 @@ export function TradeFilesPage() {
         </div>
 
         <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto scrollbar-thin">
+          <table className="w-full min-w-[720px]">
             <thead>
               <tr className="border-b border-[#F4F2EE]">
                 {[t('table.customerFileNo'), t('table.product'), t('table.tonnage'), tc('table.date'), tc('table.status'), ''].map(h => (
@@ -491,6 +494,7 @@ export function TradeFilesPage() {
               )}
             </tbody>
           </table>
+          </div>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-1.5 py-4 border-t border-[#F4F2EE]">
