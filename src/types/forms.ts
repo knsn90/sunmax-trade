@@ -121,6 +121,7 @@ export const saleConversionSchema = z.object({
   port_of_loading: z.string().min(1, 'Port of loading required'),
   port_of_discharge: z.string().default(''),
   incoterms: z.string().min(1, 'Incoterms required'),
+  freight_currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
   purchase_currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
   sale_currency: z.enum(['USD', 'EUR', 'TRY', 'AED', 'GBP']).default('USD'),
   payment_terms: z.string().default(''),

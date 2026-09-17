@@ -138,6 +138,9 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
       setConsigneeId('');
       const initialRows = [{ vehicle_plate: '', reels: 0, admt: 0, gross_weight_kg: 0 }];
       setRows(initialRows);
+      // Varsayılanları ürün birimine göre uyarlа: ADMT (fluff) → Reels/ADMT,
+      // diğer (MT — genelde paletli) → Packages/MT. Toggle'larla değiştirilebilir.
+      const isAdmt = file.product?.unit === 'ADMT';
       reset({
         pl_date:        today(),
         transport_mode: file.transport_mode ?? 'truck',
@@ -148,8 +151,8 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
         comments:       '',
         bill_to:        buildAddress(mainCustomer),
         ship_to:        buildAddress(mainCustomer),
-        unit_label:     'Reels',
-        qty_unit:       'ADMT',
+        unit_label:     isAdmt ? 'Reels' : 'Packages',
+        qty_unit:       isAdmt ? 'ADMT' : 'MT',
         items:          initialRows,
       });
     }

@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate, fCurrency, fUSD } from '@/lib/formatters';
 import type { Invoice, PackingList, Proforma } from '@/types/database';
-import type { TradeFileStatus } from '@/types/enums';
+import type { TradeFileStatus, CurrencyCode } from '@/types/enums';
 import { ToSaleModal } from '@/components/trade-files/ToSaleModal';
 import { DeliveryModal } from '@/components/trade-files/DeliveryModal';
 import { NewFileModal } from '@/components/trade-files/NewFileModal';
@@ -634,6 +634,10 @@ export function TradeFileDetailPage() {
     return sum / totalQty;
   })();
 
+  // Fiyat gösterimlerinde doğru para birimi — satış → sale_currency, alış → purchase_currency
+  const saleCcy     = (file.sale_currency ?? file.currency ?? 'USD') as CurrencyCode;
+  const purchaseCcy = (file.purchase_currency ?? file.currency ?? 'USD') as CurrencyCode;
+
   async function handleSyncFromParent() {
     if (!parentFile || !file) { toast.error('Ana dosya yüklenemedi'); return; }
     try {
@@ -644,6 +648,7 @@ export function TradeFileDetailPage() {
           selling_price:         parentFile.selling_price ?? 0,
           purchase_price:        parentFile.purchase_price ?? 0,
           freight_cost:          parentFile.freight_cost ?? 0,
+          freight_currency:      (parentFile.freight_currency ?? parentFile.sale_currency ?? parentFile.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
           port_of_loading:       parentFile.port_of_loading ?? '',
           port_of_discharge:     parentFile.port_of_discharge ?? '',
           incoterms:             parentFile.incoterms ?? '',
@@ -983,7 +988,7 @@ export function TradeFileDetailPage() {
         <div className="px-4 py-3 border-b border-[#F4F2EE]">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.salePrice')}</div>
           <div className="text-[13px] font-bold text-gray-900">
-            {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
+            {file.selling_price ? fCurrency(file.selling_price, saleCcy) + '/MT' : '—'}
           </div>
         </div>
         <div className="px-4 py-3 border-b border-[#F4F2EE]">
@@ -1346,8 +1351,8 @@ export function TradeFileDetailPage() {
         >
           {hasSaleDetails ? (
             <>
-              <KV label={t('detail.saleDetails.salePrice')} value={file.selling_price ? `${fCurrency(file.selling_price)}/MT` : '—'} bold />
-              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(weightedPurchase)}/MT`} />
+              <KV label={t('detail.saleDetails.salePrice')} value={file.selling_price ? `${fCurrency(file.selling_price, saleCcy)}/MT` : '—'} bold />
+              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(weightedPurchase, purchaseCcy)}/MT`} />
               <KV
                 label={t('detail.saleDetails.supplier')}
                 value={
@@ -1724,7 +1729,7 @@ export function TradeFileDetailPage() {
                 <div className="px-5 py-4">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.salePrice')}</div>
                   <div className="text-[15px] font-extrabold text-gray-900">
-                    {file.selling_price ? fCurrency(file.selling_price) + '/MT' : '—'}
+                    {file.selling_price ? fCurrency(file.selling_price, saleCcy) + '/MT' : '—'}
                   </div>
                 </div>
                 <div className="px-5 py-4">
@@ -1931,11 +1936,11 @@ export function TradeFileDetailPage() {
                   <div className="px-6 py-2">
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.salePrice')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{file.selling_price ? `${fCurrency(file.selling_price)}/MT` : '—'}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{file.selling_price ? `${fCurrency(file.selling_price, saleCcy)}/MT` : '—'}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(weightedPurchase)}/MT</span>
+                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(weightedPurchase, purchaseCcy)}/MT</span>
                     </div>
                     {(file.suppliers?.length ?? 0) > 1 ? (
                       <div className="py-2 border-b border-dashed border-[#ECECEC]">

@@ -94,6 +94,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
       selling_price: 0,
       purchase_price: 0,
       freight_cost: 0,
+      freight_currency: defCurrency,
       port_of_loading: settings?.default_port_of_loading ?? 'MERSIN, TURKEY',
       port_of_discharge: '',
       incoterms: settings?.default_incoterms ?? 'CPT',
@@ -240,6 +241,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         selling_price: file.selling_price ?? 0,
         purchase_price: file.purchase_price ?? 0,
         freight_cost: file.freight_cost ?? 0,
+        freight_currency: (file.freight_currency ?? file.sale_currency ?? file.currency ?? 'USD') as SaleConversionFormData['freight_currency'],
         port_of_loading: file.port_of_loading ?? settings?.default_port_of_loading ?? 'MERSIN, TURKEY',
         port_of_discharge: file.port_of_discharge ?? '',
         incoterms: file.incoterms ?? settings?.default_incoterms ?? 'CPT',
@@ -283,6 +285,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
         selling_price: 0,
         purchase_price: 0,
         freight_cost: 0,
+        freight_currency: defCurrency,
         port_of_loading: settings?.default_port_of_loading ?? 'MERSIN, TURKEY',
         port_of_discharge: file?.port_of_discharge ?? '',
         incoterms: settings?.default_incoterms ?? 'CPT',
@@ -567,7 +570,12 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
           {/* Navlun · Incoterms · Taşıma Şekli */}
           <div className="grid grid-cols-3 gap-3">
             <Fld label="Navlun">
-              <input type="number" step="0.01" {...register('freight_cost')} className={inp} />
+              <div className="flex gap-1.5">
+                <input type="number" step="0.01" {...register('freight_cost')} className={cn(inp, 'flex-1 min-w-0')} />
+                <select {...register('freight_currency')} className={cn(sel, 'w-[68px] shrink-0')}>
+                  {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </Fld>
             <Fld label="Incoterms *" error={errors.incoterms?.message}>
               <input {...register('incoterms')} className={inp} />

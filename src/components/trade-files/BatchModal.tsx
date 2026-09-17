@@ -104,6 +104,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
             selling_price:         parent.selling_price ?? 0,
             purchase_price:        batchSuppliers?.[0]?.purchase_price ?? parent.purchase_price ?? 0,
             freight_cost:          batchSuppliers?.[0]?.freight_cost ?? parent.freight_cost ?? 0,
+            freight_currency:      (parent.freight_currency ?? parent.sale_currency ?? parent.currency ?? 'USD') as 'USD' | 'EUR' | 'TRY' | 'AED' | 'GBP',
             port_of_loading:       parent.port_of_loading ?? '',
             port_of_discharge:     parent.port_of_discharge ?? '',
             incoterms:             parent.incoterms ?? '',
