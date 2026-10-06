@@ -216,7 +216,46 @@ serve(async (req) => {
     const ROOT = "/Family Room/01-SELÜLOZ/Sunplus Trade";
     const safeName = (s: string) => s.replace(/[<>:"\\|?*]/g, "_");  // "/" hariç tutuldu
     const fileSegments = (fileNo ?? "").split("/").map((s) => safeName(s));
-    const folderPath = `${ROOT}/${safeName(customerName ?? "")}/${fileSegments.join("/")}`;
+    // Dosyaya BAĞLANMIŞ mevcut bir klasör (body.folderPath) varsa onu kullan; yoksa müşteri/dosya no'dan türet.
+    const linkedPath = typeof body.folderPath === "string" && (body.folderPath as string).startsWith("/")
+      ? (body.folderPath as string).replace(/\/+$/, "")
+      : null;
+    const folderPath = linkedPath ?? `${ROOT}/${safeName(customerName ?? "")}/${fileSegments.join("/")}`;
+
+    // ── browseFolders: Dropbox'ta klasör gez (alt klasörleri listele) ─────────
+    if (action === "browseFolders") {
+      const path = typeof body.path === "string" ? (body.path as string).replace(/\/+$/, "") : ROOT; // "" = kök
+      type Entry = { ".tag": string; name: string; path_display: string };
+      type ListRes = { entries?: Entry[]; cursor?: string; has_more?: boolean; error_summary?: string };
+      let res = await apiCall(token, "files/list_folder", {
+        path, recursive: false, include_deleted: false, limit: 500,
+      }) as ListRes;
+      if (res.error_summary) throw new Error("Klasör okunamadı: " + res.error_summary);
+      const entries: Entry[] = [...(res.entries ?? [])];
+      while (res.has_more && res.cursor) {
+        res = await apiCall(token, "files/list_folder/continue", { cursor: res.cursor }) as ListRes;
+        if (res.error_summary) break;
+        entries.push(...(res.entries ?? []));
+      }
+      const folders = entries
+        .filter((e) => e[".tag"] === "folder")
+        .map((e) => ({ name: e.name, path: e.path_display }))
+        .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+      return new Response(JSON.stringify({ success: true, path, folders }), {
+        headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── linkFolder: mevcut bir klasörü doğrula + paylaşım linkini döndür ───────
+    if (action === "linkFolder") {
+      if (!linkedPath) throw new Error("folderPath required");
+      const meta = await apiCall(token, "files/get_metadata", { path: linkedPath }) as Record<string, unknown>;
+      if (meta[".tag"] !== "folder") throw new Error("Seçilen yol bir klasör değil veya bulunamadı");
+      const folderUrl = await getOrCreateSharedLink(token, linkedPath);
+      return new Response(JSON.stringify({ success: true, folderPath: linkedPath, folderUrl }), {
+        headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
 
     // ── createTradeFolder ─────────────────────────────────────────────────────
     if (action === "createTradeFolder") {
@@ -242,18 +281,20 @@ serve(async (req) => {
 
     // ── uploadDocument ────────────────────────────────────────────────────────
     if (action === "uploadDocument") {
-      if (!customerName || !fileNo || !documentName || (!htmlContent && !pdfContent)) {
+      if ((!linkedPath && (!customerName || !fileNo)) || !documentName || (!htmlContent && !pdfContent)) {
         throw new Error("customerName, fileNo, documentName, and htmlContent or pdfBase64 required");
       }
-      // Klasörü hazır et (batch dosyalar için iç içe klasörler)
-      await createFolder(token, "/Family Room");
-      await createFolder(token, "/Family Room/01-SELÜLOZ");
-      await createFolder(token, ROOT);
-      await createFolder(token, `${ROOT}/${safeName(customerName)}`);
-      let docSegPath = `${ROOT}/${safeName(customerName)}`;
-      for (const seg of fileSegments) {
-        docSegPath = `${docSegPath}/${seg}`;
-        await createFolder(token, docSegPath);
+      // Klasörü hazır et (batch dosyalar için iç içe klasörler) — bağlı mevcut klasör varsa dokunma
+      if (!linkedPath) {
+        await createFolder(token, "/Family Room");
+        await createFolder(token, "/Family Room/01-SELÜLOZ");
+        await createFolder(token, ROOT);
+        await createFolder(token, `${ROOT}/${safeName(customerName)}`);
+        let docSegPath = `${ROOT}/${safeName(customerName)}`;
+        for (const seg of fileSegments) {
+          docSegPath = `${docSegPath}/${seg}`;
+          await createFolder(token, docSegPath);
+        }
       }
 
       const ext = isPdf ? "pdf" : "html";
@@ -292,7 +333,7 @@ serve(async (req) => {
 
     // ── listFolder ────────────────────────────────────────────────────────────
     if (action === 'listFolder') {
-      if (!customerName || !fileNo) throw new Error("customerName and fileNo required");
+      if (!linkedPath && (!customerName || !fileNo)) throw new Error("customerName and fileNo required");
       try {
         const result = await apiCall(token, 'files/list_folder', {
           path: folderPath,
@@ -327,22 +368,24 @@ serve(async (req) => {
       const { customerName: cn, fileNo: fn, fileName, fileBase64 } = body as {
         action: string; customerName: string; fileNo: string; fileName: string; fileBase64: string;
       };
-      if (!cn || !fn || !fileName || !fileBase64) {
+      if ((!linkedPath && (!cn || !fn)) || !fileName || !fileBase64) {
         throw new Error("customerName, fileNo, fileName, and fileBase64 required");
       }
-      // fileNo "/" içeriyorsa (batch dosya) iç içe klasör oluştur
-      const attSegs = fn.split("/").map((s: string) => safeName(s));
-      const attFolderPath = `${ROOT}/${safeName(cn)}/${attSegs.join("/")}`;
+      // fileNo "/" içeriyorsa (batch dosya) iç içe klasör oluştur; bağlı mevcut klasör varsa onu kullan
+      const attSegs = (fn ?? "").split("/").map((s: string) => safeName(s));
+      const attFolderPath = linkedPath ?? `${ROOT}/${safeName(cn)}/${attSegs.join("/")}`;
       const attFilePath = `${attFolderPath}/${fileName}`;
-      // Ensure folder exists
-      await createFolder(token, "/Family Room");
-      await createFolder(token, "/Family Room/01-SELÜLOZ");
-      await createFolder(token, ROOT);
-      await createFolder(token, `${ROOT}/${safeName(cn)}`);
-      let attSegPath = `${ROOT}/${safeName(cn)}`;
-      for (const seg of attSegs) {
-        attSegPath = `${attSegPath}/${seg}`;
-        await createFolder(token, attSegPath);
+      if (!linkedPath) {
+        // Ensure folder exists
+        await createFolder(token, "/Family Room");
+        await createFolder(token, "/Family Room/01-SELÜLOZ");
+        await createFolder(token, ROOT);
+        await createFolder(token, `${ROOT}/${safeName(cn)}`);
+        let attSegPath = `${ROOT}/${safeName(cn)}`;
+        for (const seg of attSegs) {
+          attSegPath = `${attSegPath}/${seg}`;
+          await createFolder(token, attSegPath);
+        }
       }
       const fileBytes = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0));
       const viewLink = await uploadBytes(token, attFilePath, fileBytes);

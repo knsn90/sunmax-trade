@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type { PackingList, PackingListItem } from '@/types/database';
 import type { PackingListFormData } from '@/types/forms';
 import { nextAvailableDocNo } from '@/lib/generators';
+import { transportService } from './transportService';
 
 const PL_SELECT = `
   *,
@@ -10,6 +11,62 @@ const PL_SELECT = `
   consignee:customers!consignee_customer_id(*),
   packing_list_items(*)
 `;
+
+/**
+ * Ambalaj listesi kaydedilince / güncellenince sipariş detayı (Tır Plakaları / Vagon tablosu ve dosya
+ * alanları) otomatik güncellenir — bilgiler birbirine bağlı, iki yerde ayrı girmek gerekmez.
+ *  - Araç satırları: plaka listede varsa kap/ADMT/brüt güncellenir, yoksa eklenir (silme yapılmaz).
+ *    Plakası boş satırlar atlanır (plaka tablosunda plaka zorunlu).
+ *  - Dosya: yükleme türü + sayım/miktar birimi her zaman; CB No (SEPTİ), sigorta, brüt, paket yalnızca boşsa.
+ * Hata kaydı engellemez (sadece uyarı) — ambalaj listesi zaten kaydedildi.
+ */
+async function syncCardFromPackingList(tradeFileId: string | null | undefined, input: PackingListFormData): Promise<void> {
+  if (!tradeFileId) return;
+  try {
+    const rows = input.items
+      .map(r => ({
+        plate: (r.vehicle_plate ?? '').trim().replace(/\s+/g, ' ').toUpperCase(),
+        reels: Math.max(0, Math.round(r.reels ?? 0)),
+        admt: Math.max(0, r.admt ?? 0),
+        gross: Math.max(0, r.gross_weight_kg ?? 0),
+      }))
+      .filter(r => r.plate);
+
+    if (rows.length > 0) {
+      const plan = await transportService.upsertPlan(tradeFileId, {});
+      const existing = new Map((plan.transport_plates ?? []).map(p => [p.plate_no.toUpperCase(), p]));
+      const next = Math.max(-1, ...(plan.transport_plates ?? []).map(p => p.sort_order ?? 0)) + 1;
+      const fresh: { plate_no: string; reels: number; admt: number; gross_weight_kg: number }[] = [];
+      for (const r of rows) {
+        const ex = existing.get(r.plate);
+        if (ex) await transportService.updatePlate(ex.id, { reels: r.reels, admt: r.admt, gross_weight_kg: r.gross });
+        else fresh.push({ plate_no: r.plate, reels: r.reels, admt: r.admt, gross_weight_kg: r.gross });
+      }
+      if (fresh.length) await transportService.addPlates(plan.id, fresh, next);
+    }
+
+    const { data: f } = await supabase
+      .from('trade_files')
+      .select('septi_ref, insurance_tr, insurance_ir, gross_weight_kg, packages')
+      .eq('id', tradeFileId)
+      .single();
+    const totalReels = input.items.reduce((s, r) => s + (r.reels ?? 0), 0);
+    const totalGross = input.items.reduce((s, r) => s + (r.gross_weight_kg ?? 0), 0);
+    const patch: Record<string, unknown> = {
+      transport_mode: input.transport_mode,
+      count_unit: input.unit_label,
+      qty_unit: input.qty_unit,
+    };
+    if (!f?.septi_ref && input.cb_no) patch.septi_ref = input.cb_no;
+    if (!f?.insurance_tr && !f?.insurance_ir && input.insurance_no) patch.insurance_tr = input.insurance_no;
+    if (!(Number(f?.gross_weight_kg) > 0) && totalGross > 0) patch.gross_weight_kg = totalGross;
+    if (!(Number(f?.packages) > 0) && totalReels > 0) patch.packages = totalReels;
+    const { error } = await supabase.from('trade_files').update(patch).eq('id', tradeFileId);
+    if (error) throw new Error(error.message);
+  } catch (e) {
+    console.warn('Ambalaj listesi → sipariş detayı senkronu başarısız:', e);
+  }
+}
 
 export const packingListService = {
   async list(): Promise<PackingList[]> {
@@ -106,6 +163,7 @@ export const packingListService = {
       if (itemErr) throw new Error(itemErr.message);
     }
 
+    await syncCardFromPackingList(tradeFileId, input);
     return pl as PackingList;
   },
 
@@ -165,6 +223,7 @@ export const packingListService = {
       if (itemErr) throw new Error(itemErr.message);
     }
 
+    await syncCardFromPackingList((pl as PackingList).trade_file_id, input);
     return pl as PackingList;
   },
 

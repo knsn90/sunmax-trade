@@ -7,6 +7,7 @@ import { useCreatePackingList, useUpdatePackingList } from '@/hooks/useDocuments
 import { packingListService } from '@/services/packingListService';
 import { useCustomers } from '@/hooks/useEntities';
 import { useSettings } from '@/hooks/useSettings';
+import { useTransportPlan } from '@/hooks/useTransportPlan';
 import { today, fN } from '@/lib/formatters';
 import { checkAdmt, admtWarningText } from '@/lib/admtCheck';
 import { formatPLNo } from '@/lib/generators';
@@ -141,6 +142,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
       // Varsayılanları ürün birimine göre uyarlа: ADMT (fluff) → Reels/ADMT,
       // diğer (MT — genelde paletli) → Packages/MT. Toggle'larla değiştirilebilir.
       const isAdmt = file.product?.unit === 'ADMT';
+      // Sipariş detayında seçilen birimler (varsa) ürün birimi tahmininden önceliklidir
       reset({
         pl_date:        today(),
         transport_mode: file.transport_mode ?? 'truck',
@@ -151,8 +153,8 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
         comments:       '',
         bill_to:        buildAddress(mainCustomer),
         ship_to:        buildAddress(mainCustomer),
-        unit_label:     isAdmt ? 'Reels' : 'Packages',
-        qty_unit:       isAdmt ? 'ADMT' : 'MT',
+        unit_label:     file.count_unit ?? (isAdmt ? 'Reels' : 'Packages'),
+        qty_unit:       file.qty_unit ?? (isAdmt ? 'ADMT' : 'MT'),
         items:          initialRows,
       });
     }
@@ -160,6 +162,33 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
     // yeni referansla döndürse bile form SIFIRLANMAZ — kullanıcının yazdıkları korunur.
     // Reset yalnızca modal açılınca veya farklı belgeye geçilince çalışır.
   }, [open, file?.id, packingList?.id, reset]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Araç satırları sipariş detayındaki plaka listesinden hazır gelsin ─────────────────
+  // Yeni ambalaj listesinde, kullanıcı henüz bir şey yazmadıysa satırlar Tır Plakaları / Vagon No
+  // listesinden (plaka, kap, ADMT, brüt) doldurulur. Yazmaya başladıysa dokunulmaz.
+  const { data: transportPlan } = useTransportPlan(open && !packingList ? file?.id : undefined);
+  const platesPrefilled = useRef(false);
+  useEffect(() => { if (!open) platesPrefilled.current = false; }, [open]);
+  useEffect(() => {
+    if (!open || packingList || platesPrefilled.current) return;
+    const plates = (transportPlan?.transport_plates ?? [])
+      .filter(p => p.plate_status !== 'cancelled')
+      .slice()
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    if (plates.length === 0) return;
+    const cur = (form.getValues('items') ?? []) as PLRow[];
+    const pristine = cur.length <= 1 && !cur[0]?.vehicle_plate && !cur[0]?.admt && !cur[0]?.reels && !cur[0]?.gross_weight_kg;
+    if (!pristine) return;
+    platesPrefilled.current = true;
+    const mapped: PLRow[] = plates.map(p => ({
+      vehicle_plate: p.plate_status === 'changed' && p.replacement_plate ? p.replacement_plate : p.plate_no,
+      reels: Number(p.reels) || 0,
+      admt: Number(p.admt) || 0,
+      gross_weight_kg: Number(p.gross_weight_kg) || 0,
+    }));
+    setRows(mapped);
+    setValue('items', mapped);
+  }, [open, packingList, transportPlan, form, setValue]);
 
   // ── Debounced preview update ─────────────────────────────────────────────
   useEffect(() => {
@@ -535,7 +564,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
                 </div>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                  <Button type="submit" disabled={saving || admtChk.diverges}>
+                  <Button type="submit" disabled={saving || admtChk.diverges} className="!bg-[#1e3a8a] !border-[#1e3a8a] hover:!bg-[#1e40af]">
                     {saving ? 'Saving…' : isEdit ? 'Update Packing List' : 'Save Packing List'}
                   </Button>
                 </div>
@@ -554,7 +583,7 @@ export function PackingListModal({ open, onOpenChange, file, packingList }: Pack
                 type="button"
                 onClick={handlePrintPreview}
                 className="h-7 px-3 rounded-lg text-[11px] font-bold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+                style={{ background: '#1e3a8a' }}
               >
                 🖨 PDF / Yazdır
               </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { newTradeFileSchema, type NewTradeFileFormData } from '@/types/forms';
@@ -9,7 +10,6 @@ import { generateTradeFileNo } from '@/lib/generators';
 import { today } from '@/lib/formatters';
 import type { TradeFile } from '@/types/database';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useTheme } from '@/contexts/ThemeContext';
 import { Plus, Trash2, FileText } from 'lucide-react';
 import { SmartFill } from '@/components/ui/SmartFill';
 import { MonoDatePicker } from '@/components/ui/MonoDatePicker';
@@ -85,7 +85,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function NewFileModal({ open, onOpenChange, editMode = false, fileToEdit }: Props) {
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
   const navigate   = useNavigate();
   const deleteFile = useDeleteTradeFileWithChoice();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

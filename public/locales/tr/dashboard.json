@@ -11,7 +11,7 @@
     "receivable": "Alacak",
     "payable": "Borç",
     "newThisMonth": "Bu ay {{count}} yeni",
-    "completed": "{{count}} tamamlandı",
+    "completed": "{{count}} dosya tamamlandı",
     "fromCustomers": "Müşterilerden",
     "toSuppliers": "Tedarikçilere"
   },
@@ -38,7 +38,11 @@
     "paymentPending": "Ödeme Bekleniyor",
     "daysLate": "{{count}} gün geç · {{customer}}",
     "daysToEta": "{{count}} gün · {{customer}}",
-    "daysToEtaPayment": "ETA'ya {{count}} gün · {{customer}}"
+    "daysToEtaPayment": "ETA'ya {{count}} gün · {{customer}}",
+    "badgeLate": "{{count}} GÜN GECİKTİ",
+    "badgeDaysLeft": "{{count}} GÜN KALDI",
+    "badgeToday": "BUGÜN",
+    "paymentSub": "ETA'ya {{count}} gün"
   },
   "chart": {
     "revenue": "Gelir",

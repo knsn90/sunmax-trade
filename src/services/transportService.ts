@@ -24,6 +24,10 @@ export interface TransportPlate {
   replacement_plate: string;
   cancel_reason: string;
   sort_order: number;
+  /** Yük detayları — ambalaj listesi satırına aktarılır */
+  reels: number;
+  admt: number;
+  gross_weight_kg: number;
   notified_groups: string[];
   created_at: string;
 }
@@ -78,11 +82,15 @@ export const transportService = {
   },
 
   // ── Plates ──────────────────────────────────────────────────────────────
-  async addPlates(planId: string, plateNos: string[]): Promise<void> {
-    const rows = plateNos.map((plate_no, i) => ({
+  async addPlates(
+    planId: string,
+    plates: (string | { plate_no: string; reels?: number; admt?: number; gross_weight_kg?: number })[],
+    startOrder = 0,
+  ): Promise<void> {
+    const rows = plates.map((p, i) => ({
       transport_plan_id: planId,
-      plate_no,
-      sort_order: i,
+      sort_order: startOrder + i,
+      ...(typeof p === 'string' ? { plate_no: p } : p),
     }));
     const { error } = await supabase.from('transport_plates').insert(rows);
     if (error) throw new Error(error.message);

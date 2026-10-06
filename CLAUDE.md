@@ -392,6 +392,15 @@ export function XxxPage() {
 </div>
 ```
 
+### Sipariş Detayı Renk Dili
+
+`TradeFileDetailPage` tema accent'ini (kırmızı) kullanmaz — tek ana vurgu **lacivert** (`PAGE_PRIMARY = #1e3a8a`):
+- Ana işlem butonları (Teslimat Bilgisi Gir, Satışa Çevir, Yeni Parti…), aktif adım → lacivert
+- Tamamlanan adım / ilerleme → yeşil
+- Gecikme, eksik belge, uyarı → amber
+- **Kırmızı yalnızca iptal / hata** için. Normal operasyon butonları kırmızı olmamalı ("acil/problem" algısı yaratır).
+- Normal işlem butonları (Kaydet, Oluştur, Ekle, Güncelle) `PRIMARY_ACTION` (`@/lib/colors`) kullanır — tema accent'i değil. Bu, sipariş detayından açılan modallar (teslimat, parti, satış, proforma, ambalaj listesi, fatura, alış/hizmet faturası) ve nakliye planı için de geçerlidir. Kırmızı: Sil, İptal, kritik hata, gecikme.
+
 ### Bento ERP Kuralları
 
 | Element | Class |

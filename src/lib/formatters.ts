@@ -43,6 +43,21 @@ export function fUSD(value: number | null | undefined): string {
 }
 
 /**
+ * Dar alanlar için kompakt USD: ≥ 1.000.000 → "$1.25M", ≥ 100.000 → "$660.4K", altı tam tutar.
+ * Kartta kesilmesin diye (ör. "-$660,4…" yerine "-$660.4K"); tam tutar tooltip'te gösterilir.
+ */
+export function fUSDCompact(value: number | null | undefined): string {
+  if (value == null || isNaN(Number(value))) return '—';
+  const v = Number(value);
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  const trim = (n: number, d: number) => n.toFixed(d).replace(/\.?0+$/, '');
+  if (abs >= 1_000_000) return `${sign}$${trim(abs / 1_000_000, 2)}M`;
+  if (abs >= 100_000)   return `${sign}$${trim(abs / 1_000, 1)}K`;
+  return fCurrency(v, 'USD');
+}
+
+/**
  * Format a date string as dd.mm.yyyy (numeric, locale-independent).
  * fDate('2025-03-17') → "17.03.2025"
  */

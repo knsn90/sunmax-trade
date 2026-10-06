@@ -1,11 +1,11 @@
 import { useState } from 'react';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { tradeFileService } from '@/services/tradeFileService';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCreateTradeFile, useUpdateSaleDetails } from '@/hooks/useTradeFiles';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { TradeFile } from '@/types/database';
@@ -29,7 +29,7 @@ interface Props {
 }
 
 export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
   const navigate = useNavigate();
   const createFile = useCreateTradeFile();
   const updateSaleDetails = useUpdateSaleDetails();
@@ -270,7 +270,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
               type="submit"
               disabled={createFile.isPending}
               className="w-full md:w-auto px-4 h-12 md:h-8 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
-              style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+              style={{ background: '#1e3a8a' }}
             >
               {createFile.isPending ? 'Oluşturuluyor…' : 'Parti Oluştur'}
             </button>

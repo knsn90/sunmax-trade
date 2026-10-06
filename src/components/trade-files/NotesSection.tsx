@@ -1,11 +1,11 @@
 import { useState } from 'react';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { useTradeFileNotes, useCreateTradeFileNote, useDeleteTradeFileNote } from '@/hooks/useTradeFileNotes';
-import { useTheme } from '@/contexts/ThemeContext';
 import { MessageSquare, Trash2, Send } from 'lucide-react';
 import { fDate } from '@/lib/formatters';
 
 export function NotesSection({ tradeFileId }: { tradeFileId: string }) {
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
   const { data: notes = [], isLoading } = useTradeFileNotes(tradeFileId);
   const create = useCreateTradeFileNote(tradeFileId);
   const remove = useDeleteTradeFileNote(tradeFileId);

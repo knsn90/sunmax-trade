@@ -207,7 +207,7 @@ export function InvoiceModal({
         gross_weight_kg: pl?.gross_weight_kg ?? file.gross_weight_kg ?? undefined,
         packing_info: pl?.packing_info || '',
         payment_terms: file.payment_terms ?? settings?.payment_terms ?? '',
-        bill_to: addr, ship_to: addr, qty_unit: pl?.qty_unit ?? 'ADMT',
+        bill_to: addr, ship_to: addr, qty_unit: file.qty_unit ?? pl?.qty_unit ?? 'ADMT',
       });
     }
     // Stabil id deps: arka plan refetch'i (tab değişimi) formu sıfırlamasın.
@@ -231,7 +231,7 @@ export function InvoiceModal({
       gross_weight_kg: pl?.gross_weight_kg ?? pickedFile.gross_weight_kg ?? undefined,
       packing_info: pl?.packing_info || '',
       payment_terms: pickedFile.payment_terms ?? settings?.payment_terms ?? '',
-      bill_to: addr, ship_to: addr, qty_unit: pl?.qty_unit ?? 'ADMT',
+      bill_to: addr, ship_to: addr, qty_unit: pickedFile.qty_unit ?? pl?.qty_unit ?? 'ADMT',
     });
   }, [pickedFile, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -689,7 +689,7 @@ export function InvoiceModal({
                   </button>
                   <button type="submit" disabled={saving || admtChk.diverges}
                     className="w-full md:w-auto h-12 md:h-8 px-4 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-all"
-                    style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}>
+                    style={{ background: '#1e3a8a' }}>
                     {saving ? tc('btn.saving') : isEdit ? t('invoice.modal.btnUpdate') : t('invoice.modal.btnSave')}
                   </button>
                 </div>
@@ -709,7 +709,7 @@ export function InvoiceModal({
                 type="button"
                 onClick={handlePrintPreview}
                 className="h-7 px-3 rounded-lg text-[11px] font-bold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+                style={{ background: '#1e3a8a' }}
               >
                 🖨 PDF / Yazdır
               </button>

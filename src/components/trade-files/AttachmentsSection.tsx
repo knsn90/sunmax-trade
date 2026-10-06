@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { useQuery } from '@tanstack/react-query';
 import { useTradeFileAttachments, useCreateTradeFileAttachment, useDeleteTradeFileAttachment } from '@/hooks/useTradeFileAttachments';
 import { dropboxService } from '@/services/dropboxService';
-import { useTheme } from '@/contexts/ThemeContext';
 import { Paperclip, Upload, Trash2, ExternalLink, FileText, FolderOpen, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -23,13 +23,21 @@ export function AttachmentsSection({
   customerName,
   fileNo,
   dropboxFolderUrl,
+  dropboxFolderPath,
+  onPickFolder,
 }: {
   tradeFileId: string;
   customerName: string;
   fileNo: string;
   dropboxFolderUrl?: string | null;
+  /** Dosyaya bağlı mevcut Dropbox klasörü (varsa yüklemeler/listeleme bunu kullanır) */
+  dropboxFolderPath?: string | null;
+  /** Klasör seçiciyi aç (yazma yetkisi yoksa verilmez) */
+  onPickFolder?: () => void;
 }) {
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
+  // Bağlı klasörün adı: bağlı yoldan; yoksa otomatik adlandırmadaki gibi dosya no
+  const folderName = dropboxFolderPath ? (dropboxFolderPath.split('/').filter(Boolean).pop() ?? fileNo) : fileNo.replace(/\//g, '-');
   const { data: attachments = [], isLoading } = useTradeFileAttachments(tradeFileId);
   const create = useCreateTradeFileAttachment(tradeFileId);
   const remove = useDeleteTradeFileAttachment(tradeFileId);
@@ -43,8 +51,8 @@ export function AttachmentsSection({
     refetch: refetchDbx,
     isFetching: dbxFetching,
   } = useQuery({
-    queryKey: ['dropbox-folder-files', customerName, fileNo],
-    queryFn: () => dropboxService.listFolder(customerName, fileNo),
+    queryKey: ['dropbox-folder-files', customerName, fileNo, dropboxFolderPath ?? null],
+    queryFn: () => dropboxService.listFolder(customerName, fileNo, dropboxFolderPath),
     staleTime: 1000 * 60 * 5,
     enabled: !!customerName && !!fileNo,
     retry: false,
@@ -64,7 +72,7 @@ export function AttachmentsSection({
           reader.readAsDataURL(file);
         });
         // Upload to Dropbox
-        const res = await dropboxService.uploadAttachment(customerName, fileNo, file.name, fileBase64);
+        const res = await dropboxService.uploadAttachment(customerName, fileNo, file.name, fileBase64, dropboxFolderPath);
         // Save to DB
         await create.mutateAsync({
           trade_file_id: tradeFileId,
@@ -97,17 +105,6 @@ export function AttachmentsSection({
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {dropboxFolderUrl && (
-            <a
-              href={dropboxFolderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-blue-600 px-2.5 py-1.5 rounded-xl hover:bg-blue-50 transition-colors"
-            >
-              <FolderOpen className="h-3.5 w-3.5" />
-              Dropbox
-            </a>
-          )}
           <input
             ref={inputRef}
             type="file"
@@ -170,17 +167,44 @@ export function AttachmentsSection({
 
       {/* Dropbox folder contents */}
       <div className="border-t border-gray-100">
-        <div className="px-6 py-3 flex items-center gap-2 bg-gray-50/60">
-          <FolderOpen className="h-3.5 w-3.5 text-gray-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Dropbox Klasör</span>
-          <button
-            onClick={() => refetchDbx()}
-            disabled={dbxFetching}
-            className="ml-auto text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40"
-            title="Yenile"
-          >
-            <RefreshCw className={`h-3 w-3 ${dbxFetching ? 'animate-spin' : ''}`} />
-          </button>
+        <div className="px-6 py-3 bg-gray-50/60">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Dropbox klasörü</span>
+            <div className="ml-auto flex items-center gap-1">
+              {dropboxFolderUrl && (
+                <a
+                  href={dropboxFolderUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3" /> Aç
+                </a>
+              )}
+              {onPickFolder && (
+                <button
+                  onClick={onPickFolder}
+                  className="text-[11px] font-semibold text-gray-500 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  {dropboxFolderUrl ? 'Değiştir' : 'Klasör bağla'}
+                </button>
+              )}
+              <button
+                onClick={() => refetchDbx()}
+                disabled={dbxFetching}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40"
+                title="Yenile"
+              >
+                <RefreshCw className={`h-3 w-3 ${dbxFetching ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-1">
+            {dropboxFolderUrl
+              ? <>Bağlı klasör: <span className="font-mono font-semibold text-gray-700">{folderName}</span></>
+              : 'Klasör henüz bağlanmadı'}
+          </p>
         </div>
 
         {dbxLoading ? (

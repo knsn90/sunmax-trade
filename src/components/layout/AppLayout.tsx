@@ -121,12 +121,12 @@ function LayoutInner() {
   return (
     <div className="flex overflow-hidden" style={{ height: '100dvh', background: bg }}>
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden md:bg-white">
         <Topbar />
         <ImpersonationBanner />
         <MobilePageHeader />
         <main
-          className="flex-1 overflow-y-auto overflow-x-hidden px-4 [padding-bottom:calc(env(safe-area-inset-bottom)+4rem+8px)] md:p-6 md:bg-[#EFEDE8] scrollbar-thin"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-4 [padding-bottom:calc(env(safe-area-inset-bottom)+4rem+8px)] md:p-6 md:bg-[#EFEDE8] md:rounded-tl-[28px] scrollbar-thin"
           style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
         >
           <PageTransition pageKey={location.pathname.split('/')[1] ?? 'home'}>

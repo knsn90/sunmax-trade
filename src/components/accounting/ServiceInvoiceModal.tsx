@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { useCurrencies } from '@/hooks/useCurrencies';
 import { useAllTradeFiles } from '@/hooks/useTradeFiles';
 import { useCreateTransaction, useUpdateTransaction } from '@/hooks/useTransactions';
@@ -86,7 +86,7 @@ interface Props {
 }
 
 export function ServiceInvoiceModal({ open, onOpenChange, transaction, defaultTradeFileId, onSwitchToTransaction }: Props) {
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
   const currencies = useCurrencies();
   const { data: allFiles = [] } = useAllTradeFiles(['sale', 'delivery', 'completed']);
   const createTxn = useCreateTransaction();

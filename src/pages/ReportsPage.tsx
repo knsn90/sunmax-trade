@@ -156,7 +156,7 @@ function SalesReportTab() {
 
   const ROW_BG: Record<string, string> = {
     completed: 'bg-emerald-50/70 hover:bg-emerald-50',
-    delivery:  'bg-amber-50/60 hover:bg-amber-50',
+    delivery:  'bg-teal-50/60 hover:bg-teal-50',
   };
 
   const results = useMemo(() => {
@@ -233,7 +233,7 @@ function SalesReportTab() {
     const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
       request:   { bg: '#fef3c7', color: '#92400e', label: 'Talep' },
       sale:      { bg: '#dbeafe', color: '#1e40af', label: 'Satış' },
-      delivery:  { bg: '#ede9fe', color: '#5b21b6', label: 'Teslimatta' },
+      delivery:  { bg: '#ccfbf1', color: '#0f766e', label: 'Teslimatta' },
       completed: { bg: '#d1fae5', color: '#065f46', label: 'Tamamlandı' },
       cancelled: { bg: '#f3f4f6', color: '#6b7280', label: 'İptal' },
     };
@@ -471,7 +471,7 @@ function SalesReportTab() {
           {([
             { key: 'request',   label: tc('status.request'),   dot: 'bg-amber-400'  },
             { key: 'sale',      label: tc('status.sale'),      dot: 'bg-blue-400'   },
-            { key: 'delivery',  label: tc('status.delivery'),  dot: 'bg-violet-400' },
+            { key: 'delivery',  label: tc('status.delivery'),  dot: 'bg-teal-500' },
             { key: 'completed', label: tc('status.completed'), dot: 'bg-green-400'  },
             { key: 'cancelled', label: tc('status.cancelled'), dot: 'bg-gray-300'   },
           ] as { key: string; label: string; dot: string }[]).map(opt => {
@@ -2745,8 +2745,8 @@ function AnalyticsTab() {
     const counts: Record<string, number> = {};
     filteredFiles.forEach(f => { counts[f.status] = (counts[f.status] ?? 0) + 1; });
     const colors: Record<string, string> = {
-      request: '#60a5fa', sale: '#a78bfa', delivery: '#fbbf24',
-      completed: '#4ade80', cancelled: '#9ca3af',
+      request: '#f59e0b', sale: '#3b82f6', delivery: '#14b8a6',
+      completed: '#22c55e', cancelled: '#9ca3af',
     };
     const statusLabels: Record<string, string> = {
       request: t('analytics.status_request'),

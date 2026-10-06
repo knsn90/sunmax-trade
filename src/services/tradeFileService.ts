@@ -25,7 +25,8 @@ function bumpFileNo(fileNo: string): string {
 export const ORDER_INFO_FIELDS = [
   'septi_ref', 'insurance_tr', 'insurance_ir', 'bl_number', 'proforma_ref', 'customer_ref',
   'vessel_name', 'eta', 'arrival_date', 'gross_weight_kg', 'packages',
-  'payment_terms', 'incoterms', 'port_of_loading', 'port_of_discharge',
+  'payment_terms', 'incoterms', 'port_of_loading', 'port_of_discharge', 'transport_mode',
+  'tonnage_mt', 'delivered_admt', 'count_unit', 'qty_unit',
 ] as const;
 export type OrderInfoField = (typeof ORDER_INFO_FIELDS)[number];
 /** Partilerin boş alanlarına yayılabilen metin alanları (tarih/sayı parti bazlıdır, yayılmaz). */
@@ -62,7 +63,8 @@ const FILE_SELECT = `
 const FILE_DETAIL_SELECT = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt,
   gross_weight_kg, packages, arrival_date, bl_number,
-  payment_terms, advance_rate, purchase_advance_rate, customer_ref, notes, dropbox_folder_url,
+  payment_terms, advance_rate, purchase_advance_rate, customer_ref, notes, dropbox_folder_url, dropbox_folder_path,
+  count_unit, qty_unit,
   selling_price, purchase_price, incoterms, transport_mode,
   port_of_loading, port_of_discharge, proforma_ref, register_no, septi_ref,
   insurance_tr, insurance_ir, eta, vessel_name, revised_eta, delay_notes, currency,
@@ -355,12 +357,34 @@ export const tradeFileService = {
     const clean: Record<string, string | number | null> = {};
     for (const [k, v] of Object.entries(patch)) {
       if (!(ORDER_INFO_FIELDS as readonly string[]).includes(k)) continue;
-      clean[k] = typeof v === 'string' ? (v.trim() === '' ? null : v.trim()) : (v ?? null);
+      const val = typeof v === 'string' ? (v.trim() === '' ? null : v.trim()) : (v ?? null);
+      // Sipariş miktarı zorunlu — boşaltma isteği yok sayılır
+      if (k === 'tonnage_mt' && (val == null || Number(val) <= 0)) continue;
+      clean[k] = val;
     }
     if (Object.keys(clean).length === 0) return;
 
-    const { error } = await supabase.from('trade_files').update(clean).eq('id', id);
+    const { data: updated, error } = await supabase
+      .from('trade_files').update(clean).eq('id', id).select('parent_file_id').single();
     if (error) throw new Error(error.message);
+
+    // Parti miktarı değiştiyse ana dosyanın teslim toplamını yeniden hesapla (changeStatus ile aynı kural)
+    const parentId = (updated as { parent_file_id: string | null } | null)?.parent_file_id;
+    if (parentId && ('delivered_admt' in clean || 'tonnage_mt' in clean)) {
+      const { data: siblings } = await supabase
+        .from('trade_files')
+        .select('status, tonnage_mt, delivered_admt')
+        .eq('parent_file_id', parentId)
+        .is('deleted_at', null);
+      if (siblings) {
+        const delivered = siblings
+          .filter(b => b.status !== 'cancelled')
+          .reduce((sum: number, b: { tonnage_mt: number | null; delivered_admt: number | null }) =>
+            sum + (b.delivered_admt && b.delivered_admt > 0 ? b.delivered_admt : (b.tonnage_mt ?? 0)), 0);
+        await supabase.from('trade_files')
+          .update({ delivered_admt: delivered > 0 ? delivered : null }).eq('id', parentId);
+      }
+    }
 
     if (!propagate) return;
     for (const [k, v] of Object.entries(clean)) {

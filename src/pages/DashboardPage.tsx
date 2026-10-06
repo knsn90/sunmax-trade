@@ -18,10 +18,10 @@ import { useTradeFiles } from '@/hooks/useTradeFiles';
 import { useTransactions, useTransactionSummary, useCostByFile } from '@/hooks/useTransactions';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
-import { fUSD, fDate } from '@/lib/formatters';
+import { fUSD, fUSDCompact, fDate } from '@/lib/formatters';
 import { LoadingSpinner, EntityAvatar } from '@/components/ui/shared';
 import { KpiCard } from '@/components/ui/KpiCard';
-import { useTheme } from '@/contexts/ThemeContext';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 import { usePriceList } from '@/hooks/useEntities';
 import { saveDashboardPrefs } from '@/services/userService';
@@ -63,6 +63,15 @@ const Trophy        = mkIcon(ChampionIcon);
 const FileWarning   = mkIcon(FileValidationIcon);
 const Scale         = mkIcon(WeightScaleIcon);
 const LineChartIcon = mkIcon(ChartLineData01Icon);
+
+/** Uyarı rozeti: küçük, büyük harf — kırmızı = kritik, amber = uyarı. */
+function AlertBadge({ text, type }: { text: string; type: 'danger' | 'warning' }) {
+  return (
+    <span className={`shrink-0 text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full whitespace-nowrap ${type === 'danger' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>
+      {text}
+    </span>
+  );
+}
 
 // ─── Widget order & sizes ─────────────────────────────────────────────────────
 // 'kpi' is intentionally excluded — it's always fixed at the top
@@ -135,7 +144,7 @@ function formatMonthLabel(key: string, lang: string) {
 const STATUS_CFG: Record<string, { dot: string; text: string; bg: string; label: string }> = {
   request:   { dot: 'bg-amber-400',  text: 'text-amber-700',  bg: 'bg-amber-50',  label: 'Request' },
   sale:      { dot: 'bg-blue-400',   text: 'text-blue-700',   bg: 'bg-blue-50',   label: 'Sale' },
-  delivery:  { dot: 'bg-violet-400', text: 'text-violet-700', bg: 'bg-violet-50', label: 'Delivery' },
+  delivery:  { dot: 'bg-teal-500',   text: 'text-teal-700',   bg: 'bg-teal-50',   label: 'Delivery' },
   completed: { dot: 'bg-green-400',  text: 'text-green-700',  bg: 'bg-green-50',  label: 'Completed' },
   cancelled: { dot: 'bg-gray-300',   text: 'text-gray-500',   bg: 'bg-gray-50',   label: 'Cancelled' },
 };
@@ -155,25 +164,38 @@ function Card({ title, icon, children, action, actionLabel, className, dragHandl
   dragHandleProps?: React.HTMLAttributes<HTMLElement>;
   isFull?: boolean; onToggleSize?: () => void;
 }) {
+  // Apple tarzı: ince (hairline) kenarlık, çok yumuşak katmanlı gölge, ayırıcı çizgisiz ferah başlık.
+  // Sürükle / boyut düğmeleri yalnızca üzerine gelince görünür — sürekli kontrol gürültüsü yok.
+  const hoverOnly = '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity';
   return (
-    <div className={cn('bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-[340px]', className)}
-      style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[#F4F2EE] shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          {icon && <span className="text-[#8A8A8E] shrink-0 [&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>}
-          <span className="text-[15px] font-semibold tracking-[-0.01em] text-[#0A0A0A] truncate">{title}</span>
+    <div
+      className={cn(
+        'group bg-white rounded-[22px] border border-black/[0.06] overflow-hidden flex flex-col h-[340px]',
+        'shadow-[0_1px_2px_rgba(0,0,0,0.03),0_8px_28px_rgba(0,0,0,0.04)]',
+        className,
+      )}
+      style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
+    >
+      <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {icon && (
+            <span className="w-7 h-7 rounded-lg bg-[#1e3a8a]/[0.07] text-[#1e3a8a] flex items-center justify-center shrink-0 [&>svg]:h-[15px] [&>svg]:w-[15px]">
+              {icon}
+            </span>
+          )}
+          <span className="text-[15px] font-semibold tracking-[-0.011em] text-[#1d1d1f] truncate">{title}</span>
         </div>
         <div className="flex items-center gap-1">
           {action && (
-            <button onClick={action} className="text-[12px] font-medium text-[#8A8A8E] hover:text-[#0A0A0A] flex items-center gap-0.5 transition-colors mr-1">
+            <button onClick={action} className="text-[12px] font-medium text-[#1e3a8a]/80 hover:text-[#1e3a8a] flex items-center gap-0.5 transition-colors mr-1">
               {actionLabel} <ChevronRight className="h-3.5 w-3.5" />
             </button>
           )}
-          {/* Size toggle — desktop only */}
+          {/* Size toggle — desktop only, hover'da */}
           {onToggleSize && (
             <button
               onClick={onToggleSize}
-              className="hidden md:flex items-center justify-center w-7 h-7 rounded-full text-[#C4C4C9] hover:text-[#8A8A8E] hover:bg-[#F4F2EE] transition-colors"
+              className={cn('hidden md:flex items-center justify-center w-7 h-7 rounded-full text-[#aeaeb2] hover:text-[#6e6e73] hover:bg-black/[0.04]', hoverOnly)}
               title={isFull ? 'Shrink to half width' : 'Expand to full width'}
             >
               {isFull ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
@@ -182,7 +204,7 @@ function Card({ title, icon, children, action, actionLabel, className, dragHandl
           {dragHandleProps && (
             <div
               {...dragHandleProps}
-              className="cursor-grab active:cursor-grabbing text-[#C4C4C9] hover:text-[#8A8A8E] touch-none flex items-center justify-center w-7 h-7 rounded-full hover:bg-[#F4F2EE] transition-colors"
+              className={cn('cursor-grab active:cursor-grabbing text-[#aeaeb2] hover:text-[#6e6e73] touch-none flex items-center justify-center w-7 h-7 rounded-full hover:bg-black/[0.04]', hoverOnly)}
               title="Drag to reorder"
             >
               <GripVertical className="h-4 w-4" />
@@ -381,7 +403,7 @@ function DesktopPriceCarousel({ prices, onNavigate }: { prices: import('@/types/
   );
 
   return (
-    <div className="overflow-y-auto h-full divide-y divide-gray-50">
+    <div className="overflow-y-auto h-full divide-y divide-black/[0.05]">
       {prices.map((entry, i) => {
         const logo    = getProductLogo(entry.product?.name, (entry.product as { logo_url?: string | null })?.logo_url);
         const expired = entry.valid_until ? new Date(entry.valid_until) < new Date() : false;
@@ -468,7 +490,7 @@ export function DashboardPage() {
     return txnCost > 0 ? txnCost + (f.freight_cost ?? 0) : ((f.purchase_price ?? 0) + (f.freight_cost ?? 0)) * qty;
   };
   const { data: priceEntries = [] } = usePriceList();
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
   const writable = canWrite(profile?.role);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
@@ -560,19 +582,40 @@ export function DashboardPage() {
   }, [files, costByFile, i18n.language]);
 
   const alerts = useMemo(() => {
-    const list: { label: string; sub: string; href: string; type: 'danger' | 'warning' }[] = [];
+    // severity: yüksek = daha riskli. Liste kronolojik değil RİSK sırasına göre dizilir:
+    // gecikmiş ETA (en geç olan en üstte) > yakın ETA'lı ödenmemiş dosya > yaklaşan ETA.
+    const list: { label: string; sub: string; href: string; type: 'danger' | 'warning'; severity: number; badge: string }[] = [];
 
-    // ETA overdue
-    files.filter(f => ['sale','delivery'].includes(f.status) && f.eta && isOverdueEta(f.eta)).slice(0,5)
-      .forEach(f => list.push({ label: `${f.file_no} — ${t('alerts.etaOverdue')}`, sub: t('alerts.daysLate', { count: Math.abs(daysUntil(f.eta) ?? 0), customer: f.customer?.name ?? '' }), href: `/files/${f.id}`, type: 'danger' }));
+    // ETA geçmiş — 7 günden fazla gecikme kritik (kırmızı), daha azı uyarı (amber)
+    files.filter(f => ['sale','delivery'].includes(f.status) && f.eta && isOverdueEta(f.eta)).slice(0, 10)
+      .forEach(f => {
+        const late = Math.abs(daysUntil(f.eta) ?? 0);
+        list.push({
+          label: `${f.file_no} — ${t('alerts.etaOverdue')}`,
+          sub: f.customer?.name ?? '',
+          href: `/files/${f.id}`,
+          type: late > 7 ? 'danger' : 'warning',
+          severity: 10000 + late * 10,
+          badge: t('alerts.badgeLate', { count: late }),
+        });
+      });
 
-    // ETA soon (≤7 days)
+    // ETA yaklaşıyor (≤ 7 gün)
     files.filter(f => ['sale','delivery'].includes(f.status) && f.eta && !isOverdueEta(f.eta))
-      .filter(f => { const d = daysUntil(f.eta); return d !== null && d <= 7 && d >= 0; }).slice(0,3)
-      .forEach(f => list.push({ label: `${f.file_no} — ${t('alerts.etaSoon')}`, sub: t('alerts.daysToEta', { count: daysUntil(f.eta), customer: f.customer?.name ?? '' }), href: `/files/${f.id}`, type: 'warning' }));
+      .filter(f => { const d = daysUntil(f.eta); return d !== null && d <= 7 && d >= 0; }).slice(0, 10)
+      .forEach(f => {
+        const d = daysUntil(f.eta) ?? 0;
+        list.push({
+          label: `${f.file_no} — ${t('alerts.etaSoon')}`,
+          sub: f.customer?.name ?? '',
+          href: `/files/${f.id}`,
+          type: 'warning',
+          severity: 1000 + (7 - d) * 10,
+          badge: d === 0 ? t('alerts.badgeToday') : t('alerts.badgeDaysLeft', { count: d }),
+        });
+      });
 
-    // Payment not received — ETA within 10 days
-    // Build set of file IDs that have a fully paid receipt
+    // Ödeme alınmamış — ETA 10 gün içinde
     const paidFileIds = new Set(
       transactions
         .filter(tx => tx.transaction_type === 'receipt' && tx.payment_status === 'paid' && tx.trade_file_id)
@@ -582,18 +625,20 @@ export function DashboardPage() {
       .filter(f => ['sale','delivery'].includes(f.status) && f.eta && !isOverdueEta(f.eta))
       .filter(f => { const d = daysUntil(f.eta); return d !== null && d <= 10 && d >= 0; })
       .filter(f => !paidFileIds.has(f.id))
-      .slice(0, 5)
+      .slice(0, 10)
       .forEach(f => {
         const d = daysUntil(f.eta) ?? 0;
         list.push({
           label: `${f.file_no} — ${t('alerts.paymentPending')}`,
-          sub: t('alerts.daysToEtaPayment', { count: d, customer: f.customer?.name ?? '' }),
+          sub: `${t('alerts.paymentSub', { count: d })} · ${f.customer?.name ?? ''}`,
           href: `/files/${f.id}`,
           type: d <= 5 ? 'danger' : 'warning',
+          severity: (d <= 5 ? 5000 : 3000) + (10 - d) * 10,
+          badge: d === 0 ? t('alerts.badgeToday') : t('alerts.badgeDaysLeft', { count: d }),
         });
       });
 
-    return list;
+    return list.sort((a, b) => b.severity - a.severity).slice(0, 15);
   }, [files, transactions]);
 
   const recentFiles = useMemo(() =>
@@ -744,14 +789,14 @@ export function DashboardPage() {
       case 'pipeline':
         return (
           <Card title={t('widgets.pipeline')} icon={<Layers />} action={() => navigate('/pipeline')} actionLabel={t('actions.seeAll')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
-            <div className="px-5 py-1">
+            <div className="px-6 pb-2">
               {(['request','sale','delivery','completed','cancelled'] as const).map((key) => {
                 const cfg = STATUS_CFG[key];
                 const count = byStatus[key];
                 const pct = files.length > 0 ? (count / files.length) * 100 : 0;
                 return (
                   <button key={key} onClick={() => navigate('/pipeline')}
-                    className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 rounded-xl -mx-1 px-1 transition-colors"
+                    className="w-full flex items-center gap-3 py-3 border-b border-black/[0.05] last:border-0 hover:bg-gray-50 rounded-xl -mx-1 px-1 transition-colors"
                   >
                     <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot)} />
                     <span className="text-[13px] text-gray-700 flex-1 text-left">{tc('status.' + key)}</span>
@@ -775,10 +820,10 @@ export function DashboardPage() {
                 <span className="text-[12px] text-gray-400">{t('empty.allClear')}</span>
               </div>
             ) : (
-              <div className="px-5 py-1">
+              <div className="px-6 pb-2">
                 {alerts.map((a, i) => (
                   <button key={i} onClick={() => navigate(a.href)}
-                    className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 rounded-xl -mx-1 px-1 transition-colors text-left"
+                    className="w-full flex items-center gap-3 py-3 border-b border-black/[0.05] last:border-0 hover:bg-gray-50 rounded-xl -mx-1 px-1 transition-colors text-left"
                   >
                     <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0', a.type === 'danger' ? 'bg-red-50' : 'bg-amber-50')}>
                       <AlertTriangle className={cn('h-4 w-4', a.type === 'danger' ? 'text-red-500' : 'text-amber-500')} />
@@ -787,6 +832,7 @@ export function DashboardPage() {
                       <div className="text-[12px] font-semibold text-gray-900 truncate">{a.label}</div>
                       <div className="text-[11px] text-gray-400 truncate mt-0.5">{a.sub}</div>
                     </div>
+                    <AlertBadge text={a.badge} type={a.type} />
                     <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
                   </button>
                 ))}
@@ -804,7 +850,7 @@ export function DashboardPage() {
                 <span className="text-[12px] text-gray-400">{t('empty.noFiles')}</span>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-black/[0.05]">
                 {recentFiles.map((f) => {
                   const name = f.customer?.name ?? tc('unknown');
                   const cfg = STATUS_CFG[f.status] ?? STATUS_CFG.request;
@@ -882,16 +928,25 @@ export function DashboardPage() {
         return (
           <Card title={t('widgets.latestPrices')} icon={<Tag />} action={() => navigate('/price-list')} actionLabel={t('actions.priceList')} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
             <DesktopPriceCarousel
-              prices={latestPrices.slice(0, 10)}
+              prices={latestPrices.slice(0, 3)}
               onNavigate={() => navigate('/price-list')}
             />
+            {/* Dashboard'da sadece 3 ürün — tam liste ayrı sayfada */}
+            <div className="px-5 py-3 border-t border-black/[0.05]">
+              <button
+                onClick={() => navigate('/price-list')}
+                className="text-[12px] font-semibold text-[#1e3a8a] hover:underline flex items-center gap-1"
+              >
+                Tüm fiyatları gör <span aria-hidden>→</span>
+              </button>
+            </div>
           </Card>
         );
 
       case 'revenue_chart':
         return (
           <Card title={t('widgets.revenueChart')} icon={<LineChartIcon />} dragHandleProps={dragHandleProps} isFull={isFull} onToggleSize={onToggleSize}>
-            <div className="px-5 py-5">
+            <div className="px-6 pt-1 pb-5">
               {!hasChart ? (
                 <div className="flex flex-col items-center justify-center h-36 gap-2">
                   <BarChart2 className="h-8 w-8 text-gray-200" />
@@ -899,7 +954,7 @@ export function DashboardPage() {
                 </div>
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={150}>
                     <BarChart data={chartData} barCategoryGap="40%" barGap={2}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
@@ -911,20 +966,38 @@ export function DashboardPage() {
                         contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                       />
                       <Bar dataKey="revenue" fill={accent + '40'} radius={[4,4,0,0]} />
-                      <Bar dataKey="cost"    fill="#f8717140" radius={[4,4,0,0]} />
+                      <Bar dataKey="cost"    fill="#94a3b866" radius={[4,4,0,0]} />
                       <Bar dataKey="profit"  radius={[4,4,0,0]}>
-                        {chartData.map((e, i) => <Cell key={i} fill={e.profit >= 0 ? '#4ade8066' : '#fb923c66'} />)}
+                        {chartData.map((e, i) => <Cell key={i} fill={e.profit >= 0 ? '#4ade8080' : '#f59e0b80'} />)}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  <div className="flex items-center justify-center gap-6 mt-3">
-                    {([[accent + '40', t('chart.revenue')],['#f8717140', t('chart.cost')],['#4ade8066', t('chart.profit')]] as [string,string][]).map(([c,l]) => (
-                      <div key={l} className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />
-                        <span className="text-[11px] text-gray-400">{l}</span>
+                  {/* Toplam özet — aynı zamanda renk lejantı. Veri az olsa da kart "boş" durmaz. */}
+                  {(() => {
+                    const totRev  = chartData.reduce((a, e) => a + e.revenue, 0);
+                    const totCost = chartData.reduce((a, e) => a + e.cost, 0);
+                    const totNet  = totRev - totCost;
+                    const tiles: { dot: string; label: string; value: number; valueCls: string }[] = [
+                      { dot: accent + '66', label: 'Toplam Gelir',   value: totRev,  valueCls: 'text-gray-900' },
+                      { dot: '#94a3b8',     label: 'Toplam Maliyet', value: totCost, valueCls: 'text-gray-900' },
+                      { dot: totNet >= 0 ? '#4ade80' : '#f59e0b', label: 'Net Kâr', value: totNet, valueCls: totNet >= 0 ? 'text-green-700' : 'text-amber-600' },
+                    ];
+                    return (
+                      <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-black/[0.05]">
+                        {tiles.map(tl => (
+                          <div key={tl.label}>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: tl.dot }} />
+                              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{tl.label}</span>
+                            </div>
+                            <div className={cn('text-[16px] font-extrabold tabular-nums mt-0.5', tl.valueCls)} title={fUSD(tl.value)}>
+                              {fUSDCompact(tl.value)}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </>
               )}
             </div>
@@ -947,7 +1020,13 @@ export function DashboardPage() {
                   <span className={cn('text-[26px] font-black leading-none tabular-nums tracking-tight', collectionData.outstanding > 0 ? 'text-gray-900' : 'text-green-600')}>
                     {fmtUsd(collectionData.outstanding)}
                   </span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: accent + '14', color: accent }}>
+                  {/* Tamamı tahsil edildiyse yeşil, devam ediyorsa lacivert — kırmızı "problem" gibi okunur */}
+                  <span
+                    className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                    style={collectionData.pct >= 100
+                      ? { background: '#16a34a14', color: '#15803d' }
+                      : { background: accent + '14', color: accent }}
+                  >
                     %{collectionData.pct} tahsil edildi
                   </span>
                 </div>
@@ -955,7 +1034,7 @@ export function DashboardPage() {
 
               {/* Segmentli bar: tahsil edilen (accent) + bekleyen (açık gri) */}
               <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100 mb-5">
-                <div className="h-full transition-all duration-700 rounded-l-full" style={{ width: `${collectionData.pct}%`, background: accent }} />
+                <div className="h-full transition-all duration-700 rounded-l-full" style={{ width: `${collectionData.pct}%`, background: collectionData.pct >= 100 ? '#16a34a' : accent }} />
               </div>
 
               {/* KV satırları — Bento ERP dashed separator */}
@@ -963,7 +1042,7 @@ export function DashboardPage() {
                 {[
                   { label: 'Faturalanan', value: collectionData.invoiced, cls: 'text-gray-900' },
                   { label: 'Tahsil Edilen', value: collectionData.collected, cls: 'text-green-600' },
-                  { label: 'Bekleyen', value: collectionData.outstanding, cls: collectionData.outstanding > 0 ? 'text-red-500' : 'text-gray-400' },
+                  { label: 'Bekleyen', value: collectionData.outstanding, cls: collectionData.outstanding > 0 ? 'text-amber-600' : 'text-gray-400' },
                 ].map(({ label, value, cls }) => (
                   <div key={label} className="flex justify-between items-center py-2.5 border-b border-dashed border-gray-100 last:border-0">
                     <span className="text-[12px] text-gray-500">{label}</span>
@@ -986,7 +1065,7 @@ export function DashboardPage() {
                 <span className="text-[12px] text-gray-400">Henüz veri yok</span>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-black/[0.05]">
                 {topCustomers.map((c, i) => (
                   <div key={i} className="flex items-center gap-3.5 px-6 py-3 hover:bg-gray-50/60 transition-colors">
                     {/* Sıra rozeti — 1. sıra accent, diğerleri gri */}
@@ -1034,7 +1113,7 @@ export function DashboardPage() {
                 <p className="text-[12px] font-medium text-gray-500">Tüm aktif dosyalarda fatura mevcut</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-black/[0.05]">
                 {pendingDocs.map(f => {
                   const cust = f.customer as { name?: string; logo_url?: string | null } | null;
                   const custName = cust?.name ?? '—';
@@ -1130,7 +1209,7 @@ export function DashboardPage() {
                 <p className="text-[12px] text-gray-400">Açık işlem yok</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-black/[0.05]">
                 {fxPosition.map(([cur, v]) => {
                   const net = v.receivable - v.payable;
                   const total = v.receivable + v.payable;
@@ -1145,9 +1224,13 @@ export function DashboardPage() {
                           {sym}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{cur} Net Pozisyon</div>
-                          <div className={cn('text-[18px] font-black leading-tight tabular-nums', net >= 0 ? 'text-green-600' : 'text-red-500')}>
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Net {cur} Pozisyonu</div>
+                          <div className={cn('text-[18px] font-black leading-tight tabular-nums', net >= 0 ? 'text-green-600' : 'text-amber-600')}>
                             {net >= 0 ? '+' : '−'}{fmtK(net)}
+                          </div>
+                          {/* Negatif sayının anlamı: hangisi büyük */}
+                          <div className="text-[10px] font-semibold text-gray-400 mt-0.5">
+                            {net < 0 ? 'Borç > Alacak' : net > 0 ? 'Alacak > Borç' : 'Alacak = Borç'}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -1157,14 +1240,14 @@ export function DashboardPage() {
                           </div>
                           <div className="text-[10px] tabular-nums mt-0.5">
                             <span className="text-gray-400">Borç </span>
-                            <span className="font-bold text-red-500">{fmtK(v.payable)}</span>
+                            <span className="font-bold text-amber-600">{fmtK(v.payable)}</span>
                           </div>
                         </div>
                       </div>
                       {/* Alacak/borç oran çubuğu */}
                       <div className="flex h-[5px] rounded-full overflow-hidden bg-gray-100">
                         <div className="h-full bg-green-400" style={{ width: `${recPct}%` }} />
-                        <div className="h-full bg-red-300" style={{ width: `${100 - recPct}%` }} />
+                        <div className="h-full bg-amber-300" style={{ width: `${100 - recPct}%` }} />
                       </div>
                     </div>
                   );
@@ -1188,15 +1271,14 @@ export function DashboardPage() {
 
         {/* ── Top Header: Selamlama + Yeni Dosya ──────────────────────────── */}
         <div className="px-5 pt-6 pb-2 flex items-center justify-between">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: '#525a64' }}>
-              {greeting}
-            </div>
-            <div
-              className="text-[22px] font-extrabold text-gray-900 leading-tight tracking-tight"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-            >{profile?.full_name?.split(' ')[0] ?? 'Dashboard'}</div>
-          </div>
+          <h1
+            className="text-[22px] font-extrabold text-gray-900 leading-tight tracking-tight"
+            style={{ fontFamily: 'Manrope, sans-serif' }}
+          >
+            {profile?.full_name
+              ? <>{greeting}, <span className="text-[#1e3a8a]">{profile.full_name.split(' ')[0]}</span>.</>
+              : 'Dashboard'}
+          </h1>
           {writable && (
             <button
               onClick={() => setFabOpen(v => !v)}
@@ -1229,7 +1311,7 @@ export function DashboardPage() {
                 Tümü <ChevronRight className="h-3 w-3" />
               </button>
             </div>
-            <PriceCarousel prices={latestPrices.slice(0, 6)} onNavigate={() => navigate('/price-list')} />
+            <PriceCarousel prices={latestPrices.slice(0, 3)} onNavigate={() => navigate('/price-list')} />
           </div>
 
           {/* Card 2 — Son Uyarılar */}
@@ -1264,10 +1346,11 @@ export function DashboardPage() {
                       <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0', a.type === 'danger' ? 'bg-red-50' : 'bg-amber-50')}>
                         <AlertTriangle className={cn('h-4 w-4', a.type === 'danger' ? 'text-red-500' : 'text-amber-500')} />
                       </div>
-                      <div className="min-w-0 pt-0.5">
+                      <div className="min-w-0 pt-0.5 flex-1">
                         <div className="text-[13px] font-semibold text-gray-900 leading-snug truncate">{a.label}</div>
                         <div className="text-[11px] text-gray-400 truncate mt-0.5">{a.sub}</div>
                       </div>
+                      <AlertBadge text={a.badge} type={a.type} />
                     </div>
                   ))}
                 </div>
@@ -1364,22 +1447,22 @@ export function DashboardPage() {
                   <button
                     onClick={() => navigate('/price-list')}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-full text-white text-[11px] font-bold active:scale-95 transition-transform"
-                    style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+                    style={{ background: '#1e3a8a' }}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Yeni
                   </button>
                 )}
-                <button onClick={() => navigate('/price-list')} className="text-[12px] font-bold flex items-center gap-1" style={{ color: '#b70011' }}>
-                  Tümü <ChevronRight className="h-3.5 w-3.5" />
+                <button onClick={() => navigate('/price-list')} className="text-[12px] font-bold flex items-center gap-1" style={{ color: '#1e3a8a' }}>
+                  Tüm fiyatları gör <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
             <div className="bg-white rounded-[1.5rem] overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(25,28,30,0.05)' }}>
-              {latestPrices.slice(0, 5).map((entry, i) => (
+              {latestPrices.slice(0, 3).map((entry, i) => (
                 <div
                   key={entry.id}
-                  className={cn('flex items-center gap-3 px-4 py-3', i < Math.min(latestPrices.length, 5) - 1 && 'border-b border-gray-50')}
+                  className={cn('flex items-center gap-3 px-4 py-3', i < Math.min(latestPrices.length, 3) - 1 && 'border-b border-black/[0.05]')}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-semibold text-gray-900 truncate">{entry.product?.name ?? '—'}</div>
@@ -1441,7 +1524,7 @@ export function DashboardPage() {
                 return (
                   <div
                     key={tx.id}
-                    className={cn('flex items-center gap-3 px-4 py-3', i < recentTxns.length - 1 && 'border-b border-gray-50')}
+                    className={cn('flex items-center gap-3 px-4 py-3', i < recentTxns.length - 1 && 'border-b border-black/[0.05]')}
                   >
                     <EntityAvatar name={partyName} logoUrl={partyLogoUrl} size="sm" />
                     <div className="flex-1 min-w-0">
@@ -1476,7 +1559,7 @@ export function DashboardPage() {
               const pct = files.length > 0 ? (count / files.length) * 100 : 0;
               return (
                 <button key={key} onClick={() => navigate('/pipeline')}
-                  className="w-full flex items-center gap-3 py-3 border-b border-gray-50 last:border-0 active:bg-gray-50 rounded-xl transition-colors"
+                  className="w-full flex items-center gap-3 py-3 border-b border-black/[0.05] last:border-0 active:bg-gray-50 rounded-xl transition-colors"
                 >
                   <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot)} />
                   <span className="text-[13px] text-gray-700 flex-1 text-left font-medium">{cfg.label}</span>
@@ -1512,6 +1595,7 @@ export function DashboardPage() {
                     <div className="text-[13px] font-semibold text-gray-900 truncate">{a.label}</div>
                     <div className="text-[11px] text-gray-400 truncate mt-0.5">{a.sub}</div>
                   </div>
+                  <AlertBadge text={a.badge} type={a.type} />
                   <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
                 </button>
               ))}
@@ -1535,7 +1619,7 @@ export function DashboardPage() {
               const cfg = STATUS_CFG[f.status] ?? STATUS_CFG.request;
               return (
                 <button key={f.id} onClick={() => navigate(`/files/${f.id}`)}
-                  className="w-full flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-0 active:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-4 px-5 py-4 border-b border-black/[0.05] last:border-0 active:bg-gray-50 transition-colors text-left"
                 >
                   <EntityAvatar name={name} logoUrl={f.customer?.logo_url} size="md" />
                   <div className="flex-1 min-w-0">
@@ -1562,10 +1646,11 @@ export function DashboardPage() {
 
           {/* Desktop greeting */}
           <div className="flex items-center justify-between px-0.5">
-            <div>
-              <div className="text-[13px] font-medium text-[#8A8A8E] mb-1">{greeting}</div>
-              <div className="text-[34px] font-bold text-[#0A0A0A] leading-[1.05] tracking-[-0.02em]">{profile?.full_name ?? 'Dashboard'}</div>
-            </div>
+            <h1 className="text-[28px] font-bold text-[#0A0A0A] leading-[1.1] tracking-[-0.02em]">
+              {profile?.full_name
+                ? <>{greeting}, <span className="text-[#1e3a8a]">{profile.full_name.split(' ')[0]}</span>.</>
+                : 'Dashboard'}
+            </h1>
             <div className="flex items-center gap-4">
               {writable && (
                 <button
@@ -1583,17 +1668,17 @@ export function DashboardPage() {
           </div>
 
           {/* KPI Row */}
-          <div className="grid grid-cols-4 gap-5">
+          <div className="grid grid-cols-4 gap-6">
             <KpiCard label={t('kpi.activeFiles')} value={String(activeFiles)} sub={t('kpi.newThisMonth', { count: thisMonth })}
-              icon={<Package className="h-5 w-5" />} color={accent} size="lg"
+              icon={<Package className="h-5 w-5" />} color="#1e3a8a" size="lg"
               onClick={() => navigate('/pipeline')} />
-            <KpiCard label={t('kpi.totalProfit')} value={fUSD(totalProfit)} sub={t('kpi.completed', { count: byStatus.completed })}
+            <KpiCard label={t('kpi.totalProfit')} value={fUSDCompact(totalProfit)} valueTitle={fUSD(totalProfit)} sub={t('kpi.completed', { count: byStatus.completed })}
               trend={totalProfit >= 0 ? 'up' : 'down'} icon={<TrendingUp className="h-5 w-5" />} color="#10b981" size="lg"
               onClick={() => navigate('/fin-reports')} />
-            <KpiCard label={t('kpi.receivable')} value={fUSD(summary?.totalReceivable ?? 0)} sub={t('kpi.fromCustomers')}
+            <KpiCard label={t('kpi.receivable')} value={fUSDCompact(summary?.totalReceivable ?? 0)} valueTitle={fUSD(summary?.totalReceivable ?? 0)} sub={t('kpi.fromCustomers')}
               icon={<DollarSign className="h-5 w-5" />} color="#2563eb" size="lg"
               onClick={() => navigate('/accounting', { state: { tab: 'sale' } })} />
-            <KpiCard label={t('kpi.payable')} value={fUSD(summary?.totalPayable ?? 0)} sub={t('kpi.toSuppliers')}
+            <KpiCard label={t('kpi.payable')} value={fUSDCompact(summary?.totalPayable ?? 0)} valueTitle={fUSD(summary?.totalPayable ?? 0)} sub={t('kpi.toSuppliers')}
               icon={<Wallet className="h-5 w-5" />} color="#f59e0b" size="lg"
               onClick={() => navigate('/accounting', { state: { tab: 'buy' } })} />
           </div>
@@ -1606,7 +1691,7 @@ export function DashboardPage() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={widgetOrder} strategy={verticalListSortingStrategy}>
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 gap-6">
                 {widgetOrder.map(id => (
                   <SortableWidget key={id} id={id} isFull={widgetSizes[id] === 'full'}>
                     {(dragHandleProps) => {

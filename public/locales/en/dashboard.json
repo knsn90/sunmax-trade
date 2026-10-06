@@ -38,7 +38,11 @@
     "paymentPending": "Payment Pending",
     "daysLate": "{{count}} day(s) late · {{customer}}",
     "daysToEta": "{{count}} day(s) · {{customer}}",
-    "daysToEtaPayment": "{{count}} day(s) to ETA · {{customer}}"
+    "daysToEtaPayment": "{{count}} day(s) to ETA · {{customer}}",
+    "badgeLate": "{{count}} DAY(S) LATE",
+    "badgeDaysLeft": "{{count}} DAY(S) LEFT",
+    "badgeToday": "TODAY",
+    "paymentSub": "{{count}} day(s) to ETA"
   },
   "chart": {
     "revenue": "Revenue",

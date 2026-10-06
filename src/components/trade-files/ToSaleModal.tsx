@@ -696,7 +696,7 @@ export function ToSaleModal({ open, onOpenChange, file, editMode = false }: ToSa
               type="submit"
               disabled={mutation.isPending}
               className="w-full md:w-auto px-4 h-12 md:h-8 rounded-2xl md:rounded-lg text-[14px] md:text-[12px] font-bold text-white shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
-              style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+              style={{ background: '#1e3a8a' }}
             >
               {mutation.isPending
                 ? (editMode ? 'Kaydediliyor…' : 'Çevriliyor…')

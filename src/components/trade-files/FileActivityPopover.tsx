@@ -40,7 +40,7 @@ const STATUS_TRANSITION: Record<string, {
   text: string;
 }> = {
   sale:      { label: 'Satışa Çevirdi',     icon: ShoppingCart,  dot: 'bg-blue-400',   text: 'text-blue-700'   },
-  delivery:  { label: 'Teslimata Çevirdi',  icon: Truck,         dot: 'bg-violet-400', text: 'text-violet-700' },
+  delivery:  { label: 'Teslimata Çevirdi',  icon: Truck,         dot: 'bg-teal-500', text: 'text-teal-700' },
   completed: { label: 'Tamamladı',          icon: CheckCircle2,  dot: 'bg-green-400',  text: 'text-green-700'  },
   cancelled: { label: 'İptal Etti',         icon: XCircle,       dot: 'bg-gray-300',   text: 'text-gray-500'   },
   request:   { label: 'Talebe Döndürdü',    icon: Package,       dot: 'bg-amber-400',  text: 'text-amber-700'  },
@@ -71,7 +71,7 @@ function resolveLabel(entry: AuditEntry): {
   // Teslimat bilgileri (delivered_admt, arrival_date, bl_number …)
   const deliveryKeys = ['delivered_admt', 'arrival_date', 'bl_number', 'gross_weight_kg', 'packages'];
   if (deliveryKeys.some(k => k in nv)) {
-    return { label: 'Teslimat Güncelledi', icon: Truck,   dot: 'bg-violet-400', text: 'text-violet-700' };
+    return { label: 'Teslimat Güncelledi', icon: Truck,   dot: 'bg-teal-500', text: 'text-teal-700' };
   }
 
   // Genel düzenleme

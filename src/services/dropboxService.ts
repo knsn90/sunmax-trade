@@ -82,7 +82,7 @@ export const dropboxService = {
   },
 
   /** HTML içeriğini PDF'e çevirip Dropbox'a yükle */
-  async uploadDocument(customerName: string, fileNo: string, documentName: string, htmlContent: string) {
+  async uploadDocument(customerName: string, fileNo: string, documentName: string, htmlContent: string, folderPath?: string | null) {
     // Convert HTML body → PDF blob → base64 (client-side, no server dependency)
     const { htmlBodyToPdfBase64 } = await import('@/lib/pdfExport');
     const pdfBase64 = await htmlBodyToPdfBase64(htmlContent);
@@ -93,6 +93,7 @@ export const dropboxService = {
       fileNo,
       documentName,
       pdfBase64,   // binary PDF sent as base64
+      ...(folderPath ? { folderPath } : {}),   // dosyaya bağlı mevcut klasör (varsa onu kullan)
     });
   },
 
@@ -107,17 +108,34 @@ export const dropboxService = {
     fileNo: string,
     fileName: string,
     fileBase64: string,
+    folderPath?: string | null,
   ): Promise<{ viewLink: string; filePath: string }> {
-    return callDropbox({ action: 'uploadAttachment', customerName, fileNo, fileName, fileBase64 }) as Promise<{ viewLink: string; filePath: string }>;
+    return callDropbox({
+      action: 'uploadAttachment', customerName, fileNo, fileName, fileBase64,
+      ...(folderPath ? { folderPath } : {}),
+    }) as Promise<{ viewLink: string; filePath: string }>;
   },
 
   /** Dropbox klasöründeki dosyaları listele */
   async listFolder(
     customerName: string,
     fileNo: string,
+    folderPath?: string | null,
   ): Promise<Array<{ name: string; path: string; size: number; modified: string }>> {
-    const res = await callDropbox({ action: 'listFolder', customerName, fileNo });
+    const res = await callDropbox({ action: 'listFolder', customerName, fileNo, ...(folderPath ? { folderPath } : {}) });
     return (res.files as Array<{ name: string; path: string; size: number; modified: string }>) ?? [];
+  },
+
+  /** Dropbox'ta klasör gez: verilen yolun alt klasörlerini döndürür ('' = kök, verilmezse Sunplus Trade kökü). */
+  async browseFolders(path?: string): Promise<{ path: string; folders: Array<{ name: string; path: string }> }> {
+    const res = await callDropbox({ action: 'browseFolders', ...(path !== undefined ? { path } : {}) });
+    return { path: (res.path as string) ?? '', folders: (res.folders as Array<{ name: string; path: string }>) ?? [] };
+  },
+
+  /** Mevcut bir klasörü doğrula ve paylaşım linkini al (dosyaya bağlamak için). */
+  async linkFolder(folderPath: string): Promise<{ folderPath: string; folderUrl: string }> {
+    const res = await callDropbox({ action: 'linkFolder', folderPath });
+    return { folderPath: res.folderPath as string, folderUrl: res.folderUrl as string };
   },
 
   /** trade_files tablosuna Dropbox klasör bilgisini kaydet */

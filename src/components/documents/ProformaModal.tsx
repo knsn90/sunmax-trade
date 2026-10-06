@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { useForm, useWatch, Controller } from 'react-hook-form';
-import { useTheme } from '@/contexts/ThemeContext';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { proformaSchema, type ProformaFormData } from '@/types/forms';
 import type { TradeFile, Proforma } from '@/types/database';
@@ -63,7 +63,7 @@ interface ProformaModalProps {
 }
 
 export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaModalProps) {
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
   const currencies = useCurrencies();
   const { data: settings } = useSettings();
   const { data: bankAccounts } = useBankAccounts();
@@ -595,7 +595,7 @@ export function ProformaModal({ open, onOpenChange, file, proforma }: ProformaMo
                 type="button"
                 onClick={handlePrintPreview}
                 className="h-7 px-3 rounded-lg text-[11px] font-bold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #b70011 0%, #dc2626 100%)' }}
+                style={{ background: '#1e3a8a' }}
               >
                 🖨 PDF / Yazdır
               </button>

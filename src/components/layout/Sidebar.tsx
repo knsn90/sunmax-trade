@@ -114,11 +114,11 @@ export function Sidebar() {
 
   return (
     <aside
-      className="hidden md:flex w-[224px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin bg-white border-r border-[#ECECEC]"
+      className="hidden md:flex w-[224px] flex-shrink-0 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin bg-white"
       style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
     >
       {/* Logo */}
-      <div className="flex items-center justify-center px-4 py-3.5 flex-shrink-0 border-b border-[#ECECEC] min-h-[60px]">
+      <div className="flex items-center justify-center px-4 py-3.5 flex-shrink-0 min-h-[60px]">
         {logoUrl ? (
           <img
             src={logoUrl}

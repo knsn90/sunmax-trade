@@ -33,7 +33,7 @@ const STATUS_META: Record<string, {
 }> = {
   request:  { bg: 'bg-amber-50',  text: 'text-amber-700',  dot: 'bg-amber-400',  bar: '#f59e0b', border: '#fbbf24', pill: 'bg-amber-50 text-amber-700' },
   sale:     { bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-400',   bar: '#3b82f6', border: '#60a5fa', pill: 'bg-blue-50 text-blue-700' },
-  delivery: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-400', bar: '#8b5cf6', border: '#a78bfa', pill: 'bg-violet-50 text-violet-700' },
+  delivery: { bg: 'bg-teal-50',   text: 'text-teal-700',   dot: 'bg-teal-500',   bar: '#14b8a6', border: '#2dd4bf', pill: 'bg-teal-50 text-teal-700' },
   completed:{ bg: 'bg-green-50',  text: 'text-green-700',  dot: 'bg-green-400',  bar: '#22c55e', border: '#86efac', pill: 'bg-green-50 text-green-700' },
 };
 
@@ -205,7 +205,7 @@ function KpiStrip({ files }: { files: TradeFile[] }) {
   const stats = [
     { key: 'request',  color: '#f59e0b', bg: '#fffbeb', label: tc('status.request') },
     { key: 'sale',     color: '#3b82f6', bg: '#eff6ff', label: tc('status.sale') },
-    { key: 'delivery', color: '#8b5cf6', bg: '#f5f3ff', label: tc('status.delivery') },
+    { key: 'delivery', color: '#14b8a6', bg: '#f0fdfa', label: tc('status.delivery') },
     { key: 'completed',color: '#22c55e', bg: '#f0fdf4', label: tc('status.completed') },
   ] as const;
 
@@ -259,7 +259,7 @@ export function PipelinePage() {
   const STAGES = [
     { key: 'request' as const,  label: t('kanban.request'),  dot: 'bg-amber-400',  text: 'text-amber-700' },
     { key: 'sale' as const,     label: t('kanban.sale'),     dot: 'bg-blue-400',   text: 'text-blue-700'  },
-    { key: 'delivery' as const, label: t('kanban.delivery'), dot: 'bg-violet-400', text: 'text-violet-700'},
+    { key: 'delivery' as const, label: t('kanban.delivery'), dot: 'bg-teal-500', text: 'text-teal-700'},
   ];
 
   const [newFileOpen, setNewFileOpen] = useState(false);

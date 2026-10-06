@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import { PRIMARY_ACTION } from '@/lib/colors';
 import { useAuth } from '@/hooks/useAuth';
-import { useTheme } from '@/contexts/ThemeContext';
 import {
   useTransportPlan, useUpsertPlan, useUpdateChecklist,
   useAddPlates, useUpdatePlate, useDeletePlate,
@@ -54,7 +54,7 @@ interface Props {
 
 export function TransportPlanSection({ file, writable }: Props) {
   const { profile } = useAuth();
-  const { accent } = useTheme();
+  const accent = PRIMARY_ACTION;
 
   const { data: plan, isLoading } = useTransportPlan(file.id);
   const upsertPlan  = useUpsertPlan(file.id);
@@ -98,8 +98,12 @@ export function TransportPlanSection({ file, writable }: Props) {
   const modeIsSet    = file.transport_mode === 'truck' || file.transport_mode === 'railway' || file.transport_mode === 'sea';
 
   // ── Actions ─────────────────────────────────────────────────────────────────
-  async function saveHeader() {
-    await upsertPlan.mutateAsync({ loading_date: loadingDate || null, freight_company: freightCompany });
+  /** Plan detaylarını otomatik kaydet (tarih seçilince / firma alanından çıkılınca) — Kaydet butonu yok. */
+  async function saveHeader(next?: { loading_date?: string | null; freight_company?: string }) {
+    await upsertPlan.mutateAsync({
+      loading_date: next?.loading_date !== undefined ? next.loading_date : (loadingDate || null),
+      freight_company: next?.freight_company ?? freightCompany,
+    });
     setHeaderSaved(true);
     setTimeout(() => setHeaderSaved(false), 2000);
   }
@@ -202,7 +206,7 @@ export function TransportPlanSection({ file, writable }: Props) {
             </span>
           )}
           {hasUnnotif && plan && activePlates.length > 0 && (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-full">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
               <Bell className="h-3 w-3" /> Bekleyen bildirimler var
             </span>
           )}
@@ -222,22 +226,18 @@ export function TransportPlanSection({ file, writable }: Props) {
             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Plan Detayları</span>
           </div>
           {writable && (
-            <button
-              onClick={saveHeader}
-              disabled={upsertPlan.isPending}
-              className="text-[11px] font-semibold text-white px-3 py-1 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              style={{ background: accent }}
-            >
-              {headerSaved ? '✓ Kaydedildi' : 'Kaydet'}
-            </button>
+            <span className={cn('text-[10px] font-semibold transition-colors',
+              headerSaved ? 'text-green-600' : 'text-gray-400')}>
+              {upsertPlan.isPending ? 'Kaydediliyor…' : headerSaved ? '✓ Kaydedildi' : 'Otomatik kaydedilir'}
+            </span>
           )}
         </div>
         <div className="px-5 py-1">
           {/* Transport mode */}
           <div className="flex items-center justify-between py-2.5 border-b border-dashed border-gray-100">
-            <span className="text-[12px] text-gray-500">Nakliye Türü</span>
+            <span className="text-[12px] text-gray-500">Yükleme Türü</span>
             <span className={cn('flex items-center gap-1.5 text-[12px] font-bold',
-              !modeIsSet ? 'text-amber-600' : file.transport_mode === 'truck' ? 'text-blue-600' : 'text-indigo-600')}>
+              !modeIsSet ? 'text-amber-600' : file.transport_mode === 'truck' ? 'text-blue-600' : 'text-blue-700')}>
               {!modeIsSet
                 ? <AlertTriangle className="h-3.5 w-3.5" />
                 : file.transport_mode === 'truck'
@@ -253,7 +253,7 @@ export function TransportPlanSection({ file, writable }: Props) {
               <div className="w-48">
                 <MonoDatePicker
                   value={loadingDate}
-                  onChange={setLoadingDate}
+                  onChange={v => { setLoadingDate(v); saveHeader({ loading_date: v || null }); }}
                   placeholder="Tarih seç"
                   dropUp
                   className="w-full bg-gray-100 rounded-lg h-8 px-3 text-[12px] text-gray-900 border-0 focus:outline-none flex items-center justify-between overflow-hidden hover:bg-gray-200 transition-colors"
@@ -270,6 +270,11 @@ export function TransportPlanSection({ file, writable }: Props) {
               <input
                 value={freightCompany}
                 onChange={e => setFreightCompany(e.target.value)}
+                onBlur={() => {
+                  const v = freightCompany.trim();
+                  if (v !== (plan?.freight_company ?? '')) saveHeader({ freight_company: v });
+                }}
+                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                 placeholder="—"
                 className="text-[13px] font-bold text-gray-900 border-0 outline-none bg-transparent text-right w-48 placeholder:text-gray-300"
               />
@@ -285,6 +290,7 @@ export function TransportPlanSection({ file, writable }: Props) {
         <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-50 bg-gray-50/60">
           <div className="flex items-center gap-2">
             <Truck className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 tabular-nums">04</span>
             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Plakalar</span>
             {activePlates.length > 0 && (
               <span className="text-[9px] font-extrabold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-full">{activePlates.length}</span>
@@ -293,7 +299,9 @@ export function TransportPlanSection({ file, writable }: Props) {
           {writable && (
             <button
               onClick={() => setShowPaste(v => !v)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
+              disabled={!plan}
+              title={!plan ? 'Önce yükleme tarihi veya nakliye firmasını girin (otomatik kaydedilir). Ardından plaka ekleyebilirsiniz.' : undefined}
+              className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500"
             >
               <Plus className="h-3 w-3" /> Plaka Ekle
             </button>
@@ -343,8 +351,8 @@ export function TransportPlanSection({ file, writable }: Props) {
 
         {/* Empty */}
         {!plan && !showPaste && (
-          <div className="px-5 py-8 text-center text-[12px] text-gray-400">
-            Önce plan detaylarını kaydedin.
+          <div className="px-5 py-3 text-center text-[11px] text-gray-400 leading-snug">
+            Önce yükleme tarihi veya nakliye firmasını girin; plan otomatik kaydedilir. Ardından plaka ekleyebilirsiniz.
           </div>
         )}
 
@@ -556,7 +564,7 @@ export function TransportPlanSection({ file, writable }: Props) {
                     type="checkbox"
                     checked={checked}
                     disabled={!writable}
-                    className="w-4 h-4 rounded accent-red-600"
+                    className="w-4 h-4 rounded accent-blue-700"
                     onChange={e => { if (!writable) return; updateCheck.mutate({ [key]: e.target.checked }); }}
                   />
                   <span className={cn('text-[13px] font-semibold flex-1', checked ? 'text-green-700 line-through' : 'text-gray-800')}>

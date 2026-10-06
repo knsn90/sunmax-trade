@@ -226,6 +226,9 @@ export interface TradeFile extends Timestamps {
   purchase_price: number | null;
   freight_cost: number | null;
   freight_currency: CurrencyCode | null;
+  /** Ambalaj sayım birimi / miktar birimi — NULL ise üründen türetilir */
+  count_unit: 'Reels' | 'Bales' | 'Packages' | 'Cartons' | null;
+  qty_unit: 'ADMT' | 'MT' | null;
   port_of_loading: string | null;
   port_of_discharge: string | null;
   incoterms: string | null;

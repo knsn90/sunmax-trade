@@ -192,7 +192,7 @@ export function Topbar() {
   if (isDonezo) {
     return (
       <header
-        className="bg-white border-b border-[#ECECEC] px-5 flex items-center gap-3 flex-shrink-0"
+        className="bg-white px-5 flex items-center gap-3 flex-shrink-0"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 11px)', paddingBottom: '11px', fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
       >
         {/* Mobile logo — süper admin'de gizle, yerini firma switcher alsın */}

@@ -22,7 +22,7 @@ import { EntityAvatar } from '@/components/ui/shared';
 const STATUS_META: Record<string, { dot: string; text: string }> = {
   request:   { dot: 'bg-amber-400',  text: 'text-amber-700' },
   sale:      { dot: 'bg-blue-400',   text: 'text-blue-700' },
-  delivery:  { dot: 'bg-violet-400', text: 'text-violet-700' },
+  delivery:  { dot: 'bg-teal-500',   text: 'text-teal-700' },
   completed: { dot: 'bg-green-400',  text: 'text-green-700' },
   cancelled: { dot: 'bg-gray-300',   text: 'text-gray-400' },
 };
@@ -127,7 +127,7 @@ function FileRow({ file, onClick, onEdit, onDelete, writable }: {
 // ─── Desktop table row ─────────────────────────────────────────────────────────
 const ROW_BG: Record<string, string> = {
   completed: 'bg-[#16A34A]/[0.04] hover:bg-[#16A34A]/[0.07]',
-  delivery:  'bg-[#B45309]/[0.04] hover:bg-[#B45309]/[0.07]',
+  delivery:  'bg-[#0D9488]/[0.04] hover:bg-[#0D9488]/[0.07]',
 };
 
 function DesktopRow({ file, onClick, onEdit, onDelete, writable }: {

@@ -156,6 +156,7 @@ export function useCreatePackingList() {
       ),
     onSuccess: (pl) => {
       qc.invalidateQueries({ queryKey: ['packing-lists'] });
+      qc.invalidateQueries({ queryKey: ['transport_plan'] }); // araç tablosu ambalaj listesinden güncellenir
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success(`Packing list ${pl.packing_list_no} created`);
     },
@@ -170,6 +171,7 @@ export function useUpdatePackingList() {
       packingListService.update(id, data, consigneeId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['packing-lists'] });
+      qc.invalidateQueries({ queryKey: ['transport_plan'] }); // araç tablosu ambalaj listesinden güncellenir
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success('Packing list updated');
     },
@@ -183,6 +185,7 @@ export function useDeletePackingList() {
     mutationFn: (id: string) => packingListService.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['packing-lists'] });
+      qc.invalidateQueries({ queryKey: ['transport_plan'] }); // araç tablosu ambalaj listesinden güncellenir
       qc.invalidateQueries({ queryKey: tradeFileKeys.all });
       toast.success('Packing list deleted');
     },
