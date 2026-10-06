@@ -8,7 +8,7 @@
   },
   "logo": {
     "title": "Şirket Logosu",
-    "description": "Fatura ve çeki listelerinde gösterilir",
+    "description": "Fatura ve ambalaj listelerinde gösterilir",
     "uploadHint": "Yüklemek için tıklayın",
     "hint": "PNG, JPG — maks 2MB",
     "btnUpload": "Yükle",

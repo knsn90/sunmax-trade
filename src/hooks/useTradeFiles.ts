@@ -106,6 +106,21 @@ export function useConvertToSale() {
   });
 }
 
+export function useUpdateOrderInfo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch, propagate = true }: {
+      id: string;
+      patch: Partial<Record<import('@/services/tradeFileService').OrderInfoField, string | number | null>>;
+      propagate?: boolean;
+    }) => tradeFileService.updateOrderInfo(id, patch, propagate),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tradeFileKeys.all });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 export function useConvertToDelivery() {
   const qc = useQueryClient();
   return useMutation({

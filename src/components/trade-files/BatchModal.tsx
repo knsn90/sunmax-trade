@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { tradeFileService } from '@/services/tradeFileService';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -129,6 +130,15 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
             })),
           },
         });
+
+        // Belge bilgileri (SEPTİ/CB, sigorta, müşteri ref.) de ana dosyadan partiye geçsin —
+        // satış detayları kopyalanırken bunlar atlanıyordu, partide belgeler boş açılıyordu.
+        await tradeFileService.updateOrderInfo(created.id, {
+          septi_ref:    parent.septi_ref ?? null,
+          insurance_tr: parent.insurance_tr ?? null,
+          insurance_ir: parent.insurance_ir ?? null,
+          customer_ref: parent.customer_ref ?? null,
+        }, false);
       }
 
       toast.success(`Parti ${batchFileNo} oluşturuldu`);

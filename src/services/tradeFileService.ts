@@ -21,6 +21,19 @@ function bumpFileNo(fileNo: string): string {
   return `${fileNo}-2`;
 }
 
+/** "Sipariş Bilgileri" kartında tek yerden girilebilen alanlar (belgeler bunlardan dolar). */
+export const ORDER_INFO_FIELDS = [
+  'septi_ref', 'insurance_tr', 'insurance_ir', 'bl_number', 'proforma_ref', 'customer_ref',
+  'vessel_name', 'eta', 'arrival_date', 'gross_weight_kg', 'packages',
+  'payment_terms', 'incoterms', 'port_of_loading', 'port_of_discharge',
+] as const;
+export type OrderInfoField = (typeof ORDER_INFO_FIELDS)[number];
+/** Partilerin boş alanlarına yayılabilen metin alanları (tarih/sayı parti bazlıdır, yayılmaz). */
+export const ORDER_INFO_TEXT_FIELDS = [
+  'septi_ref', 'insurance_tr', 'insurance_ir', 'bl_number', 'proforma_ref', 'customer_ref',
+  'vessel_name', 'payment_terms', 'incoterms', 'port_of_loading', 'port_of_discharge',
+] as const;
+
 // Minimal select for paginated list page (TradeFilesPage) — sadece gösterilen alanlar
 const FILE_SELECT_PAGINATED = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt, selling_price,
@@ -49,6 +62,7 @@ const FILE_SELECT = `
 const FILE_DETAIL_SELECT = `
   id, file_no, file_date, status, tonnage_mt, delivered_admt,
   gross_weight_kg, packages, arrival_date, bl_number,
+  payment_terms, advance_rate, purchase_advance_rate, customer_ref, notes, dropbox_folder_url,
   selling_price, purchase_price, incoterms, transport_mode,
   port_of_loading, port_of_discharge, proforma_ref, register_no, septi_ref,
   insurance_tr, insurance_ir, eta, vessel_name, revised_eta, delay_notes, currency,
@@ -325,6 +339,41 @@ export const tradeFileService = {
 
     if (error) throw new Error(error.message);
     return data as TradeFile;
+  },
+
+  /**
+   * Sipariş bilgilerini tek sefer güncelle (detay sayfasındaki "Sipariş Bilgileri" kartı).
+   * Yalnızca beyaz listedeki alanlar yazılır. Boş string → NULL.
+   * propagate=true: ana dosyada girilen METİN alanları, partilerin (child) BOŞ alanlarına da
+   * işlenir — dolu olanlara dokunulmaz.
+   */
+  async updateOrderInfo(
+    id: string,
+    patch: Partial<Record<OrderInfoField, string | number | null>>,
+    propagate = true,
+  ): Promise<void> {
+    const clean: Record<string, string | number | null> = {};
+    for (const [k, v] of Object.entries(patch)) {
+      if (!(ORDER_INFO_FIELDS as readonly string[]).includes(k)) continue;
+      clean[k] = typeof v === 'string' ? (v.trim() === '' ? null : v.trim()) : (v ?? null);
+    }
+    if (Object.keys(clean).length === 0) return;
+
+    const { error } = await supabase.from('trade_files').update(clean).eq('id', id);
+    if (error) throw new Error(error.message);
+
+    if (!propagate) return;
+    for (const [k, v] of Object.entries(clean)) {
+      if (v == null || !(ORDER_INFO_TEXT_FIELDS as readonly string[]).includes(k)) continue;
+      // Parti dosyalarında alan boşsa (NULL veya '') doldur
+      const { error: pErr } = await supabase
+        .from('trade_files')
+        .update({ [k]: v })
+        .eq('parent_file_id', id)
+        .is('deleted_at', null)
+        .or(`${k}.is.null,${k}.eq.`);
+      if (pErr) throw new Error(pErr.message);
+    }
   },
 
   async updatePnl(

@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate, fCurrency, fUSD } from '@/lib/formatters';
-import type { Invoice, PackingList, Proforma } from '@/types/database';
+import type { Invoice, PackingList, Proforma, Transaction } from '@/types/database';
 import type { TradeFileStatus, CurrencyCode } from '@/types/enums';
 import { ToSaleModal } from '@/components/trade-files/ToSaleModal';
 import { DeliveryModal } from '@/components/trade-files/DeliveryModal';
@@ -29,6 +29,8 @@ import { useDeleteProforma } from '@/hooks/useProformas';
 import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { printInvoice, printPackingList, printProforma, generateProformaHtml, generateInvoiceHtml, generatePackingListHtml } from '@/lib/printDocument';
+import { buildConsolidatedPackingList, buildConsolidatedInvoice } from '@/lib/consolidatedDocs';
+import { OrderInfoRow } from '@/components/trade-files/OrderInfoRow';
 import { NativeSelect } from '@/components/ui/form-elements';
 import { LoadingSpinner, EntityAvatar } from '@/components/ui/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -72,6 +74,40 @@ const STATUS_META: Record<string, { bg: string; text: string; dot: string; pill:
 };
 
 // ── Section card ──────────────────────────────────────────────────────────────
+/** Belgeler kartı başlığındaki "+ Belge Ekle" menüsü — o an oluşturulabilecek belgeleri listeler. */
+function AddDocMenu({ items }: { items: { label: string; onClick: () => void }[] }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="relative" onClick={e => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="h-7 px-3 rounded-full bg-gray-100 hover:bg-gray-200 text-[11px] font-semibold text-gray-600 flex items-center gap-1 transition-colors"
+      >
+        <Plus className="h-3 w-3" /> Belge Ekle
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-8 z-50 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[170px]">
+            {items.map(it => (
+              <button
+                key={it.label}
+                type="button"
+                onClick={() => { setOpen(false); it.onClick(); }}
+                className="w-full text-left px-3 py-2 text-[12px] font-medium text-gray-700 hover:bg-gray-50"
+              >
+                {it.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Section({
   title, icon, right, children, accent = false,
   collapsible = false, isCollapsed = false, onToggle,
@@ -166,7 +202,7 @@ function DocRow({
               {onRenameNo && (
                 <button
                   onClick={e => { e.stopPropagation(); setDraft(no); setEditing(true); setOpen(true); }}
-                  className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-600 transition-opacity"
+                  className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 text-gray-300 hover:text-gray-600 transition-opacity"
                 >
                   <Pencil className="h-2.5 w-2.5" />
                 </button>
@@ -192,7 +228,9 @@ function DocRow({
 
 // ── Partiler Kartı ────────────────────────────────────────────────────────────
 const TRANSPORT_LABEL: Record<string, string> = {
-  sea: 'Gemi', road: 'TIR', rail: 'Vagon', air: 'Uçak', mixed: 'Karma',
+  // Gerçek DB değerleri: truck | railway | sea (eski anahtarlar geriye dönük)
+  truck: 'Kara (TIR)', railway: 'Demiryolu', sea: 'Gemi',
+  road: 'TIR', rail: 'Vagon', air: 'Uçak', mixed: 'Karma',
 };
 
 function PartilerCard({
@@ -330,7 +368,7 @@ function PartilerCard({
                       <button
                         onClick={(e) => handleDeleteBatch(e, b)}
                         disabled={deleteFile.isPending}
-                        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                         title="Partiyi sil"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -368,6 +406,89 @@ function slugifyFileNo(s: string): string {
     .replace(/[^a-z0-9]+/g, '-')                       // harf/rakam dışı → tire
     .replace(/^-+|-+$/g, '')                            // baş/son tireleri kırp
     .slice(0, 60);
+}
+
+/** Gider tutarı: kendi para biriminde göster; USD değilse altında USD karşılığını küçük yaz. */
+function TxnAmount({ txn, className }: { txn: Transaction; className?: string }) {
+  const ccy = (txn.currency ?? 'USD') as CurrencyCode;
+  if (ccy === 'USD' || !txn.currency) {
+    return <span className={className}>{fUSD(txn.amount_usd ?? txn.amount)}</span>;
+  }
+  return (
+    <span className="flex flex-col items-end leading-tight">
+      <span className={className}>{fCurrency(txn.amount, ccy)}</span>
+      {txn.amount_usd != null && (
+        <span className="text-[10px] font-medium text-gray-400">≈ {fUSD(txn.amount_usd)}</span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Finansal özet — dosyaya bağlı faturalanan satış, maliyet, brüt kâr ve ödeme durumu.
+ * Hepsi USD ve fatura bazlı (transactions.amount_usd): para birimleri karışmaz,
+ * Mali Raporlar'daki fatura-bazlı kâr mantığıyla tutarlıdır.
+ */
+function FinancialSummary({ saleTxns, costTxns, expectedSale }: {
+  saleTxns: Transaction[];
+  costTxns: Transaction[];
+  /** Henüz satış faturası yokken bilgi olarak gösterilen beklenen satış (satış para biriminde) */
+  expectedSale: string | null;
+}) {
+  const sum = (arr: Transaction[], k: 'amount_usd' | 'paid_amount_usd') =>
+    arr.reduce((s, t) => s + (Number(t[k]) || 0), 0);
+
+  const revenue   = sum(saleTxns, 'amount_usd');
+  const collected = sum(saleTxns, 'paid_amount_usd');
+  const cost      = sum(costTxns, 'amount_usd');
+  const paid      = sum(costTxns, 'paid_amount_usd');
+
+  const hasSale = saleTxns.length > 0 && revenue > 0;
+  const hasCost = costTxns.length > 0 && cost > 0;
+  const profit  = revenue - cost;
+  const margin  = hasSale ? (profit / revenue) * 100 : 0;
+  const profitColor = profit > 0 ? 'text-green-700' : profit < 0 ? 'text-red-600' : 'text-gray-900';
+
+  const Tile = ({ label, value, sub, valueClass }: { label: string; value: string; sub?: React.ReactNode; valueClass?: string }) => (
+    <div className="px-5 py-4">
+      <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{label}</div>
+      <div className={cn('text-[18px] font-extrabold leading-tight', valueClass ?? 'text-gray-900')}>{value}</div>
+      {sub && <div className="text-[10px] text-gray-400 mt-1 leading-snug">{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="px-6 py-3.5 border-b border-[#F4F2EE] flex items-center justify-between">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A8A8E]">Finansal Özet</span>
+        <span className="text-[10px] text-gray-400">USD · faturalanan</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#F4F2EE]">
+        <Tile
+          label="Satış"
+          value={hasSale ? fUSD(revenue) : '—'}
+          sub={hasSale
+            ? <>Tahsil: <span className="text-green-700 font-semibold">{fUSD(collected)}</span> · Kalan: <span className={cn('font-semibold', revenue - collected > 0.005 ? 'text-amber-700' : 'text-gray-500')}>{fUSD(Math.max(0, revenue - collected))}</span></>
+            : <>Satış faturası yok{expectedSale ? <> · Beklenen: {expectedSale}</> : null}</>}
+        />
+        <Tile
+          label="Maliyet"
+          value={hasCost ? fUSD(cost) : '—'}
+          sub={hasCost
+            ? <>Ödenen: <span className="text-green-700 font-semibold">{fUSD(paid)}</span> · Kalan: <span className={cn('font-semibold', cost - paid > 0.005 ? 'text-amber-700' : 'text-gray-500')}>{fUSD(Math.max(0, cost - paid))}</span></>
+            : 'Alış/hizmet faturası yok'}
+        />
+        <Tile
+          label="Brüt Kâr"
+          value={hasSale && hasCost ? fUSD(profit) : '—'}
+          valueClass={hasSale && hasCost ? profitColor : undefined}
+          sub={hasSale && hasCost
+            ? `%${margin.toFixed(1)} marj`
+            : 'Satış ve maliyet faturası girilince hesaplanır'}
+        />
+      </div>
+    </div>
+  );
 }
 
 /** Partinin gerçek teslim ADMT'si: delivered_admt girildiyse onu, yoksa planlanan tonnage_mt.
@@ -477,7 +598,7 @@ export function TradeFileDetailPage() {
     return async (newNo: string) => {
       await packingListService.updateNo(id, newNo);
       queryClient.invalidateQueries({ queryKey: tradeFileKeys.all });
-      toast.success('Çeki listesi numarası güncellendi');
+      toast.success('Ambalaj listesi numarası güncellendi');
     };
   }
   function makeProformaRename(id: string) {
@@ -542,9 +663,11 @@ export function TradeFileDetailPage() {
     }
   }, [file]);
 
-  // Auto-create Dropbox folder when file loads without one
+  // Auto-create Dropbox folder when file loads without one.
+  // Sadece yazma yetkisi olan kullanıcı ve iptal edilmemiş dosya için — salt-okunur bir
+  // kullanıcı sayfayı açarak Dropbox'ta klasör / DB'de kayıt oluşturmamalı.
   useEffect(() => {
-    if (!file || file.dropbox_folder_url) return;
+    if (!file || file.dropbox_folder_url || !writable || file.status === 'cancelled') return;
     const customerName = file.customer?.name;
     if (!customerName) return;
 
@@ -588,7 +711,11 @@ export function TradeFileDetailPage() {
   if (isLoading) return <LoadingSpinner />;
   if (!file) return <div className="text-center py-12 text-gray-400 text-sm">{t('detail.fileNotFound')}</div>;
 
-  const isSaleOrDel = file.status === 'sale' || file.status === 'delivery';
+  // Belge oluşturma kapıları:
+  //  - Ticari Fatura / Packing List: satıştan itibaren, TAMAMLANDI dahil (eksik belge uyarısı
+  //    çıkınca dosyayı geri almadan eklenebilsin).
+  //  - Proforma: satış öncesi de normal bir belge (talep aşamasından itibaren), iptal hariç.
+  const canCreateDocs = file.status === 'sale' || file.status === 'delivery' || file.status === 'completed';
   const meta = STATUS_META[file.status] ?? STATUS_META.request;
   const expenses = fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type));
   // Satış detayı var mı? selling_price 0 olabilir, bu yüzden != null kontrolü
@@ -597,13 +724,29 @@ export function TradeFileDetailPage() {
   // ── Parti / kısmi sevkiyat hesaplamaları ────────────────────────────────────
   const isBatch    = !!file.parent_file_id;                          // bu dosya bir alt parti mi?
   const isPartial  = !isBatch && (file.batches?.length ?? 0) > 0;   // ana dosyada parti var mı?
+  const canCreateProforma = file.status !== 'cancelled' && !isPartial && !isBatch;
+  // Partiler kartı: parti varsa her zaman; parti yokken sadece satış aşamasında ve yazma yetkisiyle
+  // ('Yeni Parti' kısmi sevkiyat girişi — daha önce sadece Teslimat formundaki gizli seçenekti).
+  const showPartilerCard = !isBatch && ((file.batches?.length ?? 0) > 0 || (writable && file.status === 'sale'));
+  const hasDocs = (file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0;
+  // "+ Belge Ekle" menüsü: yazma yetkisi varsa, o an oluşturulabilir belgeler
+  const docMenuItems: { label: string; onClick: () => void }[] = writable ? [
+    ...(canCreateProforma ? [{ label: t('detail.actions.proformaInvoice'), onClick: () => { setEditPI(null); setProformaOpen(true); } }] : []),
+    ...(canCreateDocs && !isPartial ? [
+      { label: t('detail.actions.commercialInvoice'), onClick: () => { setEditInvoice(null); setInvoiceOpen(true); } },
+      { label: t('detail.actions.packingList'), onClick: () => { setEditPL(null); setPackingOpen(true); } },
+    ] : []),
+  ] : [];
   // Dropbox klasör adı olarak file_no'yu kullan (edge function "/" → nested folder yapıyor)
   const dropboxFileNo = file.file_no;
   // Kalan tonaj: tüm parti tonajları ana dosyadan düşülür
   // Tamamlandı butonu: tüm partiler completed olmalı (kalan tonaj fark etmez — gerçek teslimatta sapma olabilir)
+  // İptal edilen partiler sayılmaz — aksi halde tek bir iptal parti ana dosyanın
+  // tamamlanmasını sonsuza dek engeller.
+  const activeBatches = (file.batches ?? []).filter(b => b.status !== 'cancelled');
   const allBatchesDone = isPartial
-    && (file.batches ?? []).length > 0
-    && (file.batches ?? []).every(b => b.status === 'completed');
+    && activeBatches.length > 0
+    && activeBatches.every(b => b.status === 'completed');
   // Batch file_no = "ANA/P1" → ana dosya no = "ANA"
   const parentFileNo = isBatch ? file.file_no.split('/').slice(0, -1).join('/') : null;
   // Teslim edilen: partili dosyada iptal edilmemiş TÜM partilerin tonnage toplamı
@@ -616,7 +759,11 @@ export function TradeFileDetailPage() {
 
   // Teslimat bloğunda gösterilecek ADMT: partili dosyada TÜM partilerin toplam
   // tonajı (gerçek teslim edilen), değilse dosyanın delivered_admt / tonaj değeri
-  const batchesTonnage = (file.batches ?? []).reduce((s, b) => s + batchDeliveredAdmt(b), 0);
+  // İptal edilen partiler dışlanır — deliveredTonnage ("Teslim Edilen") ile aynı kural,
+  // aksi halde iki kartta farklı ADMT görünür.
+  const batchesTonnage = (file.batches ?? [])
+    .filter(b => b.status !== 'cancelled')
+    .reduce((s, b) => s + batchDeliveredAdmt(b), 0);
   const deliveryAdmt = isPartial && batchesTonnage > 0
     ? batchesTonnage
     : (file.delivered_admt ?? file.tonnage_mt ?? 0);
@@ -639,6 +786,24 @@ export function TradeFileDetailPage() {
   // Fiyat gösterimlerinde doğru para birimi — satış → sale_currency, alış → purchase_currency
   const saleCcy     = (file.sale_currency ?? file.currency ?? 'USD') as CurrencyCode;
   const purchaseCcy = (file.purchase_currency ?? file.currency ?? 'USD') as CurrencyCode;
+
+  // Satış detaylarında kayıtlı ama daha önce gösterilmeyen alanlar
+  const freightCcy = (file.freight_currency ?? file.sale_currency ?? file.currency ?? 'USD') as CurrencyCode;
+  const extraSaleRows: { label: string; value: string }[] = [
+    ...(file.transport_mode ? [{ label: 'Taşıma', value: TRANSPORT_LABEL[file.transport_mode] ?? file.transport_mode }] : []),
+    ...((file.freight_cost ?? 0) > 0 ? [{ label: 'Navlun', value: fCurrency(file.freight_cost, freightCcy) }] : []),
+    ...((file.advance_rate ?? 0) > 0 ? [{ label: 'Avans', value: `%${file.advance_rate}` }] : []),
+  ];
+
+  // Finansal özet (satış → teslimat → tamamlandı). Fatura bazlı, USD.
+  const showFinancials = ['sale', 'delivery', 'completed'].includes(file.status);
+  const financialSummary = showFinancials ? (
+    <FinancialSummary
+      saleTxns={fileTxns.filter(t => t.transaction_type === 'sale_inv')}
+      costTxns={fileTxns.filter(t => ['purchase_inv', 'svc_inv'].includes(t.transaction_type))}
+      expectedSale={file.selling_price && deliveryAdmt > 0 ? fCurrency(file.selling_price * deliveryAdmt, saleCcy) : null}
+    />
+  ) : null;
 
   async function handleSyncFromParent() {
     if (!parentFile || !file) { toast.error('Ana dosya yüklenemedi'); return; }
@@ -685,11 +850,23 @@ export function TradeFileDetailPage() {
     const purchaseTotal = purchaseInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
     const saleTotal     = saleInvs.reduce((s, t) => s + (t.amount_usd ?? t.amount ?? 0), 0);
 
+    // Faturalar USD (amount_usd) tutuluyor; beklenen tutar ise dosyanın kendi para biriminde
+    // (fiyat × miktar). EUR/TRY dosyada ikisini doğrudan karşılaştırmak yanlış sonuç verir →
+    // beklenen tutarı, o para biriminde kesilmiş faturanın dondurulmuş kuruyla USD'ye çevir.
+    // (exchange_rate: 1 USD = kaç currency.) Eşleşen fatura yoksa eski davranış (çevirmeden).
+    const expectedInUsd = (expected: number, ccy: string, txns: typeof fileTxns) => {
+      if (ccy === 'USD' || expected === 0) return expected;
+      const rate = txns.find(t => t.currency === ccy && Number(t.exchange_rate) > 0)?.exchange_rate;
+      return rate ? expected / Number(rate) : expected;
+    };
+    const expectedPurchaseUsd = expectedInUsd(expectedPurchase, purchaseCcy, purchaseInvs);
+    const expectedSaleUsd     = expectedInUsd(expectedSale, saleCcy, saleInvs);
+
     // Alt partilerde satın alma/satış faturası ve proforma zorunlu değil
     const purchaseCovered = isBatch ? true :
-      purchaseInvs.length > 0 && (expectedPurchase === 0 || purchaseTotal >= expectedPurchase * 0.85);
+      purchaseInvs.length > 0 && (expectedPurchaseUsd === 0 || purchaseTotal >= expectedPurchaseUsd * 0.85);
     const saleCovered     = isBatch ? true :
-      saleInvs.length > 0     && (expectedSale     === 0 || saleTotal     >= expectedSale     * 0.85);
+      saleInvs.length > 0     && (expectedSaleUsd     === 0 || saleTotal     >= expectedSaleUsd     * 0.85);
 
     const hasProforma     = (isBatch || isPartial) ? true : (file.proformas?.length ?? 0) > 0;
 
@@ -722,9 +899,59 @@ export function TradeFileDetailPage() {
     { key: 'saleCovered',     label: 'Satış Faturası' },
 
     { key: 'hasProforma',     label: 'Proforma Fatura' },
-    { key: 'hasPackingList',  label: 'Packing List' },
-    { key: 'hasCommInvoice',  label: 'Commercial Invoice' },
+    { key: 'hasPackingList',  label: 'Ambalaj Listesi' },
+    { key: 'hasCommInvoice',  label: 'Ticari Fatura' },
   ] as const;
+
+  // ── "Sıradaki adım" şeridi ─────────────────────────────────────────────────
+  // Durum + belge kontrollerinden tek satırlık yönlendirme. Tamamlandı'da zaten uyarı bandı var.
+  const nextStep = (() => {
+    if (file.status === 'cancelled' || file.status === 'completed') return null;
+    if (file.status === 'request') {
+      return { text: 'Sıradaki: satış bilgilerini girip dosyayı satışa çevir', chips: [] as string[], ok: false };
+    }
+    const missing = completionChecks ? CHECKS_LABELS.filter(c => !completionChecks[c.key]).map(c => c.label) : [];
+    if (file.status === 'sale') {
+      if (isPartial) {
+        if (activeBatches.length === 0) {
+          return { text: 'Sıradaki: ilk teslimat partisini ekle', chips: [] as string[], ok: false };
+        }
+        const pending = activeBatches
+          .filter(b => b.status !== 'completed')
+          .sort((a, b) => (a.batch_no ?? 0) - (b.batch_no ?? 0))
+          .map(b => `P${b.batch_no}`);
+        if (pending.length > 0) {
+          return { text: `Sıradaki: ${pending.length} parti teslim bekliyor`, chips: pending, ok: false, noClick: true };
+        }
+        // tüm partiler tamam → aşağıdaki eksik belge mantığına düş
+      } else {
+        return { text: 'Sıradaki: teslimat bilgisini gir (ADMT, B/L, SEPTİ)', chips: [] as string[], ok: false };
+      }
+    }
+    return missing.length > 0
+      ? { text: 'Tamamlamak için eksik:', chips: missing, ok: false }
+      : { text: file.status === 'sale' ? 'Partiler tamam — "Tamamlandı" ile kapatabilirsin' : 'Her şey hazır — "Teslimatı Tamamla" ile kapatabilirsin', chips: [] as string[], ok: true };
+  })();
+
+  const nextStepStrip = nextStep ? (
+    <div className={cn(
+      'flex flex-wrap items-center gap-2 rounded-xl border px-3.5 py-2 text-[12px]',
+      nextStep.ok ? 'border-green-200 bg-green-50 text-green-700' : 'border-[#ECECEC] bg-white text-gray-600',
+    )}>
+      <span className="font-semibold">{nextStep.text}</span>
+      {nextStep.chips.map(c => (
+        <button
+          key={c}
+          type="button"
+          disabled={'noClick' in nextStep}
+          onClick={() => setCompletionBlockerOpen(true)}
+          className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px] font-semibold border border-amber-100 enabled:hover:bg-amber-100 transition-colors"
+        >
+          {c}
+        </button>
+      ))}
+    </div>
+  ) : null;
 
   const docWarningBanner = completedWithMissingDocs && completionChecks ? (
     <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -806,12 +1033,17 @@ export function TradeFileDetailPage() {
     if (allBatchesDone) {
       checkAndComplete();
     } else {
-      const incomplete = (file!.batches ?? []).filter(b => b.status !== 'completed').length;
-      const noBatches = (file!.batches ?? []).length === 0;
-      if (noBatches) {
+      const pending = activeBatches
+        .filter(b => b.status !== 'completed')
+        .sort((a, b) => (a.batch_no ?? 0) - (b.batch_no ?? 0));
+      if (activeBatches.length === 0) {
         toast.warning('Henüz parti eklenmedi — en az bir teslimat partisi ekleyin');
       } else {
-        toast.warning(`${incomplete} parti henüz tamamlanmadı — tüm partileri tamamlayın`);
+        const names = pending.map(b => `P${b.batch_no}`).join(', ');
+        toast.warning(`${pending.length} parti henüz tamamlanmadı: ${names}`, {
+          action: { label: `P${pending[0].batch_no}'e git`, onClick: () => navigate(`/files/${pending[0].id}`) },
+          duration: 8000,
+        });
       }
     }
   }
@@ -948,6 +1180,17 @@ export function TradeFileDetailPage() {
       checkAndComplete();
       return;
     }
+    // İleri geçişler ilgili formdan geçsin — menüden doğrudan status yazmak satış bilgisi /
+    // teslimat ADMT'si girilmeden dosyayı ilerletiyor (boş delivered_admt → ADMT kilidi bozulur).
+    if (file!.status === 'request' && (newStatus === 'sale' || newStatus === 'delivery')) {
+      if (newStatus === 'delivery') toast.info('Önce satışa çevirmen gerekiyor — satış bilgilerini girin.');
+      setSaleOpen(true);
+      return;
+    }
+    if (file!.status === 'sale' && newStatus === 'delivery') {
+      openDeliveryWithPacking();
+      return;
+    }
     if (window.confirm(t('detail.statusConfirm', { label: tc('status.' + newStatus) })))
       changeStatus.mutate({ id: file!.id, status: newStatus as TradeFileStatus });
   }
@@ -990,13 +1233,13 @@ export function TradeFileDetailPage() {
         <div className="px-4 py-3 border-b border-[#F4F2EE]">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.salePrice')}</div>
           <div className="text-[13px] font-bold text-gray-900">
-            {file.selling_price ? fCurrency(file.selling_price, saleCcy) + '/MT' : '—'}
+            {file.selling_price ? fCurrency(file.selling_price, saleCcy) + '/' + tUnit : '—'}
           </div>
         </div>
         <div className="px-4 py-3 border-b border-[#F4F2EE]">
           <div className="text-[9px] text-gray-400 font-medium mb-0.5 uppercase tracking-wider">{t('detail.fileInfo.delivered')}</div>
           <div className="text-[13px] font-bold text-gray-900">
-            {deliveredTonnage ? fN(deliveredTonnage, 3) + ' ADMT' : '—'}
+            {deliveredTonnage ? fN(deliveredTonnage, 3) + ' ' + tUnit : '—'}
           </div>
         </div>
       </div>
@@ -1026,26 +1269,33 @@ export function TradeFileDetailPage() {
 
   const actionsPanel = (isMobile: boolean) => (
     <div className={cn('bg-white rounded-2xl shadow-sm overflow-hidden', isMobile ? '' : '')}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#F4F2EE]">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{t('detail.actions.title')}</span>
-      </div>
+      {/* Mobil bottom sheet kendi başlığını çiziyor — burada tekrar etme */}
+      {!isMobile && (
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#F4F2EE]">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{t('detail.actions.title')}</span>
+        </div>
+      )}
       <div className="px-3 py-2">
         <ActionItem
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4zM18 2l-6 4 6 4-6 4 6 4 6-4-6-4 6-4zM6 16.5L12 21l6-4.5-6-4z"/></svg>}
           label={file.dropbox_folder_url ? 'Dropbox ●' : 'Dropbox'}
           onClick={() => { setActionsOpen(false); handleOpenDropbox(); }}
         />
-        {isSaleOrDel && (
+        {writable && (
+          <ActionItem icon={<Pencil className="h-4 w-4" />} label={t('detail.actions.editFile')}
+            onClick={() => { setActionsOpen(false); setEditFileOpen(true); }} />
+        )}
+        {canCreateDocs && (
           <>
             <ActionItem icon={<Receipt className="h-4 w-4" />} label={t('detail.actions.commercialInvoice')}
               onClick={() => { setActionsOpen(false); setEditInvoice(null); setInvoiceOpen(true); }} />
             <ActionItem icon={<Package className="h-4 w-4" />} label={t('detail.actions.packingList')}
               onClick={() => { setActionsOpen(false); setEditPL(null); setPackingOpen(true); }} />
-            {!isPartial && !isBatch && (
-              <ActionItem icon={<FileText className="h-4 w-4" />} label={t('detail.actions.proformaInvoice')}
-                onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
-            )}
           </>
+        )}
+        {canCreateProforma && (
+          <ActionItem icon={<FileText className="h-4 w-4" />} label={t('detail.actions.proformaInvoice')}
+            onClick={() => { setActionsOpen(false); setEditPI(null); setProformaOpen(true); }} />
         )}
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
           <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
@@ -1107,13 +1357,13 @@ export function TradeFileDetailPage() {
               },
               {
                 ok: completionChecks.hasPackingList,
-                label: 'Packing List',
+                label: 'Ambalaj Listesi',
                 sub: 'Belgeler → Ambalaj Listesi',
                 onAdd: () => { setCompletionBlockerOpen(false); setEditPL(null); setPackingOpen(true); },
               },
               {
                 ok: completionChecks.hasCommInvoice,
-                label: 'Commercial Invoice',
+                label: 'Ticari Fatura',
                 sub: 'Belgeler → Ticari Fatura',
                 onAdd: () => { setCompletionBlockerOpen(false); setEditInvoice(null); setInvoiceOpen(true); },
               },
@@ -1221,7 +1471,7 @@ export function TradeFileDetailPage() {
                   className="text-[10px] font-mono text-gray-400 tracking-wider flex items-center gap-1 group"
                 >
                   {file.file_no}
-                  <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 transition-opacity" />
+                  <Pencil className="h-2.5 w-2.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-60 transition-opacity" />
                 </button>
               )}
               {/* Durum pill */}
@@ -1261,6 +1511,7 @@ export function TradeFileDetailPage() {
 
         {/* Status stepper */}
         <div className="mx-4 mt-3">{statusStepper}</div>
+        {nextStepStrip && <div className="mx-4 mt-2">{nextStepStrip}</div>}
         {docWarningBanner && <div className="mx-4 mt-2">{docWarningBanner}</div>}
 
         {/* Combined file info card */}
@@ -1330,6 +1581,8 @@ export function TradeFileDetailPage() {
         {/* Mobile sections */}
         <div className="px-3">
 
+        {financialSummary && <div className="mb-3">{financialSummary}</div>}
+
         {/* ── Sale Details ─────────────────────────────────────────────── */}
         <Section
           title={t('detail.saleDetails.title')}
@@ -1353,8 +1606,8 @@ export function TradeFileDetailPage() {
         >
           {hasSaleDetails ? (
             <>
-              <KV label={t('detail.saleDetails.salePrice')} value={file.selling_price ? `${fCurrency(file.selling_price, saleCcy)}/MT` : '—'} bold />
-              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(weightedPurchase, purchaseCcy)}/MT`} />
+              <KV label={t('detail.saleDetails.salePrice')} value={file.selling_price ? `${fCurrency(file.selling_price, saleCcy)}/${tUnit}` : '—'} bold />
+              <KV label={t('detail.saleDetails.purchase')} value={`${fCurrency(weightedPurchase, purchaseCcy)}/${tUnit}`} />
               <KV
                 label={t('detail.saleDetails.supplier')}
                 value={
@@ -1363,8 +1616,14 @@ export function TradeFileDetailPage() {
                     : (file.supplier?.name ?? '—')
                 }
               />
-              <KV label={t('detail.saleDetails.incoterms')} value={`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'} />
-              {file.eta && <KV label={t('detail.saleDetails.eta')} value={fDate(file.eta)} />}
+              <OrderInfoRow file={file} field="incoterms" writable={writable} />
+              <OrderInfoRow file={file} field="port_of_loading" writable={writable} />
+              <OrderInfoRow file={file} field="port_of_discharge" writable={writable} />
+              <OrderInfoRow file={file} field="payment_terms" writable={writable} />
+              <OrderInfoRow file={file} field="proforma_ref" writable={writable} />
+              <OrderInfoRow file={file} field="customer_ref" writable={writable} />
+              {extraSaleRows.map(r => <KV key={r.label} label={r.label} value={r.value} />)}
+              <OrderInfoRow file={file} field="eta" writable={writable} />
               {file.revised_eta && (
                 <KV label={t('detail.saleDetails.revisedEta')} value={
                   <span className="flex items-center gap-1.5">
@@ -1374,6 +1633,7 @@ export function TradeFileDetailPage() {
                 } />
               )}
               {file.delay_notes && <KV label={t('detail.saleDetails.delayReason')} value={file.delay_notes} />}
+              {!file.vessel_name && <OrderInfoRow file={file} field="vessel_name" writable={writable} />}
               {file.vessel_name && (
                 <KV label={t('detail.saleDetails.vessel')} value={
                   <a
@@ -1409,7 +1669,7 @@ export function TradeFileDetailPage() {
         </Section>
 
         {/* ── Delivery ─────────────────────────────────────────────────── */}
-        {(file.delivered_admt || (isPartial && batchesTonnage > 0)) && (
+        {(file.delivered_admt || (isPartial && batchesTonnage > 0) || ['sale', 'delivery', 'completed'].includes(file.status)) && (
           <Section
             title={t('detail.delivery.title')}
             icon={<Truck className="h-3.5 w-3.5" />}
@@ -1424,28 +1684,30 @@ export function TradeFileDetailPage() {
           >
             <div className="grid grid-cols-2 gap-x-4">
               <KV label={t('detail.delivery.admt')} value={fN(deliveryAdmt, 3)} bold />
-              <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
-              <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
-              <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
-              <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
-              <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
+              <OrderInfoRow file={file} field="gross_weight_kg" writable={writable} />
+              <OrderInfoRow file={file} field="packages" writable={writable} />
+              <OrderInfoRow file={file} field="arrival_date" writable={writable} />
+              <OrderInfoRow file={file} field="bl_number" writable={writable} />
+              <OrderInfoRow file={file} field="septi_ref" writable={writable} />
+<OrderInfoRow file={file} field="insurance_tr" writable={writable} />
+<OrderInfoRow file={file} field="insurance_ir" writable={writable} />
             </div>
           </Section>
         )}
 
         {/* ── Documents ────────────────────────────────────────────────── */}
-        {((file.proformas?.length ?? 0) > 0 ||
-          (file.invoices?.length ?? 0) > 0 ||
-          (file.packing_lists?.length ?? 0) > 0) && (
+        {(hasDocs || docMenuItems.length > 0) && (
           <Section title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}
+            right={<AddDocMenu items={docMenuItems} />}
             collapsible isCollapsed={!!collapsed.m_docs} onToggle={() => toggleCard('m_docs')}>
+            {!hasDocs && <p className="text-[12px] text-gray-400 py-2">Henüz belge yok</p>}
             {/* Proformas — sadece normal dosyalarda */}
             {!isPartial && !isBatch && file.proformas?.map((pi) => (
               <DocRow
                 key={pi.id}
                 no={pi.proforma_no}
                 date={fDate(pi.proforma_date)}
-                amount={fCurrency(pi.total)}
+                amount={fCurrency(pi.total, (pi.currency ?? "USD") as CurrencyCode)}
                 status={pi.doc_status ?? 'draft'}
                 onRenameNo={writable ? makeProformaRename(pi.id) : undefined}
               >
@@ -1478,7 +1740,7 @@ export function TradeFileDetailPage() {
                 key={inv.id}
                 no={inv.invoice_no}
                 date={fDate(inv.invoice_date)}
-                amount={fCurrency(inv.total)}
+                amount={fCurrency(inv.total, (inv.currency ?? "USD") as CurrencyCode)}
                 status={inv.doc_status ?? 'draft'}
                 onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}
               >
@@ -1505,7 +1767,7 @@ export function TradeFileDetailPage() {
                 key={inv.id}
                 no={inv.invoice_no}
                 date={fDate(inv.invoice_date)}
-                amount={fCurrency(inv.total)}
+                amount={fCurrency(inv.total, (inv.currency ?? "USD") as CurrencyCode)}
                 status={inv.doc_status ?? 'draft'}
                 onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}
               >
@@ -1602,7 +1864,7 @@ export function TradeFileDetailPage() {
                   <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
-                  <span className="text-[12px] font-bold text-gray-800">{fUSD(txn.amount_usd ?? txn.amount)}</span>
+                  <TxnAmount txn={txn} className="text-[12px] font-bold text-gray-800" />
                   <span className={cn(
                     'text-[9px] px-2 py-0.5 rounded-full font-bold',
                     txn.payment_status === 'paid' ? 'bg-green-100 text-green-700'
@@ -1615,8 +1877,8 @@ export function TradeFileDetailPage() {
           )}
         </Section>
 
-        {/* ── Partiler (mobil) — sadece en az 1 parti varsa göster ───── */}
-        {!file.parent_file_id && (file.batches?.length ?? 0) > 0 && (
+        {/* ── Partiler (mobil) — parti varsa; parti yokken satış aşamasında 'Yeni Parti' girişi ── */}
+        {showPartilerCard && (
           <PartilerCard
             file={file}
             writable={writable}
@@ -1695,7 +1957,7 @@ export function TradeFileDetailPage() {
                     className="text-[11px] font-mono text-gray-400 hover:text-gray-600 flex items-center gap-1 group"
                   >
                     {file.file_no}
-                    <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Pencil className="h-2.5 w-2.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity" />
                   </button>
                 )}
                 {file.revised_eta && (
@@ -1731,13 +1993,13 @@ export function TradeFileDetailPage() {
                 <div className="px-5 py-4">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.salePrice')}</div>
                   <div className="text-[15px] font-extrabold text-gray-900">
-                    {file.selling_price ? fCurrency(file.selling_price, saleCcy) + '/MT' : '—'}
+                    {file.selling_price ? fCurrency(file.selling_price, saleCcy) + '/' + tUnit : '—'}
                   </div>
                 </div>
                 <div className="px-5 py-4">
                   <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">{t('detail.fileInfo.delivered')}</div>
                   <div className="text-[15px] font-extrabold text-gray-900">
-                    {deliveredTonnage ? fN(deliveredTonnage, 3) + ' ADMT' : '—'}
+                    {deliveredTonnage ? fN(deliveredTonnage, 3) + ' ' + tUnit : '—'}
                   </div>
                 </div>
               </div>
@@ -1784,7 +2046,7 @@ export function TradeFileDetailPage() {
                       : <p className="text-[10px] text-gray-400">Klasör oluştur / aç</p>}
                   </div>
                 </button>
-                {isSaleOrDel && (
+                {canCreateDocs && (
                   <>
                     {/* Ticari Fatura: partial dosyada batch listesi, değilse yeni oluştur */}
                     <button
@@ -1818,16 +2080,16 @@ export function TradeFileDetailPage() {
                         {isPartial && <p className="text-[10px] text-gray-400">Alt partilerden görüntüle</p>}
                       </div>
                     </button>
-                    {/* Proforma — sadece normal dosyalarda oluşturulabilir */}
-                    {writable && !isPartial && !isBatch && (
-                      <button onClick={() => { setEditPI(null); setProformaOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
-                        <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
-                          <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" />
-                        </div>
-                        <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.proformaInvoice')}</span>
-                      </button>
-                    )}
                   </>
+                )}
+                {/* Proforma — normal dosyalarda, talep aşamasından itibaren (iptal hariç) */}
+                {writable && canCreateProforma && (
+                  <button onClick={() => { setEditPI(null); setProformaOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group text-left">
+                    <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-red-50 transition-colors">
+                      <FileText className="h-3.5 w-3.5 text-gray-500 group-hover:text-red-600" />
+                    </div>
+                    <span className="text-[13px] font-semibold text-gray-800">{t('detail.actions.proformaInvoice')}</span>
+                  </button>
                 )}
               </div>
             </div>
@@ -1839,6 +2101,7 @@ export function TradeFileDetailPage() {
 
             {/* Status stepper */}
             {statusStepper}
+            {nextStepStrip}
             {docWarningBanner}
 
             {/* Action buttons row */}
@@ -1909,6 +2172,8 @@ export function TradeFileDetailPage() {
               )}
             </div>
 
+            {financialSummary}
+
             {/* ── Sale Details — always first ────────────────────────────── */}
             <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
               <div
@@ -1938,11 +2203,11 @@ export function TradeFileDetailPage() {
                   <div className="px-6 py-2">
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.salePrice')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{file.selling_price ? `${fCurrency(file.selling_price, saleCcy)}/MT` : '—'}</span>
+                      <span className="text-[13px] font-bold text-gray-900">{file.selling_price ? `${fCurrency(file.selling_price, saleCcy)}/${tUnit}` : '—'}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                       <span className="text-[12px] text-gray-500">{t('detail.saleDetails.purchase')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(weightedPurchase, purchaseCcy)}/MT</span>
+                      <span className="text-[13px] font-bold text-gray-900">{fCurrency(weightedPurchase, purchaseCcy)}/{tUnit}</span>
                     </div>
                     {(file.suppliers?.length ?? 0) > 1 ? (
                       <div className="py-2 border-b border-dashed border-[#ECECEC]">
@@ -1984,16 +2249,19 @@ export function TradeFileDetailPage() {
                         ) : <span className="text-[13px] font-bold text-gray-900">—</span>}
                       </div>
                     )}
-                    <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
-                      <span className="text-[12px] text-gray-500">{t('detail.saleDetails.incoterms')}</span>
-                      <span className="text-[13px] font-bold text-gray-900">{`${file.incoterms ?? ''} ${file.port_of_discharge ?? ''}`.trim() || '—'}</span>
-                    </div>
-                    {file.eta && (
-                      <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
-                        <span className="text-[12px] text-gray-500">{t('detail.saleDetails.eta')}</span>
-                        <span className="text-[13px] font-bold text-gray-900">{fDate(file.eta)}</span>
+                    <OrderInfoRow file={file} field="incoterms" writable={writable} />
+                    <OrderInfoRow file={file} field="port_of_loading" writable={writable} />
+                    <OrderInfoRow file={file} field="port_of_discharge" writable={writable} />
+                    <OrderInfoRow file={file} field="payment_terms" writable={writable} />
+                    <OrderInfoRow file={file} field="proforma_ref" writable={writable} />
+                    <OrderInfoRow file={file} field="customer_ref" writable={writable} />
+                    {extraSaleRows.map(r => (
+                      <div key={r.label} className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
+                        <span className="text-[12px] text-gray-500">{r.label}</span>
+                        <span className="text-[13px] font-bold text-gray-900">{r.value}</span>
                       </div>
-                    )}
+                    ))}
+                    <OrderInfoRow file={file} field="eta" writable={writable} />
                     {file.revised_eta && (
                       <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC]">
                         <span className="text-[12px] text-gray-500">{t('detail.saleDetails.revisedEta')}</span>
@@ -2009,6 +2277,7 @@ export function TradeFileDetailPage() {
                         <span className="text-[13px] font-bold text-gray-900 text-right max-w-[60%]">{file.delay_notes}</span>
                       </div>
                     )}
+                    {!file.vessel_name && <OrderInfoRow file={file} field="vessel_name" writable={writable} />}
                     {file.vessel_name && (
                       <div className="flex justify-between items-center py-2 border-b border-dashed border-[#ECECEC] last:border-0">
                         <span className="text-[12px] text-gray-500">{t('detail.saleDetails.vessel')}</span>
@@ -2045,8 +2314,8 @@ export function TradeFileDetailPage() {
               )}
             </div>
 
-            {/* ── Partiler — sadece en az 1 parti varsa göster ───────────── */}
-            {!file.parent_file_id && (file.batches?.length ?? 0) > 0 && (
+            {/* ── Partiler — parti varsa; parti yokken satış aşamasında 'Yeni Parti' girişi ── */}
+            {showPartilerCard && (
               <PartilerCard
                 file={file}
                 writable={writable}
@@ -2058,7 +2327,7 @@ export function TradeFileDetailPage() {
             )}
 
             {/* Delivery */}
-            {(file.delivered_admt || (isPartial && batchesTonnage > 0)) && (
+            {(file.delivered_admt || (isPartial && batchesTonnage > 0) || ['sale', 'delivery', 'completed'].includes(file.status)) && (
               <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
                 <div className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none" onClick={() => toggleCard('delivery')}>
                   <div className="flex items-center gap-2.5">
@@ -2077,29 +2346,35 @@ export function TradeFileDetailPage() {
                 {!collapsed.delivery && (
                   <div className="px-6 py-3 grid grid-cols-2 gap-x-6">
                     <KV label={t('detail.delivery.admt')} value={fN(deliveryAdmt, 3)} bold />
-                    <KV label={t('detail.delivery.grossKg')} value={fN(file.gross_weight_kg)} />
-                    <KV label={t('detail.delivery.packages')} value={file.packages ?? '—'} />
-                    <KV label={t('detail.delivery.arrival')} value={fDate(file.arrival_date)} />
-                    <KV label={t('detail.delivery.blNo')} value={file.bl_number || '—'} />
-                    <KV label={t('detail.delivery.septi')} value={file.septi_ref || '—'} />
+                    <OrderInfoRow file={file} field="gross_weight_kg" writable={writable} />
+                    <OrderInfoRow file={file} field="packages" writable={writable} />
+                    <OrderInfoRow file={file} field="arrival_date" writable={writable} />
+                    <OrderInfoRow file={file} field="bl_number" writable={writable} />
+                    <OrderInfoRow file={file} field="septi_ref" writable={writable} />
+<OrderInfoRow file={file} field="insurance_tr" writable={writable} />
+<OrderInfoRow file={file} field="insurance_ir" writable={writable} />
                   </div>
                 )}
               </div>
             )}
 
             {/* Documents */}
-            {((file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0) && (
+            {(hasDocs || docMenuItems.length > 0) && (
               <div className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
                 <div className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none" onClick={() => toggleCard('documents')}>
                   <div className="flex items-center gap-2.5">
                     <FileText className="h-4 w-4 text-gray-400" />
                     <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A8A8E]">{t('detail.documents.title')}</span>
                   </div>
-                  {collapsed.documents ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+                  <div className="flex items-center gap-2">
+                    <AddDocMenu items={docMenuItems} />
+                    {collapsed.documents ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+                  </div>
                 </div>
                 {!collapsed.documents && <div className="px-4 py-2">
+                  {!hasDocs && <p className="text-[12px] text-gray-400 py-2 px-2">Henüz belge yok</p>}
                   {!isPartial && !isBatch && file.proformas?.map((pi) => (
-                    <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total)} status={pi.doc_status ?? 'draft'} onRenameNo={writable ? makeProformaRename(pi.id) : undefined}>
+                    <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total, (pi.currency ?? "USD") as CurrencyCode)} status={pi.doc_status ?? 'draft'} onRenameNo={writable ? makeProformaRename(pi.id) : undefined}>
                       <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
                       {writable && (pi.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditPI(pi); setProformaOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printProforma(pi, settings, defaultBank, file, (pi.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
@@ -2108,7 +2383,7 @@ export function TradeFileDetailPage() {
                     </DocRow>
                   ))}
                   {file.invoices?.filter(i => i.invoice_type === 'sale').map((inv) => (
-                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'} onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}>
+                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total, (inv.currency ?? "USD") as CurrencyCode)} status={inv.doc_status ?? 'draft'} onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}>
                       <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditSaleInvoice(inv); setSaleInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
@@ -2116,7 +2391,7 @@ export function TradeFileDetailPage() {
                     </DocRow>
                   ))}
                   {file.invoices?.filter(i => i.invoice_type === 'commercial').map((inv) => (
-                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total)} status={inv.doc_status ?? 'draft'} onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}>
+                    <DocRow key={inv.id} no={inv.invoice_no} date={fDate(inv.invoice_date)} amount={fCurrency(inv.total, (inv.currency ?? "USD") as CurrencyCode)} status={inv.doc_status ?? 'draft'} onRenameNo={writable ? makeInvoiceRename(inv.id) : undefined}>
                       <ApprovalActions table="invoices" id={inv.id} currentStatus={inv.doc_status ?? 'draft'} />
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { setEditInvoice(inv); setInvoiceOpen(true); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Pencil className="h-3 w-3" /> {tc('btn.edit')}</button>)}
                       {settings && (<button onClick={() => printInvoice(inv, settings, defaultBank, (inv.doc_status ?? 'draft') !== 'approved')} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1"><Printer className="h-3 w-3" /> {tc('btn.print')}</button>)}
@@ -2171,7 +2446,7 @@ export function TradeFileDetailPage() {
                         <div className="text-[10px] text-gray-400">{txn.transaction_date} · {tc(`txType.${txn.transaction_type}`)}</div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-4">
-                        <span className="text-[13px] font-bold text-gray-800">{fUSD(txn.amount_usd ?? txn.amount)}</span>
+                        <TxnAmount txn={txn} className="text-[13px] font-bold text-gray-800" />
                         <span className={cn('text-[9px] px-2 py-0.5 rounded-full font-bold',
                           txn.payment_status === 'paid' ? 'bg-green-100 text-green-700'
                           : txn.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-700'
@@ -2292,7 +2567,7 @@ export function TradeFileDetailPage() {
           <DialogTitle className="sr-only">Alt Parti Belgeleri</DialogTitle>
           <div className="sticky top-0 bg-white z-10 pb-3 border-b border-[#F4F2EE]">
             <p className="text-[14px] font-bold text-gray-900">
-              {batchDocsType === 'invoice' ? 'Commercial Invoice' : 'Ambalaj Listesi'} — Alt Partiler
+              {batchDocsType === 'invoice' ? 'Ticari Fatura' : 'Ambalaj Listesi'} — Alt Partiler
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">{file.customer?.name} · {file.file_no}</p>
           </div>
@@ -2354,7 +2629,7 @@ export function TradeFileDetailPage() {
                             <div>
                               <p className="text-[12px] font-semibold text-gray-800">{pl.packing_list_no}</p>
                               {pl.total_admt != null && (
-                                <p className="text-[10px] text-gray-400">{fN(pl.total_admt, 3)} ADMT</p>
+                                <p className="text-[10px] text-gray-400">{fN(pl.total_admt, 3)} {tUnit}</p>
                               )}
                             </div>
                             <span className={cn(
@@ -2374,6 +2649,44 @@ export function TradeFileDetailPage() {
               );
             })}
           </div>
+
+          {/* Toplu belge: tüm partilerin toplamı (kaydedilmez, yazdır/PDF) */}
+          {(() => {
+            if ((file.batches ?? []).length === 0) return null;
+            const isInv = batchDocsType === 'invoice';
+            const res = isInv ? buildConsolidatedInvoice(file) : buildConsolidatedPackingList(file);
+            if (!res) return null;
+            if ('error' in res && res.error) {
+              return <p className="mt-3 text-[11px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{res.error}</p>;
+            }
+            const ok = res as { doc: PackingList | Invoice; count: number; allApproved: boolean };
+            const pl = !isInv ? (ok.doc as PackingList) : null;
+            const inv = isInv ? (ok.doc as Invoice) : null;
+            return (
+              <div className="mt-3 rounded-xl border border-[#ECECEC] bg-gray-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Toplam · {ok.count} parti belgesi</p>
+                  <p className="text-[13px] font-extrabold text-gray-900 mt-0.5">
+                    {isInv
+                      ? <>{fN(inv!.quantity_admt, 3)} {tUnit} · {fCurrency(inv!.total, (inv!.currency ?? 'USD') as CurrencyCode)}</>
+                      : <>{fN(pl!.total_admt, 3)} {tUnit} · {pl!.packing_list_items?.length ?? 0} araç · {fN(pl!.total_gross_kg, 0)} kg</>}
+                  </p>
+                  {!ok.allApproved && <p className="text-[10px] text-amber-600 mt-0.5">Onaysız parti belgesi var — taslak olarak basılır</p>}
+                </div>
+                {settings && (
+                  <button
+                    onClick={() => isInv
+                      ? printInvoice(inv!, settings, defaultBank, !ok.allApproved)
+                      : printPackingList(pl!, settings, !ok.allApproved)}
+                    className="h-8 px-4 rounded-lg text-white text-[12px] font-semibold flex items-center gap-1.5 shadow-sm hover:opacity-90"
+                    style={{ background: accent }}
+                  >
+                    <Printer className="h-3.5 w-3.5" /> Toplu {isInv ? 'Fatura' : 'Ambalaj Listesi'} · Yazdır / PDF
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="flex justify-end pt-3 border-t border-gray-100 mt-2">
             <button

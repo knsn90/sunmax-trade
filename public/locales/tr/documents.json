@@ -3,17 +3,17 @@
   "tabs": {
     "invoices": "Faturalar",
     "proformas": "Proformalar",
-    "packingLists": "Çeki Listeleri"
+    "packingLists": "Ambalaj Listeleri"
   },
   "search": {
     "invoices": "Fatura ara…",
     "proformas": "Proforma ara…",
-    "packingLists": "Çeki listesi ara…"
+    "packingLists": "Ambalaj listesi ara…"
   },
   "empty": {
     "noInvoices": "Fatura bulunamadı",
     "noProformas": "Proforma bulunamadı",
-    "noPackingLists": "Çeki listesi bulunamadı"
+    "noPackingLists": "Ambalaj listesi bulunamadı"
   },
   "table": {
     "invoiceNo": "Fatura No",
