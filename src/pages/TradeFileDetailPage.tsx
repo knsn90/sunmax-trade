@@ -408,7 +408,9 @@ export function TradeFileDetailPage() {
   // İlk render'da sadece bu dosyanın ID'si ile işlemleri hemen başlat (waterfall önleme)
   // Parti ID'leri gelince query key değişir → React Query otomatik genişletir
   const batchIds = (file?.batches ?? []).map(b => b.id).filter((x): x is string => !!x);
-  const allFileIds = batchIds.length > 0 ? [id!, ...batchIds] : [id!];
+  // Gerçek UUID (fileId) — route param `id` slug taşıyabilir ("glz-...--<uuid>"),
+  // trade_file_id sorgusunda kullanılırsa hiçbir işlem eşleşmez.
+  const allFileIds = batchIds.length > 0 ? [fileId!, ...batchIds] : [fileId!];
   const { data: fileTxns = [] } = useTransactions({ tradeFileIds: allFileIds });
   const { accent } = useTheme();
 
