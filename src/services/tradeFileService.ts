@@ -78,7 +78,7 @@ const FILE_DETAIL_SELECT = `
   invoices(*),
   packing_lists(*, packing_list_items(*)),
   proformas(*),
-  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, delivered_admt, supplier_id, transport_mode, eta, deleted_at, packing_lists(*, packing_list_items(*)), invoices(*))
+  batches:trade_files!parent_file_id(id, file_no, batch_no, status, tonnage_mt, delivered_admt, supplier_id, transport_mode, eta, deleted_at, gross_weight_kg, packages, arrival_date, bl_number, septi_ref, insurance_tr, insurance_ir, packing_lists(*, packing_list_items(*)), invoices(*))
 `;
 
 // Minimal select for mutations — no joins, avoids Supabase load

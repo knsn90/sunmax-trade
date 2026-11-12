@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/permissions';
 import { fN, fDate, fCurrency, fUSD } from '@/lib/formatters';
-import type { Invoice, PackingList, Proforma, Transaction } from '@/types/database';
+import type { Invoice, PackingList, Proforma, Transaction, TradeFile } from '@/types/database';
 import type { TradeFileStatus, CurrencyCode } from '@/types/enums';
 import { ToSaleModal } from '@/components/trade-files/ToSaleModal';
 import { DeliveryModal } from '@/components/trade-files/DeliveryModal';
@@ -151,6 +151,68 @@ function Section({
       </div>
       {!isCollapsed && <div className="px-4 py-3">{children}</div>}
     </div>
+  );
+}
+
+/**
+ * Partili ANA dosyada Teslimat alanları elle girilmez — aktif (iptal edilmemiş) partilerden toplanır:
+ * brüt / paket → toplam, varış → en geç tarih, B/L · SEPTİ · sigorta → partilerdeki benzersiz değerler.
+ * Parti alanı boşsa partinin ambalaj listesi toplamı kullanılır (partide tek liste: onaylı, yoksa en yüksek ADMT).
+ */
+function BatchRollupRows({ file }: { file: TradeFile }) {
+  const batches = (file.batches ?? []).filter(b => b.status !== 'cancelled' && !(b as { deleted_at?: string | null }).deleted_at);
+
+  const pickPl = (b: (typeof batches)[number]) =>
+    [...(b.packing_lists ?? [])].sort((x, y) =>
+      Number(y.doc_status === 'approved') - Number(x.doc_status === 'approved') ||
+      (Number(y.total_admt) || 0) - (Number(x.total_admt) || 0))[0];
+
+  let gross = 0, pkgs = 0;
+  for (const b of batches) {
+    const pl = pickPl(b);
+    gross += Number(b.gross_weight_kg) > 0 ? Number(b.gross_weight_kg) : (Number(pl?.total_gross_kg) || 0);
+    pkgs  += Number(b.packages) > 0 ? Number(b.packages) : (Number(pl?.total_reels) || 0);
+  }
+  /**
+   * Partiye göre değerler: hepsi doluysa ve aynıysa tek değer; farklıysa (veya bazı partilerde boşsa)
+   * "P1: …" / "P2: …" satırları — hangi değerin hangi partiye ait olduğu açık olsun.
+   */
+  const perBatch = (get: (b: (typeof batches)[number]) => string | null | undefined, fmt?: (v: string) => string): string[] => {
+    const items = batches
+      .map(b => ({ no: b.batch_no, v: (get(b) ?? '').trim() }))
+      .filter(i => i.v);
+    if (items.length === 0) return [];
+    const same = new Set(items.map(i => i.v)).size === 1 && items.length === batches.length;
+    return same
+      ? [fmt ? fmt(items[0].v) : items[0].v]
+      : items.map(i => `P${i.no}: ${fmt ? fmt(i.v) : i.v}`);
+  };
+
+  const rows: { label: string; value: string[] }[] = [
+    { label: 'Brüt (KG)',     value: gross > 0 ? [fN(gross, 0)] : [] },
+    { label: 'Paket Sayısı',  value: pkgs > 0 ? [fN(pkgs, 0)] : [] },
+    { label: 'Varış',         value: perBatch(b => b.arrival_date, fDate) },
+    { label: 'Konşimento No', value: perBatch(b => b.bl_number) },
+    { label: 'SEPTİ / CB No', value: perBatch(b => b.septi_ref) },
+    { label: 'Sigorta (TR)',  value: perBatch(b => b.insurance_tr) },
+    { label: 'Sigorta (IR)',  value: perBatch(b => b.insurance_ir) },
+  ];
+  return (
+    <>
+      {rows.map(r => (
+        <div key={r.label} className="flex items-start justify-between gap-3 py-2 border-b border-dashed border-[#ECECEC] min-h-[40px]" title="Partilerden otomatik toplanır">
+          <span className="text-[12px] text-gray-500 shrink-0 pt-0.5">{r.label}</span>
+          {r.value.length > 0 ? (
+            <span className="min-w-0 text-right text-[13px] font-bold text-gray-900 leading-snug">
+              {r.value.map(v => <span key={v} className="block break-words">{v}</span>)}
+            </span>
+          ) : (
+            <span className="min-w-0 text-right text-[13px] text-gray-300 italic font-medium pt-0.5">Partilerde girilmedi</span>
+          )}
+        </div>
+      ))}
+      <p className="col-span-full text-[10px] text-gray-400 pt-2">Bu değerler partilerden otomatik toplanır; düzenlemek için ilgili partinin sayfasını açın.</p>
+    </>
   );
 }
 
@@ -1814,6 +1876,8 @@ export function TradeFileDetailPage() {
           >
             <div className="grid grid-cols-2 gap-x-4">
               {isPartial ? <KV label={t('detail.delivery.admt')} value={fN(deliveryAdmt, 3)} bold /> : <OrderInfoRow file={file} field="delivered_admt" writable={writable} label={`Teslim (${tUnit})`} />}
+              {isPartial ? <BatchRollupRows file={file} /> : (
+                <>
               <OrderInfoRow file={file} field="gross_weight_kg" writable={writable} />
               <OrderInfoRow file={file} field="packages" writable={writable} />
               <OrderInfoRow file={file} field="arrival_date" writable={writable} />
@@ -1821,6 +1885,8 @@ export function TradeFileDetailPage() {
               <OrderInfoRow file={file} field="septi_ref" writable={writable} />
 <OrderInfoRow file={file} field="insurance_tr" writable={writable} />
 <OrderInfoRow file={file} field="insurance_ir" writable={writable} />
+                </>
+              )}
             </div>
           </Section>
         )}
@@ -2482,6 +2548,8 @@ export function TradeFileDetailPage() {
                 {!collapsed.delivery && (
                   <div className="px-6 py-3 grid grid-cols-2 gap-x-6">
                     {isPartial ? <KV label={t('detail.delivery.admt')} value={fN(deliveryAdmt, 3)} bold /> : <OrderInfoRow file={file} field="delivered_admt" writable={writable} label={`Teslim (${tUnit})`} />}
+                    {isPartial ? <BatchRollupRows file={file} /> : (
+                      <>
                     <OrderInfoRow file={file} field="gross_weight_kg" writable={writable} />
                     <OrderInfoRow file={file} field="packages" writable={writable} />
                     <OrderInfoRow file={file} field="arrival_date" writable={writable} />
@@ -2489,6 +2557,8 @@ export function TradeFileDetailPage() {
                     <OrderInfoRow file={file} field="septi_ref" writable={writable} />
 <OrderInfoRow file={file} field="insurance_tr" writable={writable} />
 <OrderInfoRow file={file} field="insurance_ir" writable={writable} />
+                      </>
+                    )}
                   </div>
                 )}
               </div>

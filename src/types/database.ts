@@ -278,7 +278,10 @@ export interface TradeFile extends Timestamps {
   suppliers?: TradeFileSupplier[];
   // Alt partiler (detail sorgusunda gelir)
   batches?: (Pick<TradeFile, 'id' | 'file_no' | 'batch_no' | 'status' | 'tonnage_mt' | 'transport_mode' | 'eta'> & {
-    packing_lists?: { id: string; packing_list_no: string; doc_status: string; total_admt: number | null }[];
+    // Ana dosya teslimat özeti için (partilerden toplanır)
+    gross_weight_kg?: number | null; packages?: number | null; arrival_date?: string | null;
+    bl_number?: string | null; septi_ref?: string | null; insurance_tr?: string | null; insurance_ir?: string | null;
+    packing_lists?: { id: string; packing_list_no: string; doc_status: string; total_admt: number | null; total_gross_kg?: number | null; total_reels?: number | null }[];
     invoices?: { id: string; invoice_no: string; invoice_date: string | null; total: number | null; doc_status: string; invoice_type: 'commercial' | 'sale'; currency: string | null }[];
   })[];
 }
