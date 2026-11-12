@@ -41,8 +41,10 @@ const DialogContent = React.forwardRef<
     size?: 'default' | 'lg' | 'xl' | 'preview';
     layout?: 'default' | 'split';
     dismissible?: boolean;
+    /** Arka planı bulanıklaştır (backdrop-blur) — varsayılan kapalı, yalnızca isteyen pencereler */
+    blurBackdrop?: boolean;
   }
->(({ className, children, size = 'default', layout = 'default', dismissible = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
+>(({ className, children, size = 'default', layout = 'default', dismissible = false, blurBackdrop = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
   const isMobile = useIsMobile();
 
   // Separate DialogHeader (first child) from body so the header is
@@ -61,7 +63,7 @@ const DialogContent = React.forwardRef<
     <DialogPortal>
       {/* Overlay — desktop only */}
       <motion.div
-        className="hidden md:block fixed inset-0 z-50 bg-black/45"
+        className={cn('hidden md:block fixed inset-0 z-50 bg-black/45', blurBackdrop && 'bg-black/30 backdrop-blur-md')}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

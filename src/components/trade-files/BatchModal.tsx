@@ -158,7 +158,7 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) { reset(); setSelectedSupplierId(''); onClose(); } }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent blurBackdrop className="md:w-[580px] max-w-none">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <DialogHeader>
@@ -171,18 +171,18 @@ export function BatchModal({ parent, nextBatchNo, open, onClose }: Props) {
         </DialogHeader>
 
         {/* Bilgi satırı */}
-        <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-xl mt-1">
-          <div className="flex-1">
+        <div className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-3 px-4 py-3.5 bg-gray-50 rounded-2xl mt-1">
+          <div className="min-w-0">
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Ana Dosya</p>
-            <p className="text-[13px] font-bold text-gray-800">{parent.file_no}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Parti No</p>
-            <p className="text-[13px] font-bold" style={{ color: accent }}>{batchFileNo}</p>
+            <p className="text-[14px] font-bold text-gray-800 break-words">{parent.file_no}</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Kalan Ton</p>
-            <p className="text-[13px] font-bold text-amber-600">{remainingTon.toLocaleString('tr-TR')} MT</p>
+            <p className="text-[14px] font-bold text-amber-600 whitespace-nowrap">{remainingTon.toLocaleString('tr-TR')} MT</p>
+          </div>
+          <div className="col-span-2 pt-3 border-t border-gray-100 min-w-0">
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Parti No</p>
+            <p className="text-[14px] font-bold break-words" style={{ color: accent }}>{batchFileNo}</p>
           </div>
         </div>
 
