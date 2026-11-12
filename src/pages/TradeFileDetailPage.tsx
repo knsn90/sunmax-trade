@@ -819,6 +819,75 @@ export function TradeFileDetailPage() {
   const hasDocs = (file.proformas?.length ?? 0) > 0 || (file.invoices?.length ?? 0) > 0 || (file.packing_lists?.length ?? 0) > 0;
   const docGen = documentGenerationState(file);
 
+  // Partili ana dosya: partilerin ambalaj listeleri OTOMATİK birleşir (canlı, kaydedilmez → hep güncel)
+  const consolidatedPL = isPartial ? buildConsolidatedPackingList(file) : null;
+  const totalPlRow = consolidatedPL ? (() => {
+    const { doc, count, allApproved } = consolidatedPL;
+    const label = `${doc.packing_list_no}`;
+    return (
+      <DocRow
+        key="consolidated-pl"
+        no={label}
+        date={`${t('detail.documents.vehicles', { count: doc.packing_list_items?.length ?? 0, admt: fN(doc.total_admt, 3) })} · ${count} parti`}
+        status={allApproved ? 'approved' : 'draft'}
+      >
+        <span className="h-7 px-2.5 rounded-full bg-blue-50 text-[10px] font-bold text-blue-700 flex items-center uppercase tracking-wide">Otomatik · partilerden</span>
+        {settings && (
+          <button onClick={() => printPackingList(doc, settings, !allApproved)}
+            className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+            <Printer className="h-3 w-3" /> {tc('btn.print')}
+          </button>
+        )}
+        {settings && (
+          <button disabled={dropboxUploadingId === 'consolidated-pl'}
+            onClick={() => handleUploadToDropbox('consolidated-pl', label, generatePackingListHtml(doc, settings, !allApproved))}
+            className="h-7 px-3 rounded-full bg-blue-50 text-[11px] font-semibold text-blue-700 flex items-center gap-1 disabled:opacity-50">
+            Dropbox
+          </button>
+        )}
+      </DocRow>
+    );
+  })() : null;
+
+  // Partili ana dosya: partilerin ticari faturaları OTOMATİK birleşir (canlı, kaydedilmez).
+  // Farklı para birimli partilerde birleştirme yapılmaz, nedeni gösterilir.
+  const consolidatedInv = isPartial ? buildConsolidatedInvoice(file) : null;
+  const totalInvRow = consolidatedInv ? (() => {
+    if ('error' in consolidatedInv && consolidatedInv.error) {
+      return (
+        <div key="consolidated-inv-error" className="my-1 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[11px] text-amber-800">
+          <span className="font-bold">Toplam Ticari Fatura oluşturulamadı: </span>{consolidatedInv.error}
+        </div>
+      );
+    }
+    const { doc, count, allApproved } = consolidatedInv as { doc: Invoice; count: number; allApproved: boolean };
+    const label = `${doc.invoice_no}`;
+    return (
+      <DocRow
+        key="consolidated-inv"
+        no={label}
+        date={`${fN(doc.quantity_admt, 3)} ${tUnit} · ${count} parti`}
+        amount={fCurrency(doc.total, (doc.currency ?? 'USD') as CurrencyCode)}
+        status={allApproved ? 'approved' : 'draft'}
+      >
+        <span className="h-7 px-2.5 rounded-full bg-blue-50 text-[10px] font-bold text-blue-700 flex items-center uppercase tracking-wide">Otomatik · partilerden</span>
+        {settings && (
+          <button onClick={() => printInvoice(doc, settings, defaultBank, !allApproved)}
+            className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+            <Printer className="h-3 w-3" /> {tc('btn.print')}
+          </button>
+        )}
+        {settings && (
+          <button disabled={dropboxUploadingId === 'consolidated-inv'}
+            onClick={() => handleUploadToDropbox('consolidated-inv', label, generateInvoiceHtml(doc, settings, defaultBank, !allApproved))}
+            className="h-7 px-3 rounded-full bg-blue-50 text-[11px] font-semibold text-blue-700 flex items-center gap-1 disabled:opacity-50">
+            Dropbox
+          </button>
+        )}
+      </DocRow>
+    );
+  })() : null;
+
   /** Girilen bilgilerden eksik belgelerin taslağını tek tıkla üret (Proforma / Ambalaj Listesi / Ticari Fatura). */
   async function handleGenerateDocs() {
     if (!file || generatingDocs) return;
@@ -1885,11 +1954,11 @@ export function TradeFileDetailPage() {
         {vehicleListCard && <div className="mb-3">{vehicleListCard}</div>}
 
         {/* ── Documents ────────────────────────────────────────────────── */}
-        {(hasDocs || docMenuItems.length > 0 || (writable && docGen.available)) && (
+        {(hasDocs || !!consolidatedPL || !!consolidatedInv || docMenuItems.length > 0 || (writable && docGen.available)) && (
           <Section anchor="documents" step="01" title={t('detail.documents.title')} icon={<FileText className="h-3.5 w-3.5" />}
             right={docHeaderActions}
             collapsible isCollapsed={!!collapsed.m_docs} onToggle={() => toggleCard('m_docs')}>
-            {!hasDocs && <p className="text-[12px] text-gray-400 py-2">Henüz belge yok</p>}
+            {!hasDocs && !consolidatedPL && !consolidatedInv && <p className="text-[12px] text-gray-400 py-2">Henüz belge yok</p>}
             {/* Proformas — sadece normal dosyalarda */}
             {!isPartial && !isBatch && file.proformas?.map((pi) => (
               <DocRow
@@ -1984,6 +2053,8 @@ export function TradeFileDetailPage() {
             ))}
 
             {/* Packing Lists */}
+            {totalInvRow}
+            {totalPlRow}
             {file.packing_lists?.map((pl) => (
               <DocRow
                 key={pl.id}
@@ -2558,7 +2629,7 @@ export function TradeFileDetailPage() {
             {vehicleListCard}
 
             {/* Documents */}
-            {(hasDocs || docMenuItems.length > 0 || (writable && docGen.available)) && (
+            {(hasDocs || !!consolidatedPL || !!consolidatedInv || docMenuItems.length > 0 || (writable && docGen.available)) && (
               <div data-anchor="documents" className="bg-white rounded-[20px] border border-[#ECECEC] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden">
                 <div className="px-6 py-4 flex items-center justify-between border-b border-[#F4F2EE] cursor-pointer select-none" onClick={() => toggleCard('documents')}>
                   <div className="flex items-center gap-2.5">
@@ -2572,7 +2643,7 @@ export function TradeFileDetailPage() {
                   </div>
                 </div>
                 {!collapsed.documents && <div className="px-4 py-2">
-                  {!hasDocs && <p className="text-[12px] text-gray-400 py-2 px-2">Henüz belge yok</p>}
+                  {!hasDocs && !consolidatedPL && !consolidatedInv && <p className="text-[12px] text-gray-400 py-2 px-2">Henüz belge yok</p>}
                   {!isPartial && !isBatch && file.proformas?.map((pi) => (
                     <DocRow key={pi.id} no={pi.proforma_no} date={fDate(pi.proforma_date)} amount={fCurrency(pi.total, (pi.currency ?? "USD") as CurrencyCode)} status={pi.doc_status ?? 'draft'} onRenameNo={writable ? makeProformaRename(pi.id) : undefined}>
                       <ApprovalActions table="proformas" id={pi.id} currentStatus={pi.doc_status ?? 'draft'} />
@@ -2599,6 +2670,8 @@ export function TradeFileDetailPage() {
                       {writable && (inv.doc_status ?? 'draft') !== 'approved' && (<button onClick={() => { if (window.confirm(tc('confirm.delete_title'))) deleteInv.mutate(inv.id); }} className="h-7 px-3 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Trash2 className="h-3 w-3" /></button>)}
                     </DocRow>
                   ))}
+                  {totalInvRow}
+                  {totalPlRow}
                   {file.packing_lists?.map((pl) => (
                     <DocRow key={pl.id} no={pl.packing_list_no} date={t('detail.documents.vehicles', { count: pl.packing_list_items?.length ?? 0, admt: fN(pl.total_admt, 3) })} status={pl.doc_status ?? 'draft'} onRenameNo={writable ? makePLRename(pl.id) : undefined}>
                       <ApprovalActions table="packing_lists" id={pl.id} currentStatus={pl.doc_status ?? 'draft'} />
