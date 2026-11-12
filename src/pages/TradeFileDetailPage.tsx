@@ -30,6 +30,7 @@ import { useSettings, useBankAccounts } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { printInvoice, printPackingList, printProforma, generateProformaHtml, generateInvoiceHtml, generatePackingListHtml } from '@/lib/printDocument';
 import { buildConsolidatedPackingList, buildConsolidatedInvoice } from '@/lib/consolidatedDocs';
+import { activeBatches, rollupBatches } from '@/lib/batchRollup';
 import { OrderInfoRow } from '@/components/trade-files/OrderInfoRow';
 import { VehicleListCard } from '@/components/trade-files/VehiclePlatesRow';
 import { generateMissingDocuments, documentGenerationState } from '@/lib/generateDocuments';
@@ -160,19 +161,9 @@ function Section({
  * Parti alanı boşsa partinin ambalaj listesi toplamı kullanılır (partide tek liste: onaylı, yoksa en yüksek ADMT).
  */
 function BatchRollupRows({ file }: { file: TradeFile }) {
-  const batches = (file.batches ?? []).filter(b => b.status !== 'cancelled' && !(b as { deleted_at?: string | null }).deleted_at);
+  const batches = activeBatches(file);
+  const { gross, packages: pkgs } = rollupBatches(file);
 
-  const pickPl = (b: (typeof batches)[number]) =>
-    [...(b.packing_lists ?? [])].sort((x, y) =>
-      Number(y.doc_status === 'approved') - Number(x.doc_status === 'approved') ||
-      (Number(y.total_admt) || 0) - (Number(x.total_admt) || 0))[0];
-
-  let gross = 0, pkgs = 0;
-  for (const b of batches) {
-    const pl = pickPl(b);
-    gross += Number(b.gross_weight_kg) > 0 ? Number(b.gross_weight_kg) : (Number(pl?.total_gross_kg) || 0);
-    pkgs  += Number(b.packages) > 0 ? Number(b.packages) : (Number(pl?.total_reels) || 0);
-  }
   /**
    * Partiye göre değerler: hepsi doluysa ve aynıysa tek değer; farklıysa (veya bazı partilerde boşsa)
    * "P1: …" / "P2: …" satırları — hangi değerin hangi partiye ait olduğu açık olsun.

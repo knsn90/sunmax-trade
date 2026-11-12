@@ -140,11 +140,12 @@ export const deliverySchema = z.object({
   delivered_admt: z.coerce.number().positive('ADMT is required'),
   gross_weight_kg: z.coerce.number().min(0).catch(0),
   packages: z.coerce.number().int().min(0).catch(0),
-  arrival_date: z.string().optional(),
-  bl_number: z.string().default(''),
-  septi_ref: z.string().default(''),
-  insurance_tr: z.string().default(''),
-  insurance_ir: z.string().default(''),
+  // null / undefined gelirse (tarih seçici temizlenince) doğrulama sessizce başarısız olmasın
+  arrival_date: z.string().nullish().transform(v => v ?? ''),
+  bl_number: z.string().nullish().transform(v => v ?? ''),
+  septi_ref: z.string().nullish().transform(v => v ?? ''),
+  insurance_tr: z.string().nullish().transform(v => v ?? ''),
+  insurance_ir: z.string().nullish().transform(v => v ?? ''),
 });
 export type DeliveryFormData = z.infer<typeof deliverySchema>;
 

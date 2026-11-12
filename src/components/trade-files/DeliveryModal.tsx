@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { rollupBatches } from '@/lib/batchRollup';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { deliverySchema, type DeliveryFormData } from '@/types/forms';
@@ -62,15 +64,18 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
       const plDates = pls.map(pl => pl.pl_date).filter(Boolean).sort();
       const plDate  = plDates.length ? plDates[plDates.length - 1] : undefined;
 
+      // Partili ana dosya: alanlar partilerden toplanır (kartta görünenle aynı değerler)
+      const ro = hasBatches && !isBatch ? rollupBatches(file) : null;
+
       reset({
         delivered_admt:  file.delivered_admt ?? file.tonnage_mt ?? 0,
-        gross_weight_kg: file.gross_weight_kg ?? (plGross > 0 ? plGross : undefined),
-        packages:        file.packages ?? (plReels > 0 ? plReels : undefined),
-        arrival_date:    file.arrival_date ?? plDate ?? '',
-        bl_number:       file.bl_number ?? '',
-        septi_ref:       file.septi_ref ?? file.register_no ?? '',
-        insurance_tr:    file.insurance_tr ?? '',
-        insurance_ir:    file.insurance_ir ?? '',
+        gross_weight_kg: file.gross_weight_kg ?? (ro && ro.gross > 0 ? ro.gross : plGross > 0 ? plGross : undefined),
+        packages:        file.packages ?? (ro && ro.packages > 0 ? ro.packages : plReels > 0 ? plReels : undefined),
+        arrival_date:    file.arrival_date ?? (ro?.arrivalLatest || plDate) ?? '',
+        bl_number:       file.bl_number ?? ro?.bl ?? '',
+        septi_ref:       file.septi_ref ?? (ro?.septi || file.register_no) ?? '',
+        insurance_tr:    file.insurance_tr ?? ro?.insuranceTr ?? '',
+        insurance_ir:    file.insurance_ir ?? ro?.insuranceIr ?? '',
       });
     }
   }, [open, file, reset]);
@@ -148,7 +153,14 @@ export function DeliveryModal({ open, onOpenChange, file, onPartialShipment }: D
 
         {/* ── Adım 1: Teslimat formu ───────────────────────────────────────── */}
         {step === 'form' && (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-1">
+          <form
+            onSubmit={handleSubmit(onSubmit, (errs) => {
+              // Sessiz başarısızlık olmasın: hangi alan geçersiz, kullanıcıya söyle
+              const first = Object.entries(errs)[0];
+              toast.error(`Kayıt yapılamadı — ${first ? `${first[0]}: ${(first[1] as { message?: string })?.message ?? 'geçersiz değer'}` : 'form geçersiz'}`);
+            })}
+            className="space-y-3 mt-1"
+          >
 
             {/* ADMT · Brüt Ağırlık */}
             <div className="grid grid-cols-2 gap-3">

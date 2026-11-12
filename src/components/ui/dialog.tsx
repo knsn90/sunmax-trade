@@ -41,10 +41,10 @@ const DialogContent = React.forwardRef<
     size?: 'default' | 'lg' | 'xl' | 'preview';
     layout?: 'default' | 'split';
     dismissible?: boolean;
-    /** Arka planı bulanıklaştır (backdrop-blur) — varsayılan kapalı, yalnızca isteyen pencereler */
+    /** Arka planı bulanıklaştır (backdrop-blur) — tüm pencerelerde varsayılan açık; kapatmak için blurBackdrop={false} */
     blurBackdrop?: boolean;
   }
->(({ className, children, size = 'default', layout = 'default', dismissible = false, blurBackdrop = false, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
+>(({ className, children, size = 'default', layout = 'default', dismissible = false, blurBackdrop = true, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
   const isMobile = useIsMobile();
 
   // Separate DialogHeader (first child) from body so the header is
